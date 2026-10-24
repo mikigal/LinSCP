@@ -450,3 +450,63 @@ BOOL DeviceIoControl(
   return TRUE;
 }
 //---------------------------------------------------------------------------
+// A search of FindFirstFile
+class TFindObject : public winapi::TKernelObject
+{
+public:
+  ~TFindObject() override
+  {
+    FindClose(SearchRec);
+  }
+
+  TSearchRec SearchRec;
+};
+//---------------------------------------------------------------------------
+HANDLE FindFirstFile(LPCWSTR FileName, LPWIN32_FIND_DATAW FindFileData)
+{
+  std::shared_ptr<TFindObject> Object = std::make_shared<TFindObject>();
+  // (FindFirst and FindNext set the last error)
+  if (FindFirst(FileName, faAnyFile, Object->SearchRec) != 0)
+  {
+    return INVALID_HANDLE_VALUE;
+  }
+  *FindFileData = Object->SearchRec.FindData;
+  return winapi::RegisterObject(Object);
+}
+//---------------------------------------------------------------------------
+BOOL FindNextFile(HANDLE FindFile, LPWIN32_FIND_DATAW FindFileData)
+{
+  std::shared_ptr<TFindObject> Object = winapi::FindObject<TFindObject>(FindFile);
+  if (!Object)
+  {
+    SetLastError(ERROR_INVALID_HANDLE);
+    return FALSE;
+  }
+  if (FindNext(Object->SearchRec) != 0)
+  {
+    return FALSE;
+  }
+  *FindFileData = Object->SearchRec.FindData;
+  return TRUE;
+}
+//---------------------------------------------------------------------------
+BOOL FindClose(HANDLE FindFile)
+{
+  if (!winapi::FindObject<TFindObject>(FindFile))
+  {
+    SetLastError(ERROR_INVALID_HANDLE);
+    return FALSE;
+  }
+  return CloseHandle(FindFile);
+}
+//---------------------------------------------------------------------------
+BOOL CreateDirectory(LPCWSTR PathName, LPSECURITY_ATTRIBUTES)
+{
+  if (mkdir(rtl::FileNameToBytes(PathName).c_str(), 0777) != 0)
+  {
+    rtl::SetLastErrorFromErrno();
+    return FALSE;
+  }
+  return TRUE;
+}
+//---------------------------------------------------------------------------

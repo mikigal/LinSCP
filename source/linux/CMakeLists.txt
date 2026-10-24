@@ -19,9 +19,11 @@ set(OPENSCP_CORE_VERSION "${OPENSCP_CORE_VERSION}" PARENT_SCOPE)
 
 add_library(openscp_linux STATIC
   src/Com.cpp
+  src/Crt.cpp
   src/Crypt.cpp
   src/FileApi.cpp
   src/Handles.cpp
+  src/Messages.cpp
   src/Process.cpp
   src/Registry.cpp
   src/Shell.cpp

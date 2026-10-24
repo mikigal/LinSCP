@@ -25,8 +25,10 @@ gtest_discover_tests(openscp_rtl_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
 add_executable(openscp_linux_tests
+  linux/CrtTest.cpp
   linux/FileApiTest.cpp
   linux/HandlesTest.cpp
+  linux/MessagesTest.cpp
   linux/ShellTest.cpp
   linux/SystemTest.cpp
   linux/TimeApiTest.cpp)

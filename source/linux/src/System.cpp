@@ -583,3 +583,16 @@ BOOL VerQueryValue(LPCVOID Block, LPCWSTR SubBlock, LPVOID * Buffer, PUINT Lengt
   return FALSE;
 }
 //---------------------------------------------------------------------------
+int MessageBox(HWND, LPCWSTR Text, LPCWSTR Caption, UINT)
+{
+  fprintf(stderr, "%s: %s\n",
+    rtl::FileNameToBytes((Caption != NULL) ? Caption : L"").c_str(),
+    rtl::FileNameToBytes((Text != NULL) ? Text : L"").c_str());
+  return IDOK;
+}
+//---------------------------------------------------------------------------
+BOOL IsBadWritePtr(LPVOID Pointer, UINT_PTR Size)
+{
+  return ((Pointer == NULL) && (Size > 0)) ? TRUE : FALSE;
+}
+//---------------------------------------------------------------------------

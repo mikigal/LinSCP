@@ -15,7 +15,8 @@ struct TErrorMapping
 };
 
 // The first entry for an errno wins when mapping to Windows, the first entry
-// for a Windows code when mapping back.
+// for a Windows code when mapping back (ErrorMappings before
+// WinSockErrorMappings).
 const TErrorMapping ErrorMappings[] =
 {
   { ENOENT, ERROR_FILE_NOT_FOUND },
@@ -49,6 +50,54 @@ const TErrorMapping ErrorMappings[] =
   { ETXTBSY, ERROR_SHARING_VIOLATION },
   { EWOULDBLOCK, ERROR_LOCK_VIOLATION },
 };
+
+// WinSock errors, after the ones above; the errno values mapped above map
+// to WinSock errors only with ErrnoToWinSockError
+const TErrorMapping WinSockErrorMappings[] =
+{
+  { EINTR, WSAEINTR },
+  { EBADF, WSAEBADF },
+  { EACCES, WSAEACCES },
+  { EFAULT, WSAEFAULT },
+  { EINVAL, WSAEINVAL },
+  { EMFILE, WSAEMFILE },
+  { EWOULDBLOCK, WSAEWOULDBLOCK },
+  { EINPROGRESS, WSAEINPROGRESS },
+  { EALREADY, WSAEALREADY },
+  { ENOTSOCK, WSAENOTSOCK },
+  { EDESTADDRREQ, WSAEDESTADDRREQ },
+  { EMSGSIZE, WSAEMSGSIZE },
+  { EPROTOTYPE, WSAEPROTOTYPE },
+  { ENOPROTOOPT, WSAENOPROTOOPT },
+  { EPROTONOSUPPORT, WSAEPROTONOSUPPORT },
+  { ESOCKTNOSUPPORT, WSAESOCKTNOSUPPORT },
+  { EOPNOTSUPP, WSAEOPNOTSUPP },
+  { EPFNOSUPPORT, WSAEPFNOSUPPORT },
+  { EAFNOSUPPORT, WSAEAFNOSUPPORT },
+  { EADDRINUSE, WSAEADDRINUSE },
+  { EADDRNOTAVAIL, WSAEADDRNOTAVAIL },
+  { ENETDOWN, WSAENETDOWN },
+  { ENETUNREACH, WSAENETUNREACH },
+  { ENETRESET, WSAENETRESET },
+  { ECONNABORTED, WSAECONNABORTED },
+  { ECONNRESET, WSAECONNRESET },
+  { ENOBUFS, WSAENOBUFS },
+  { EISCONN, WSAEISCONN },
+  { ENOTCONN, WSAENOTCONN },
+  { ESHUTDOWN, WSAESHUTDOWN },
+  { ETOOMANYREFS, WSAETOOMANYREFS },
+  { ETIMEDOUT, WSAETIMEDOUT },
+  { ECONNREFUSED, WSAECONNREFUSED },
+  { ELOOP, WSAELOOP },
+  { ENAMETOOLONG, WSAENAMETOOLONG },
+  { EHOSTDOWN, WSAEHOSTDOWN },
+  { EHOSTUNREACH, WSAEHOSTUNREACH },
+  { ENOTEMPTY, WSAENOTEMPTY },
+  { EUSERS, WSAEUSERS },
+  { EDQUOT, WSAEDQUOT },
+  { ESTALE, WSAESTALE },
+  { EREMOTE, WSAEREMOTE },
+};
 } // namespace
 //---------------------------------------------------------------------------
 DWORD GetLastError()
@@ -77,6 +126,22 @@ DWORD ErrnoToWinError(int Errno)
       return Mapping.WinError;
     }
   }
+  return ErrnoToWinSockError(Errno);
+}
+//---------------------------------------------------------------------------
+DWORD ErrnoToWinSockError(int Errno)
+{
+  if (Errno == 0)
+  {
+    return ERROR_SUCCESS;
+  }
+  for (const TErrorMapping & Mapping : WinSockErrorMappings)
+  {
+    if (Mapping.Errno == Errno)
+    {
+      return Mapping.WinError;
+    }
+  }
   return ErrnoFlag | static_cast<DWORD>(Errno);
 }
 //---------------------------------------------------------------------------
@@ -87,6 +152,13 @@ int WinErrorToErrno(DWORD ErrorCode)
     return static_cast<int>(ErrorCode & ~ErrnoFlag);
   }
   for (const TErrorMapping & Mapping : ErrorMappings)
+  {
+    if (Mapping.WinError == ErrorCode)
+    {
+      return Mapping.Errno;
+    }
+  }
+  for (const TErrorMapping & Mapping : WinSockErrorMappings)
   {
     if (Mapping.WinError == ErrorCode)
     {

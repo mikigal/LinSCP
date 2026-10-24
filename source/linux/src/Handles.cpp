@@ -542,6 +542,20 @@ DWORD GetTickCount()
   return static_cast<DWORD>(GetTickCount64());
 }
 //---------------------------------------------------------------------------
+BOOL QueryPerformanceFrequency(LARGE_INTEGER * Frequency)
+{
+  Frequency->QuadPart = 1000000000LL;
+  return TRUE;
+}
+//---------------------------------------------------------------------------
+BOOL QueryPerformanceCounter(LARGE_INTEGER * PerformanceCount)
+{
+  struct timespec Now;
+  clock_gettime(CLOCK_MONOTONIC, &Now);
+  PerformanceCount->QuadPart = static_cast<LONGLONG>(Now.tv_sec) * 1000000000LL + Now.tv_nsec;
+  return TRUE;
+}
+//---------------------------------------------------------------------------
 void InitializeCriticalSection(LPCRITICAL_SECTION CriticalSection)
 {
   CriticalSection->Mutex = new std::recursive_mutex();

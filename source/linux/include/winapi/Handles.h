@@ -17,6 +17,7 @@
 #define WINAPI
 #define CALLBACK
 #define APIENTRY
+#define PASCAL
 // The emulated API has C linkage, as on Windows, so that C code (PuTTY) can
 // call it too
 #ifdef __cplusplus
@@ -84,6 +85,9 @@ DWORD SleepEx(DWORD Milliseconds, BOOL Alertable);
 // Milliseconds of a monotonic clock; GetTickCount wraps around after 49.7 days
 DWORD GetTickCount();
 ULONGLONG GetTickCount64();
+// Nanoseconds of the monotonic clock
+BOOL QueryPerformanceFrequency(LARGE_INTEGER * Frequency);
+BOOL QueryPerformanceCounter(LARGE_INTEGER * PerformanceCount);
 //---------------------------------------------------------------------------
 // Recursive mutex
 struct CRITICAL_SECTION

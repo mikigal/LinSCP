@@ -114,6 +114,14 @@ UnicodeString SysErrorMessage(unsigned int ErrorCode)
     case ERROR_NO_MORE_ITEMS: return L"No more data is available";
     case ERROR_DIRECTORY: return L"The directory name is invalid";
     case ERROR_CANCELLED: return L"The operation was canceled by the user";
+    case WSASYSNOTREADY: return L"The network subsystem is unavailable";
+    case WSAVERNOTSUPPORTED: return L"The requested WinSock version is not supported";
+    case WSANOTINITIALISED: return L"WinSock is not initialized";
+    case WSAEDISCON: return L"The connection was closed gracefully";
+    case WSAHOST_NOT_FOUND: return L"No such host is known";
+    case WSATRY_AGAIN: return L"Temporary failure in name resolution";
+    case WSANO_RECOVERY: return L"A non-recoverable error occurred during a database lookup";
+    case WSANO_DATA: return L"The requested name is valid, but no data of the requested type was found";
   }
   int Errno = rtl::WinErrorToErrno(ErrorCode);
   if (Errno == 0)

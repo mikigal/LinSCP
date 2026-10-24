@@ -106,6 +106,23 @@ WINAPI_EXTERN_C_END
 BOOLEAN GetUserNameEx(EXTENDED_NAME_FORMAT NameFormat, LPWSTR NameBuffer, unsigned long * Size);
 WINAPI_EXTERN_C_BEGIN
 BOOL GetUserName(LPWSTR Buffer, LPDWORD Size);
+//---------------------------------------------------------------------------
+// There is no user interface: MessageBox writes the caption and the text to
+// stderr and returns IDOK
+#define MB_OK 0x00000000L
+#define MB_ICONHAND 0x00000010L
+#define MB_ICONQUESTION 0x00000020L
+#define MB_ICONEXCLAMATION 0x00000030L
+#define MB_ICONASTERISK 0x00000040L
+#define MB_ICONERROR MB_ICONHAND
+#define MB_ICONWARNING MB_ICONEXCLAMATION
+#define MB_ICONINFORMATION MB_ICONASTERISK
+#define IDOK 1
+#define IDCANCEL 2
+int MessageBox(HWND Window, LPCWSTR Text, LPCWSTR Caption, UINT Type);
+// Memory cannot be probed (Windows deprecated the function too): FALSE
+// unless the pointer is NULL
+BOOL IsBadWritePtr(LPVOID Pointer, UINT_PTR Size);
 BOOL GetComputerName(LPWSTR Buffer, LPDWORD Size);
 //---------------------------------------------------------------------------
 // Whether a 32-bit process runs on a 64-bit system: whether the system is

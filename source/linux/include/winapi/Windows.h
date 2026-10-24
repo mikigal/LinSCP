@@ -14,5 +14,7 @@
 #include <winapi/Com.h>
 #include <winapi/Crypt.h>
 #include <winapi/Registry.h>
+#include <winapi/Crt.h>
+#include <winapi/Messages.h>
 //---------------------------------------------------------------------------
 #endif

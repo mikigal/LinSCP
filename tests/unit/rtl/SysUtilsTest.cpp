@@ -261,6 +261,14 @@ TEST(SysUtils, OSErrors)
   EXPECT_NE(Encoded & rtl::ErrnoFlag, 0u);
   EXPECT_EQ(rtl::WinErrorToErrno(Encoded), EPROTO);
   EXPECT_EQ(SysErrorMessage(Encoded), UnicodeString(strerror(EPROTO)));
+  // WinSock errors
+  EXPECT_EQ(rtl::ErrnoToWinError(ECONNREFUSED), static_cast<DWORD>(WSAECONNREFUSED));
+  EXPECT_EQ(rtl::ErrnoToWinError(EINVAL), static_cast<DWORD>(ERROR_INVALID_PARAMETER));
+  EXPECT_EQ(rtl::ErrnoToWinSockError(EINVAL), static_cast<DWORD>(WSAEINVAL));
+  EXPECT_EQ(rtl::ErrnoToWinSockError(EWOULDBLOCK), static_cast<DWORD>(WSAEWOULDBLOCK));
+  EXPECT_EQ(rtl::WinErrorToErrno(WSAECONNRESET), ECONNRESET);
+  EXPECT_EQ(SysErrorMessage(WSAETIMEDOUT), UnicodeString(strerror(ETIMEDOUT)));
+  EXPECT_EQ(SysErrorMessage(WSAHOST_NOT_FOUND), L"No such host is known");
 }
 //---------------------------------------------------------------------------
 TEST(SysUtils, ResourceStrings)

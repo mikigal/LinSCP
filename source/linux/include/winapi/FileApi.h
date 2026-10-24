@@ -91,6 +91,13 @@ BOOL SetFileAttributes(LPCWSTR FileName, DWORD FileAttributes);
 BOOL DeviceIoControl(
   HANDLE Device, DWORD IoControlCode, LPVOID InBuffer, DWORD InBufferSize, LPVOID OutBuffer, DWORD OutBufferSize,
   LPDWORD BytesReturned, LPOVERLAPPED Overlapped);
+// The files matching the pattern of the last path component (* and ?), as
+// the RTL's FindFirst finds them with all attributes
+HANDLE FindFirstFile(LPCWSTR FileName, LPWIN32_FIND_DATAW FindFileData);
+BOOL FindNextFile(HANDLE FindFile, LPWIN32_FIND_DATAW FindFileData);
+BOOL FindClose(HANDLE FindFile);
+// The security attributes are ignored (the mode is 0777 less the umask)
+BOOL CreateDirectory(LPCWSTR PathName, LPSECURITY_ATTRIBUTES SecurityAttributes);
 WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif

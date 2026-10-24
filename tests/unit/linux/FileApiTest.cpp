@@ -223,3 +223,43 @@ TEST_F(FileApiTest, InvalidHandle)
   CloseHandle(Event);
 }
 //---------------------------------------------------------------------------
+TEST_F(FileApiTest, FindFiles)
+{
+  WriteText("one.txt", "1");
+  WriteText("two.txt", "22");
+  WriteText("other.bin", "333");
+  WIN32_FIND_DATA Data;
+  HANDLE Find = FindFirstFile((FDir + L"two.txt").c_str(), &Data);
+  ASSERT_NE(Find, INVALID_HANDLE_VALUE);
+  EXPECT_STREQ(Data.cFileName, L"two.txt");
+  EXPECT_EQ(Data.nFileSizeLow, 2u);
+  EXPECT_EQ(Data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY, 0u);
+  EXPECT_FALSE(FindNextFile(Find, &Data));
+  EXPECT_EQ(GetLastError(), static_cast<DWORD>(ERROR_NO_MORE_FILES));
+  EXPECT_TRUE(FindClose(Find));
+  EXPECT_FALSE(FindClose(Find));
+
+  Find = FindFirstFile((FDir + L"*.txt").c_str(), &Data);
+  ASSERT_NE(Find, INVALID_HANDLE_VALUE);
+  int Count = 1;
+  while (FindNextFile(Find, &Data))
+  {
+    Count++;
+  }
+  EXPECT_EQ(Count, 2);
+  FindClose(Find);
+
+  EXPECT_EQ(FindFirstFile((FDir + L"none").c_str(), &Data), INVALID_HANDLE_VALUE);
+  EXPECT_EQ(GetLastError(), static_cast<DWORD>(ERROR_FILE_NOT_FOUND));
+}
+//---------------------------------------------------------------------------
+TEST_F(FileApiTest, CreateDirectory)
+{
+  EXPECT_TRUE(CreateDirectory((FDir + L"new").c_str(), NULL));
+  EXPECT_NE(GetFileAttributes((FDir + L"new").c_str()) & FILE_ATTRIBUTE_DIRECTORY, 0u);
+  EXPECT_FALSE(CreateDirectory((FDir + L"new").c_str(), NULL));
+  EXPECT_EQ(GetLastError(), static_cast<DWORD>(ERROR_ALREADY_EXISTS));
+  EXPECT_FALSE(CreateDirectory((FDir + L"missing/new").c_str(), NULL));
+  EXPECT_EQ(GetLastError(), static_cast<DWORD>(ERROR_FILE_NOT_FOUND));
+}
+//---------------------------------------------------------------------------
