@@ -15,6 +15,7 @@ Usable as a module (see LocalSshd) and as a command line tool:
 import argparse
 import getpass
 import os
+import re
 import shutil
 import signal
 import socket
@@ -35,6 +36,18 @@ def _find_sshd():
             # sshd re-executes itself and requires an absolute path
             return str(Path(candidate).resolve())
     raise SshdError("sshd not found")
+
+
+def _openssh_version():
+    output = subprocess.run([_find_sshd(), "-V"], capture_output=True, text=True).stderr
+    match = re.search(r"OpenSSH_(\d+)\.(\d+)", output)
+    return (int(match.group(1)), int(match.group(2))) if match else (0, 0)
+
+
+def _penalties_options():
+    # Tests fail authentication on purpose; OpenSSH 9.8+ would refuse
+    # further connections from 127.0.0.1 for a while
+    return ["PerSourcePenalties no"] if _openssh_version() >= (9, 8) else []
 
 
 def _free_port():
@@ -83,6 +96,7 @@ class LocalSshd:
             "StrictModes no",
             "PermitUserEnvironment no",
             "Subsystem sftp internal-sftp",
+            *_penalties_options(),
             "LogLevel VERBOSE",
             "",
         ]))
