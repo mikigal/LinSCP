@@ -2033,8 +2033,8 @@ void __fastcall TSCPFileSystem::SCPSource(const UnicodeString FileName,
           {
             // Send last file access and modification time
             // TVarRec don't understand 'unsigned int' -> we use sprintf()
-            Buf.sprintf(L"T%lu 0 %lu 0", static_cast<unsigned long>(Handle.MTime),
-              static_cast<unsigned long>(Handle.ATime));
+            Buf.sprintf(L"T%lu 0 %lu 0", static_cast<unsigned int>(Handle.MTime),
+              static_cast<unsigned int>(Handle.ATime));
             FSecureShell->SendLine(Buf);
             SCPResponse();
           }
@@ -2063,7 +2063,7 @@ void __fastcall TSCPFileSystem::SCPSource(const UnicodeString FileName,
             OperationProgress->ChangeTransferSize(AsciiBuf.Size);
             while (!OperationProgress->IsTransferDoneChecked())
             {
-              unsigned long BlockSize = OperationProgress->TransferBlockSize();
+              unsigned int BlockSize = OperationProgress->TransferBlockSize();
               FSecureShell->Send(
                 reinterpret_cast<unsigned char *>(AsciiBuf.Data + static_cast<unsigned int>(OperationProgress->TransferredSize)),
                 BlockSize);
@@ -2533,8 +2533,9 @@ void __fastcall TSCPFileSystem::SCPSink(const UnicodeString TargetDir,
             return;
 
           case L'T':
-            unsigned long MTime, ATime;
-            if (swscanf(Line.c_str(), L"%ld %*d %ld %*d",  &MTime, &ATime) == 2)
+            unsigned int MTime, ATime;
+            // OpenSCP: the C library's swscanf, where long is not the core's (32-bit) one
+            if (swscanf(Line.c_str(), L"%u %*d %u %*d",  &MTime, &ATime) == 2)
             {
               FileData.Modification = UnixToDateTime(MTime, FTerminal->SessionData->DSTMode);
               FSecureShell->SendNull();

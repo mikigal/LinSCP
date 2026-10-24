@@ -365,6 +365,7 @@ void ldisc_echoedit_update(Ldisc * /*handle*/)
   DebugFail();
 }
 //---------------------------------------------------------------------------
+// OpenSCP: long as PuTTY declares it (the core's long is converted to int)
 unsigned long schedule_timer(int ticks, timer_fn_t /*fn*/, void * /*ctx*/)
 {
   return ticks + GetTickCount();
@@ -433,7 +434,7 @@ std::unique_ptr<TCriticalSection> PuttyStorageSection(TraceInitPtr(new TCritical
 THierarchicalStorage * PuttyStorage = NULL;
 enum TPuttyRegistryMode : int { prmPass, prmRedirect, prmCollect, prmFail };
 static TPuttyRegistryMode PuttyRegistryMode = prmRedirect;
-typedef std::map<UnicodeString, unsigned long> TPuttyRegistryTypes;
+typedef std::map<UnicodeString, unsigned int> TPuttyRegistryTypes;
 static TPuttyRegistryTypes PuttyRegistryTypes;
 static HKEY RandSeedFileStorage = reinterpret_cast<HKEY>(1);
 //---------------------------------------------------------------------------

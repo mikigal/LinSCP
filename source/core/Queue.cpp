@@ -927,7 +927,7 @@ bool __fastcall TTerminalQueue::ItemPause(TQueueItem * Item, bool Pause)
   return Result;
 }
 //---------------------------------------------------------------------------
-bool __fastcall TTerminalQueue::ItemSetCPSLimit(TQueueItem * Item, unsigned long CPSLimit)
+bool __fastcall TTerminalQueue::ItemSetCPSLimit(TQueueItem * Item, unsigned int CPSLimit)
 {
   // to prevent deadlocks when closing queue from other thread
   bool Result = !FFinished;
@@ -945,7 +945,7 @@ bool __fastcall TTerminalQueue::ItemSetCPSLimit(TQueueItem * Item, unsigned long
   return Result;
 }
 //---------------------------------------------------------------------------
-bool __fastcall TTerminalQueue::ItemGetCPSLimit(TQueueItem * Item, unsigned long & CPSLimit)
+bool __fastcall TTerminalQueue::ItemGetCPSLimit(TQueueItem * Item, unsigned int & CPSLimit)
 {
   CPSLimit = 0;
   // to prevent deadlocks when closing queue from other thread
@@ -1690,7 +1690,7 @@ void __fastcall TQueueItem::SetProgress(
     // wait until the real transfer operation starts
     if ((FCPSLimit >= 0) && ProgressData.IsTransfer())
     {
-      ProgressData.SetCPSLimit(static_cast<unsigned long>(FCPSLimit));
+      ProgressData.SetCPSLimit(static_cast<unsigned int>(FCPSLimit));
       FCPSLimit = -1;
     }
 
@@ -1744,19 +1744,19 @@ void __fastcall TQueueItem::Execute()
   DoExecute(FTerminalItem->FTerminal);
 }
 //---------------------------------------------------------------------------
-void __fastcall TQueueItem::SetCPSLimit(unsigned long CPSLimit)
+void __fastcall TQueueItem::SetCPSLimit(unsigned int CPSLimit)
 {
-  FCPSLimit = static_cast<long>(CPSLimit);
+  FCPSLimit = static_cast<int>(CPSLimit);
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TQueueItem::DefaultCPSLimit()
+unsigned int __fastcall TQueueItem::DefaultCPSLimit()
 {
   return 0;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TQueueItem::GetCPSLimit()
+unsigned int __fastcall TQueueItem::GetCPSLimit()
 {
-  unsigned long Result;
+  unsigned int Result;
   if (FCPSLimit >= 0)
   {
     Result = FCPSLimit;
@@ -1899,12 +1899,12 @@ bool __fastcall TQueueItemProxy::ProcessUserAction()
   return Result;
 }
 //---------------------------------------------------------------------------
-bool __fastcall TQueueItemProxy::GetCPSLimit(unsigned long & CPSLimit)
+bool __fastcall TQueueItemProxy::GetCPSLimit(unsigned int & CPSLimit)
 {
   return FQueue->ItemGetCPSLimit(FQueueItem, CPSLimit);
 }
 //---------------------------------------------------------------------------
-bool __fastcall TQueueItemProxy::SetCPSLimit(unsigned long CPSLimit)
+bool __fastcall TQueueItemProxy::SetCPSLimit(unsigned int CPSLimit)
 {
   return FQueue->ItemSetCPSLimit(FQueueItem, CPSLimit);
 }
@@ -2169,7 +2169,7 @@ __fastcall TTransferQueueItem::~TTransferQueueItem()
   delete FCopyParam;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TTransferQueueItem::DefaultCPSLimit()
+unsigned int __fastcall TTransferQueueItem::DefaultCPSLimit()
 {
   return FCopyParam->CPSLimit;
 }

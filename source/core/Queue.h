@@ -132,8 +132,8 @@ protected:
   bool __fastcall ItemExecuteNow(TQueueItem * Item);
   bool __fastcall ItemDelete(TQueueItem * Item);
   bool __fastcall ItemPause(TQueueItem * Item, bool Pause);
-  bool __fastcall ItemSetCPSLimit(TQueueItem * Item, unsigned long CPSLimit);
-  bool __fastcall ItemGetCPSLimit(TQueueItem * Item, unsigned long & CPSLimit);
+  bool __fastcall ItemSetCPSLimit(TQueueItem * Item, unsigned int CPSLimit);
+  bool __fastcall ItemGetCPSLimit(TQueueItem * Item, unsigned int & CPSLimit);
 
   void __fastcall RetryItem(TQueueItem * Item);
   void __fastcall DeleteItem(TQueueItem * Item, bool CanKeep);
@@ -193,7 +193,7 @@ protected:
   TQueueItem::TInfo * FInfo;
   TTerminalQueue * FQueue;
   HANDLE FCompleteEvent;
-  long FCPSLimit;
+  int FCPSLimit;
   TDateTime FDoneAt;
 
   __fastcall TQueueItem();
@@ -206,9 +206,9 @@ protected:
   void __fastcall SetProgress(TFileOperationProgressType & ProgressData);
   void __fastcall GetData(TQueueItemProxy * Proxy);
   virtual bool __fastcall UpdateFileList(TQueueFileList * FileList);
-  void __fastcall SetCPSLimit(unsigned long CPSLimit);
-  unsigned long __fastcall GetCPSLimit();
-  virtual unsigned long __fastcall DefaultCPSLimit();
+  void __fastcall SetCPSLimit(unsigned int CPSLimit);
+  unsigned int __fastcall GetCPSLimit();
+  virtual unsigned int __fastcall DefaultCPSLimit();
   virtual UnicodeString __fastcall StartupDirectory() const;
   virtual void __fastcall ProgressUpdated();
   virtual TQueueItem * __fastcall CreateParallelOperation();
@@ -232,8 +232,8 @@ public:
   bool __fastcall Delete();
   bool __fastcall Pause();
   bool __fastcall Resume();
-  bool __fastcall SetCPSLimit(unsigned long CPSLimit);
-  bool __fastcall GetCPSLimit(unsigned long & CPSLimit);
+  bool __fastcall SetCPSLimit(unsigned int CPSLimit);
+  bool __fastcall GetCPSLimit(unsigned int & CPSLimit);
 
   TFileOperationProgressType * __property_get_ProgressData() const { return ::rtl::Mutable(this)->GetProgressData(); } __declspec(property(get = __property_get_ProgressData)) TFileOperationProgressType * ProgressData;
   __int64 __property_get_TotalTransferred() const { return ::rtl::Mutable(this)->GetTotalTransferred(); } __declspec(property(get = __property_get_TotalTransferred)) __int64 TotalTransferred;
@@ -347,7 +347,7 @@ protected:
   DWORD FLastParallelOperationAdded;
   std::unique_ptr<TParallelOperation> FParallelOperation;
 
-  virtual unsigned long __fastcall DefaultCPSLimit();
+  virtual unsigned int __fastcall DefaultCPSLimit();
   virtual void __fastcall DoExecute(TTerminal * Terminal);
   virtual void __fastcall DoTransferExecute(TTerminal * Terminal, TParallelOperation * ParallelOperation) = 0;
   virtual void __fastcall ProgressUpdated();

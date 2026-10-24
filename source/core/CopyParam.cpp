@@ -1016,10 +1016,10 @@ bool __fastcall TCopyParamType::operator==(const TCopyParamType & rhp) const
 }
 #undef C
 //---------------------------------------------------------------------------
-const unsigned long MinSpeed = 8 * 1024;
-const unsigned long MaxSpeed = 8 * 1024 * 1024;
+const unsigned int MinSpeed = 8 * 1024;
+const unsigned int MaxSpeed = 8 * 1024 * 1024;
 //---------------------------------------------------------------------------
-static bool __fastcall TryGetSpeedLimit(const UnicodeString & Text, unsigned long & Speed)
+static bool __fastcall TryGetSpeedLimit(const UnicodeString & Text, unsigned int & Speed)
 {
   bool Result;
   if (AnsiSameText(Text, LoadStr(SPEED_UNLIMITED)))
@@ -1039,9 +1039,9 @@ static bool __fastcall TryGetSpeedLimit(const UnicodeString & Text, unsigned lon
   return Result;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall GetSpeedLimit(const UnicodeString & Text)
+unsigned int __fastcall GetSpeedLimit(const UnicodeString & Text)
 {
-  unsigned long Speed;
+  unsigned int Speed;
   if (!TryGetSpeedLimit(Text, Speed))
   {
     throw Exception(FMTLOAD(SPEED_INVALID, (Text)));
@@ -1049,7 +1049,7 @@ unsigned long __fastcall GetSpeedLimit(const UnicodeString & Text)
   return Speed;
 }
 //---------------------------------------------------------------------------
-UnicodeString __fastcall SetSpeedLimit(unsigned long Limit)
+UnicodeString __fastcall SetSpeedLimit(unsigned int Limit)
 {
   UnicodeString Text;
   if (Limit == 0)
@@ -1071,7 +1071,7 @@ void __fastcall CopySpeedLimits(TStrings * Source, TStrings * Dest)
   for (int Index = 0; Index < Source->Count; Index++)
   {
     UnicodeString Text = Source->Strings[Index];
-    unsigned long Speed;
+    unsigned int Speed;
     bool Valid = TryGetSpeedLimit(Text, Speed);
     if ((!Valid || (Speed == 0)) && !Unlimited)
     {

@@ -265,7 +265,7 @@ private:
   bool FFileTransferPreserveTime;
   bool FFileTransferRemoveBOM;
   bool FFileTransferNoList;
-  unsigned long FFileTransferCPSLimit;
+  unsigned int FFileTransferCPSLimit;
   bool FAwaitingProgress;
   TCaptureOutputEvent FOnCaptureOutput;
   UnicodeString FUserName;

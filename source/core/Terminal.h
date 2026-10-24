@@ -424,7 +424,7 @@ protected:
     TFileOperationProgressType & Progress, TFileOperation Operation, TOperationSide Side, int Count);
   void __fastcall OperationStart(
     TFileOperationProgressType & Progress, TFileOperation Operation, TOperationSide Side, int Count,
-    bool Temp, const UnicodeString & Directory, unsigned long CPSLimit, TOnceDoneOperation OnceDoneOperation);
+    bool Temp, const UnicodeString & Directory, unsigned int CPSLimit, TOnceDoneOperation OnceDoneOperation);
   void __fastcall OperationStop(TFileOperationProgressType & Progress);
   virtual void __fastcall Information(const UnicodeString & Str);
   virtual unsigned int __fastcall QueryUser(const UnicodeString Query,
@@ -847,7 +847,7 @@ struct TSpaceAvailable
   __int64 UnusedBytesOnDevice;
   __int64 BytesAvailableToUser;
   __int64 UnusedBytesAvailableToUser;
-  unsigned long BytesPerAllocationUnit;
+  unsigned int BytesPerAllocationUnit;
 };
 //---------------------------------------------------------------------------
 class TRobustOperationLoop

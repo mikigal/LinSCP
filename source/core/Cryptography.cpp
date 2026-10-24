@@ -101,7 +101,7 @@ static void hmac_sha1_begin(hmac_ctx cx[1])
 #pragma clang diagnostic ignored "-Wold-style-cast"
 
 /* input the HMAC key (can be called multiple times)    */
-static void hmac_sha1_key(const unsigned char key[], unsigned long key_len, hmac_ctx cx[1])
+static void hmac_sha1_key(const unsigned char key[], unsigned int key_len, hmac_ctx cx[1])
 {
     if(cx->klen + key_len > IN_BLOCK_LENGTH)    /* if the key has to be hashed  */
     {
@@ -121,7 +121,7 @@ static void hmac_sha1_key(const unsigned char key[], unsigned long key_len, hmac
 
 /* input the HMAC data (can be called multiple times) - */
 /* note that this call terminates the key input phase   */
-static void hmac_sha1_data(const unsigned char data[], unsigned long data_len, hmac_ctx cx[1])
+static void hmac_sha1_data(const unsigned char data[], unsigned int data_len, hmac_ctx cx[1])
 {   unsigned int i;
 
     if(cx->klen != HMAC_IN_DATA)                /* if not yet in data phase */
@@ -137,7 +137,7 @@ static void hmac_sha1_data(const unsigned char data[], unsigned long data_len, h
 
         /* xor ipad into key value  */
         for(i = 0; i < (IN_BLOCK_LENGTH >> 2); ++i)
-            ((unsigned long*)cx->key)[i] ^= 0x36363636;
+            ((unsigned int*)cx->key)[i] ^= 0x36363636;
 
         /* and start hash operation */
         sha1_begin(cx->ctx);
@@ -153,7 +153,7 @@ static void hmac_sha1_data(const unsigned char data[], unsigned long data_len, h
 }
 
 /* compute and output the MAC value */
-static void hmac_sha1_end(unsigned char mac[], unsigned long mac_len, hmac_ctx cx[1])
+static void hmac_sha1_end(unsigned char mac[], unsigned int mac_len, hmac_ctx cx[1])
 {   unsigned char dig[OUT_BLOCK_LENGTH];
     unsigned int i;
 
@@ -165,7 +165,7 @@ static void hmac_sha1_end(unsigned char mac[], unsigned long mac_len, hmac_ctx c
 
     /* set outer key value using opad and removing ipad */
     for(i = 0; i < (IN_BLOCK_LENGTH >> 2); ++i)
-        ((unsigned long*)cx->key)[i] ^= 0x36363636 ^ 0x5c5c5c5c;
+        ((unsigned int*)cx->key)[i] ^= 0x36363636 ^ 0x5c5c5c5c;
 
     /* perform the outer hash operation */
     sha1_begin(cx->ctx);
@@ -303,9 +303,9 @@ static void derive_key(const unsigned char pwd[],  /* the PASSWORD     */
     }
 }
 
-static void encr_data(unsigned char data[], unsigned long d_len, fcrypt_ctx cx[1])
+static void encr_data(unsigned char data[], unsigned int d_len, fcrypt_ctx cx[1])
 {
-    unsigned long i = 0, pos = cx->encr_pos;
+    unsigned int i = 0, pos = cx->encr_pos;
 
     while(i < d_len)
     {

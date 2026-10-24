@@ -49,9 +49,9 @@ public:
     TDateTime StartTime;
     TBatchOverwrite BatchOverwrite;
     bool SkipToAll;
-    unsigned long CPSLimit;
+    unsigned int CPSLimit;
     bool CounterSet;
-    std::vector<unsigned long> Ticks;
+    std::vector<unsigned int> Ticks;
     std::vector<__int64> TotalTransferredThen;
     TOperationSide Side;
     __int64 TotalTransferred;
@@ -94,7 +94,7 @@ private:
   TFileOperationFinished FOnFinished;
   bool FReset;
   unsigned int FLastSecond;
-  unsigned long FRemainingCPS;
+  unsigned int FRemainingCPS;
   TOnceDoneOperation FInitialOnceDoneOperation;
   TPersistence FPersistence;
   TCriticalSection * FSection;
@@ -103,7 +103,7 @@ private:
   __int64 __fastcall GetTotalTransferred();
   __int64 __fastcall GetOperationTransferred() const;
   __int64 __fastcall GetTotalSize();
-  unsigned long __fastcall GetCPSLimit();
+  unsigned int __fastcall GetCPSLimit();
   TBatchOverwrite __fastcall GetBatchOverwrite();
   bool __fastcall GetSkipToAll();
   TDateTime __fastcall GetStartTime() const { return FPersistence.StartTime; }
@@ -157,7 +157,7 @@ public:
 
   TBatchOverwrite __property_get_BatchOverwrite() const { return ::rtl::Mutable(this)->GetBatchOverwrite(); } __declspec(property(get = __property_get_BatchOverwrite)) TBatchOverwrite BatchOverwrite;
   bool __property_get_SkipToAll() const { return ::rtl::Mutable(this)->GetSkipToAll(); } __declspec(property(get = __property_get_SkipToAll)) bool SkipToAll;
-  unsigned long __property_get_CPSLimit() const { return ::rtl::Mutable(this)->GetCPSLimit(); } __declspec(property(get = __property_get_CPSLimit)) unsigned long CPSLimit;
+  unsigned int __property_get_CPSLimit() const { return ::rtl::Mutable(this)->GetCPSLimit(); } __declspec(property(get = __property_get_CPSLimit)) unsigned int CPSLimit;
 
   bool __property_get_TotalSizeSet() const { return FTotalSizeSet; } __declspec(property(get = __property_get_TotalSizeSet)) bool TotalSizeSet;
 
@@ -181,16 +181,16 @@ public:
     TOnceDoneOperation & OnceDoneOperation);
   void __fastcall Succeeded(int Count = 1);
   void __fastcall Progress();
-  unsigned long __fastcall LocalBlockSize();
+  unsigned int __fastcall LocalBlockSize();
   bool __fastcall IsLocallyDone();
   bool IsTransferDone();
   bool IsTransferDoneChecked();
   void __fastcall SetFile(UnicodeString AFileName, bool AFileInProgress = true);
   void __fastcall SetFileInProgress();
-  unsigned long __fastcall TransferBlockSize();
-  unsigned long __fastcall AdjustToCPSLimit(unsigned long Size);
-  void __fastcall ThrottleToCPSLimit(unsigned long Size);
-  static unsigned long __fastcall StaticBlockSize();
+  unsigned int __fastcall TransferBlockSize();
+  unsigned int __fastcall AdjustToCPSLimit(unsigned int Size);
+  void __fastcall ThrottleToCPSLimit(unsigned int Size);
+  static unsigned int __fastcall StaticBlockSize();
   void __fastcall Reset();
   void __fastcall Resume();
   void __fastcall SetLocalSize(__int64 ASize);
@@ -202,7 +202,7 @@ public:
   void __fastcall Start(TFileOperation AOperation, TOperationSide ASide, int ACount);
   void __fastcall Start(TFileOperation AOperation,
     TOperationSide ASide, int ACount, bool ATemp, const UnicodeString ADirectory,
-    unsigned long ACPSLimit, TOnceDoneOperation InitialOnceDoneOperation);
+    unsigned int ACPSLimit, TOnceDoneOperation InitialOnceDoneOperation);
   void __fastcall Stop();
   void __fastcall SetDone();
   void __fastcall Suspend();
@@ -222,7 +222,7 @@ public:
   void __fastcall SetCancel(TCancelStatus ACancel);
   void __fastcall SetCancelAtLeast(TCancelStatus ACancel);
   bool __fastcall ClearCancelFile();
-  void __fastcall SetCPSLimit(unsigned long ACPSLimit);
+  void __fastcall SetCPSLimit(unsigned int ACPSLimit);
   void __fastcall SetBatchOverwrite(TBatchOverwrite ABatchOverwrite);
   void __fastcall SetSkipToAll();
   UnicodeString __fastcall GetLogStr(bool Done);

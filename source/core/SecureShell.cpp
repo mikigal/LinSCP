@@ -544,7 +544,7 @@ bool __fastcall TSecureShell::TryFtp()
           Address.sin_family = AF_INET;
           int Port = FtpPortNumber;
           Address.sin_port = htons(static_cast<short>(Port));
-          Address.sin_addr.s_addr = *(reinterpret_cast<unsigned long *>(*HostEntry->h_addr_list));
+          Address.sin_addr.s_addr = *(reinterpret_cast<unsigned int *>(*HostEntry->h_addr_list));
 
           HANDLE Event = CreateEvent(NULL, false, false, NULL);
           Result = (WSAEventSelect(Socket, static_cast<WSAEVENT>(Event), FD_CONNECT | FD_CLOSE) != SOCKET_ERROR);
@@ -1966,7 +1966,7 @@ bool __fastcall TSecureShell::EnumNetworkEvents(SOCKET Socket, WSANETWORKEVENTS 
   WSANETWORKEVENTS AEvents;
   if (WSAEnumNetworkEvents(Socket, NULL, &AEvents) == 0)
   {
-    noise_ultralight(NOISE_SOURCE_IOID, static_cast<unsigned long>(Socket));
+    noise_ultralight(NOISE_SOURCE_IOID, static_cast<unsigned int>(Socket));
     noise_ultralight(NOISE_SOURCE_IOID, AEvents.lNetworkEvents);
 
     Events.lNetworkEvents |= AEvents.lNetworkEvents;
@@ -2232,7 +2232,7 @@ void __fastcall TSecureShell::KeepAlive()
   }
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TSecureShell::MaxPacketSize()
+unsigned int __fastcall TSecureShell::MaxPacketSize()
 {
   if (!FSessionInfoValid)
   {

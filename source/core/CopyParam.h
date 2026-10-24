@@ -64,7 +64,7 @@ private:
   bool FClearArchive;
   bool FRemoveCtrlZ;
   bool FRemoveBOM;
-  unsigned long FCPSLimit;
+  unsigned int FCPSLimit;
   bool FNewerOnly;
   bool FEncryptNewFiles;
   bool FExcludeHiddenFiles;
@@ -141,7 +141,7 @@ public:
   bool __property_get_ClearArchive() const { return FClearArchive; } void __property_set_ClearArchive(bool Value) { FClearArchive = Value; } __declspec(property(get = __property_get_ClearArchive, put = __property_set_ClearArchive)) bool ClearArchive;
   bool __property_get_RemoveCtrlZ() const { return FRemoveCtrlZ; } void __property_set_RemoveCtrlZ(bool Value) { FRemoveCtrlZ = Value; } __declspec(property(get = __property_get_RemoveCtrlZ, put = __property_set_RemoveCtrlZ)) bool RemoveCtrlZ;
   bool __property_get_RemoveBOM() const { return FRemoveBOM; } void __property_set_RemoveBOM(bool Value) { FRemoveBOM = Value; } __declspec(property(get = __property_get_RemoveBOM, put = __property_set_RemoveBOM)) bool RemoveBOM;
-  unsigned long __property_get_CPSLimit() const { return FCPSLimit; } void __property_set_CPSLimit(unsigned long Value) { FCPSLimit = Value; } __declspec(property(get = __property_get_CPSLimit, put = __property_set_CPSLimit)) unsigned long CPSLimit;
+  unsigned int __property_get_CPSLimit() const { return FCPSLimit; } void __property_set_CPSLimit(unsigned int Value) { FCPSLimit = Value; } __declspec(property(get = __property_get_CPSLimit, put = __property_set_CPSLimit)) unsigned int CPSLimit;
   bool __property_get_NewerOnly() const { return FNewerOnly; } void __property_set_NewerOnly(bool Value) { FNewerOnly = Value; } __declspec(property(get = __property_get_NewerOnly, put = __property_set_NewerOnly)) bool NewerOnly;
   bool __property_get_EncryptNewFiles() const { return FEncryptNewFiles; } void __property_set_EncryptNewFiles(bool Value) { FEncryptNewFiles = Value; } __declspec(property(get = __property_get_EncryptNewFiles, put = __property_set_EncryptNewFiles)) bool EncryptNewFiles;
   bool __property_get_ExcludeHiddenFiles() const { return FExcludeHiddenFiles; } void __property_set_ExcludeHiddenFiles(bool Value) { FExcludeHiddenFiles = Value; } __declspec(property(get = __property_get_ExcludeHiddenFiles, put = __property_set_ExcludeHiddenFiles)) bool ExcludeHiddenFiles;
@@ -154,11 +154,11 @@ public:
   TTransferInEvent __property_get_OnTransferIn() const { return FOnTransferIn; } void __property_set_OnTransferIn(TTransferInEvent Value) { FOnTransferIn = Value; } __declspec(property(get = __property_get_OnTransferIn, put = __property_set_OnTransferIn)) TTransferInEvent OnTransferIn;
 };
 //---------------------------------------------------------------------------
-unsigned long __fastcall GetSpeedLimit(const UnicodeString & Text);
-UnicodeString __fastcall SetSpeedLimit(unsigned long Limit);
+unsigned int __fastcall GetSpeedLimit(const UnicodeString & Text);
+UnicodeString __fastcall SetSpeedLimit(unsigned int Limit);
 void __fastcall CopySpeedLimits(TStrings * Source, TStrings * Dest);
 TOperationSide ReverseOperationSide(TOperationSide Side);
-extern const unsigned long MinSpeed;
-extern const unsigned long MaxSpeed;
+extern const unsigned int MinSpeed;
+extern const unsigned int MaxSpeed;
 //---------------------------------------------------------------------------
 #endif

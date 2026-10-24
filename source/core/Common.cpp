@@ -1760,15 +1760,15 @@ struct TDateTimeParams
 {
   TDateTime UnixEpoch;
   double BaseDifference;
-  long BaseDifferenceSec;
+  int BaseDifferenceSec;
   // All Current* are actually global, not per-year and
   // are valid for Year 0 (current) only
-  long CurrentDaylightDifferenceSec;
-  long CurrentDifferenceSec;
+  int CurrentDaylightDifferenceSec;
+  int CurrentDifferenceSec;
   double StandardDifference;
-  long StandardDifferenceSec;
+  int StandardDifferenceSec;
   double DaylightDifference;
-  long DaylightDifferenceSec;
+  int DaylightDifferenceSec;
   SYSTEMTIME SystemStandardDate;
   SYSTEMTIME SystemDaylightDate;
   TDateTime StandardDate;
@@ -1822,7 +1822,7 @@ static const TDateTimeParams * __fastcall GetDateTimeParams(unsigned short Year)
     Result = &YearlyDateTimeParams[Year];
     TIME_ZONE_INFORMATION TZI;
 
-    unsigned long GTZI;
+    unsigned int GTZI;
 
     HINSTANCE Kernel32 = GetModuleHandle(kernel32);
     typedef BOOL WINAPI (* TGetTimeZoneInformationForYear)(USHORT wYear, PDYNAMIC_TIME_ZONE_INFORMATION pdtzi, LPTIME_ZONE_INFORMATION ptzi);
@@ -2340,7 +2340,7 @@ UnicodeString __fastcall FixedLenDateTimeFormat(const UnicodeString & Format)
   return Result;
 }
 //---------------------------------------------------------------------------
-UnicodeString __fastcall FormatTimeZone(long Sec)
+UnicodeString __fastcall FormatTimeZone(int Sec)
 {
   TTimeSpan Span = TTimeSpan::FromSeconds(Sec);
   UnicodeString Str;
@@ -3452,7 +3452,7 @@ UnicodeString __fastcall FindIdent(const UnicodeString & Ident, TStrings * Ident
   return Ident;
 }
 //---------------------------------------------------------------------------
-UnicodeString GetTlsErrorStr(unsigned long Err)
+UnicodeString GetTlsErrorStr(unsigned int Err)
 {
   char Buffer[512];
   ERR_error_string_n(Err, Buffer, sizeof(Buffer));
@@ -3510,7 +3510,7 @@ static int PemPasswordCallback(char * Buf, int Size, int /*RWFlag*/, void * User
   return SizeToIntChecked(strlen(Buf));
 }
 //---------------------------------------------------------------------------
-static bool __fastcall IsTlsPassphraseError(unsigned long Error, bool HasPassphrase)
+static bool __fastcall IsTlsPassphraseError(unsigned int Error, bool HasPassphrase)
 {
   int ErrorLib = ERR_GET_LIB(Error);
   int ErrorReason = ERR_GET_REASON(Error);
@@ -3528,7 +3528,7 @@ static bool __fastcall IsTlsPassphraseError(unsigned long Error, bool HasPassphr
 //---------------------------------------------------------------------------
 static void __fastcall ThrowTlsCertificateErrorIgnorePassphraseErrors(const UnicodeString & Path, bool HasPassphrase)
 {
-  unsigned long Error = ERR_get_error();
+  unsigned int Error = ERR_get_error();
   if (!IsTlsPassphraseError(Error, HasPassphrase))
   {
     throw ExtException(MainInstructions(FMTLOAD(CERTIFICATE_READ_ERROR, (Path))), GetTlsErrorStr(Error));
@@ -3637,7 +3637,7 @@ void __fastcall ParseCertificate(const UnicodeString & Path,
 
         if (Certificate == NULL)
         {
-          unsigned long Error = ERR_get_error();
+          unsigned int Error = ERR_get_error();
           // unlikely
           if (IsTlsPassphraseError(Error, HasPassphrase))
           {
@@ -3666,7 +3666,7 @@ void __fastcall ParseCertificate(const UnicodeString & Path,
 
               if (Certificate == NULL)
               {
-                unsigned long Base64Error = ERR_get_error();
+                unsigned int Base64Error = ERR_get_error();
 
                 File = OpenCertificate(CertificatePath);
                 // Binary DER-encoded certificate
@@ -3677,7 +3677,7 @@ void __fastcall ParseCertificate(const UnicodeString & Path,
 
                 if (Certificate == NULL)
                 {
-                  unsigned long DERError = ERR_get_error();
+                  unsigned int DERError = ERR_get_error();
 
                   UnicodeString Message = MainInstructions(FMTLOAD(CERTIFICATE_READ_ERROR, (CertificatePath)));
                   UnicodeString MoreMessages =
