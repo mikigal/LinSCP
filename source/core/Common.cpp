@@ -33,7 +33,8 @@ const wchar_t TokenPrefix = L'%';
 const wchar_t NoReplacement = wchar_t(false);
 const wchar_t TokenReplacement = wchar_t(true);
 // Note similar list in MakeValidFileName
-const UnicodeString LocalInvalidChars(TraceInitStr(L"/\\:*?\"<>|"));
+// OpenSCP: only the path delimiter is invalid in Linux file names
+const UnicodeString LocalInvalidChars(TraceInitStr(L"/"));
 const UnicodeString PasswordMask(TraceInitStr(L"***"));
 const UnicodeString Ellipsis(TraceInitStr(L"..."));
 const UnicodeString TitleSeparator(TraceInitStr(L" \u2013 ")); // En-Dash
@@ -720,23 +721,8 @@ UnicodeString __fastcall ValidLocalFileName(
       }
     }
 
-    // Windows trim trailing space or dot, hence we must encode it to preserve it
-    if (!FileName.IsEmpty() &&
-        ((FileName[FileName.Length()] == L' ') ||
-         (FileName[FileName.Length()] == L'.')))
-    {
-      ReplaceChar(FileName, FileName.c_str() + FileName.Length() - 1, InvalidCharsReplacement);
-    }
-
-    if (IsReservedName(FileName))
-    {
-      int P = FileName.Pos(".");
-      if (P == 0)
-      {
-        P = FileName.Length() + 1;
-      }
-      FileName.Insert(L"%00", P);
-    }
+    // OpenSCP: no trailing spaces or dots trimmed and no reserved names (CON, ...)
+    // on Linux, unlike on Windows
   }
   else
   {
@@ -1252,15 +1238,7 @@ UnicodeString __fastcall ApiPath(UnicodeString Path)
     Path = ExpandFileName(Path);
   }
 
-  // Max path for directories is 12 characters shorter than max path for files
-  if (Path.Length() >= MAX_PATH - 12)
-  {
-    if (Configuration != NULL)
-    {
-      Configuration->Usage->Inc(L"LongPath");
-    }
-    Path = MakeUnicodeLargePath(Path);
-  }
+  // OpenSCP: no length limit on Linux (Windows needs the \\?\ prefix for long paths)
   return Path;
 }
 //---------------------------------------------------------------------------
@@ -2503,7 +2481,7 @@ static bool __fastcall DoRecursiveDeleteFile(
       else
       {
         TSearchRecOwned SearchRec;
-        Result = (FindFirstUnchecked(FileName + L"\\*", faAnyFile, SearchRec) == 0);
+        Result = (FindFirstUnchecked(IncludeTrailingBackslash(FileName) + L"*", faAnyFile, SearchRec) == 0);
 
         if (Result)
         {
