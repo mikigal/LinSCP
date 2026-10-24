@@ -50,28 +50,11 @@ add_library(openscp::core ALIAS openscp_core)
 
 target_include_directories(openscp_core PRIVATE "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
 # For consumers, the core's headers are system headers: their upstream
-# warnings (see below) are not reported in the consumers' code
+# warnings (see openscp_upstream_warnings) are not reported in the
+# consumers' code
 target_include_directories(openscp_core SYSTEM INTERFACE "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
 # The string tables register themselves; consumers link their objects directly
 target_sources(openscp_core INTERFACE $<TARGET_OBJECTS:openscp_core_strings>)
-# Upstream code: C++Builder pragmas, and warnings we do not fix in upstream
-# sources (designated initializers out of order in MakeMethod, unhandled
-# enumerators, signedness, casts of GetProcAddress results, memset/memcpy
-# of C++ objects, NULL for reserved DWORD arguments and compared with bools,
-# variable length arrays). An interface library
-# linked after openscp::options, so that the flags follow -Wall.
-add_library(openscp_upstream_warnings INTERFACE)
-target_compile_options(openscp_upstream_warnings INTERFACE
-  -Wno-unknown-pragmas
-  -Wno-reorder-init-list
-  -Wno-switch
-  -Wno-sign-compare
-  -Wno-cast-function-type-mismatch
-  -Wno-nontrivial-memcall
-  -Wno-null-conversion
-  -Wno-null-arithmetic
-  -Wno-vla-cxx-extension)
-
 target_link_libraries(openscp_core
   PRIVATE openscp::options openscp_upstream_warnings
   PUBLIC openscp::linux openscp::putty openscp::neon openscp::libs3 openscp::filezilla OpenSSL::SSL OpenSSL::Crypto)

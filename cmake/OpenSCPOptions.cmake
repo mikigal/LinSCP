@@ -25,3 +25,22 @@ if(OPENSCP_SANITIZE)
   target_link_options(openscp_sanitize INTERFACE
     -fsanitize=address,undefined)
 endif()
+
+# Upstream code (the core, the FileZilla engine, the ported application
+# files): C++Builder pragmas, and warnings we do not fix in upstream
+# sources (designated initializers out of order in MakeMethod, unhandled
+# enumerators, signedness, casts of GetProcAddress results, memset/memcpy
+# of C++ objects, NULL for reserved DWORD arguments and compared with bools,
+# variable length arrays). An interface library
+# linked after openscp::options, so that the flags follow -Wall.
+add_library(openscp_upstream_warnings INTERFACE)
+target_compile_options(openscp_upstream_warnings INTERFACE
+  -Wno-unknown-pragmas
+  -Wno-reorder-init-list
+  -Wno-switch
+  -Wno-sign-compare
+  -Wno-cast-function-type-mismatch
+  -Wno-nontrivial-memcall
+  -Wno-null-conversion
+  -Wno-null-arithmetic
+  -Wno-vla-cxx-extension)

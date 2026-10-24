@@ -304,10 +304,12 @@ void CAsyncSslSocketLayer::OnSend(int nErrorCode)
           }
         }
         DebugAssert(m_pNetworkSendBuffer);
-        memcpy(m_pNetworkSendBuffer + m_nNetworkSendBufferLen, buffer, numread-numsent);
+        memcpy(m_pNetworkSendBuffer + m_nNetworkSendBufferLen, buffer + numsent, numread-numsent);
         m_nNetworkSendBufferLen += numread - numsent;
       }
-      if (!numsent)
+      // OpenSCP: after a partial send, the rest waits in the send buffer, so
+      // sending more now would reorder the data (Linux sends partially often)
+      if (numsent < numread)
       {
         break;
       }
@@ -317,7 +319,7 @@ void CAsyncSslSocketLayer::OnSend(int nErrorCode)
         m_mayTriggerWrite = true;
         break;
       }
-      numread = BIO_read(m_nbio, buffer, SizeToIntChecked(len));
+      numread = BIO_read(m_nbio, buffer, SizeToIntChecked(std::min(len, sizeof(buffer))));
       if (numread <= 0)
       {
         m_mayTriggerWrite = true;
@@ -844,7 +846,10 @@ int CAsyncSslSocketLayer::InitSSLConnection(bool clientMode,
       // https://github.com/notroj/neon/pull/203/commits/36c918a66691ed1a40ab512821aa8c278081818f
       const unsigned char * P = m_Main->m_sessionidSerialized;
       SSL_SESSION * Session = DebugNotNull(d2i_SSL_SESSION(NULL, &P, m_Main->m_sessionidSerializedLen));
-      if (!SSL_set_session(m_ssl, Session))
+      // OpenSCP: SSL_set_session takes a reference of its own
+      int SessionSet = SSL_set_session(m_ssl, Session);
+      SSL_SESSION_free(Session);
+      if (!SessionSet)
       {
         LogSocketMessageRaw(FZ_LOG_INFO, L"SSL_set_session failed");
         return SSL_FAILURE_INITSSL;

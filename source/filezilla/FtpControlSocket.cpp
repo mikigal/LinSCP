@@ -685,7 +685,7 @@ void CFtpControlSocket::LogOnToServer(BOOL bSkipReply /*=FALSE*/)
       ftp_capabilities_t cap = m_serverCapabilities.GetCapabilityString(opts_mlst_command);
       if (cap == unknown)
       {
-        std::transform(facts.begin(), facts.end(), facts.begin(), ::towlower);
+        std::transform(facts.begin(), facts.end(), facts.begin(), static_cast<wint_t (*)(wint_t)>(::towlower));
         bool had_unset = false;
         std::string opts_facts;
         // Create a list of all facts understood by both FZ and the server.
@@ -2898,11 +2898,7 @@ void CFtpControlSocket::FileTransfer(t_transferfile *transferfile/*=0*/,BOOL bFi
     else
       pData->bPasv = GetOptionVal(OPTION_PASV);
 
-    //Replace invalid characters in the local filename
-    int pos=transferfile->localfile.ReverseFind(L'\\');
-    for (int i=(pos+1);i<transferfile->localfile.GetLength();i++)
-      if (transferfile->localfile[i]==L':')
-        transferfile->localfile.SetAt(i, L'_');
+    // OpenSCP: no invalid characters to replace in local file names
 
     pData->transferfile=*transferfile;
     pData->transferdata.transfersize=pData->transferfile.size;
@@ -4434,14 +4430,14 @@ int CFtpControlSocket::CheckOverwriteFileAndCreateTarget()
     if (pData->transferfile.get && (pData->transferfile.OnTransferOut == NULL))
     {
       CString path = pData->transferfile.localfile;
-      if (path.ReverseFind(L'\\') != -1)
+      if (path.ReverseFind(L'/') != -1)
       {
-        path = path.Left(path.ReverseFind(L'\\')+1);
+        path = path.Left(path.ReverseFind(L'/')+1);
         CString path2;
         while (path != L"")
         {
-          path2 += path.Left(path.Find(L"\\") + 1);
-          path = path.Mid(path.Find(L"\\") + 1);
+          path2 += path.Left(path.Find(L"/") + 1);
+          path = path.Mid(path.Find(L"/") + 1);
           CreateDirectory(path2, 0);
         }
       }
@@ -4533,7 +4529,7 @@ int CFtpControlSocket::CheckOverwriteFile()
         pOverwriteData->pTransferFile = pTransferFile;
         if (pData->transferfile.get)
         {
-          int pos = pData->transferfile.localfile.ReverseFind(L'\\');
+          int pos = pData->transferfile.localfile.ReverseFind(L'/');
           // pos can be -1 here, e.g. in scripting, the code below still works then
           pOverwriteData->FileName1 = pData->transferfile.localfile.Mid(pos+1);
           pOverwriteData->FileName2 = pData->transferfile.remotefile;
@@ -4544,7 +4540,7 @@ int CFtpControlSocket::CheckOverwriteFile()
         }
         else
         {
-          int pos = pData->transferfile.localfile.ReverseFind(L'\\');
+          int pos = pData->transferfile.localfile.ReverseFind(L'/');
           // pos can be -1 here, e.g. in scripting, the code below still works then
           pOverwriteData->FileName1 = pData->transferfile.remotefile;
           pOverwriteData->FileName2 = pData->transferfile.localfile.Mid(pos+1);
@@ -4613,11 +4609,6 @@ void CFtpControlSocket::SetFileExistsAction(int nAction, COverwriteRequestData *
       else
       {
         pTransferData->transferfile.localfile = pData->path1+pData->FileName1;
-        //Replace invalid characters in the local filename
-        int pos = pTransferData->transferfile.localfile.ReverseFind(L'\\');
-        for (int i = (pos+1); i < pTransferData->transferfile.localfile.GetLength(); i++)
-          if (pTransferData->transferfile.localfile[i] == L':')
-            pTransferData->transferfile.localfile.SetAt(i, L'_');
 
         pTransferData->nWaitNextOpState=  FILETRANSFER_TYPE;
       }
@@ -4669,7 +4660,7 @@ void CFtpControlSocket::SendKeepAliveCommand()
   m_bKeepAliveActive=TRUE;
   //Choose a random command from the list
   wchar_t commands[4][7]={L"PWD",L"REST 0",L"TYPE A",L"TYPE I"};
-  int choice=(rand()*4)/(RAND_MAX+1);
+  int choice=rand()%4;
   Send(commands[choice]);
 }
 
@@ -5038,7 +5029,7 @@ void CFtpControlSocket::OnTimer()
       int diff=GetOptionVal(OPTION_INTERVALHIGH)-low;
 
       //Choose a new delay
-      int delay=low+(rand()*diff)/RAND_MAX;
+      int delay=low+static_cast<int>((static_cast<double>(rand())*diff)/RAND_MAX);
 
       __int64 Span = SecondsBetween(Now(), m_LastSendTime);
       if (Span >= delay)
