@@ -1,319 +1,325 @@
-# OpenSCP — plan portu WinSCP na Linuksa (Wayland)
+# OpenSCP — plan for porting WinSCP to Linux (Wayland)
 
-Status: propozycja do akceptacji · 2026-10-24
+Status: accepted · 2026-10-24
 
-## 1. Cel i założenia
+## 1. Goals and assumptions
 
-- Natywna aplikacja na Linuksa z funkcjonalnością WinSCP: SFTP, SCP, FTP/FTPS, WebDAV, S3,
-  site manager, interfejs Commander/Explorer, kolejka transferów, synchronizacja, edycja
-  plików (wewnętrzna i zewnętrzna), skrypty (`winscp.com`-kompatybilny CLI), konsola poleceń.
-- Pierwszorzędna obsługa Waylanda (KDE Plasma/KWin jako platforma referencyjna, ale bez
-  twardej zależności od KDE — ma działać też na GNOME/wlroots).
-- Poprawna integracja z pulpitem: drag & drop w obie strony z menedżerem plików, schowek
-  plików, portale XDG, powiadomienia, obsługa URL-i `sftp://` itd.
-- Z tego repozytorium **nigdy** nie będzie budowana wersja Windows → kod może przestać być
-  kompilowalny w C++Builderze; nie utrzymujemy `#ifdef`-ów dla Windows.
-- Repozytorium jest forkiem 1:1 upstreamu. Zakładam, że chcemy dalej wciągać poprawki
-  z upstreamu (bezpieczeństwo, protokoły) — to mocno wpływa na strategię (sekcja 3.2).
+- A native Linux application with WinSCP's functionality: SFTP, SCP, FTP/FTPS, WebDAV, S3,
+  site manager, Commander/Explorer interfaces, transfer queue, synchronization, file editing
+  (internal and external), scripting (a `winscp.com`-compatible CLI), command console.
+- First-class Wayland support (KDE Plasma/KWin is the reference platform, but with no hard
+  dependency on KDE — it must also work on GNOME/wlroots).
+- Proper desktop integration: drag & drop in both directions with the file manager, file
+  clipboard, XDG portals, notifications, `sftp://` URL handling, etc.
+- A Windows version will **never** be built from this repository → the code may stop being
+  compilable with C++Builder; we do not maintain `#ifdef`s for Windows.
+- The repository is a 1:1 fork of upstream WinSCP and **we keep pulling new upstream
+  releases** (security and protocol fixes). This strongly shapes the strategy (section 3.2).
+- Everything in the repository (code, comments, commit messages, documentation) is written
+  in English.
 
-## 2. Wyniki analizy
+## 2. Analysis results
 
-| Katalog | Rozmiar | Co to jest | Zależności | Decyzja |
+| Directory | Size | What it is | Dependencies | Decision |
 |---|---|---|---|---|
-| `source/core` | 69 plików, ~76k linii | logika protokołów, sesje, kolejka, skrypty, synchronizacja | RTL Delphi (`UnicodeString`, `TStrings`, `TDateTime`, …), dialekt C++Builder, trochę WinAPI | **port** (shim RTL + konwersja dialektu) |
-| `source/putty` | ~83k linii | PuTTY 0.85 z modyfikacjami WinSCP (51× `MPEXT`) | tylko część `windows/` jest platformowa | **port**: kod wspólny bez zmian, `windows/` → `unix/` z upstreamu PuTTY 0.85 |
-| `source/filezilla` | ~19k linii | silnik FTP z FileZilla 2 | MFC (`CString`, `CTime`, `CFile`), `CAsyncSocketEx` na ukrytych oknach i `WSAAsyncSelect` | **port**: własny mini-shim MFC + reaktor na `poll()` zamiast pętli komunikatów |
-| `libs/neon`, `libs/libs3` | — | WebDAV/HTTP i S3, **zmodyfikowane przez WinSCP** (31 i 22 pliki z markerami) | OpenSSL, expat — dostępne w systemie | **budujemy wersje z repo** (nie systemowe), CMake |
-| `libs/openssl`, `libs/expat` | — | kopie bibliotek | — | systemowe (`openssl` 3.6, `expat` 2.9) |
-| `libs/mfc` | — | wycinek źródeł MFC | Win32 | **porzucamy** (zastępuje go shim) |
-| `source/windows` | ~29k linii | spoiwo GUI: konfiguracja, `TerminalManager`, `QueueController`, `EditorManager`, `ConsoleRunner`, `WinInterface` | VCL + WinAPI | **częściowo port** (logika), reszta przepisana pod Qt |
-| `source/forms` | 48 formularzy `.dfm`, ~47k linii | wszystkie okna i dialogi (`CustomScpExplorer.cpp` sam ma 12,6k linii) | VCL | **przepisanie w Qt 6**, `.dfm` jako specyfikacja |
-| `source/components`, `source/packages` | ~125k linii | DirView/DriveView, Toolbar2000/TBX, DragDrop, JCL, PNG | VCL, Pascal | **porzucamy** — odpowiedniki w Qt |
-| `source/dragext` | <1k linii | rozszerzenie powłoki Explorera do D&D | COM | **porzucamy** — zastępuje go mechanizm z sekcji 5 |
-| `source/console` | ~1k linii | `winscp.com` (cienki klient do `WinSCP.exe /console`) | WinAPI IPC | **zastępujemy** jednym binarnym CLI |
-| `dotnet/` | — | assembly .NET sterujące `winscp.com` | P/Invoke Win32 (eventy, file mapping) | **poza zakresem** na start (ew. później) |
-| `deployment/` | — | instalator Inno Setup | — | **zastępujemy** PKGBUILD / Flatpak / AppImage |
-| `translations/` | 3,7k linii/język | tłumaczenia `.ini` kluczowane `Formularz.dfm` → `Komponent.Caption` | — | **reużywamy** (sekcja 3.6) |
+| `source/core` | 69 files, ~76k lines | protocol logic, sessions, queue, scripting, synchronization | Delphi RTL (`UnicodeString`, `TStrings`, `TDateTime`, …), C++Builder dialect, some WinAPI | **port** (RTL shim + dialect conversion) |
+| `source/putty` | ~83k lines | PuTTY 0.85 with WinSCP modifications (51× `MPEXT`) | only the `windows/` part is platform specific | **port**: shared code unchanged, `windows/` → `unix/` from upstream PuTTY 0.85 |
+| `source/filezilla` | ~19k lines | FTP engine from FileZilla 2 | MFC (`CString`, `CTime`, `CFile`), `CAsyncSocketEx` on hidden windows and `WSAAsyncSelect` | **port**: own mini MFC shim + `poll()` reactor instead of a window message loop |
+| `libs/neon`, `libs/libs3` | — | WebDAV/HTTP and S3, **modified by WinSCP** (31 and 22 files with markers) | OpenSSL, expat — available on the system | **build the in-tree versions** (not the system ones), CMake |
+| `libs/openssl`, `libs/expat` | — | library copies | — | use system ones (`openssl` 3.6, `expat` 2.9) |
+| `libs/mfc` | — | excerpt of MFC sources | Win32 | **dropped** (replaced by the shim) |
+| `source/windows` | ~29k lines | GUI glue: configuration, `TerminalManager`, `QueueController`, `EditorManager`, `ConsoleRunner`, `WinInterface` | VCL + WinAPI | **partially ported** (logic), the rest rewritten for Qt |
+| `source/forms` | 48 `.dfm` forms, ~47k lines | all windows and dialogs (`CustomScpExplorer.cpp` alone is 12.6k lines) | VCL | **rewritten in Qt 6**, `.dfm` used as the specification |
+| `source/components`, `source/packages` | ~125k lines | DirView/DriveView, Toolbar2000/TBX, DragDrop, JCL, PNG | VCL, Pascal | **dropped** — Qt equivalents |
+| `source/dragext` | <1k lines | Explorer shell extension for D&D | COM | **dropped** — replaced by the mechanism in section 5 |
+| `source/console` | ~1k lines | `winscp.com` (thin client of `WinSCP.exe /console`) | WinAPI IPC | **replaced** by a single CLI binary |
+| `dotnet/` | — | .NET assembly driving `winscp.com` | Win32 P/Invoke (events, file mapping) | **out of scope** for the first version |
+| `deployment/` | — | Inno Setup installer | — | **replaced** by PKGBUILD (Flatpak/AppImage later) |
+| `translations/` | 3.7k lines/language | `.ini` translations keyed by `Form.dfm` → `Component.Caption` | — | **reused** (section 3.4) |
 
-Najważniejsze obserwacje:
+Key observations:
 
-1. **Core jest czysto oddzielony od GUI.** Komunikacja przez `core/Interface.h` (callbacki typu
-   `QueryUser`, `PromptUser`, `ShowExtendedException`, `ProcessGUI`) i zdarzenia `TTerminal`.
-   Bezpośredniego WinAPI w core jest mało i jest skupione w kilku plikach (`Terminal.cpp` —
-   lokalne operacje na plikach, `Common.cpp`, `HierarchicalStorage.cpp` — rejestr,
-   `SecureShell.cpp` — zdarzenia socketów, `PuttyIntf.cpp`, `FileBuffer.cpp`).
-2. **Główną barierą jest dialekt i RTL, nie WinAPI.** W core: 613× `__property`, 45× typy
-   `__closure` (+ przypisania metod jako zdarzeń), 181× `try/__finally`, 5277× `__fastcall`,
-   6249× `UnicodeString`, ~700× `TStrings/TStringList`, 266× `TDateTime`, ~700× formatowanie
-   w stylu Delphi (`FORMAT`/`FMTLOAD` → `Format(..., ARRAYOFCONST(...))`). Żaden kompilator
-   poza C++Builderem tego nie skompiluje bez warstwy zgodności.
-3. **Ścieżki lokalne są „windowsowe”.** 343 wywołania `IncludeTrailingBackslash`/`ExtractFilePath`
-   itp. i 47 literałów `\\` w core. Ścieżki zdalne już używają `/` (`UnixIncludeTrailingBackslash`).
-4. Konfiguracja domyślnie w rejestrze, ale WinSCP natywnie obsługuje też plik INI
-   (`TIniFileStorage`) — na Linuksie używamy tylko INI, w formacie zgodnym z `WinSCP.ini`
-   (import sesji z Windows przez skopiowanie pliku).
+1. **The core is cleanly separated from the GUI.** Communication goes through `core/Interface.h`
+   (callbacks such as `QueryUser`, `PromptUser`, `ShowExtendedException`, `ProcessGUI`) and
+   `TTerminal` events. Direct WinAPI use in the core is small and concentrated in a few files
+   (`Terminal.cpp` — local file operations, `Common.cpp`, `HierarchicalStorage.cpp` — registry,
+   `SecureShell.cpp` — socket events, `PuttyIntf.cpp`, `FileBuffer.cpp`).
+2. **The main barrier is the dialect and the RTL, not WinAPI.** In the core: 613× `__property`,
+   45× `__closure` types (+ assignments of methods as event handlers), 181× `try/__finally`,
+   5277× `__fastcall`, 6249× `UnicodeString`, ~700× `TStrings/TStringList`, 266× `TDateTime`,
+   ~700× Delphi-style formatting (`FORMAT`/`FMTLOAD` → `Format(..., ARRAYOFCONST(...))`).
+   No compiler other than C++Builder compiles this without a compatibility layer.
+3. **Local paths are "Windows style".** 343 calls to `IncludeTrailingBackslash`/`ExtractFilePath`
+   etc. and 47 `\\` literals in the core. Remote paths already use `/`
+   (`UnixIncludeTrailingBackslash`).
+4. Configuration lives in the registry by default, but WinSCP natively supports an INI file
+   (`TIniFileStorage`) too — on Linux we use INI only, in a format compatible with `WinSCP.ini`
+   (sessions can be imported from Windows by copying the file).
 
-## 3. Decyzje architektoniczne
+## 3. Architecture decisions
 
-### 3.1 Port, nie przepisywanie od zera
+### 3.1 Port, not rewrite
 
-Core + PuTTY + neon + libs3 + silnik FileZilla to ~180k linii dojrzałego, przetestowanego
-w boju kodu z obsługą setek dziwactw serwerów. Przepisanie (np. w Rust/Qt z WinSCP jako
-specyfikacją) to utrata tej wiedzy i lata pracy. Wine odpada — nie spełnia wymagań co do
-Waylanda i D&D. **Przenosimy cały kod nie-wizualny, GUI piszemy od nowa w Qt.**
+Core + PuTTY + neon + libs3 + the FileZilla engine are ~180k lines of mature, battle-tested
+code handling hundreds of server quirks. A rewrite (e.g. in Rust/Qt with WinSCP as the
+specification) would lose that knowledge and take years. Wine is out — it does not meet the
+Wayland and D&D requirements. **We port all non-visual code and write the GUI from scratch
+in Qt.**
 
-### 3.2 Dialekt C++Builder: shim RTL + powtarzalna konwersja źródeł
+### 3.2 C++Builder dialect: RTL shim + reproducible source conversion
 
-- **Kompilator: Clang** (jest 23.1) z `-fdeclspec`. Clang obsługuje
-  `__declspec(property(get=…, put=…))`, także indeksowane (`T Items[]`), więc **miejsca
-  użycia właściwości (tysiące) zostają bez zmian** — konwertujemy tylko deklaracje.
-  GCC tego nie potrafi, więc projekt jest „Clang-only” (świadomie).
-- **`source/rtl/`** — nowa biblioteka z podzbiorem RTL/VCL używanym przez core, w standardowym
-  C++20: `UnicodeString` (indeksowanie od 1, API Delphi), `AnsiString`/`RawByteString`/`UTF8String`
-  (strony kodowe przez iconv), `TObject`/`TPersistent`, `TList`/`TObjectList`, `TStrings`/
-  `TStringList` (z `CommaText`, `Names/Values`, sortowaniem), strumienie (`THandleStream` na fd),
-  `TDateTime` + `DateUtils`/`FormatDateTime`, `Format` w semantyce Delphi (indeksy `%0:s`,
-  `*`, szerokości), hierarchia `Exception`, `TMemIniFile`, `TCriticalSection` (rekurencyjny),
-  zdarzenia (eventfd/condvar), `TSearchRec`/`FindFirst`, `TPath`/`TFile` (std::filesystem),
-  Base64, mały `IXMLNode` na expat. Wzorzec: Far-NetBox (port core WinSCP do MSVC) — jako
-  inspiracja, nie kopia (jest wciąż Windows-only).
-- **`UnicodeString` na `wchar_t`** (na Linuksie UTF-32). Dzięki temu literały `L"…"` i API
-  `wchar_t` w core działają bez zmian. UTF-8 tylko na granicach (system plików, sieć).
-  Nazwy plików niebędące poprawnym UTF-8 mapujemy odwracalnie (jak `surrogateescape` w Pythonie).
-- **`tools/bcb2clang/`** — skrypt (Python, tokenizer z dopasowaniem nawiasów) robiący
-  deterministyczną konwersję:
+- **Compiler: Clang** (23.1 is installed) with `-fdeclspec`. Clang supports
+  `__declspec(property(get=…, put=…))`, including indexed ones (`T Items[]`), so **property
+  use sites (thousands of them) stay unchanged** — only declarations are converted. GCC does
+  not support this, so the project is deliberately Clang-only.
+- **`source/rtl/`** — a new library implementing the subset of the RTL/VCL used by the core,
+  in standard C++20: `UnicodeString` (1-based indexing, Delphi API), `AnsiString`/
+  `RawByteString`/`UTF8String` (code pages via iconv), `TObject`/`TPersistent`, `TList`/
+  `TObjectList`, `TStrings`/`TStringList` (with `CommaText`, `Names/Values`, sorting), streams
+  (`THandleStream` on an fd), `TDateTime` + `DateUtils`/`FormatDateTime`, `Format` with Delphi
+  semantics (`%0:s` indexes, `*`, widths), the `Exception` hierarchy, `TMemIniFile`,
+  `TCriticalSection` (recursive), events (eventfd/condvar), `TSearchRec`/`FindFirst`,
+  `TPath`/`TFile` (std::filesystem), Base64, a small `IXMLNode` on top of expat. Prior art:
+  Far-NetBox (a port of the WinSCP core to MSVC) — inspiration only, not a copy (it is still
+  Windows-only).
+- **`UnicodeString` is based on `wchar_t`** (UTF-32 on Linux). This keeps `L"…"` literals and
+  `wchar_t` APIs in the core working unchanged. UTF-8 only at the boundaries (file system,
+  network). File names that are not valid UTF-8 are mapped reversibly (like Python's
+  `surrogateescape`).
+- **`tools/bcb2clang/`** — a script (Python, tokenizer with bracket matching) performing a
+  deterministic conversion:
   - `__property T X = { read = FX, write = SetX };` → `__declspec(property(...)) T X;`
-    (+ wygenerowane akcesory dla pól),
+    (+ generated accessors for field-backed properties),
   - `typedef void __fastcall (__closure *TEvt)(Args)` → `typedef TMethodPtr<void(Args)> TEvt;`
-    (delegat obiekt+metoda, porównywalny jak Delphi `TMethod`),
-  - `try { A } __finally { B }` → blok ze strażnikiem zakresu (B wykonuje się przy wyjściu,
-    także przy wyjątku; strażnik nie zgubi wyjątku z B podczas odwijania),
-  - przypisania metod jako zdarzeń (`OnX = Metoda;`) — naprawiane w pętli sterowanej
-    diagnostykami Clanga (kompilator podaje dokładną lokalizację, skrypt aplikuje poprawkę).
-  - `__fastcall`, `__published`, `PACKAGE`, `DYNAMIC` → puste makra; `__int64` → `long long`.
-- **Workflow z upstreamem („vendor branch”):** gałąź `upstream` = czysty WinSCP; gałąź
-  `upstream-converted` = wynik `bcb2clang` na `upstream`. Nowe wydanie WinSCP:
-  aktualizujemy `upstream`, puszczamy konwersję, commit na `upstream-converted`, merge do
-  `master`. Konflikty pojawią się tylko tam, gdzie ręcznie zmienialiśmy kod — nie w tysiącach
-  mechanicznie skonwertowanych linii. Dlatego: ręczne zmiany w `core/` minimalne, cała nowa
-  logika w nowych katalogach (`rtl/`, `linux/`, `qt/`), a stare katalogi Windows zostają
-  nietknięte jako referencja (zero konfliktów przy merge'ach).
+    (an object+method delegate, comparable like Delphi's `TMethod`),
+  - `try { A } __finally { B }` → a block with a scope guard (B runs on exit, including on
+    exception; the guard does not lose an exception thrown from B during unwinding),
+  - assignments of methods as event handlers (`OnX = Method;`) — fixed in a loop driven by
+    Clang diagnostics (the compiler reports the exact location, the script applies the fix),
+  - `__fastcall`, `__published`, `PACKAGE`, `DYNAMIC` → empty macros; `__int64` → `long long`.
+- **Upstream workflow ("vendor branch"):** the `upstream` remote holds pristine WinSCP; the
+  `upstream-converted` branch holds the output of `bcb2clang` applied to upstream. For a new
+  WinSCP release: fetch upstream, run the conversion, commit to `upstream-converted`, merge
+  into `master`. Conflicts only appear where we changed code by hand — not in the thousands of
+  mechanically converted lines. Therefore: manual changes in `core/` are kept minimal, all new
+  logic goes into new directories (`rtl/`, `linux/`, `qt/`), and the old Windows directories
+  stay untouched as a reference (zero conflicts on merges). See `docs/port/UPSTREAM.md`.
 
-### 3.3 Warstwa platformowa (`source/linux/`)
+### 3.3 Platform layer (`source/linux/`)
 
-- Lokalne operacje na plikach w `Terminal.cpp`/`FileBuffer.cpp` → POSIX (`openat`, `fstatat`,
-  `utimensat`, `rename`, xattry opcjonalnie). Atrybuty Windows (`faHidden` itd.) mapowane
-  (ukryty = kropka na początku nazwy). Separator lokalny `/` w shimie (`IncludeTrailingBackslash`
-  działa jak `IncludeTrailingPathDelimiter`), 47 literałów `\\` audytujemy ręcznie.
-- Lokalny system plików jest **wrażliwy na wielkość liter** — audyt porównań `SameText` na
-  ścieżkach lokalnych (szczególnie synchronizacja i porównywanie katalogów).
-- Sanityzacja lokalnych nazw (`\/:*?"<>|` → `%XX`) zmienia znaczenie: na Linuksie niedozwolone
-  są tylko `/` i NUL, ale **ochrona przed path traversal musi zostać** (patrz ostatni commit
-  upstreamu, issue 2477). Osobny przegląd bezpieczeństwa tego obszaru.
-- Wątki/zdarzenia: `TSimpleThread` → `std::thread`, eventy → `eventfd`, `WaitForMultipleObjects`
-  na socketach → `poll()`.
-- PuTTY: dokładamy z upstreamu PuTTY 0.85 pliki `unix/` (sieć, `uxsel`, agent `ssh-agent`
-  przez `SSH_AUTH_SOCK`, GSSAPI przez libgssapi_krb5, lokalny proxy przez fork/exec, noise).
-  `SecureShell.cpp` przestawiamy z `WSAEventSelect` na zbiór fd z `uxsel` + `poll()`.
-- FileZilla: `CAsyncSocketEx` + ukryte okno komunikatów → reaktor `poll()` per wątek
-  z kolejką komunikatów (`PostMessage` → kolejka + `eventfd`). Mini-shim `CString`/`CTime`/`CFile`
-  na bazie `rtl/`.
-- Konfiguracja: `$XDG_CONFIG_HOME/openscp/openscp.ini` (format `WinSCP.ini`). Hasła jak w
-  WinSCP (opcjonalne hasło główne); później opcjonalnie Secret Service (KWallet/libsecret)
-  przez QtKeychain.
-- Teksty zasobów (`TextsCore*.rc`, `TextsWin*.rc`, `TextsFileZilla.rc`) → generowane w czasie
-  budowania tabele C++ dla `LoadStr(id)`.
+- Local file operations in `Terminal.cpp`/`FileBuffer.cpp` → POSIX (`openat`, `fstatat`,
+  `utimensat`, `rename`, optionally xattrs). Windows attributes (`faHidden` etc.) are mapped
+  (hidden = leading dot). The local path delimiter is `/` in the shim (`IncludeTrailingBackslash`
+  behaves like `IncludeTrailingPathDelimiter`); the 47 `\\` literals are audited by hand.
+- The local file system is **case-sensitive** — audit `SameText` comparisons of local paths
+  (especially synchronization and directory comparison).
+- Local file name sanitization (`\/:*?"<>|` → `%XX`) changes meaning: on Linux only `/` and NUL
+  are invalid, but **path traversal protection must stay** (see the latest upstream commit,
+  issue 2477). A dedicated security review of this area.
+- Threads/events: `TSimpleThread` → `std::thread`, events → `eventfd`, `WaitForMultipleObjects`
+  on sockets → `poll()`.
+- PuTTY: add the `unix/` files from upstream PuTTY 0.85 (networking, `uxsel`, agent via
+  `SSH_AUTH_SOCK`, GSSAPI via libgssapi_krb5, local proxy via fork/exec, noise).
+  `SecureShell.cpp` switches from `WSAEventSelect` to the fd set from `uxsel` + `poll()`.
+- FileZilla: `CAsyncSocketEx` + hidden message window → a per-thread `poll()` reactor with a
+  message queue (`PostMessage` → queue + `eventfd`). A mini `CString`/`CTime`/`CFile` shim on
+  top of `rtl/`.
+- Configuration: `$XDG_CONFIG_HOME/openscp/openscp.ini` (`WinSCP.ini` format). Passwords as in
+  WinSCP (optional master password); later optionally Secret Service (KWallet/libsecret) via
+  QtKeychain.
+- Resource strings (`TextsCore*.rc`, `TextsWin*.rc`, `TextsFileZilla.rc`) → C++ tables
+  generated at build time for `LoadStr(id)`.
 
 ### 3.4 GUI: Qt 6 Widgets
 
-- **Dlaczego Qt 6 Widgets:** core jest w C++ (bezpośrednie linkowanie, bez FFI); WinSCP to gęsty,
-  klasyczny interfejs (drzewa, listy z kolumnami, paski narzędzi, ~45 dialogów) — Widgets mapują
-  się 1:1 na koncepcje VCL; Wayland jest platformą pierwszej klasy (skalowanie ułamkowe,
-  D&D, schowek, xdg-activation, dekoracje serwerowe KWin); na Plasmie wygląd i dialogi plików
-  są natywne. Odrzucone: GTK4 (C, gorsze dopasowanie do C++ core, słabsza integracja z KDE),
-  QML (zły wybór dla gęstych list plików i masy dialogów), Lazarus/LCL (Pascal, nie C++).
-- Opcjonalne integracje KF6 za flagą CMake (KNotifications, KIO `KFilePlacesModel` dla
-  „dysków” w panelu lokalnym) — aplikacja musi też budować się i działać bez KDE.
-- Model wątków jak w WinSCP: operacje `TTerminal` wywoływane synchronicznie z wątku GUI,
-  `ProcessGUI()` → `QCoreApplication::processEvents()`; kolejka transferów w tle na własnych
-  wątkach (`TTerminalQueue`) — bez zmian.
-- Struktura: `source/qt/app` (aplikacja, odpowiednik `TerminalManager`, implementacja
-  `Interface.h`), `models` (`RemoteDirModel` nad `TRemoteFileList`, model lokalny),
-  `views` (panele, drzewa, kolejka), `dialogs` (jeden na `.dfm`).
-- **Nazwy obiektów Qt = nazwy komponentów z `.dfm`** — dzięki temu tłumaczenia z
-  `translations/*.ini` (`Copy.dfm` → `OkButton.Caption=…`) da się wczytać istniejącym
-  formatem, a testy E2E mogą adresować kontrolki stabilnymi nazwami.
-- Ikony: motyw ikon freedesktop (Breeze itd.) z fallbackiem na glify WinSCP wyciągnięte
-  z `Glyphs*.dfm` (PNG w kilku skalach).
+- **Why Qt 6 Widgets:** the core is C++ (direct linking, no FFI); WinSCP is a dense, classic
+  UI (trees, column lists, toolbars, ~45 dialogs) — Widgets map 1:1 onto VCL concepts;
+  Wayland is a first-class platform (fractional scaling, D&D, clipboard, xdg-activation,
+  KWin server-side decorations); on Plasma the look and the file dialogs are native.
+  Rejected: GTK4 (C, worse fit for a C++ core, weaker KDE integration), QML (a poor choice for
+  dense file lists and a large number of dialogs), Lazarus/LCL (Pascal, not C++).
+- Optional KF6 integrations behind a CMake option (KNotifications, KIO `KFilePlacesModel` for
+  the "drives" in the local panel) — the application must also build and run without KDE.
+- Threading model as in WinSCP: `TTerminal` operations are called synchronously from the GUI
+  thread, `ProcessGUI()` → `QCoreApplication::processEvents()`; the background transfer queue
+  runs on its own threads (`TTerminalQueue`) — unchanged.
+- Structure: `source/qt/app` (application, `TerminalManager` equivalent, implementation of
+  `Interface.h`), `models` (`RemoteDirModel` over `TRemoteFileList`, local model),
+  `views` (panels, trees, queue), `dialogs` (one per `.dfm`).
+- **Qt object names = component names from the `.dfm` files** — so the translations in
+  `translations/*.ini` (`Copy.dfm` → `OkButton.Caption=…`) can be loaded in their existing
+  format, and E2E tests can address controls by stable names.
+- Icons: freedesktop icon theme (Breeze etc.) with a fallback to WinSCP glyphs extracted from
+  `Glyphs*.dfm` (PNG in several scales).
 
 ### 3.5 CLI
 
-Jeden binarny `openscp-cli` (odpowiednik `winscp.com`), oparty na porcie `ConsoleRunner.cpp`
-i `core/Script.cpp`: ten sam język skryptów, przełączniki, kody wyjścia, log XML. To pierwszy
-w pełni działający produkt i główne narzędzie testów protokołów.
+A single `openscp-cli` binary (the `winscp.com` equivalent), based on a port of
+`ConsoleRunner.cpp` and `core/Script.cpp`: the same scripting language, switches, exit codes,
+XML log. This is the first fully working product and the main tool for protocol tests.
 
-### 3.6 Nazewnictwo
+### 3.6 Naming
 
-Produkt/binaria: `openscp`, `openscp-cli` (nazwa „WinSCP” zostaje tylko w historii i
-atrybucji licencyjnej).
+Product/binaries: `openscp`, `openscp-cli` (the "WinSCP" name stays only in history and
+license attribution).
 
-## 4. Integracje Windows → Linux/Wayland
+## 4. Windows integrations → Linux/Wayland
 
 | Windows (WinSCP) | Linux (OpenSCP) |
 |---|---|
-| Rejestr | plik INI w `$XDG_CONFIG_HOME/openscp/` |
-| Pageant | `ssh-agent` (`SSH_AUTH_SOCK`), klucze PuTTY i OpenSSH jak dotąd |
-| PuTTYgen (GUI) | `puttygen` (Unix PuTTY) / `ssh-keygen`; konwersja kluczy w core zostaje |
-| „Otwórz w PuTTY” | emulator terminala (`xdg-terminal-exec`/konfigurowalny) + `ssh` lub `putty` |
+| Registry | INI file in `$XDG_CONFIG_HOME/openscp/` |
+| Pageant | `ssh-agent` (`SSH_AUTH_SOCK`), PuTTY and OpenSSH keys as before |
+| PuTTYgen (GUI) | `puttygen` (Unix PuTTY) / `ssh-keygen`; key conversion in the core stays |
+| "Open in PuTTY" | terminal emulator (`xdg-terminal-exec`/configurable) + `ssh` or `putty` |
 | SSPI/Kerberos | GSSAPI (krb5) |
-| Magazyn certyfikatów Windows | systemowy bundle CA OpenSSL |
-| `ShellExecute`, „Otwórz za pomocą” | `QDesktopServices`/portal `OpenURI`, dialog „Open with” (KDE/portal) |
-| Obserwacja pliku edytowanego zewnętrznie | `QFileSystemWatcher` (inotify) |
-| Keep remote directory up to date | inotify (rekurencyjnie) |
-| DragExt (D&D do Explorera) | patrz sekcja 5 |
-| Kopiuj/wklej pliki z Explorerem | schowek `text/uri-list` + `x-kde-cutselection` / `x-special/gnome-copied-files` |
-| Pasek zadań: postęp, jump listy | `com.canonical.Unity.LauncherEntry` (Plasma, Dash to Dock), akcje w `.desktop` |
-| Ikona w zasobniku | `QSystemTrayIcon` (StatusNotifierItem) |
-| Powiadomienia po transferze | `org.freedesktop.Notifications` / KNotification |
-| Pojedyncza instancja, przekazywanie sesji | D-Bus (`org.openscp.OpenSCP`) + token xdg-activation |
-| Rejestracja `sftp://`, `scp://`… | `x-scheme-handler/*` w pliku `.desktop` |
-| „Wyślij do” w Explorerze | Dolphin service menu (+ akcja Nautilusa opcjonalnie) |
-| Panel „dysków” (DriveView) | miejsca: `$HOME`, punkty montowania (`QStorageInfo`), zakładki/`KFilePlacesModel` |
-| Import sesji (PuTTY z rejestru, FileZilla, OpenSSH) | `~/.putty/sessions`, `~/.config/filezilla/sitemanager.xml`, `~/.ssh/config`, `known_hosts`, `WinSCP.ini` |
-| Instalator, aktualizacje, „Uruchom jako administrator” | pakiety (PKGBUILD/Flatpak/AppImage); bez auto-aktualizacji i elewacji |
-| Zapamiętywanie pozycji okien | tylko rozmiar/maksymalizacja (Wayland nie pozwala klientom ustawiać pozycji) |
-| Uprawnienia lokalnych plików (brak na Windows) | **nowość**: opcja zachowania lokalnego `mode` przy uploadzie |
+| Windows certificate store | system OpenSSL CA bundle |
+| `ShellExecute`, "Open with" | `QDesktopServices`/`OpenURI` portal, "Open with" dialog (KDE/portal) |
+| Watching an externally edited file | `QFileSystemWatcher` (inotify) |
+| Keep remote directory up to date | inotify (recursive) |
+| DragExt (D&D to Explorer) | see section 5 |
+| Copy/paste files with Explorer | clipboard `text/uri-list` + `x-kde-cutselection` / `x-special/gnome-copied-files` |
+| Taskbar: progress, jump lists | `com.canonical.Unity.LauncherEntry` (Plasma, Dash to Dock), actions in the `.desktop` file |
+| Tray icon | `QSystemTrayIcon` (StatusNotifierItem) |
+| Notifications after transfer | `org.freedesktop.Notifications` / KNotification |
+| Single instance, passing sessions | D-Bus (`org.openscp.OpenSCP`) + xdg-activation token |
+| Registering `sftp://`, `scp://`… | `x-scheme-handler/*` in the `.desktop` file |
+| Explorer "Send To" | Dolphin service menu (+ optional Nautilus action) |
+| "Drives" panel (DriveView) | places: `$HOME`, mount points (`QStorageInfo`), bookmarks/`KFilePlacesModel` |
+| Session import (PuTTY from the registry, FileZilla, OpenSSH) | `~/.putty/sessions`, `~/.config/filezilla/sitemanager.xml`, `~/.ssh/config`, `known_hosts`, `WinSCP.ini` |
+| Installer, updates, "Run as administrator" | packages (PKGBUILD, later Flatpak/AppImage); no auto-update and no elevation |
+| Remembering window positions | size/maximized state only (Wayland does not let clients position windows) |
+| Local file permissions (absent on Windows) | **new**: option to preserve the local `mode` on upload |
 
-## 5. Wayland: drag & drop i schowek
+## 5. Wayland: drag & drop and clipboard
 
-- **Do aplikacji** (z Dolphina/Nautilusa): `text/uri-list` → upload przez standardowy dialog
-  kopiowania/kolejkę. Obsługa także danych bez pliku (np. obraz z przeglądarki) jako zapis
-  do pliku tymczasowego.
-- **Z aplikacji do menedżera plików** — problem znany z Windows (WinSCP rozwiązuje go
-  rozszerzeniem powłoki albo katalogiem tymczasowym). Na Waylandzie nie ma XDS
-  (`XdndDirectSave` jest tylko w X11). Dwa tryby, analogicznie do WinSCP:
-  1. **KDE**: protokół, którego używa Ark — typy MIME `application/x-kde-ark-dndextract-service`
-     i `…-path`; Dolphin po upuszczeniu woła po D-Bus metodę z katalogiem docelowym →
-     pobieramy prosto do celu przez kolejkę, bez blokowania. Do zweryfikowania na Plasma 6.8.
-  2. **Uniwersalny**: leniwe `QMimeData::retrieveData()` — dopiero gdy cel zażąda danych,
-     pobieramy do katalogu tymczasowego (z oknem postępu) i oddajemy `file://` URI.
-- D&D wewnątrz aplikacji (panel ↔ panel, na drzewo katalogów) — standardowo w Qt.
-- Testy D&D tylko z prawdziwym wejściem z kompozytora (sekcja 6.4), bo na Waylandzie
-  przeciąganie wymaga serialu prawdziwego zdarzenia wskaźnika.
+- **Into the application** (from Dolphin/Nautilus): `text/uri-list` → upload via the standard
+  copy dialog/queue. Data without a file (e.g. an image from a browser) is also accepted by
+  saving it to a temporary file.
+- **From the application to the file manager** — the problem known from Windows (WinSCP solves
+  it with a shell extension or a temporary directory). Wayland has no XDS (`XdndDirectSave` is
+  X11 only). Two modes, analogous to WinSCP:
+  1. **KDE**: the protocol used by Ark — MIME types `application/x-kde-ark-dndextract-service`
+     and `…-path`; after the drop, Dolphin calls a D-Bus method with the target directory →
+     we download straight to the target through the queue, without blocking. To be verified
+     on Plasma 6.8.
+  2. **Universal**: lazy `QMimeData::retrieveData()` — only when the target requests the data,
+     we download to a temporary directory (with a progress window) and hand over `file://` URIs.
+- D&D within the application (panel ↔ panel, onto the directory tree) — standard Qt.
+- D&D is tested only with real input from the compositor (section 6.4), because on Wayland a
+  drag requires the serial of a real pointer event.
 
-## 6. Testowanie i praca autonomiczna
+## 6. Testing and autonomous work
 
-### 6.1 Zasady bezpieczeństwa (twarde)
+### 6.1 Safety rules (hard)
 
-- GUI uruchamiam **wyłącznie** w osobnym, bezgłowym KWinie — nigdy na Twoim `WAYLAND_DISPLAY`.
-- Każdy przebieg testów ma izolowane `HOME`, `XDG_CONFIG_HOME`, `XDG_RUNTIME_DIR` i własną
-  sesję D-Bus (`dbus-run-session`). Nie dotykam `~/.config`, `~/.ssh`, agenta SSH.
-- Lokalne serwery testowe tylko na `127.0.0.1`, porty wysokie, bez `sudo`. Root mam tylko na
-  testowej VM (sekcja 6.3), która nie przechowuje niczego cennego.
+- GUI under test runs **only** in a separate headless KWin — never on the user's
+  `WAYLAND_DISPLAY`.
+- Every test run has an isolated `HOME`, `XDG_CONFIG_HOME`, `XDG_RUNTIME_DIR` and its own D-Bus
+  session (`dbus-run-session`). Never touch the user's `~/.config`, `~/.ssh` or SSH agent.
+- Local test servers bind to `127.0.0.1` only, high ports, no `sudo`. Root is available only on
+  the test VM (section 6.3), which holds nothing of value.
 
-### 6.2 Warstwy testów
+### 6.2 Test layers
 
-| Warstwa | Narzędzia | Co sprawdza |
+| Layer | Tools | What it checks |
 |---|---|---|
-| L1 unit | GoogleTest 1.18 (jest), ASan+UBSan | semantyka shimu RTL 1:1 z Delphi (indeksy od 1, `Format`, daty, `TStringList`), czysta logika core (maski plików, parsowanie listingów, URL-e sesji, `CopyParam`) |
-| L2 protokoły | `openscp-cli` + pytest + lokalne serwery | open/ls/get/put/rm/mv/mkdir/chmod, resume, synchronize, sumy kontrolne, znaczniki czasu, uprawnienia, klucze hosta, uwierzytelnianie — macierz po protokołach |
-| L3 komponenty GUI | QTest, `QT_QPA_PLATFORM=offscreen` | logika dialogów i modeli, szybko i deterministycznie |
-| L4 E2E GUI | bezgłowy KWin + harness | pełne scenariusze w prawdziwym kompozytorze, zrzuty ekranu oglądane przeze mnie, D&D ze Dolphinem |
+| L1 unit | GoogleTest 1.18 (installed), ASan+UBSan | RTL shim semantics matching Delphi 1:1 (1-based indexes, `Format`, dates, `TStringList`), pure core logic (file masks, listing parsing, session URLs, `CopyParam`) |
+| L2 protocols | `openscp-cli` + pytest + test servers | open/ls/get/put/rm/mv/mkdir/chmod, resume, synchronize, checksums, timestamps, permissions, host keys, authentication — a matrix across protocols |
+| L3 GUI components | QTest, `QT_QPA_PLATFORM=offscreen` | dialog and model logic, fast and deterministic |
+| L4 GUI E2E | headless KWin + harness | full scenarios in a real compositor, screenshots reviewed by Claude, D&D with Dolphin |
 
-Sanitizery są tu szczególnie ważne: typowe błędy portu (rozmiar `wchar_t`, czas życia
-obiektów przy zmianie modelu wyjątków) wychodzą w ASan/UBSan od razu.
+Sanitizers matter a lot here: typical porting bugs (`wchar_t` size, object lifetime under the
+changed exception model) show up in ASan/UBSan immediately.
 
-### 6.3 Serwery testowe (`tools/testenv/`)
+### 6.3 Test servers (`tools/testenv/`)
 
-- **SSH/SFTP/SCP — sprawdzone, działa:** nieuprzywilejowany `/usr/bin/sshd` na
-  `127.0.0.1:22222`, własne klucze hosta, uwierzytelnianie kluczem, `sftp-server`, wiele połączeń
-  (trzeba podawać absolutną ścieżkę configu). Ograniczenie: bez `root` nie ma uwierzytelniania
-  hasłem/PAM.
-- **Testowa VM (dostęp po SSH, root)** — ustalone 2026-10-24. Na niej wszystko, czego nie da
-  się sensownie uruchomić lokalnie bez roota: OpenSSH z hasłami/keyboard-interactive/zmianą
-  hasła/banerami/chrootem, vsftpd + proftpd + pure-ftpd (różne formaty listingów — sedno
-  silnika FTP), FTPS explicit/implicit, Apache `mod_dav` i nginx (WebDAV), MinIO (S3),
-  w razie potrzeby kontenery. Konfiguracja serwerów wyłącznie przez idempotentny skrypt
-  w repo (`tools/testenv/vm/`), żeby VM dało się odtworzyć od zera; testy L2 dostają
-  adres VM ze zmiennej środowiskowej i pomijają się, gdy VM jest niedostępna.
-  Dodatkowa wartość: prawdziwa sieć (opóźnienia, duże pliki, zrywanie połączeń).
-- Testy L1/L3/L4 i szybka iteracja SFTP zostają lokalnie (lokalny sshd jak wyżej).
+- **SSH/SFTP/SCP locally — verified, works:** an unprivileged `/usr/bin/sshd` on
+  `127.0.0.1:22222`, own host keys, public key authentication, `sftp-server`, multiple
+  connections (the config path must be absolute). Limitation: without root there is no
+  password/PAM authentication.
+- **Test VM (SSH access, root)** — agreed on 2026-10-24, needed from M3. It hosts everything
+  that cannot reasonably run locally without root: OpenSSH with passwords/keyboard-interactive/
+  password change/banners/chroot, vsftpd + proftpd + pure-ftpd (different listing formats —
+  the core of the FTP engine), explicit/implicit FTPS, Apache `mod_dav` and nginx (WebDAV),
+  MinIO (S3), containers if needed. Servers are configured only by an idempotent script in
+  the repository (`tools/testenv/vm/`), so the VM can be rebuilt from scratch; L2 tests take
+  the VM address from an environment variable and are skipped when the VM is unreachable.
+  Extra value: a real network (latency, large files, dropped connections).
+- L1/L3/L4 tests and quick SFTP iteration stay local (local sshd as above).
 
-### 6.4 Harness GUI na Waylandzie (`tools/wlharness/`) — sprawdzone, działa
+### 6.4 Wayland GUI harness (`tools/wlharness/`) — verified, works
 
-Zweryfikowałem dziś: `kwin_wayland --virtual` w `dbus-run-session` z izolowanym środowiskiem
-startuje bez dostępu do Twojej sesji, aplikacje Qt się w nim uruchamiają, a `spectacle -b -n -f`
-robi zrzut ekranu wirtualnego wyjścia (KWin rysuje dekoracje serwerowe — widać realne
-zachowanie Twojego WM). Uwaga techniczna: ścieżka gniazda musi mieścić się w 108 bajtach,
-więc `XDG_RUNTIME_DIR` w krótkiej ścieżce.
+Verified on 2026-10-24: `kwin_wayland --virtual` inside `dbus-run-session` with an isolated
+environment starts without access to the user's session, Qt applications run in it, and
+`spectacle -b -n -f` takes a screenshot of the virtual output (KWin draws server-side
+decorations — the real behaviour of the user's WM is visible). Technical note: the socket path
+must fit in 108 bytes, so `XDG_RUNTIME_DIR` must be a short path.
 
-Elementy harnessu:
+Harness components:
 
-1. `wlh-session` — start/stop bezgłowego KWina (rozdzielczość, skala np. 1.25 do testów HiDPI).
-2. `wlh-shot` — zrzut ekranu (spectacle); oglądam PNG i porównuję z oczekiwaniami.
-3. `wlh-input` — mały klient w C protokołu `org_kde_kwin_fake_input` (XML jest w
-   `plasma-wayland-protocols`, `wayland-scanner` jest) — prawdziwe zdarzenia myszy/klawiatury
-   od kompozytora, potrzebne do D&D i schowka między aplikacjami. Autoryzacja przez plik
-   `.desktop` z `X-KDE-Wayland-Interfaces` w izolowanym `XDG_DATA_HOME`.
-4. `wlh-kwin` — skrypty KWin przez D-Bus: deterministyczne rozmieszczenie okien (np. OpenSCP
-   po lewej, Dolphin po prawej) i odczyt ich geometrii, bo na Waylandzie klient nie zna
-   swojej pozycji na ekranie.
-5. **Hook automatyzacji w aplikacji** (tylko w buildach testowych, flaga CMake): gniazdo
-   Unix z JSON-owym API — drzewo widżetów, kliknięcie/wywołanie akcji po `objectName`,
-   wpisanie tekstu, odczyt stanu (np. kolejki), „czekaj aż bezczynna”, zrzut pojedynczego
-   okna. Dodatkowo AT-SPI (jest `gi.repository.Atspi`) jako niezależna kontrola dostępności.
+1. Session start/stop of the headless KWin (resolution, scale e.g. 1.25 for HiDPI tests).
+2. Screenshots (spectacle); Claude reviews the PNG against expectations.
+3. A small C client of the `org_kde_kwin_fake_input` protocol (the XML ships in
+   `plasma-wayland-protocols`, `wayland-scanner` is installed) — real mouse/keyboard events from
+   the compositor, needed for D&D and clipboard between applications.
+4. KWin scripts over D-Bus: deterministic window placement (e.g. OpenSCP on the left, Dolphin
+   on the right) and reading their geometry, because on Wayland a client does not know its
+   position on screen.
+5. **Automation hook in the application** (test builds only, CMake option): a Unix socket with
+   a JSON API — widget tree, click/trigger action by `objectName`, type text, read state (e.g.
+   the queue), "wait until idle", grab a single window. Additionally AT-SPI
+   (`gi.repository.Atspi` is installed) as an independent accessibility check.
 
-Przykładowy test D&D: harness startuje KWin + OpenSCP + Dolphin (izolowany HOME, lokalny
-sshd), rozmieszcza okna, `wlh-input` przeciąga plik z panelu zdalnego do Dolphina,
-test sprawdza, że plik pojawił się w katalogu docelowym z poprawną zawartością.
+Example D&D test: the harness starts KWin + OpenSCP + Dolphin (isolated HOME, local sshd),
+places the windows, the input injector drags a file from the remote panel to Dolphin, and the
+test checks that the file appeared in the target directory with correct content.
 
-### 6.5 Jak pracuję autonomicznie
+### 6.5 Autonomous workflow
 
-- Każdy kamień milowy ma **mierzalne kryteria wyjścia** (sekcja 7) i własny zestaw testów;
-  kamień jest „zrobiony”, gdy testy przechodzą, a nie gdy kod się kompiluje.
-- Pętla: mała zmiana → build (Ninja, ccache) → testy L1/L2 → przy GUI: E2E + zrzut ekranu
-  obejrzany przeze mnie → commit z opisem. Małe, logiczne commity bezpośrednio na `master`
-  (ustalone 2026-10-24); `master` ma zawsze się budować i przechodzić testy.
-- `CLAUDE.md` w repo z poleceniami budowania/testów i zasadami z 6.1, żeby każda kolejna
-  sesja startowała z tym samym kontekstem; `docs/port/` na decyzje i dziennik postępu.
-- Rzeczy wymagające Twojej decyzji lub `sudo` zbieram i pytam o nie w jednym miejscu,
-  zamiast blokować pracę.
+- Every milestone has **measurable exit criteria** (section 7) and its own tests; a milestone is
+  "done" when its tests pass, not when the code compiles.
+- Loop: small change → build (Ninja) → L1/L2 tests → for GUI: E2E + screenshot reviewed →
+  commit with a description. Small, logical commits directly on `master`, local only — the user
+  pushes. `master` must always build and pass tests.
+- `CLAUDE.md` in the repository holds build/test commands and the rules from 6.1, so every new
+  session starts with the same context; `docs/port/` holds decisions and the progress log.
+- Things that need a user decision or `sudo` are collected and asked about in one place instead
+  of blocking the work.
 
-## 7. Kamienie milowe
+## 7. Milestones
 
-| # | Zakres | Kryterium wyjścia |
+| # | Scope | Exit criteria |
 |---|---|---|
-| M0 | Infrastruktura: CMake+Ninja (Clang), `CLAUDE.md`, `tools/testenv`, `tools/wlharness`, szkielet testów, vendor branch | `cmake --build` przechodzi; harness uruchamia KWin + testową aplikację Qt i robi zrzut; sshd testowy startuje ze skryptu |
-| M1 | Shim RTL (`source/rtl`) + testy | testy L1 shimu zielone pod ASan/UBSan; nagłówki core się parsują |
-| M2 | `bcb2clang` + kompilacja core (UI-callbacki jako stuby), generator tekstów `.rc` | `libopenscp-core` linkuje się; testy L1 logiki core zielone |
-| M3 | PuTTY `unix/`, `SecureShell` na `poll()`, `openscp-cli` (port `ConsoleRunner`); skrypt provisioningu testowej VM | testy L2 dla SFTP i SCP przechodzą lokalnie i na VM (w tym hasła, resume, synchronize, klucze hosta, agent) |
-| M4 | FTP/FTPS (port FileZilla), WebDAV (neon), S3 (libs3) | ta sama macierz L2 zielona dla każdego protokołu na serwerach z VM |
-| M5 | Szkielet GUI: aplikacja, site manager (Login), okno Commander z panelami, nawigacja, podstawowe operacje, postęp, monity uwierzytelniania | E2E: połączenie z site managera, przeglądanie, upload/download; zrzuty OK |
-| M6 | Kolejka, dialog kopiowania z opcjami, właściwości/chmod, zmiana nazwy, szukanie plików, synchronizacja + checklist, keep-up-to-date, zakładki/profile, polecenia własne, konsola, edytor + edycja zewnętrzna | E2E dla każdej funkcji |
-| M7 | Integracja z pulpitem: D&D (oba tryby), schowek plików, URL-handlery, pojedyncza instancja, powiadomienia, tray, postęp na pasku zadań, `.desktop`, service menu Dolphina, terminal | E2E D&D i schowek ze Dolphinem w bezgłowym KWinie |
-| M8 | Preferencje, interfejs Explorer, karty/workspace'y, import sesji, tłumaczenia, pakiety (PKGBUILD, potem Flatpak/AppImage) | aplikacja kompletna funkcjonalnie wg listy z sekcji 1 |
+| M0 | Infrastructure: CMake+Ninja (Clang), `CLAUDE.md`, `tools/testenv`, `tools/wlharness`, test skeleton, upstream workflow | `cmake --build` passes; the harness starts KWin + a Qt probe application and takes a screenshot; injected input reaches the probe; the test sshd starts from a script |
+| M1 | RTL shim (`source/rtl`) + tests | shim L1 tests pass under ASan/UBSan; core headers parse |
+| M2 | `bcb2clang` + core compilation (UI callbacks as stubs), `.rc` string generator | `libopenscp-core` links; L1 tests of core logic pass |
+| M3 | PuTTY `unix/`, `SecureShell` on `poll()`, `openscp-cli` (port of `ConsoleRunner`); test VM provisioning script | L2 tests for SFTP and SCP pass locally and on the VM (including passwords, resume, synchronize, host keys, agent) |
+| M4 | FTP/FTPS (FileZilla port), WebDAV (neon), S3 (libs3) | the same L2 matrix passes for every protocol against the VM servers |
+| M5 | GUI skeleton: application, site manager (Login), Commander window with panels, navigation, basic operations, progress, authentication prompts | E2E: connect from the site manager, browse, upload/download; screenshots OK |
+| M6 | Queue, copy dialog with options, properties/chmod, rename, find files, synchronization + checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor + external editing | E2E for each feature |
+| M7 | Desktop integration: D&D (both modes), file clipboard, URL handlers, single instance, notifications, tray, taskbar progress, `.desktop`, Dolphin service menu, terminal | E2E D&D and clipboard with Dolphin in the headless KWin |
+| M8 | Preferences, Explorer interface, tabs/workspaces, session import, translations, packaging (PKGBUILD) | functionally complete per section 1 |
 
-Kolejność daje działający, testowalny produkt (CLI) już po M3 — dalsze kroki budują GUI
-na sprawdzonym rdzeniu.
+This order gives a working, testable product (the CLI) right after M3 — later steps build the
+GUI on top of a verified core.
 
-## 8. Ryzyka
+## 8. Risks
 
-| Ryzyko | Mitygacja |
+| Risk | Mitigation |
 |---|---|
-| Subtelne różnice semantyki shimu vs Delphi RTL (indeksy, `Format`, daty, sortowanie) | gęste testy L1 oparte na dokumentacji Delphi; sanitizery |
-| Kod zakładający `sizeof(wchar_t) == 2` (UTF-16) | audyt (w core tylko 2 jawne `sizeof(wchar_t)`), testy na nazwach z emoji/znakami spoza BMP |
-| Strefy czasowe/DST (core używa `TIME_ZONE_INFORMATION`) | reimplementacja na `localtime_r`/`timegm`, testy w kilku `TZ` |
-| Lokalne ścieżki: wielkość liter, `\` jako legalny znak, path traversal | audyt + testy bezpieczeństwa (nazwy z `..`, `\`, `/` od serwera) |
-| Port silnika FTP (asynchroniczne sockety oparte na komunikatach okien) | reaktor `poll()` z tą samą semantyką zdarzeń; testy na kilku serwerach FTP |
-| Reentrancja `processEvents()` w modelu synchronicznym | ten sam model co w VCL (`ProcessMessages`), więc te same ograniczenia; testy E2E anulowania operacji |
-| Konflikty przy merge'ach upstreamu | vendor branch + minimalne ręczne zmiany w `core/` |
-| D&D na zewnątrz zależne od menedżera plików | dwa tryby (KDE D-Bus + leniwe pobieranie), testy z Dolphinem |
+| Subtle semantic differences between the shim and the Delphi RTL (indexes, `Format`, dates, sorting) | dense L1 tests based on Delphi documentation; sanitizers |
+| Code assuming `sizeof(wchar_t) == 2` (UTF-16) | audit (only 2 explicit `sizeof(wchar_t)` in the core), tests with emoji/non-BMP file names |
+| Time zones/DST (the core uses `TIME_ZONE_INFORMATION`) | reimplementation on `localtime_r`/`timegm`, tests under several `TZ` values |
+| Local paths: case sensitivity, `\` as a legal character, path traversal | audit + security tests (names with `..`, `\`, `/` coming from the server) |
+| Porting the FTP engine (asynchronous sockets driven by window messages) | `poll()` reactor with the same event semantics; tests against several FTP servers |
+| Reentrancy of `processEvents()` in the synchronous model | the same model as VCL (`ProcessMessages`), hence the same constraints; E2E tests of cancelling operations |
+| Conflicts when merging upstream | vendor branch + minimal manual changes in `core/` |
+| Outgoing D&D depends on the file manager | two modes (KDE D-Bus + lazy download), tests with Dolphin |
 
-## 9. Otwarte decyzje
+## 9. Decisions log
 
-Rozstrzygnięte 2026-10-24: serwery testowe na testowej VM po SSH (potrzebna od M3);
-commity bezpośrednio na `master`.
-
-1. **Upstream:** potwierdzenie, że chcemy wciągać przyszłe wydania WinSCP (vendor branch).
-   Jeśli nie — konwersję można zrobić jednorazowo i swobodniej refaktorować core.
-2. **.NET assembly i Flatpak** — poza zakresem pierwszej wersji?
+- 2026-10-24: test servers on a user-provided test VM over SSH (needed from M3).
+- 2026-10-24: commits go directly to `master`, local only; the user pushes.
+- 2026-10-24: we keep pulling new upstream WinSCP releases (vendor branch workflow).
+- 2026-10-24: everything in the repository is written in English.
+- Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.
