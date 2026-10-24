@@ -89,7 +89,8 @@ public:
   wchar_t * c_str() const { return FData.data(); }
   wchar_t * w_str() const { return FData.data(); }
   wchar_t * t_str() const { return FData.data(); }
-  const void * data() const { return FData.data(); }
+  // NULL for an empty string, as in C++Builder
+  const void * data() const { return FData.empty() ? nullptr : FData.data(); }
 
   UnicodeString & SetLength(int NewLength);
   UnicodeString & Unique() { return *this; }

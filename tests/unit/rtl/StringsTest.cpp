@@ -14,6 +14,12 @@ TEST(UnicodeString, Construction)
   EXPECT_EQ(Empty.Length(), 0);
   ASSERT_NE(Empty.c_str(), nullptr);
   EXPECT_EQ(Empty.c_str()[0], L'\0');
+  // data() is NULL for an empty string, as in C++Builder
+  EXPECT_EQ(Empty.data(), nullptr);
+  EXPECT_EQ(AnsiString().data(), nullptr);
+  EXPECT_EQ(UTF8String("").data(), nullptr);
+  AnsiString Ansi("ab");
+  EXPECT_EQ(Ansi.data(), static_cast<const void *>(Ansi.c_str()));
 
   EXPECT_EQ(UnicodeString(static_cast<const wchar_t *>(nullptr)), L"");
   EXPECT_EQ(UnicodeString(L"abc"), L"abc");

@@ -38,7 +38,9 @@ public:
   int Length() const { return static_cast<int>(FData.size()); }
   bool IsEmpty() const { return FData.empty(); }
   char * c_str() const { return FData.data(); }
-  const void * data() const { return FData.data(); }
+  // NULL for an empty string, as in C++Builder (whose empty strings have no
+  // data); upstream code relies on it
+  const void * data() const { return FData.empty() ? nullptr : FData.data(); }
   int ElementSize() const { return 1; }
 
   const std::string & Std() const { return FData; }
