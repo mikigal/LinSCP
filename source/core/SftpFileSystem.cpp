@@ -2216,7 +2216,7 @@ bool __fastcall TSFTPFileSystem::SupportsExtension(const UnicodeString & Extensi
   return (FSupportedExtensions->IndexOf(Extension) >= 0);
 }
 //---------------------------------------------------------------------------
-inline void __fastcall TSFTPFileSystem::BusyStart()
+void __fastcall TSFTPFileSystem::BusyStart()
 {
   if (FBusy == 0 && FTerminal->UseBusyCursor && !FAvoidBusy)
   {
@@ -2226,7 +2226,7 @@ inline void __fastcall TSFTPFileSystem::BusyStart()
   DebugAssert(FBusy < 10);
 }
 //---------------------------------------------------------------------------
-inline void __fastcall TSFTPFileSystem::BusyEnd()
+void __fastcall TSFTPFileSystem::BusyEnd()
 {
   DebugAssert(FBusy > 0);
   FBusy--;
@@ -2544,7 +2544,7 @@ void __fastcall TSFTPFileSystem::RemoveReservation(int Reservation)
   FPacketReservations->Delete(Reservation);
 }
 //---------------------------------------------------------------------------
-inline int __fastcall TSFTPFileSystem::PacketLength(unsigned char * LenBuf, int ExpectedType)
+int __fastcall TSFTPFileSystem::PacketLength(unsigned char * LenBuf, int ExpectedType)
 {
   unsigned int Length = GET_32BIT(LenBuf);
   if (Length > SFTP_MAX_PACKET_LEN)
