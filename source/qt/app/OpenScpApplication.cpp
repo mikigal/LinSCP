@@ -28,8 +28,8 @@ bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)
   }
   catch (std::exception & E)
   {
-    Exception Error(UnicodeString(E.what()));
-    ShowExtendedException(&Error);
+    std::unique_ptr<Exception> Error(new Exception(UnicodeString(E.what())));
+    ShowExtendedException(Error.get());
   }
   return false;
 }

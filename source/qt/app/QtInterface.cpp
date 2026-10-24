@@ -8,7 +8,6 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QGuiApplication>
-#include <QMessageBox>
 #include <QMimeData>
 
 #include <chrono>
@@ -23,11 +22,9 @@ void __fastcall ShowExtendedException(Exception * E)
 //---------------------------------------------------------------------------
 void ShowExtendedExceptionEx(TTerminal * /*Terminal*/, Exception * E)
 {
-  UnicodeString Message;
-  if (ShouldDisplayException(E) && ExceptionFullMessage(E, Message))
+  if (ShouldDisplayException(E))
   {
-    QMessageBox::critical(
-      QApplication::activeWindow(), ToQString(AppName), ToQString(UnformatMessage(Message)));
+    ExceptionMessageDialog(E, qtError);
   }
 }
 //---------------------------------------------------------------------------

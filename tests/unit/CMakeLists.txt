@@ -75,3 +75,14 @@ foreach(BCB2CLANG_TEST test_bcb2clang test_convert test_core_headers)
     ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/bcb2clang;PYTHONDONTWRITEBYTECODE=1;OPENSCP_CXX=${CMAKE_CXX_COMPILER}"
     TIMEOUT 300)
 endforeach()
+
+# L3: components of the Qt front end on the offscreen platform
+add_executable(openscp_qt_tests
+  qt/MessageDialogTest.cpp
+  qt/QtTestMain.cpp)
+target_link_libraries(openscp_qt_tests PRIVATE
+  openscp_qt
+  openscp::options
+  GTest::gtest)
+gtest_discover_tests(openscp_qt_tests
+  PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C.UTF-8;TZ=UTC;QT_QPA_PLATFORM=offscreen")
