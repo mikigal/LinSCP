@@ -7,6 +7,7 @@
 
 #include "OpenScpApplication.h"
 #include "ScpCommander.h"
+#include "TerminalManager.h"
 #ifdef OPENSCP_AUTOMATION
 #include "Automation.h"
 #endif
@@ -20,14 +21,21 @@ static int Execute()
 #ifdef OPENSCP_AUTOMATION
   StartAutomation();
 #endif
+  TTerminalManager * Manager = TTerminalManager::Instance();
+#ifdef OPENSCP_AUTOMATION
+  SetAutomationBusyCheck([Manager]() { return Manager->IsBusy(); });
+#endif
   int Result;
   {
     TScpCommanderForm ScpCommander;
+    Manager->ScpExplorer = &ScpCommander;
     ScpCommander.show();
     // The site manager on startup
     QTimer::singleShot(0, &ScpCommander, [&ScpCommander]() { ScpCommander.NewSession(); });
     Result = QApplication::exec();
+    Manager->ScpExplorer = NULL;
   }
+  TTerminalManager::DestroyInstance();
 #ifdef OPENSCP_AUTOMATION
   StopAutomation();
 #endif

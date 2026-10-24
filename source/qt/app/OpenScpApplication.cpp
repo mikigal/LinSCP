@@ -2,6 +2,7 @@
 //---------------------------------------------------------------------------
 #include "QtTools.h"
 #include "QtInterface.h"
+#include "TerminalManager.h"
 
 #include "OpenScpApplication.h"
 //---------------------------------------------------------------------------
@@ -24,7 +25,15 @@ bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)
   }
   catch (Exception & E)
   {
-    ShowExtendedException(&E);
+    TTerminalManager * Manager = TTerminalManager::Instance(false);
+    if (Manager != NULL)
+    {
+      Manager->HandleException(&E);
+    }
+    else
+    {
+      ShowExtendedException(&E);
+    }
   }
   catch (std::exception & E)
   {

@@ -4,7 +4,13 @@
 #ifndef ScpCommanderH
 #define ScpCommanderH
 //---------------------------------------------------------------------------
+#include <QtInterface.h>
+
+#include <FileOperationProgress.h>
+
 #include <QMainWindow>
+//---------------------------------------------------------------------------
+class QLabel;
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
 {
@@ -15,8 +21,17 @@ public:
   virtual ~TScpCommanderForm();
 
   void UpdateCaption();
-  // Opens sessions selected in the site manager
+  // Opens a session selected in the site manager
   void NewSession();
+  // The active session changed (opened, closed)
+  void TerminalChanged();
+  void OperationProgress(TFileOperationProgressType & ProgressData);
+  void OperationFinished(TFileOperation Operation, TOperationSide Side,
+    bool Temp, const UnicodeString & FileName, bool Success, bool NotCancelled,
+    TOnceDoneOperation & OnceDoneOperation);
+
+private:
+  QLabel * FNoSessionLabel;
 };
 //---------------------------------------------------------------------------
 #endif

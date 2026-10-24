@@ -423,3 +423,25 @@ void SessionNameValidate(const UnicodeString & Text, const UnicodeString & Origi
   }
 }
 //---------------------------------------------------------------------------
+bool DoMasterPasswordDialog()
+{
+  bool Result;
+  bool Valid;
+  do
+  {
+    UnicodeString Password;
+    Result = InputDialog(L"Master Password", LoadStr(CONSOLE_MASTER_PASSWORD_PROMPT).TrimRight(), Password, NULL, false, false);
+    Valid = !Result || AppConfiguration->ValidateMasterPassword(Password);
+    if (!Valid)
+    {
+      MessageDialog(LoadStr(MASTER_PASSWORD_INCORRECT), qtError, qaOK);
+    }
+    else if (Result)
+    {
+      AppConfiguration->SetMasterPassword(Password);
+    }
+  }
+  while (!Valid);
+  return Result;
+}
+//---------------------------------------------------------------------------

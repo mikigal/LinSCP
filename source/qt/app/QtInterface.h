@@ -66,6 +66,8 @@ TSessionData * DoSaveSession(TSessionData * SessionData,
   TSessionData * OriginalSession, bool ForceDialog, TStrings * AdditionalFolders);
 // Checks that a site can be saved under the name (or overwrite a site)
 void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName);
+// Asks for the current master password
+bool DoMasterPasswordDialog();
 
 // dialogs/LoginDialog.cpp
 // The site manager: fills DataList with the sessions to open

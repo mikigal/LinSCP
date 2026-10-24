@@ -4,6 +4,7 @@
 //---------------------------------------------------------------------------
 #include "QtTools.h"
 #include "QtInterface.h"
+#include "TerminalManager.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -20,9 +21,27 @@ void __fastcall ShowExtendedException(Exception * E)
   ShowExtendedExceptionEx(NULL, E);
 }
 //---------------------------------------------------------------------------
-void ShowExtendedExceptionEx(TTerminal * /*Terminal*/, Exception * E)
+void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
 {
-  if (ShouldDisplayException(E))
+  bool Show = ShouldDisplayException(E);
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  // A fatal error of the session (a lost or failed connection)
+  bool ForActiveTerminal =
+    (dynamic_cast<EFatal *>(E) != NULL) && (Manager != NULL) && Manager->IsActiveTerminal(Terminal);
+
+  if (ForActiveTerminal)
+  {
+    unsigned int Answer = qaOK;
+    if (Show)
+    {
+      // Upstream offers a few more choices (a timeout of the automatic
+      // reconnect, reconnecting always, closing the session silently),
+      // which are configured in the preferences
+      Answer = FatalExceptionMessageDialog(E, qtError, EmptyStr, qaOK, NULL);
+    }
+    Manager->FatalExceptionAnswered(Answer);
+  }
+  else if (Show)
   {
     ExceptionMessageDialog(E, qtError);
   }
