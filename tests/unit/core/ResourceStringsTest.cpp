@@ -23,7 +23,7 @@ TEST(ResourceStringsTest, ConcatenatedLines)
 //---------------------------------------------------------------------------
 TEST(ResourceStringsTest, NonAscii)
 {
-  EXPECT_EQ(LoadStr(PUTTY_COPYRIGHT).SubString(1, 11), L"Copyright ©");
+  EXPECT_EQ(LoadStr(PUTTY_COPYRIGHT).SubString(1, 11), L"Copyright \u00a9");
 }
 //---------------------------------------------------------------------------
 TEST(ResourceStringsTest, Formatted)

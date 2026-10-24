@@ -51,5 +51,8 @@ target_compile_definitions(openscp_putty
 target_compile_options(openscp_putty PRIVATE -Wno-unknown-pragmas)
 # AES-NI is built for 64-bit targets only (_WIN64 means that here)
 set_source_files_properties("${OPENSCP_PUTTY_DIR}/crypto/aes-ni.c" PROPERTIES COMPILE_DEFINITIONS _WIN64)
+# The core defines appname (PuttyIntf.cpp); C++Builder's linker takes the
+# first of the duplicate definitions, GNU ld does not
+set_source_files_properties("${OPENSCP_PUTTY_DIR}/be_list.c" PROPERTIES COMPILE_DEFINITIONS appname=be_list_appname)
 # EnterCriticalSection and friends
 target_link_libraries(openscp_putty PRIVATE openscp::sanitize PUBLIC openscp::linux ${CMAKE_DL_LIBS})

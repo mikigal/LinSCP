@@ -40,13 +40,18 @@ gtest_discover_tests(openscp_linux_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
 add_executable(openscp_core_tests
+  core/CommonTest.cpp
+  core/CopyParamTest.cpp
+  core/CoreTestInterface.cpp
+  core/CoreTestMain.cpp
+  core/FileMasksTest.cpp
+  core/RemoteFilesTest.cpp
   core/ResourceStringsTest.cpp
-  $<TARGET_OBJECTS:openscp_core_strings>)
-target_include_directories(openscp_core_tests PRIVATE "${PROJECT_SOURCE_DIR}/source/resource")
+  core/SessionDataTest.cpp)
 target_link_libraries(openscp_core_tests PRIVATE
-  openscp::rtl
+  openscp::core
   openscp::options
-  GTest::gtest_main)
+  GTest::gtest)
 gtest_discover_tests(openscp_core_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
