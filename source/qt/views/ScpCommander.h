@@ -10,7 +10,9 @@
 
 #include <QMainWindow>
 //---------------------------------------------------------------------------
-class QLabel;
+class QSplitter;
+class TLocalDirPanel;
+class TRemoteDirPanel;
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
 {
@@ -31,7 +33,9 @@ public:
     TOnceDoneOperation & OnceDoneOperation);
 
 private:
-  QLabel * FNoSessionLabel;
+  QSplitter * FPanelSplitter;
+  TLocalDirPanel * FLocalPanel;
+  TRemoteDirPanel * FRemotePanel;
 };
 //---------------------------------------------------------------------------
 #endif

@@ -4,9 +4,11 @@
 
 #include <TerminalManager.h>
 
+#include "DirPanel.h"
 #include "ScpCommander.h"
 
-#include <QLabel>
+#include <QDir>
+#include <QSplitter>
 //---------------------------------------------------------------------------
 TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   QMainWindow(Parent)
@@ -14,10 +16,15 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   setObjectName(QStringLiteral("ScpCommanderForm"));
   resize(1000, 700);
 
-  FNoSessionLabel = new QLabel(this);
-  FNoSessionLabel->setObjectName(QStringLiteral("NoSessionLabel"));
-  FNoSessionLabel->setAlignment(Qt::AlignCenter);
-  setCentralWidget(FNoSessionLabel);
+  FPanelSplitter = new QSplitter(Qt::Horizontal, this);
+  FPanelSplitter->setObjectName(QStringLiteral("PanelSplitter"));
+  FLocalPanel = new TLocalDirPanel(FPanelSplitter);
+  FRemotePanel = new TRemoteDirPanel(FPanelSplitter);
+  FPanelSplitter->addWidget(FLocalPanel);
+  FPanelSplitter->addWidget(FRemotePanel);
+  setCentralWidget(FPanelSplitter);
+  connect(FRemotePanel, &TRemoteDirPanel::NewSessionRequested, this, [this]() { NewSession(); });
+  FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
   TerminalChanged();
 }
@@ -37,15 +44,7 @@ void TScpCommanderForm::UpdateCaption()
 void TScpCommanderForm::TerminalChanged()
 {
   TTerminalManager * Manager = TTerminalManager::Instance(false);
-  TTerminal * Terminal = (Manager != NULL) ? Manager->ActiveTerminal : NULL;
-  if ((Terminal != NULL) && Terminal->Active)
-  {
-    FNoSessionLabel->setText(ToQString(Terminal->SessionData->SessionName + L": " + Terminal->CurrentDirectory));
-  }
-  else
-  {
-    FNoSessionLabel->setText(tr("Not connected."));
-  }
+  FRemotePanel->SetTerminal((Manager != NULL) ? Manager->ActiveTerminal : NULL);
   UpdateCaption();
 }
 //---------------------------------------------------------------------------

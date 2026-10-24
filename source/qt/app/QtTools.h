@@ -17,4 +17,9 @@ UnicodeString ToUnicodeString(const QString & Str);
 //---------------------------------------------------------------------------
 bool IsMainThread();
 //---------------------------------------------------------------------------
+// Sizes as upstream's file panels format them (packages/filemng/BaseUtils.pas)
+enum TFormatBytesStyle { fbNone, fbKilobytes, fbShort };
+UnicodeString FormatBytes(__int64 Bytes, TFormatBytesStyle Style = fbShort, bool UseUnitsForBytes = true);
+UnicodeString FormatPanelBytes(__int64 Bytes, TFormatBytesStyle Style);
+//---------------------------------------------------------------------------
 #endif

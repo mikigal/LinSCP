@@ -13,12 +13,15 @@ add_library(openscp_qt STATIC
   dialogs/CustomDialog.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
+  models/DirModel.cpp
+  views/DirPanel.cpp
   views/ScpCommander.cpp)
 
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
 target_include_directories(openscp_qt PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/app"
   "${CMAKE_CURRENT_SOURCE_DIR}/dialogs"
+  "${CMAKE_CURRENT_SOURCE_DIR}/models"
   "${CMAKE_CURRENT_SOURCE_DIR}/views")
 # Qt's lowercase keywords (signals, slots, emit) are macros of common words;
 # Q_SIGNALS, Q_SLOTS and Q_EMIT cannot clash with the headers of the core

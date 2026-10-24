@@ -7,6 +7,21 @@ Newest first. Milestones are defined in `PLAN.md`, section 7.
 Qt 6 application, site manager (Login), Commander window with panels, navigation, basic
 operations, progress, authentication prompts; the automation hook for the E2E tests.
 
+In progress. Done: `source/qt` (`openscp_qt` library and `openscp`), the automation hook
+(`OPENSCP_AUTOMATION`, `tools/testenv/openscp_gui.py`, `tests/integration/guitests.py`),
+message and input dialogs (L3 tests in `tests/unit/qt`), the site manager, connecting
+(`TTerminalManager`, `TAuthenticateForm`), the local and remote panels (`DirModel`,
+`DirPanel`) with navigation and history. Left: the Commander's menus, toolbars and
+commands; copy (upload/download), delete, rename, create directory with the progress
+window (`Progress.dfm`); E2E tests against the local sshd and the VM; screenshots.
+
+Findings so far:
+
+- `TTerminalThread` read `FPendingIdle` uninitialized (fixed in `core/Queue.cpp`).
+- The XDG portal sometimes does not know OpenSCP's app ID when the application starts
+  right after the harness session (a race in the portal; matters for D&D in M7).
+- Core strings mention WinSCP (e.g. the host key prompt); a branding pass with M8.
+
 ## M4 — FTP/FTPS, WebDAV, S3 (done, 2026-10-24)
 
 Exit criteria met: the L2 matrix of the protocols passes against the servers of the test VM
