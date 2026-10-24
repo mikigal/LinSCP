@@ -17,6 +17,10 @@ Conversions:
   known from the classes of all converted files (ClassTable).
 - ``try { A } __finally { B }`` becomes a scope guard (``::rtl::TFinally``),
   also in macro definitions.
+- Non-public inheritance from Delphi-style classes (those derived from
+  ``TObject``) becomes public: C++Builder allocates such objects and casts
+  them with Delphi's RTTI, which ignore the access of a base, and the RTL
+  shim's ``TObject::operator new`` must stay accessible.
 - Backslashes in ``#include`` paths become slashes.
 
 Line endings (the upstream sources use CRLF) are kept.
@@ -645,6 +649,8 @@ class ClassTable:
         self.classes = {}
         # Names of properties and fields of classes not in the table (RTL)
         self.other_fields = set()
+        # The first bases of the RTL shim's classes
+        self.rtl_bases = {}
         # Function-like macros: their arguments are not necessarily expressions
         self.macros = set()
 
@@ -687,10 +693,32 @@ class ClassTable:
             _class_members(tokens, j, _matching(tokens, j), info)
 
     def add_rtl_headers(self, directory):
-        """Property names declared by the RTL shim's headers."""
+        """Property names and class bases declared by the RTL shim's headers."""
         for path in sorted(Path(directory).glob('*.h')):
             text = path.read_text(errors='replace')
             self.other_fields.update(re.findall(r'__declspec\(property\([^)]*\)\)[^;]*?(\w+)\s*(?:\[\])*;', text))
+            for name, base in re.findall(
+                    r'\bclass\s+(\w+)\s*(?:final\s*)?:\s*public\s+(?:\w+::)*(\w+)', text):
+                self.rtl_bases.setdefault(name, base)
+
+    def is_delphi_class(self, name):
+        """Whether the class derives from TObject (known from the table or
+        the RTL headers)."""
+        pending = [name]
+        seen = set()
+        while pending:
+            current = pending.pop(0)
+            if current in seen:
+                continue
+            seen.add(current)
+            if current == 'TObject':
+                return True
+            info = self.classes.get(current)
+            if info is not None:
+                pending.extend(info.bases)
+            elif self.rtl_bases.get(current) is not None:
+                pending.append(self.rtl_bases[current])
+        return False
 
     def lineage(self, name):
         """The class and its known bases."""
@@ -1057,6 +1085,45 @@ def convert_preprocessor(tokens):
 
 
 # ---------------------------------------------------------------------------
+# Inheritance from Delphi-style classes
+# ---------------------------------------------------------------------------
+
+def convert_base_access(tokens, table):
+    """Makes the inheritance from Delphi-style classes public."""
+    result = list(tokens)
+    for i, token in enumerate(tokens):
+        if token.kind != 'ident' or token.text not in _CLASS_KEYS:
+            continue
+        previous = _prev_significant(tokens, i)
+        if previous >= 0 and tokens[previous].text in ('friend', 'enum'):
+            continue
+        j = _next_significant(tokens, i)
+        while j < len(tokens) and tokens[j].kind == 'ident':
+            j = _next_significant(tokens, j)
+        if j >= len(tokens) or tokens[j].text != ':':
+            continue
+        # The base specifiers, up to the class body
+        end = j
+        while end < len(tokens) and tokens[end].text not in ('{', ';'):
+            end += 1
+        if end >= len(tokens) or tokens[end].text != '{':
+            continue
+        for part_start, part_end in _split_top_level(tokens, j + 1, end, ','):
+            # (the base's name, not its template arguments)
+            name_end = next((k for k in range(part_start, part_end) if tokens[k].text == '<'), part_end)
+            words = [k for k in range(part_start, name_end) if tokens[k].kind == 'ident']
+            if not words or not table.is_delphi_class(tokens[words[-1]].text):
+                continue
+            access = next((k for k in words if tokens[k].text in ('public', 'protected', 'private')), None)
+            if access is not None:
+                if tokens[access].text != 'public':
+                    result[access] = Token('ident', 'public')
+            elif token.text == 'class':
+                result[words[0]] = Token('ident', 'public ' + tokens[words[0]].text)
+    return result
+
+
+# ---------------------------------------------------------------------------
 
 def convert_source(text, table=None):
     """Returns the converted source text. Method references are converted
@@ -1068,6 +1135,7 @@ def convert_source(text, table=None):
     tokens = convert_preprocessor(tokens)
     tokens = convert_closures(tokens)
     tokens = convert_properties(tokens)
+    tokens = convert_base_access(tokens, table)
     tokens = convert_method_references(tokens, table)
     tokens = convert_finally(tokens)
     result = untokenize(tokens)

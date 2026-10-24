@@ -287,6 +287,46 @@ class MethodReferenceTest(unittest.TestCase):
             'void TA::N()\n{\n  Run(::rtl::MethodPtr(this, &TA::M));\n}\n')
 
 
+class BaseAccessTest(unittest.TestCase):
+    def convert(self, text):
+        table = bcb2clang.ClassTable()
+        table.add_source(text)
+        table.add_rtl_headers(bcb2clang.RTL_HEADERS)
+        return bcb2clang.convert_source(text, table)
+
+    def test_delphi_bases(self):
+        self.assertEqual(
+            self.convert('class TCache : private TStringList\n{\n};\n'),
+            'class TCache : public TStringList\n{\n};\n')
+        self.assertEqual(
+            self.convert('class TCommands : TStringList {\n};\n'),
+            'class TCommands : public TStringList {\n};\n')
+        # Through a class of the converted sources, and among other bases
+        self.assertEqual(
+            self.convert('class TA : public TObject {};\nclass TB : protected TA, private TOther {};\n'),
+            'class TA : public TObject {};\nclass TB : public TA, private TOther {};\n')
+
+    def test_unchanged(self):
+        for text in [
+                'class TA : private TOther {};\n',
+                'class TA : std::vector<TStringList *> {};\n',
+                'struct TA : TStringList {};\n',
+                'class TA : public TStringList {};\n',
+                'class TA;\n',
+                'friend class TStringList;\n']:
+            with self.subTest(text=text):
+                self.assertEqual(self.convert(text), text)
+
+    def test_delphi_classes(self):
+        table = bcb2clang.ClassTable()
+        table.add_rtl_headers(bcb2clang.RTL_HEADERS)
+        self.assertTrue(table.is_delphi_class('TObject'))
+        self.assertTrue(table.is_delphi_class('TMemoryStream'))
+        self.assertTrue(table.is_delphi_class('Exception'))
+        self.assertFalse(table.is_delphi_class('UnicodeString'))
+        self.assertFalse(table.is_delphi_class('TUnknown'))
+
+
 class LineEndingTest(unittest.TestCase):
     def test_crlf(self):
         source = '#define M(X) \\\r\n  X\r\ntypedef void __fastcall (__closure *TEvent)\r\n  (int A);\r\n'
