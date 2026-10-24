@@ -1,0 +1,56 @@
+#!/usr/bin/python3
+"""The S3 server of the tests seen from the test VM, for the tests' checks
+(the server keeps its objects in memory, there are no files to look at).
+
+    openscp-s3 mb BUCKET             creates the bucket
+    openscp-s3 rb BUCKET             removes the bucket with its objects
+    openscp-s3 put BUCKET KEY        stores standard input as the object
+    openscp-s3 tree BUCKET [PREFIX]  prints "KEY SHA256" of the objects
+"""
+
+import hashlib
+import sys
+
+import boto3
+from botocore.config import Config
+
+PORT = 9000
+CREDENTIALS = '/etc/openscp/s3-credentials'
+
+
+def client():
+    with open(CREDENTIALS) as file:
+        access_key, secret_key = file.read().split()
+    return boto3.client(
+        's3', endpoint_url='http://127.0.0.1:%d' % PORT, region_name='us-east-1',
+        aws_access_key_id=access_key, aws_secret_access_key=secret_key,
+        config=Config(s3={'addressing_style': 'path'}))
+
+
+def objects(s3, bucket, prefix=''):
+    for page in s3.get_paginator('list_objects_v2').paginate(Bucket=bucket, Prefix=prefix):
+        for entry in page.get('Contents', []):
+            yield entry['Key']
+
+
+def main(args):
+    s3 = client()
+    command, bucket = args[0], args[1]
+    if command == 'mb':
+        s3.create_bucket(Bucket=bucket)
+    elif command == 'rb':
+        for key in list(objects(s3, bucket)):
+            s3.delete_object(Bucket=bucket, Key=key)
+        s3.delete_bucket(Bucket=bucket)
+    elif command == 'put':
+        s3.put_object(Bucket=bucket, Key=args[2], Body=sys.stdin.buffer.read())
+    elif command == 'tree':
+        for key in objects(s3, bucket, args[2] if len(args) > 2 else ''):
+            body = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
+            print('%s %s' % (key, hashlib.sha256(body).hexdigest()))
+    else:
+        raise SystemExit('unknown command %s' % command)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

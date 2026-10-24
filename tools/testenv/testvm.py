@@ -92,7 +92,7 @@ class TestVm:
         """Uploads vm/provision.sh with the setup and runs it."""
         client_key = self.client_key()
         archive = subprocess.run(
-            ['tar', '-c', '-C', str(VM_DIR), 'provision.sh', 'testvm.env',
+            ['tar', '-c', '-C', str(VM_DIR), 'provision.sh', 'testvm.env', 's3-server.py', 's3-bootstrap.py', 'openscp-s3',
              '-C', str(client_key.parent), '%s.pub' % client_key.name],
             capture_output=True, check=True).stdout
         script = 'set -e; D=$(mktemp -d); tar -x -C "$D"; bash "$D/provision.sh" && status=0 || status=$?; rm -r "$D"; exit $status'
@@ -115,6 +115,17 @@ class TestVm:
 
     def user_home(self, user):
         return self.output('getent passwd %s' % user).split(':')[5]
+
+    def certificate_fingerprint(self, algorithm='sha256'):
+        """The fingerprint of the TLS servers' certificate, as WinSCP takes
+        it (colon-separated hexadecimal bytes)."""
+        output = self.output('openssl x509 -noout -fingerprint -%s -in /etc/openscp/tls/cert.pem' % algorithm)
+        return output.split('=', 1)[1].strip().lower()
+
+    def services_active(self, *services):
+        """Whether the systemd services of the tests are active."""
+        result = self.run('systemctl is-active %s' % ' '.join('%s.service' % s for s in services), check=False)
+        return result.returncode == 0
 
 
 def _main():
