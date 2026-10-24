@@ -18,15 +18,21 @@ set_tests_properties(integration.cli_ssh PROPERTIES
   ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
   TIMEOUT 600)
 
-# L2 against the test VM (tools/testenv/testvm.py): skipped unless
-# OPENSCP_TEST_VM is set, e.g. OPENSCP_TEST_VM=10.10.100.170 ctest --preset dev -L vm
-add_test(NAME integration.cli_vm
-  COMMAND Python3::Interpreter -m unittest -v test_cli_vm
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-set_tests_properties(integration.cli_vm PROPERTIES
-  LABELS "integration;vm"
-  ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
-  TIMEOUT 900)
+# L2 against the test VM (tools/testenv/testvm.py, tests in vmtests.py):
+# skipped unless OPENSCP_TEST_VM is set, e.g.
+# OPENSCP_TEST_VM=10.10.100.170 ctest --preset dev -L vm
+# SFTP and SCP (test_cli_vm), FTP and FTPS, WebDAV, S3
+foreach(VM_TEST cli_vm cli_vm_ftp cli_vm_webdav cli_vm_s3)
+  add_test(NAME integration.${VM_TEST}
+    COMMAND Python3::Interpreter -m unittest -v test_${VM_TEST}
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+  set_tests_properties(integration.${VM_TEST} PROPERTIES
+    LABELS "integration;vm"
+    ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+    # The VM is small, one at a time
+    RESOURCE_LOCK test_vm
+    TIMEOUT 1200)
+endforeach()
 
 if(OPENSCP_BUILD_HARNESS)
   add_test(NAME integration.wlharness

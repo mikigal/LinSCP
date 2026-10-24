@@ -219,6 +219,9 @@ allow_anon_ssl=NO
 force_local_data_ssl=NO
 force_local_logins_ssl=NO
 require_ssl_reuse=YES
+utf8_filesystem=YES
+ascii_upload_enable=YES
+ascii_download_enable=YES
 EOF
 }
 
@@ -279,6 +282,7 @@ Umask 022
 MaxInstances 30
 PassivePorts $((passive + 200)) $((passive + 299))
 AllowOverwrite on
+AllowStoreRestart on
 UseReverseDNS off
 RequireValidShell on
 PidFile /run/openscp-proftpd.pid
