@@ -336,7 +336,8 @@ GUI on top of a verified core.
 - 2026-10-24: the application layer is ported from converted copies of upstream's
   `source/windows` files (`PORTED_FILES` of `convert.py`, in `source/app` and `source/cli`),
   so upstream changes of them are merged like those of the core.
-- 2026-10-24: `bcb2clang` makes `long` 32-bit (Windows is LLP64) and field-backed property
-  reads return the field, as C++Builder does.
+- 2026-10-24: `bcb2clang` makes `long` 32-bit (Windows is LLP64), field-backed property
+  reads return the field and out-of-class member definitions in source files are not
+  `inline`, as C++Builder does.
 - 2026-10-24: the L2 tests use unittest, as the other Python tests (pytest is not installed).
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

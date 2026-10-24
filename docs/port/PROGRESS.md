@@ -5,7 +5,7 @@ Newest first. Milestones are defined in `PLAN.md`, section 7.
 ## M3 — SSH and the CLI (in progress)
 
 Done: `openscp-cli` works for SFTP and SCP, the L2 tests against the local sshd pass under
-ASan/UBSan. Remaining: the test VM provisioning script (`tools/testenv/vm/`) and the L2 tests
+ASan/UBSan and with the release build. Remaining: the test VM provisioning script (`tools/testenv/vm/`) and the L2 tests
 that need the VM (password, keyboard-interactive and password change authentication, banners,
 a real network).
 
@@ -53,6 +53,10 @@ Decisions:
 - **Field-backed property reads return a reference to the field** (`bcb2clang`): C++Builder
   reads the field itself, so `Rights.Number = ...` or `IncludeFileMask.Masks = ...` modify
   the field; with a getter returning a copy the assignments were lost.
+- **No `inline` on member definitions outside of classes in source files** (`bcb2clang`):
+  C++Builder emits them as external functions and other files call them
+  (`TTerminal::LogEvent`); Clang does not emit them with optimizations, the release build
+  did not link.
 - **Storage keys are delimited by backslashes** (`THierarchicalStorage`), not by the path
   delimiter, so the INI file has the sections of `WinSCP.ini` (`[Sessions\name]`) and
   `/rawconfig` takes the same keys as on Windows.
