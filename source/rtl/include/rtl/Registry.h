@@ -5,7 +5,7 @@
 #ifndef RtlRegistryH
 #define RtlRegistryH
 //---------------------------------------------------------------------------
-#include <rtl/Classes.h>
+#include <rtl/IniFiles.h>
 //---------------------------------------------------------------------------
 namespace System
 {

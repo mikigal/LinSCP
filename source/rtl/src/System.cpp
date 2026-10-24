@@ -257,6 +257,16 @@ UnicodeString ParamStr(int Index)
   return ((Index >= 0) && (Index < static_cast<int>(Line.Params.size()))) ? Line.Params[Index] : UnicodeString();
 }
 //---------------------------------------------------------------------------
+// Modules
+//---------------------------------------------------------------------------
+namespace
+{
+TLibModule MainModule = { nullptr, 0, 0, 0, 0, 0, 0 };
+} // namespace
+TLibModule * LibModuleList = &MainModule;
+HINSTANCE HInstance = nullptr;
+HINSTANCE MainInstance = nullptr;
+//---------------------------------------------------------------------------
 // Random numbers
 //---------------------------------------------------------------------------
 int RandSeed = 0;

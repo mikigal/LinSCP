@@ -15,6 +15,11 @@
 #include <rtl/DynamicArray.h>
 #include <rtl/VarRec.h>
 #include <rtl/DateTime.h>
+
+// C++Builder's headers make these available everywhere
+#include <algorithm>
+#include <memory>
+#include <vector>
 //---------------------------------------------------------------------------
 // Line break of TStrings::Text and friends; LF, as Delphi on POSIX
 #define sLineBreak L"\n"
@@ -50,6 +55,24 @@ struct TResStringRec
 typedef TResStringRec ResStringRec;
 typedef TResStringRec * PResStringRec;
 UnicodeString LoadResString(PResStringRec ResStringRec);
+//---------------------------------------------------------------------------
+// Modules of the process; on Linux there is only the main one
+struct TLibModule
+{
+  TLibModule * Next;
+  NativeInt Instance;
+  NativeInt CodeInstance;
+  NativeInt DataInstance;
+  NativeInt ResInstance;
+  NativeInt TypeInfo;
+  NativeInt Reserved;
+};
+typedef TLibModule * PLibModule;
+extern TLibModule * LibModuleList;
+extern HINSTANCE HInstance;
+extern HINSTANCE MainInstance;
+//---------------------------------------------------------------------------
+typedef int (*TThreadFunc)(void * Parameter);
 //---------------------------------------------------------------------------
 // Command line of the process (from /proc/self/cmdline)
 int ParamCount();

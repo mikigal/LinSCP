@@ -22,6 +22,17 @@
 // A typedef rather than a macro, so that functional casts like __int64(X) work.
 typedef long long __int64;
 //---------------------------------------------------------------------------
+namespace rtl
+{
+// Used by the accessors tools/bcb2clang generates for __property getters,
+// which may or may not be const
+template <class T>
+inline T * Mutable(const T * Object)
+{
+  return const_cast<T *>(Object);
+}
+} // namespace rtl
+//---------------------------------------------------------------------------
 namespace System
 {
 typedef int Integer;

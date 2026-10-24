@@ -51,6 +51,11 @@ int CallbackFunction(void * Data, int Value)
 {
   return *static_cast<int *>(Data) + Value;
 }
+
+// Static objects of the core are constructed after the RTL's (init_priority)
+const UnicodeString StaticInitProbe =
+  EmptyStr + FormatDateTime(L"yyyy", EncodeDate(2026, 1, 1)) + L"/" + (UnicodeString(CmdLine).IsEmpty() ? L"-" : L"/") +
+  TEncoding::UTF8->GetString(TEncoding::UTF8->GetBytes(L"x"));
 } // namespace
 //---------------------------------------------------------------------------
 TEST(Set, Operations)
@@ -303,6 +308,11 @@ TEST(Variant, Arrays)
   EXPECT_THROW(Array.GetElement(11), EVariantError);
   EXPECT_THROW(Array.PutElement(-1, 0), EVariantError);
   EXPECT_EQ(VarArrayHighBound(Array, 1), 10);
+}
+//---------------------------------------------------------------------------
+TEST(System, StaticInitialization)
+{
+  EXPECT_EQ(StaticInitProbe, L"2026//x");
 }
 //---------------------------------------------------------------------------
 TEST(System, Random)

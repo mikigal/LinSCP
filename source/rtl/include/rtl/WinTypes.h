@@ -184,6 +184,25 @@ typedef WIN32_FIND_DATAW TWin32FindData;
 typedef WIN32_FIND_DATAW * PWIN32_FIND_DATAW;
 typedef WIN32_FIND_DATAW * LPWIN32_FIND_DATAW;
 //---------------------------------------------------------------------------
+struct VS_FIXEDFILEINFO
+{
+  DWORD dwSignature;
+  DWORD dwStrucVersion;
+  DWORD dwFileVersionMS;
+  DWORD dwFileVersionLS;
+  DWORD dwProductVersionMS;
+  DWORD dwProductVersionLS;
+  DWORD dwFileFlagsMask;
+  DWORD dwFileFlags;
+  DWORD dwFileOS;
+  DWORD dwFileType;
+  DWORD dwFileSubtype;
+  DWORD dwFileDateMS;
+  DWORD dwFileDateLS;
+};
+typedef VS_FIXEDFILEINFO TVSFixedFileInfo;
+typedef VS_FIXEDFILEINFO * PVSFixedFileInfo;
+//---------------------------------------------------------------------------
 #ifndef TRUE
 #define TRUE 1
 #endif
