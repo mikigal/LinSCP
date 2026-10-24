@@ -1697,10 +1697,21 @@ void __fastcall TSecureShell::UpdatePortFwdSocket(SOCKET value, bool Enable)
   }
 }
 //---------------------------------------------------------------------------
+// OpenSCP
+static bool AnyCallback(void * /*PredicateCtx*/, toplevel_callback_fn_t /*Fn*/, void * /*CallbackCtx*/)
+{
+  return true;
+}
+//---------------------------------------------------------------------------
 void __fastcall TSecureShell::FreeBackend()
 {
   if (FBackendHandle != NULL)
   {
+    // OpenSCP: the callback that an exception interrupted (see below) is not in the queue anymore,
+    // nothing else frees it (LeakSanitizer); before running other callbacks overwrites it
+    sfree(FCallbackSet->cbcurr);
+    FCallbackSet->cbcurr = NULL;
+
     backend_free(FBackendHandle);
     FBackendHandle = NULL;
 
@@ -1710,6 +1721,13 @@ void __fastcall TSecureShell::FreeBackend()
       // This releases the callback and should be noop otherwise.
       run_toplevel_callbacks(FCallbackSet);
     }
+    // OpenSCP: after an exception interrupted a callback, other callbacks of the destroyed backend
+    // may remain, so the freed packets may still wait for ic_pktin_free (LeakSanitizer)
+    if (FCallbackSet->pktin_freeq_head != NULL)
+    {
+      pktin_free_queue_callback(FCallbackSet);
+    }
+    delete_callbacks(FCallbackSet, AnyCallback, NULL);
 
     sfree(FCallbackSet->ic_pktin_free);
     FCallbackSet->ic_pktin_free = NULL;
