@@ -8,6 +8,7 @@ on the disk directly. The binary is taken from OPENSCP_CLI.
 
 import hashlib
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -472,6 +473,117 @@ class KeepUpToDateTest(CliTestCase):
         # Ctrl+C stops watching and the script continues (with exit)
         self.assertIn('Terminated by user.', output)
         self.assertEqual(process.returncode, 0, output)
+
+
+# A cancelled host key prompt abandons the key exchange (a coroutine of PuTTY)
+# with an exception, and with it a packet (as upstream), which has no frame of
+# its own for a suppression
+ABANDONED_KEY_EXCHANGE = {'ASAN_OPTIONS': 'detect_leaks=0'}
+
+
+class InteractiveTest(CliTestCase):
+    """The console on a terminal."""
+    protocol = 'sftp'
+
+    def test_prompt(self):
+        console = self.cli.spawn_pty('/ini=nul')
+        console.expect('winscp> ')
+        console.send(self.open_command() + '\n')
+        console.expect('Session started')
+        console.expect('winscp> ')
+        console.send('cd "%s"\n' % self.remote)
+        console.expect('winscp> ')
+        console.send('pwd\n')
+        console.expect(str(self.remote))
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 0, console.text)
+
+    def test_unknown_host_key_accepted(self):
+        ini = self.work / 'openscp.ini'
+        console = self.cli.spawn_pty('/ini=%s' % ini)
+        console.expect('winscp> ')
+        console.send('open %s -privatekey="%s"\n' % (self.url(), key_file()))
+        console.expect(re.escape(host_key_fingerprint().split()[-1]))
+        # Accepts and caches the key
+        console.expect(r'\(A\)ccept, Connect \(O\)nce, Ca\(n\)cel.*: ')
+        console.send('a')
+        console.expect('Session started')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 0, console.text)
+        self.assertIn('[SshHostKeys]', ini.read_text())
+        # Known now
+        result = self.cli.commands(
+            'open %s -privatekey="%s"' % (self.url(), key_file()), 'exit', args=('/ini=%s' % ini,))
+        self.assertEqual(result.returncode, 0, result)
+
+    def test_unknown_host_key_escape(self):
+        # (With /ini=nul, the key could not be cached, so there is no prompt)
+        console = self.cli.spawn_pty('/ini=%s' % (self.work / 'openscp.ini'), env=ABANDONED_KEY_EXCHANGE)
+        console.expect('winscp> ')
+        console.send('open %s -privatekey="%s"\n' % (self.url(), key_file()))
+        console.expect(r'\(A\)ccept.*: ')
+        # Escape cancels
+        console.send('\x1b')
+        console.expect('Cancel')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 1, console.text)
+
+    def test_unknown_host_key_in_batch(self):
+        # No prompt for the commands of the command line
+        console = self.cli.spawn_pty(
+            '/ini=%s' % (self.work / 'openscp.ini'), '/command', 'open %s -privatekey="%s"' % (self.url(), key_file()),
+            env=ABANDONED_KEY_EXCHANGE)
+        # In batch mode, the prompt times out in 10 seconds (Cancel)
+        console.expect(r'Ca\(n\)cel \(10 s\)')
+        console.expect(r'Ca\(n\)cel \(8 s\)')
+        console.send('n')
+        console.expect("Host key wasn't verified")
+        # The batch is aborted
+        self.assertEqual(console.wait(), 1, console.text)
+
+    def test_passphrase_prompt(self):
+        protected = self.work / 'protected.ppk'
+        result = self.cli.run('/keygen', key_file(), '/output=%s' % protected, '/changepassphrase=secret-phrase')
+        self.assertEqual(result.returncode, 0, result)
+        console = self.cli.spawn_pty('/ini=nul')
+        console.expect('winscp> ')
+        console.send(self.open_command(privatekey=protected) + '\n')
+        console.expect('Passphrase for key')
+        console.send('secret-phrase\n')
+        console.expect('Session started')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 0, console.text)
+        # Not echoed
+        self.assertNotIn('secret-phrase', console.text)
+
+    def test_interrupt_at_prompt(self):
+        # Ends the console (as the end of the input), as winscp.com does
+        console = self.cli.spawn_pty('/ini=nul')
+        console.expect('winscp> ')
+        console.send('\x03')
+        self.assertEqual(console.wait(), 0, console.text)
+
+    def test_interrupt_transfer(self):
+        (self.remote / 'big.bin').write_bytes(os.urandom(64 * 1024 * 1024))
+        console = self.cli.spawn_pty('/ini=nul')
+        console.expect('winscp> ')
+        console.send(self.open_command() + '\n')
+        console.expect('winscp> ')
+        # Slowly, not to finish before the interrupt
+        console.send('get -speed=1024 "%s/big.bin" "%s/"\n' % (self.remote, self.local))
+        # The progress of the transfer
+        console.expect(r'big\.bin +\| +[0-9]+ KB')
+        console.send('\x03')
+        console.expect('Terminated by user')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        # Interactively, a cancelled command is not an error
+        self.assertEqual(console.wait(), 0, console.text)
+        self.assertLess((self.local / 'big.bin.filepart').stat().st_size if (self.local / 'big.bin.filepart').exists()
+                        else 0, 64 * 1024 * 1024)
 
 
 class ConfigurationTest(CliTestCase):

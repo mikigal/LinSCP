@@ -8,3 +8,8 @@ leak:ssh_remote_error
 leak:ssh_remote_eof
 leak:ssh_proto_error
 leak:ssh_sw_abort
+# The same, from the host key prompt, when it is cancelled
+leak:verify_ssh_host_key
+# The key exchange (a coroutine) abandoned by an exception from the host key
+# verification (a rejected key)
+leak:ssh2kex_coroutine
