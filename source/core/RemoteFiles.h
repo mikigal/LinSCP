@@ -258,7 +258,7 @@ public:
   Boolean __property_get_Loaded() const { return ::rtl::Mutable(this)->GetLoaded(); } __declspec(property(get = __property_get_Loaded)) Boolean Loaded;
 };
 //---------------------------------------------------------------------------
-class TRemoteDirectoryCache : private TStringList
+class TRemoteDirectoryCache : public TStringList
 {
 public:
   __fastcall TRemoteDirectoryCache();
@@ -280,7 +280,7 @@ private:
   void __fastcall DoClearFileList(UnicodeString Directory, bool SubDirs);
 };
 //---------------------------------------------------------------------------
-class TRemoteDirectoryChangesCache : private TStringList
+class TRemoteDirectoryChangesCache : public TStringList
 {
 public:
   __fastcall TRemoteDirectoryChangesCache(int MaxSize);
