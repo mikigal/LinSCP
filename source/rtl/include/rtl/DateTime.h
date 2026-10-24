@@ -71,6 +71,14 @@ public:
   bool operator <(const TDateTime & Rhs) const { return Val < Rhs.Val; }
   bool operator >=(const TDateTime & Rhs) const { return Val >= Rhs.Val; }
   bool operator <=(const TDateTime & Rhs) const { return Val <= Rhs.Val; }
+  // Comparisons with plain numbers (e.g. MaxDateTime), which would be
+  // ambiguous otherwise (TDateTime converts to double and back)
+  bool operator ==(const double Rhs) const { return Val == Rhs; }
+  bool operator !=(const double Rhs) const { return Val != Rhs; }
+  bool operator >(const double Rhs) const { return Val > Rhs; }
+  bool operator <(const double Rhs) const { return Val < Rhs; }
+  bool operator >=(const double Rhs) const { return Val >= Rhs; }
+  bool operator <=(const double Rhs) const { return Val <= Rhs; }
 
   operator UnicodeString() const;
   UnicodeString FormatString(const UnicodeString & Format) const;

@@ -199,6 +199,30 @@ TEST(TMethodPtr, MultipleInheritanceAndFunctions)
   EXPECT_EQ(Function.GetData(), &Data);
 }
 //---------------------------------------------------------------------------
+// The core stores closures as a TMethod (two pointers) and rebuilds them
+TEST(TMethodPtr, TMethodLayout)
+{
+  static_assert(sizeof(TIntEvent) == sizeof(TMethod));
+  TMultiple Object;
+  TIntEvent Event(&Object, &TMultiple::Store);
+  TMethod & Method = *reinterpret_cast<TMethod *>(&Event);
+  EXPECT_EQ(Method.Data, static_cast<void *>(&Object));
+  void * Code = Method.Code;
+  void * Data = Method.Data;
+
+  TMethod Rebuilt = { Code, Data };
+  TIntEvent Copy = *reinterpret_cast<TIntEvent *>(&Rebuilt);
+  EXPECT_TRUE(Copy == Event);
+  Copy(7);
+  EXPECT_EQ(Object.Other, 7);
+
+  // The same method of another object has the same code
+  TMultiple Other;
+  TIntEvent OtherEvent(&Other, &TMultiple::Store);
+  EXPECT_EQ(reinterpret_cast<TMethod *>(&OtherEvent)->Code, Code);
+  EXPECT_FALSE(OtherEvent == Event);
+}
+//---------------------------------------------------------------------------
 TEST(TVarRec, Types)
 {
   TDerived Object;

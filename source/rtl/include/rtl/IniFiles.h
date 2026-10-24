@@ -82,9 +82,9 @@ public:
   void SetCaseSensitive(bool Value);
   TEncoding * GetEncoding() const { return FEncoding; }
   void SetEncoding(TEncoding * Value) { FEncoding = Value; }
-  RTL_PROPERTY_GET(CaseSensitive, GetCaseSensitive) RTL_PROPERTY_PUT(CaseSensitive, SetCaseSensitive)
+  RTL_PROPERTY_GET(CaseSensitive, GetCaseSensitive) RTL_PROPERTY_PUT(CaseSensitive, SetCaseSensitive, bool)
   __declspec(property(get = __property_get_CaseSensitive, put = __property_set_CaseSensitive)) bool CaseSensitive;
-  RTL_PROPERTY_GET(Encoding, GetEncoding) RTL_PROPERTY_PUT(Encoding, SetEncoding)
+  RTL_PROPERTY_GET(Encoding, GetEncoding) RTL_PROPERTY_PUT(Encoding, SetEncoding, TEncoding *)
   __declspec(property(get = __property_get_Encoding, put = __property_set_Encoding)) TEncoding * Encoding;
 
 private:

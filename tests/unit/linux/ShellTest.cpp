@@ -129,3 +129,31 @@ TEST(ShellPathTest, LogicalOrder)
   EXPECT_LT(StrCmpLogicalW(L"x7y", L"x07z"), 0);
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+TEST_F(ShellTest, MimeTypes)
+{
+  // The database is read once per process; this test supplies its own
+  WriteText("data/mime/globs2",
+    "# comment\n50:text/plain:*.txt\n50:text/x-readme:readme*\n80:text/html:*.html\n"
+    "50:text/x-c++src:*.C:cs\n50:text/x-csrc:*.c\n");
+  TEnvironmentScope Home("XDG_DATA_HOME", (FRoot + "/none").c_str());
+  TEnvironmentScope Dirs("XDG_DATA_DIRS", (FRoot + "/data").c_str());
+  auto Mime = [](const wchar_t * Name)
+    {
+      wchar_t * Out = NULL;
+      UnicodeString Result;
+      if (FindMimeFromData(NULL, Name, NULL, 0, NULL, FMFD_URLASFILENAME, &Out, 0) == S_OK)
+      {
+        Result = Out;
+        CoTaskMemFree(Out);
+      }
+      return Result;
+    };
+  EXPECT_EQ(Mime(L"/dir/File.TXT"), L"text/plain");
+  EXPECT_EQ(Mime(L"index.html"), L"text/html");
+  // The longest pattern of the same weight
+  EXPECT_EQ(Mime(L"readme.txt"), L"text/x-readme");
+  EXPECT_EQ(Mime(L"main.C"), L"text/x-c++src");
+  EXPECT_EQ(Mime(L"main.c"), L"text/x-csrc");
+  EXPECT_EQ(Mime(L"unknown.xyz"), L"");
+}

@@ -6,6 +6,7 @@
 
 add_library(openscp_rtl STATIC
   src/Classes.cpp
+  src/Closure.cpp
   src/Contnrs.cpp
   src/Conversion.cpp
   src/DateTime.cpp

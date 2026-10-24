@@ -45,9 +45,9 @@ public:
   Exception * GetInnerException() const { return nullptr; }
   UnicodeString GetStackTrace() const { return UnicodeString(); }
 
-  RTL_PROPERTY_GET(Message, GetMessage) RTL_PROPERTY_PUT(Message, SetMessage)
+  RTL_PROPERTY_GET(Message, GetMessage) RTL_PROPERTY_PUT(Message, SetMessage, UnicodeString)
   __declspec(property(get = __property_get_Message, put = __property_set_Message)) UnicodeString Message;
-  RTL_PROPERTY_GET(HelpContext, GetHelpContext) RTL_PROPERTY_PUT(HelpContext, SetHelpContext)
+  RTL_PROPERTY_GET(HelpContext, GetHelpContext) RTL_PROPERTY_PUT(HelpContext, SetHelpContext, int)
   __declspec(property(get = __property_get_HelpContext, put = __property_set_HelpContext)) int HelpContext;
   RTL_PROPERTY_GET(BaseException, GetBaseException)
   __declspec(property(get = __property_get_BaseException)) Exception * BaseException;
@@ -126,7 +126,7 @@ public:
   using Exception::Exception;
   unsigned int GetErrorCode() const { return FErrorCode; }
   void SetErrorCode(unsigned int Value) { FErrorCode = Value; }
-  RTL_PROPERTY_GET(ErrorCode, GetErrorCode) RTL_PROPERTY_PUT(ErrorCode, SetErrorCode)
+  RTL_PROPERTY_GET(ErrorCode, GetErrorCode) RTL_PROPERTY_PUT(ErrorCode, SetErrorCode, unsigned int)
   __declspec(property(get = __property_get_ErrorCode, put = __property_set_ErrorCode)) unsigned int ErrorCode;
 
 private:
@@ -142,6 +142,9 @@ private:
 UnicodeString SysErrorMessage(unsigned int ErrorCode);
 //---------------------------------------------------------------------------
 // Format settings
+//---------------------------------------------------------------------------
+// A Windows locale identifier (LCID)
+typedef unsigned int TLocaleID;
 //---------------------------------------------------------------------------
 struct TFormatSettings
 {
@@ -268,6 +271,13 @@ UnicodeString IntToHex(long Value, int Digits);
 UnicodeString IntToHex(unsigned long Value, int Digits);
 UnicodeString IntToHex(long long Value, int Digits);
 UnicodeString IntToHex(unsigned long long Value, int Digits);
+// With the digits of the value's width (SizeOf(Value) * 2)
+inline UnicodeString IntToHex(int Value) { return IntToHex(Value, 8); }
+inline UnicodeString IntToHex(unsigned int Value) { return IntToHex(Value, 8); }
+inline UnicodeString IntToHex(long Value) { return IntToHex(Value, static_cast<int>(sizeof(long) * 2)); }
+inline UnicodeString IntToHex(unsigned long Value) { return IntToHex(Value, static_cast<int>(sizeof(long) * 2)); }
+inline UnicodeString IntToHex(long long Value) { return IntToHex(Value, 16); }
+inline UnicodeString IntToHex(unsigned long long Value) { return IntToHex(Value, 16); }
 int StrToInt(const UnicodeString S);
 int StrToIntDef(const UnicodeString S, int Default);
 bool TryStrToInt(const UnicodeString S, int & Value);

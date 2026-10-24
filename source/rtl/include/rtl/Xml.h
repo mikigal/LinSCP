@@ -130,9 +130,9 @@ public:
   __declspec(property(get = __property_get_ChildNodes)) _di_IXMLNodeList ChildNodes;
   RTL_PROPERTY_GET(DocumentElement, GetDocumentElement)
   __declspec(property(get = __property_get_DocumentElement)) _di_IXMLNode DocumentElement;
-  RTL_PROPERTY_GET(Active, GetActive) RTL_PROPERTY_PUT(Active, SetActive)
+  RTL_PROPERTY_GET(Active, GetActive) RTL_PROPERTY_PUT(Active, SetActive, bool)
   __declspec(property(get = __property_get_Active, put = __property_set_Active)) bool Active;
-  RTL_PROPERTY_GET(ParseOptions, GetParseOptions) RTL_PROPERTY_PUT(ParseOptions, SetParseOptions)
+  RTL_PROPERTY_GET(ParseOptions, GetParseOptions) RTL_PROPERTY_PUT(ParseOptions, SetParseOptions, Xmldoc::TParseOptions)
   __declspec(property(get = __property_get_ParseOptions, put = __property_set_ParseOptions)) Xmldoc::TParseOptions ParseOptions;
   RTL_PROPERTY_GET(Encoding, GetEncoding)
   __declspec(property(get = __property_get_Encoding)) System::UnicodeString Encoding;

@@ -32,9 +32,9 @@ public:
   void SetItem(int Index, TObject * AObject) { Put(Index, AObject); }
   bool GetOwnsObjects() const { return FOwnsObjects; }
   void SetOwnsObjects(bool Value) { FOwnsObjects = Value; }
-  RTL_PROPERTY_GET(Items, GetItem) RTL_PROPERTY_PUT(Items, SetItem)
+  RTL_PROPERTY_GET(Items, GetItem) RTL_PROPERTY_PUT_INDEXED(Items, SetItem, int, TObject *)
   __declspec(property(get = __property_get_Items, put = __property_set_Items)) TObject * Items[];
-  RTL_PROPERTY_GET(OwnsObjects, GetOwnsObjects) RTL_PROPERTY_PUT(OwnsObjects, SetOwnsObjects)
+  RTL_PROPERTY_GET(OwnsObjects, GetOwnsObjects) RTL_PROPERTY_PUT(OwnsObjects, SetOwnsObjects, bool)
   __declspec(property(get = __property_get_OwnsObjects, put = __property_set_OwnsObjects)) bool OwnsObjects;
   TObject * operator [](int Index) { return GetItem(Index); }
 

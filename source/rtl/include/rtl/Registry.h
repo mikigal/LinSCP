@@ -73,11 +73,11 @@ public:
   __declspec(property(get = __property_get_CurrentKey)) HKEY CurrentKey;
   RTL_PROPERTY_GET(CurrentPath, GetCurrentPath)
   __declspec(property(get = __property_get_CurrentPath)) UnicodeString CurrentPath;
-  RTL_PROPERTY_GET(RootKey, GetRootKey) RTL_PROPERTY_PUT(RootKey, SetRootKey)
+  RTL_PROPERTY_GET(RootKey, GetRootKey) RTL_PROPERTY_PUT(RootKey, SetRootKey, HKEY)
   __declspec(property(get = __property_get_RootKey, put = __property_set_RootKey)) HKEY RootKey;
-  RTL_PROPERTY_GET(Access, GetAccess) RTL_PROPERTY_PUT(Access, SetAccess)
+  RTL_PROPERTY_GET(Access, GetAccess) RTL_PROPERTY_PUT(Access, SetAccess, unsigned int)
   __declspec(property(get = __property_get_Access, put = __property_set_Access)) unsigned int Access;
-  RTL_PROPERTY_GET(LazyWrite, GetLazyWrite) RTL_PROPERTY_PUT(LazyWrite, SetLazyWrite)
+  RTL_PROPERTY_GET(LazyWrite, GetLazyWrite) RTL_PROPERTY_PUT(LazyWrite, SetLazyWrite, bool)
   __declspec(property(get = __property_get_LazyWrite, put = __property_set_LazyWrite)) bool LazyWrite;
 
 private:

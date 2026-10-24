@@ -2700,7 +2700,7 @@ TLibModule * __fastcall FindModule(void * Instance)
 
   while (CurModule)
   {
-    if (CurModule->Instance == reinterpret_cast<unsigned>(Instance))
+    if (CurModule->Instance == reinterpret_cast<NativeInt>(Instance))
     {
       break;
     }

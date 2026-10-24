@@ -43,10 +43,12 @@ inline T * Mutable(const T * Object)
   template <typename... A> \
   decltype(auto) __property_get_##Name(A &&... Args) const \
   { return ::rtl::Mutable(this)->Getter(static_cast<A &&>(Args)...); }
-#define RTL_PROPERTY_PUT(Name, Setter) \
-  template <typename... A> \
-  void __property_set_##Name(A &&... Args) \
-  { Setter(static_cast<A &&>(Args)...); }
+// Setters take the property's type (not forwarded arguments), so that the
+// value converts as in an assignment (NULL to a pointer, for instance)
+#define RTL_PROPERTY_PUT(Name, Setter, Type) \
+  void __property_set_##Name(Type Value) { Setter(Value); }
+#define RTL_PROPERTY_PUT_INDEXED(Name, Setter, IndexType, Type) \
+  void __property_set_##Name(IndexType Index, Type Value) { Setter(Index, Value); }
 //---------------------------------------------------------------------------
 namespace System
 {

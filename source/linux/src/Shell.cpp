@@ -1,6 +1,7 @@
 // Shell functions of the Windows API, see winapi/Shell.h.
 //---------------------------------------------------------------------------
 #include <winapi/Shell.h>
+#include <winapi/Com.h>
 
 #include <System.hpp>
 #include <SysUtils.hpp>
@@ -15,6 +16,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <ftw.h>
 #include <pwd.h>
 #include <sys/stat.h>
@@ -211,7 +213,104 @@ LPCWSTR SkipUnc(LPCWSTR Path)
   return Path;
 }
 //---------------------------------------------------------------------------
+struct TMimeGlob
+{
+  int Weight;
+  std::string Type;
+  std::string Pattern;
+  bool CaseSensitive;
+};
+//---------------------------------------------------------------------------
+// The globs of the shared MIME-info databases, the user's first
+std::vector<TMimeGlob> ReadMimeGlobs()
+{
+  std::vector<std::string> Directories;
+  Directories.push_back(BaseDirectory("XDG_DATA_HOME", ".local/share"));
+  const char * DataDirs = getenv("XDG_DATA_DIRS");
+  std::string Dirs = ((DataDirs != nullptr) && (*DataDirs != '\0')) ? DataDirs : "/usr/local/share:/usr/share";
+  for (size_t Start = 0; Start <= Dirs.size(); )
+  {
+    size_t End = Dirs.find(':', Start);
+    if (End == std::string::npos)
+    {
+      End = Dirs.size();
+    }
+    if (End > Start)
+    {
+      Directories.push_back(Dirs.substr(Start, End - Start));
+    }
+    Start = End + 1;
+  }
+  std::vector<TMimeGlob> Result;
+  for (const std::string & Directory : Directories)
+  {
+    std::ifstream File(Directory + "/mime/globs2");
+    std::string Line;
+    while (std::getline(File, Line))
+    {
+      // weight:type:pattern[:flags]
+      if (Line.empty() || (Line[0] == '#'))
+      {
+        continue;
+      }
+      size_t Colon1 = Line.find(':');
+      size_t Colon2 = (Colon1 != std::string::npos) ? Line.find(':', Colon1 + 1) : std::string::npos;
+      if (Colon2 == std::string::npos)
+      {
+        continue;
+      }
+      size_t Colon3 = Line.find(':', Colon2 + 1);
+      TMimeGlob Glob;
+      Glob.Weight = atoi(Line.substr(0, Colon1).c_str());
+      Glob.Type = Line.substr(Colon1 + 1, Colon2 - Colon1 - 1);
+      Glob.Pattern = Line.substr(Colon2 + 1, (Colon3 != std::string::npos) ? (Colon3 - Colon2 - 1) : std::string::npos);
+      Glob.CaseSensitive = (Colon3 != std::string::npos) && (Line.find("cs", Colon3) != std::string::npos);
+      Result.push_back(Glob);
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
 } // namespace
+//---------------------------------------------------------------------------
+HRESULT FindMimeFromData(
+  IBindCtx *, LPCWSTR Url, LPVOID, DWORD, LPCWSTR, DWORD MimeFlags, LPWSTR * MimeOut, DWORD)
+{
+  *MimeOut = nullptr;
+  if (((MimeFlags & FMFD_URLASFILENAME) == 0) || (Url == NULL))
+  {
+    return E_INVALIDARG;
+  }
+  static const std::vector<TMimeGlob> Globs = ReadMimeGlobs();
+  std::string Name = rtl::FileNameToBytes(ExtractFileName(UnicodeString(Url)));
+  std::string LowerName = Name;
+  for (char & Char : LowerName)
+  {
+    Char = static_cast<char>(tolower(static_cast<unsigned char>(Char)));
+  }
+  const TMimeGlob * Best = nullptr;
+  for (const TMimeGlob & Glob : Globs)
+  {
+    // As the specification recommends: the highest weight, then the longest pattern
+    if ((Best != nullptr) &&
+        ((Glob.Weight < Best->Weight) || ((Glob.Weight == Best->Weight) && (Glob.Pattern.size() <= Best->Pattern.size()))))
+    {
+      continue;
+    }
+    if (fnmatch(Glob.Pattern.c_str(), Glob.CaseSensitive ? Name.c_str() : LowerName.c_str(), 0) == 0)
+    {
+      Best = &Glob;
+    }
+  }
+  if (Best == nullptr)
+  {
+    return E_FAIL;
+  }
+  UnicodeString Type = Best->Type.c_str();
+  *MimeOut = static_cast<LPWSTR>(malloc((Type.Length() + 1) * sizeof(WCHAR)));
+  wmemcpy(*MimeOut, Type.c_str(), Type.Length() + 1);
+  return S_OK;
+}
 //---------------------------------------------------------------------------
 HRESULT SHGetFolderPath(HWND, int Folder, HANDLE, DWORD, LPWSTR Path)
 {

@@ -83,4 +83,15 @@ LPCWSTR PathSkipRoot(LPCWSTR Path);
 // Natural ("logical") order: case-insensitive, digit runs compare as numbers
 int StrCmpLogicalW(LPCWSTR String1, LPCWSTR String2);
 //---------------------------------------------------------------------------
+// The MIME type of a file name (urlmon.h), from the freedesktop.org shared
+// MIME-info database (globs2 in $XDG_DATA_HOME/mime and $XDG_DATA_DIRS/mime);
+// only FMFD_URLASFILENAME (no content sniffing). The type is allocated with
+// CoTaskMemAlloc.
+#define FMFD_DEFAULT 0x00000000
+#define FMFD_URLASFILENAME 0x00000001
+struct IBindCtx;
+HRESULT FindMimeFromData(
+  IBindCtx * BindContext, LPCWSTR Url, LPVOID Buffer, DWORD Size, LPCWSTR MimeProposed, DWORD MimeFlags,
+  LPWSTR * MimeOut, DWORD Reserved);
+//---------------------------------------------------------------------------
 #endif

@@ -70,7 +70,7 @@ public:
   int GetHigh() const { return GetLength() - 1; }
   int GetLow() const { return 0; }
 
-  RTL_PROPERTY_GET(Length, GetLength) RTL_PROPERTY_PUT(Length, SetLength)
+  RTL_PROPERTY_GET(Length, GetLength) RTL_PROPERTY_PUT(Length, SetLength, int)
   __declspec(property(get = __property_get_Length, put = __property_set_Length)) int Length;
   RTL_PROPERTY_GET(High, GetHigh)
   __declspec(property(get = __property_get_High)) int High;

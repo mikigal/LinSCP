@@ -3220,7 +3220,7 @@ UnicodeString TQueueFileList::GetFileName(int Index) const
 //---------------------------------------------------------------------------
 int TQueueFileList::GetState(int Index) const
 {
-  return reinterpret_cast<int>(FList->Objects[Index]);
+  return static_cast<int>(reinterpret_cast<intptr_t>(FList->Objects[Index]));
 }
 //---------------------------------------------------------------------------
 void TQueueFileList::SetState(int Index, int State)
