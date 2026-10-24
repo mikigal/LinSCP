@@ -24,6 +24,25 @@ target_link_libraries(openscp_rtl_tests PRIVATE
 gtest_discover_tests(openscp_rtl_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
+add_executable(openscp_core_tests
+  core/ResourceStringsTest.cpp
+  $<TARGET_OBJECTS:openscp_core_strings>)
+target_include_directories(openscp_core_tests PRIVATE "${PROJECT_SOURCE_DIR}/source/resource")
+target_link_libraries(openscp_core_tests PRIVATE
+  openscp::rtl
+  openscp::options
+  GTest::gtest_main)
+gtest_discover_tests(openscp_core_tests
+  PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
+
+# .rc string table generator
+add_test(NAME unit.rc2cpp
+  COMMAND Python3::Interpreter -m unittest -v test_rc2cpp
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/rc2cpp")
+set_tests_properties(unit.rc2cpp PROPERTIES
+  LABELS unit
+  ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/rc2cpp;PYTHONDONTWRITEBYTECODE=1")
+
 # bcb2clang, and the converted core headers parsing against the RTL shim
 foreach(BCB2CLANG_TEST test_bcb2clang test_convert test_core_headers)
   add_test(NAME unit.bcb2clang.${BCB2CLANG_TEST}

@@ -28,10 +28,13 @@ option(OPENSCP_SANITIZE "Build OpenSCP targets with AddressSanitizer and Undefin
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(OpenSCPOptions)
+include(OpenSCPStrings)
 
+find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 find_package(EXPAT 2.5 REQUIRED)
 
 add_subdirectory(source/rtl)
+add_subdirectory(source/libcore)
 
 if(OPENSCP_BUILD_TESTS)
   enable_testing()
