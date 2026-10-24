@@ -5,6 +5,8 @@
 //---------------------------------------------------------------------------
 #include <rtl/UnicodeString.h>
 
+#include <cstring>
+#include <new>
 #include <typeinfo>
 //---------------------------------------------------------------------------
 namespace System
@@ -45,6 +47,17 @@ class TObject
 public:
   TObject() {}
   virtual ~TObject() {}
+
+  // Delphi objects start zero-filled (TObject.InitInstance), and the core
+  // relies on it: fields that a constructor does not initialize are zero,
+  // NULL or false. Delphi-style classes are always allocated on the heap.
+  static void * operator new(std::size_t Size)
+  {
+    void * Result = ::operator new(Size);
+    std::memset(Result, 0, Size);
+    return Result;
+  }
+  static void operator delete(void * Pointer) { ::operator delete(Pointer); }
 
   UnicodeString ClassName() const;
   UnicodeString QualifiedClassName() const;

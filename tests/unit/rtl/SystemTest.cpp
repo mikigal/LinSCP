@@ -133,6 +133,39 @@ TEST(TObject, ClassNames)
   EXPECT_EQ(TObject().QualifiedClassName(), L"System.TObject");
 }
 //---------------------------------------------------------------------------
+namespace
+{
+class TUninitialized : public TObject
+{
+public:
+  TUninitialized() {}
+
+  int Number;
+  void * Pointer;
+  bool Flag;
+  char Buffer[64];
+};
+}
+//---------------------------------------------------------------------------
+TEST(TObject, ZeroFilled)
+{
+  // Make it likely that the allocation reuses dirty memory
+  for (int Index = 0; Index < 16; Index++)
+  {
+    char * Dirty = new char[sizeof(TUninitialized)];
+    memset(Dirty, 0xA5, sizeof(TUninitialized));
+    delete[] Dirty;
+  }
+  std::unique_ptr<TUninitialized> Object(new TUninitialized());
+  EXPECT_EQ(Object->Number, 0);
+  EXPECT_EQ(Object->Pointer, nullptr);
+  EXPECT_FALSE(Object->Flag);
+  for (char Char : Object->Buffer)
+  {
+    EXPECT_EQ(Char, 0);
+  }
+}
+//---------------------------------------------------------------------------
 TEST(TMethodPtr, BindAndCall)
 {
   TDerived Object;
