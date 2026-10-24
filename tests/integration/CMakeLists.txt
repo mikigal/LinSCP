@@ -9,6 +9,15 @@ set_tests_properties(integration.local_sshd PROPERTIES
   ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1"
   TIMEOUT 60)
 
+# L2: SFTP and SCP with openscp-cli against the local sshd
+add_test(NAME integration.cli_ssh
+  COMMAND Python3::Interpreter -m unittest -v test_cli_ssh
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(integration.cli_ssh PROPERTIES
+  LABELS "integration;ssh"
+  ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+  TIMEOUT 600)
+
 if(OPENSCP_BUILD_HARNESS)
   add_test(NAME integration.wlharness
     COMMAND Python3::Interpreter -m unittest -v test_wlharness

@@ -1,0 +1,10 @@
+# LeakSanitizer suppressions for runs of the applications (L2 tests).
+#
+# WinSCP's PuTTY seat throws a C++ exception from seat_connection_fatal
+# through PuTTY's C code, so the messages formatted for it are never freed
+# (as on Windows).
+leak:seat_connection_fatal
+leak:ssh_remote_error
+leak:ssh_remote_eof
+leak:ssh_proto_error
+leak:ssh_sw_abort
