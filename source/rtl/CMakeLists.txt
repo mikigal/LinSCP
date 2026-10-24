@@ -13,6 +13,7 @@ add_library(openscp_rtl STATIC
   src/DateUtils.cpp
   src/EncdDecd.cpp
   src/Encoding.cpp
+  src/ExceptionAllocation.cpp
   src/Files.cpp
   src/Format.cpp
   src/IniFiles.cpp
@@ -39,3 +40,5 @@ target_compile_options(openscp_rtl PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fdeclspec>)
 target_link_libraries(openscp_rtl
   PRIVATE openscp::options
   PUBLIC EXPAT::EXPAT)
+# Thrown objects are zero-filled, as Delphi objects (src/ExceptionAllocation.cpp)
+target_link_options(openscp_rtl INTERFACE "LINKER:--wrap=__cxa_allocate_exception")

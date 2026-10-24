@@ -27,6 +27,18 @@
 // Line break of TStrings::Text and friends; LF, as Delphi on POSIX
 #define sLineBreak L"\n"
 //---------------------------------------------------------------------------
+// On Windows, wint_t is wchar_t, so the case mapping of a character is a
+// character; the core passes it to UnicodeString functions, which would
+// format an integer as a number
+inline wchar_t towupper(wchar_t C)
+{
+  return static_cast<wchar_t>(::towupper(static_cast<wint_t>(C)));
+}
+inline wchar_t towlower(wchar_t C)
+{
+  return static_cast<wchar_t>(::towlower(static_cast<wint_t>(C)));
+}
+//---------------------------------------------------------------------------
 namespace System
 {
 //---------------------------------------------------------------------------

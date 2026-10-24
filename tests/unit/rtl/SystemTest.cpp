@@ -58,6 +58,15 @@ const UnicodeString StaticInitProbe =
   TEncoding::UTF8->GetString(TEncoding::UTF8->GetBytes(L"x"));
 } // namespace
 //---------------------------------------------------------------------------
+TEST(CaseMapping, CharacterResult)
+{
+  // As on Windows (wint_t is wchar_t): a character, not a number
+  UnicodeString Digits = L"0123456789ABCDEF";
+  EXPECT_EQ(Digits.Pos(towupper(L'c')), 13);
+  EXPECT_EQ(UnicodeString(towupper(L'd')), L"D");
+  EXPECT_EQ(UnicodeString(towlower(L'E')), L"e");
+}
+//---------------------------------------------------------------------------
 TEST(Set, Operations)
 {
   TColors Colors;
@@ -163,6 +172,44 @@ TEST(TObject, ZeroFilled)
   for (char Char : Object->Buffer)
   {
     EXPECT_EQ(Char, 0);
+  }
+}
+//---------------------------------------------------------------------------
+namespace
+{
+class EUninitialized : public Exception
+{
+public:
+  EUninitialized() : Exception(L"uninitialized") {}
+
+  int Number;
+  void * Pointer;
+};
+}
+//---------------------------------------------------------------------------
+TEST(TObject, ThrownZeroFilled)
+{
+  for (int Index = 0; Index < 16; Index++)
+  {
+    try
+    {
+      EUninitialized E;
+      E.Number = 0x5A5A;
+      E.Pointer = &E;
+      throw E;
+    }
+    catch (EUninitialized &)
+    {
+    }
+  }
+  try
+  {
+    throw EUninitialized();
+  }
+  catch (EUninitialized & E)
+  {
+    EXPECT_EQ(E.Number, 0);
+    EXPECT_EQ(E.Pointer, nullptr);
   }
 }
 //---------------------------------------------------------------------------
