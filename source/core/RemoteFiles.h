@@ -34,10 +34,10 @@ public:
 
   int __fastcall Compare(const TRemoteToken & rht) const;
 
-  UnicodeString __property_get_Name() const { return FName; } void __property_set_Name(UnicodeString Value) { FName = Value; } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
+  UnicodeString & __property_get_Name() const { return ::rtl::Mutable(this)->FName; } void __property_set_Name(UnicodeString Value) { FName = Value; } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
   bool __property_get_NameValid() const { return ::rtl::Mutable(this)->GetNameValid(); } __declspec(property(get = __property_get_NameValid)) bool NameValid;
-  unsigned int __property_get_ID() const { return FID; } void __property_set_ID(unsigned int Value) { SetID(Value); } __declspec(property(get = __property_get_ID, put = __property_set_ID)) unsigned int ID;
-  bool __property_get_IDValid() const { return FIDValid; } __declspec(property(get = __property_get_IDValid)) bool IDValid;
+  unsigned int & __property_get_ID() const { return ::rtl::Mutable(this)->FID; } void __property_set_ID(unsigned int Value) { SetID(Value); } __declspec(property(get = __property_get_ID, put = __property_set_ID)) unsigned int ID;
+  bool & __property_get_IDValid() const { return ::rtl::Mutable(this)->FIDValid; } __declspec(property(get = __property_get_IDValid)) bool IDValid;
   bool __property_get_IsSet() const { return ::rtl::Mutable(this)->GetIsSet(); } __declspec(property(get = __property_get_IsSet)) bool IsSet;
   UnicodeString __property_get_LogText() const { return ::rtl::Mutable(this)->GetLogText(); } __declspec(property(get = __property_get_LogText)) UnicodeString LogText;
   UnicodeString __property_get_DisplayText() const { return ::rtl::Mutable(this)->GetDisplayText(); } __declspec(property(get = __property_get_DisplayText)) UnicodeString DisplayText;
@@ -153,40 +153,40 @@ public:
 
   int __property_get_Attr() const { return ::rtl::Mutable(this)->GetAttr(); } __declspec(property(get = __property_get_Attr)) int Attr;
   bool __property_get_BrokenLink() const { return ::rtl::Mutable(this)->GetBrokenLink(); } __declspec(property(get = __property_get_BrokenLink)) bool BrokenLink;
-  TRemoteFileList * __property_get_Directory() const { return FDirectory; } void __property_set_Directory(TRemoteFileList * Value) { FDirectory = Value; } __declspec(property(get = __property_get_Directory, put = __property_set_Directory)) TRemoteFileList * Directory;
+  TRemoteFileList * & __property_get_Directory() const { return ::rtl::Mutable(this)->FDirectory; } void __property_set_Directory(TRemoteFileList * Value) { FDirectory = Value; } __declspec(property(get = __property_get_Directory, put = __property_set_Directory)) TRemoteFileList * Directory;
   UnicodeString __property_get_RightsStr() const { return ::rtl::Mutable(this)->GetRightsStr(); } __declspec(property(get = __property_get_RightsStr)) UnicodeString RightsStr;
   __int64 __property_get_Size() const { return ::rtl::Mutable(this)->GetSize(); } void __property_set_Size(__int64 Value) { FSize = Value; } __declspec(property(get = __property_get_Size, put = __property_set_Size)) __int64 Size;
-  __int64 __property_get_CalculatedSize() const { return FCalculatedSize; } void __property_set_CalculatedSize(__int64 Value) { FCalculatedSize = Value; } __declspec(property(get = __property_get_CalculatedSize, put = __property_set_CalculatedSize)) __int64 CalculatedSize;
-  TRemoteToken __property_get_Owner() const { return FOwner; } void __property_set_Owner(TRemoteToken Value) { FOwner = Value; } __declspec(property(get = __property_get_Owner, put = __property_set_Owner)) TRemoteToken Owner;
-  TRemoteToken __property_get_Group() const { return FGroup; } void __property_set_Group(TRemoteToken Value) { FGroup = Value; } __declspec(property(get = __property_get_Group, put = __property_set_Group)) TRemoteToken Group;
-  UnicodeString __property_get_FileName() const { return FFileName; } void __property_set_FileName(UnicodeString Value) { FFileName = Value; } __declspec(property(get = __property_get_FileName, put = __property_set_FileName)) UnicodeString FileName;
-  UnicodeString __property_get_DisplayName() const { return FDisplayName; } void __property_set_DisplayName(UnicodeString Value) { FDisplayName = Value; } __declspec(property(get = __property_get_DisplayName, put = __property_set_DisplayName)) UnicodeString DisplayName;
-  int __property_get_INodeBlocks() const { return FINodeBlocks; } __declspec(property(get = __property_get_INodeBlocks)) int INodeBlocks;
-  TDateTime __property_get_Modification() const { return FModification; } void __property_set_Modification(TDateTime Value) { SetModification(Value); } __declspec(property(get = __property_get_Modification, put = __property_set_Modification)) TDateTime Modification;
+  __int64 & __property_get_CalculatedSize() const { return ::rtl::Mutable(this)->FCalculatedSize; } void __property_set_CalculatedSize(__int64 Value) { FCalculatedSize = Value; } __declspec(property(get = __property_get_CalculatedSize, put = __property_set_CalculatedSize)) __int64 CalculatedSize;
+  TRemoteToken & __property_get_Owner() const { return ::rtl::Mutable(this)->FOwner; } void __property_set_Owner(TRemoteToken Value) { FOwner = Value; } __declspec(property(get = __property_get_Owner, put = __property_set_Owner)) TRemoteToken Owner;
+  TRemoteToken & __property_get_Group() const { return ::rtl::Mutable(this)->FGroup; } void __property_set_Group(TRemoteToken Value) { FGroup = Value; } __declspec(property(get = __property_get_Group, put = __property_set_Group)) TRemoteToken Group;
+  UnicodeString & __property_get_FileName() const { return ::rtl::Mutable(this)->FFileName; } void __property_set_FileName(UnicodeString Value) { FFileName = Value; } __declspec(property(get = __property_get_FileName, put = __property_set_FileName)) UnicodeString FileName;
+  UnicodeString & __property_get_DisplayName() const { return ::rtl::Mutable(this)->FDisplayName; } void __property_set_DisplayName(UnicodeString Value) { FDisplayName = Value; } __declspec(property(get = __property_get_DisplayName, put = __property_set_DisplayName)) UnicodeString DisplayName;
+  int & __property_get_INodeBlocks() const { return ::rtl::Mutable(this)->FINodeBlocks; } __declspec(property(get = __property_get_INodeBlocks)) int INodeBlocks;
+  TDateTime & __property_get_Modification() const { return ::rtl::Mutable(this)->FModification; } void __property_set_Modification(TDateTime Value) { SetModification(Value); } __declspec(property(get = __property_get_Modification, put = __property_set_Modification)) TDateTime Modification;
   UnicodeString __property_get_ModificationStr() const { return ::rtl::Mutable(this)->GetModificationStr(); } __declspec(property(get = __property_get_ModificationStr)) UnicodeString ModificationStr;
   UnicodeString __property_get_UserModificationStr() const { return ::rtl::Mutable(this)->GetUserModificationStr(); } __declspec(property(get = __property_get_UserModificationStr)) UnicodeString UserModificationStr;
-  TModificationFmt __property_get_ModificationFmt() const { return FModificationFmt; } void __property_set_ModificationFmt(TModificationFmt Value) { FModificationFmt = Value; } __declspec(property(get = __property_get_ModificationFmt, put = __property_set_ModificationFmt)) TModificationFmt ModificationFmt;
-  TDateTime __property_get_LastAccess() const { return FLastAccess; } void __property_set_LastAccess(TDateTime Value) { FLastAccess = Value; } __declspec(property(get = __property_get_LastAccess, put = __property_set_LastAccess)) TDateTime LastAccess;
-  bool __property_get_IsSymLink() const { return FIsSymLink; } __declspec(property(get = __property_get_IsSymLink)) bool IsSymLink;
+  TModificationFmt & __property_get_ModificationFmt() const { return ::rtl::Mutable(this)->FModificationFmt; } void __property_set_ModificationFmt(TModificationFmt Value) { FModificationFmt = Value; } __declspec(property(get = __property_get_ModificationFmt, put = __property_set_ModificationFmt)) TModificationFmt ModificationFmt;
+  TDateTime & __property_get_LastAccess() const { return ::rtl::Mutable(this)->FLastAccess; } void __property_set_LastAccess(TDateTime Value) { FLastAccess = Value; } __declspec(property(get = __property_get_LastAccess, put = __property_set_LastAccess)) TDateTime LastAccess;
+  bool & __property_get_IsSymLink() const { return ::rtl::Mutable(this)->FIsSymLink; } __declspec(property(get = __property_get_IsSymLink)) bool IsSymLink;
   bool __property_get_IsDirectory() const { return ::rtl::Mutable(this)->GetIsDirectory(); } __declspec(property(get = __property_get_IsDirectory)) bool IsDirectory;
   const TRemoteFile * __property_get_LinkedFile() const { return ::rtl::Mutable(this)->GetLinkedFile(); } __declspec(property(get = __property_get_LinkedFile)) const TRemoteFile * LinkedFile;
-  UnicodeString __property_get_LinkTo() const { return FLinkTo; } void __property_set_LinkTo(UnicodeString Value) { FLinkTo = Value; } __declspec(property(get = __property_get_LinkTo, put = __property_set_LinkTo)) UnicodeString LinkTo;
+  UnicodeString & __property_get_LinkTo() const { return ::rtl::Mutable(this)->FLinkTo; } void __property_set_LinkTo(UnicodeString Value) { FLinkTo = Value; } __declspec(property(get = __property_get_LinkTo, put = __property_set_LinkTo)) UnicodeString LinkTo;
   UnicodeString __property_get_ListingStr() const { return ::rtl::Mutable(this)->GetListingStr(); } void __property_set_ListingStr(UnicodeString Value) { SetListingStr(Value); } __declspec(property(get = __property_get_ListingStr, put = __property_set_ListingStr)) UnicodeString ListingStr;
-  TRights * __property_get_Rights() const { return FRights; } void __property_set_Rights(TRights * Value) { SetRights(Value); } __declspec(property(get = __property_get_Rights, put = __property_set_Rights)) TRights * Rights;
-  UnicodeString __property_get_HumanRights() const { return FHumanRights; } void __property_set_HumanRights(UnicodeString Value) { FHumanRights = Value; } __declspec(property(get = __property_get_HumanRights, put = __property_set_HumanRights)) UnicodeString HumanRights;
-  TTerminal * __property_get_Terminal() const { return FTerminal; } void __property_set_Terminal(TTerminal * Value) { SetTerminal(Value); } __declspec(property(get = __property_get_Terminal, put = __property_set_Terminal)) TTerminal * Terminal;
+  TRights * & __property_get_Rights() const { return ::rtl::Mutable(this)->FRights; } void __property_set_Rights(TRights * Value) { SetRights(Value); } __declspec(property(get = __property_get_Rights, put = __property_set_Rights)) TRights * Rights;
+  UnicodeString & __property_get_HumanRights() const { return ::rtl::Mutable(this)->FHumanRights; } void __property_set_HumanRights(UnicodeString Value) { FHumanRights = Value; } __declspec(property(get = __property_get_HumanRights, put = __property_set_HumanRights)) UnicodeString HumanRights;
+  TTerminal * & __property_get_Terminal() const { return ::rtl::Mutable(this)->FTerminal; } void __property_set_Terminal(TTerminal * Value) { SetTerminal(Value); } __declspec(property(get = __property_get_Terminal, put = __property_set_Terminal)) TTerminal * Terminal;
   wchar_t __property_get_Type() const { return ::rtl::Mutable(this)->GetType(); } void __property_set_Type(wchar_t Value) { SetType(Value); } __declspec(property(get = __property_get_Type, put = __property_set_Type)) wchar_t Type;
   UnicodeString __property_get_FullFileName() const { return ::rtl::Mutable(this)->GetFullFileName(); } void __property_set_FullFileName(UnicodeString Value) { FFullFileName = Value; } __declspec(property(get = __property_get_FullFileName, put = __property_set_FullFileName)) UnicodeString FullFileName;
   bool __property_get_HaveFullFileName() const { return ::rtl::Mutable(this)->GetHaveFullFileName(); } __declspec(property(get = __property_get_HaveFullFileName)) bool HaveFullFileName;
   int __property_get_IconIndex() const { return ::rtl::Mutable(this)->GetIconIndex(); } __declspec(property(get = __property_get_IconIndex)) int IconIndex;
   UnicodeString __property_get_TypeName() const { return ::rtl::Mutable(this)->GetTypeName(); } __declspec(property(get = __property_get_TypeName)) UnicodeString TypeName;
-  UnicodeString __property_get_Tags() const { return FTags; } void __property_set_Tags(UnicodeString Value) { FTags = Value; } __declspec(property(get = __property_get_Tags, put = __property_set_Tags)) UnicodeString Tags;
+  UnicodeString & __property_get_Tags() const { return ::rtl::Mutable(this)->FTags; } void __property_set_Tags(UnicodeString Value) { FTags = Value; } __declspec(property(get = __property_get_Tags, put = __property_set_Tags)) UnicodeString Tags;
   bool __property_get_IsHidden() const { return ::rtl::Mutable(this)->GetIsHidden(); } void __property_set_IsHidden(bool Value) { SetIsHidden(Value); } __declspec(property(get = __property_get_IsHidden, put = __property_set_IsHidden)) bool IsHidden;
   bool __property_get_IsParentDirectory() const { return ::rtl::Mutable(this)->GetIsParentDirectory(); } __declspec(property(get = __property_get_IsParentDirectory)) bool IsParentDirectory;
   bool __property_get_IsThisDirectory() const { return ::rtl::Mutable(this)->GetIsThisDirectory(); } __declspec(property(get = __property_get_IsThisDirectory)) bool IsThisDirectory;
   bool __property_get_IsInaccesibleDirectory() const { return ::rtl::Mutable(this)->GetIsInaccessibleDirectory(); } __declspec(property(get = __property_get_IsInaccesibleDirectory)) bool IsInaccesibleDirectory;
   UnicodeString __property_get_Extension() const { return ::rtl::Mutable(this)->GetExtension(); } __declspec(property(get = __property_get_Extension)) UnicodeString Extension;
-  bool __property_get_IsEncrypted() const { return FIsEncrypted; } __declspec(property(get = __property_get_IsEncrypted)) bool IsEncrypted;
+  bool & __property_get_IsEncrypted() const { return ::rtl::Mutable(this)->FIsEncrypted; } __declspec(property(get = __property_get_IsEncrypted)) bool IsEncrypted;
 };
 //---------------------------------------------------------------------------
 class TRemoteDirectoryFile : public TRemoteFile
@@ -229,13 +229,13 @@ public:
   static TStrings * __fastcall CloneStrings(TStrings * List);
   static bool AnyDirectory(TStrings * List);
 
-  UnicodeString __property_get_Directory() const { return FDirectory; } void __property_set_Directory(UnicodeString Value) { SetDirectory(Value); } __declspec(property(get = __property_get_Directory, put = __property_set_Directory)) UnicodeString Directory;
+  UnicodeString & __property_get_Directory() const { return ::rtl::Mutable(this)->FDirectory; } void __property_set_Directory(UnicodeString Value) { SetDirectory(Value); } __declspec(property(get = __property_get_Directory, put = __property_set_Directory)) UnicodeString Directory;
   TRemoteFile * __property_get_Files(Integer Index) const { return ::rtl::Mutable(this)->GetFiles(Index); } __declspec(property(get = __property_get_Files)) TRemoteFile * Files[];
   UnicodeString __property_get_FullDirectory() const { return ::rtl::Mutable(this)->GetFullDirectory(); } __declspec(property(get = __property_get_FullDirectory)) UnicodeString FullDirectory;
   Boolean __property_get_IsRoot() const { return ::rtl::Mutable(this)->GetIsRoot(); } __declspec(property(get = __property_get_IsRoot)) Boolean IsRoot;
   UnicodeString __property_get_ParentPath() const { return ::rtl::Mutable(this)->GetParentPath(); } __declspec(property(get = __property_get_ParentPath)) UnicodeString ParentPath;
   __int64 __property_get_TotalSize() const { return ::rtl::Mutable(this)->GetTotalSize(); } __declspec(property(get = __property_get_TotalSize)) __int64 TotalSize;
-  TDateTime __property_get_Timestamp() const { return FTimestamp; } __declspec(property(get = __property_get_Timestamp)) TDateTime Timestamp;
+  TDateTime & __property_get_Timestamp() const { return ::rtl::Mutable(this)->FTimestamp; } __declspec(property(get = __property_get_Timestamp)) TDateTime Timestamp;
 };
 //---------------------------------------------------------------------------
 class TRemoteDirectory : public TRemoteFileList
@@ -253,8 +253,8 @@ public:
   virtual bool AddFile(TRemoteFile * File);
   virtual void __fastcall DuplicateTo(TRemoteFileList * Copy);
   virtual void __fastcall Reset();
-  TTerminal * __property_get_Terminal() const { return FTerminal; } __declspec(property(get = __property_get_Terminal)) TTerminal * Terminal;
-  Boolean __property_get_IncludeParentDirectory() const { return FIncludeParentDirectory; } void __property_set_IncludeParentDirectory(Boolean Value) { SetIncludeParentDirectory(Value); } __declspec(property(get = __property_get_IncludeParentDirectory, put = __property_set_IncludeParentDirectory)) Boolean IncludeParentDirectory;
+  TTerminal * & __property_get_Terminal() const { return ::rtl::Mutable(this)->FTerminal; } __declspec(property(get = __property_get_Terminal)) TTerminal * Terminal;
+  Boolean & __property_get_IncludeParentDirectory() const { return ::rtl::Mutable(this)->FIncludeParentDirectory; } void __property_set_IncludeParentDirectory(Boolean Value) { SetIncludeParentDirectory(Value); } __declspec(property(get = __property_get_IncludeParentDirectory, put = __property_set_IncludeParentDirectory)) Boolean IncludeParentDirectory;
   Boolean __property_get_Loaded() const { return ::rtl::Mutable(this)->GetLoaded(); } __declspec(property(get = __property_get_Loaded)) Boolean Loaded;
 };
 //---------------------------------------------------------------------------
@@ -386,19 +386,19 @@ public:
 
   UnicodeString __fastcall GetChmodStr(int Directory) const;
 
-  bool __property_get_AllowUndef() const { return FAllowUndef; } void __property_set_AllowUndef(bool Value) { SetAllowUndef(Value); } __declspec(property(get = __property_get_AllowUndef, put = __property_set_AllowUndef)) bool AllowUndef;
+  bool & __property_get_AllowUndef() const { return ::rtl::Mutable(this)->FAllowUndef; } void __property_set_AllowUndef(bool Value) { SetAllowUndef(Value); } __declspec(property(get = __property_get_AllowUndef, put = __property_set_AllowUndef)) bool AllowUndef;
   bool __property_get_IsUndef() const { return ::rtl::Mutable(this)->GetIsUndef(); } __declspec(property(get = __property_get_IsUndef)) bool IsUndef;
   UnicodeString __property_get_ModeStr() const { return ::rtl::Mutable(this)->GetModeStr(); } __declspec(property(get = __property_get_ModeStr)) UnicodeString ModeStr;
   UnicodeString __property_get_Octal() const { return ::rtl::Mutable(this)->GetOctal(); } void __property_set_Octal(UnicodeString Value) { SetOctal(Value); } __declspec(property(get = __property_get_Octal, put = __property_set_Octal)) UnicodeString Octal;
   unsigned short __property_get_Number() const { return ::rtl::Mutable(this)->GetNumber(); } void __property_set_Number(unsigned short Value) { SetNumber(Value); } __declspec(property(get = __property_get_Number, put = __property_set_Number)) unsigned short Number;
-  unsigned short __property_get_NumberSet() const { return FSet; } __declspec(property(get = __property_get_NumberSet)) unsigned short NumberSet;
-  unsigned short __property_get_NumberUnset() const { return FUnset; } __declspec(property(get = __property_get_NumberUnset)) unsigned short NumberUnset;
+  unsigned short & __property_get_NumberSet() const { return ::rtl::Mutable(this)->FSet; } __declspec(property(get = __property_get_NumberSet)) unsigned short NumberSet;
+  unsigned short & __property_get_NumberUnset() const { return ::rtl::Mutable(this)->FUnset; } __declspec(property(get = __property_get_NumberUnset)) unsigned short NumberUnset;
   unsigned int __property_get_NumberDecadic() const { return ::rtl::Mutable(this)->GetNumberDecadic(); } __declspec(property(get = __property_get_NumberDecadic)) unsigned int NumberDecadic;
   bool __property_get_ReadOnly() const { return ::rtl::Mutable(this)->GetReadOnly(); } void __property_set_ReadOnly(bool Value) { SetReadOnly(Value); } __declspec(property(get = __property_get_ReadOnly, put = __property_set_ReadOnly)) bool ReadOnly;
   bool __property_get_Right(TRight Right) const { return ::rtl::Mutable(this)->GetRight(Right); } void __property_set_Right(TRight Right, bool Value) { SetRight(Right, Value); } __declspec(property(get = __property_get_Right, put = __property_set_Right)) bool Right[];
   TState __property_get_RightUndef(TRight Right) const { return ::rtl::Mutable(this)->GetRightUndef(Right); } void __property_set_RightUndef(TRight Right, TState Value) { SetRightUndef(Right, Value); } __declspec(property(get = __property_get_RightUndef, put = __property_set_RightUndef)) TState RightUndef[];
   UnicodeString __property_get_Text() const { return ::rtl::Mutable(this)->GetText(); } void __property_set_Text(UnicodeString Value) { SetText(Value); } __declspec(property(get = __property_get_Text, put = __property_set_Text)) UnicodeString Text;
-  bool __property_get_Unknown() const { return FUnknown; } __declspec(property(get = __property_get_Unknown)) bool Unknown;
+  bool & __property_get_Unknown() const { return ::rtl::Mutable(this)->FUnknown; } __declspec(property(get = __property_get_Unknown)) bool Unknown;
 
 private:
   bool FAllowUndef;
@@ -568,7 +568,7 @@ public:
   ~TSynchronizeChecklistFileOperation();
 
   IFileOperation * __property_get_FileOperation() const { return ::rtl::Mutable(this)->GetFileOperation(); } __declspec(property(get = __property_get_FileOperation)) IFileOperation * FileOperation;
-  bool __property_get_Any() const { return FAny; } __declspec(property(get = __property_get_Any)) bool Any;
+  bool & __property_get_Any() const { return ::rtl::Mutable(this)->FAny; } __declspec(property(get = __property_get_Any)) bool Any;
 
 protected:
   void ProcessedItem(IShellItem * ShellItem);

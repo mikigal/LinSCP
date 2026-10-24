@@ -273,8 +273,8 @@ public:
 
   void __fastcall ReflectSettings();
 
-  bool __property_get_Logging() const { return FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
-  UnicodeString __property_get_Name() const { return FName; } __declspec(property(get = __property_get_Name)) UnicodeString Name;
+  bool & __property_get_Logging() const { return ::rtl::Mutable(this)->FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
+  UnicodeString & __property_get_Name() const { return ::rtl::Mutable(this)->FName; } __declspec(property(get = __property_get_Name)) UnicodeString Name;
 
 protected:
   void __fastcall CloseLogFile();
@@ -328,8 +328,8 @@ public:
   void __fastcall BeginGroup(UnicodeString Name);
   void __fastcall EndGroup();
 
-  UnicodeString __property_get_CurrentFileName() const { return FCurrentFileName; } __declspec(property(get = __property_get_CurrentFileName)) UnicodeString CurrentFileName;
-  bool __property_get_Enabled() const { return FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
+  UnicodeString & __property_get_CurrentFileName() const { return ::rtl::Mutable(this)->FCurrentFileName; } __declspec(property(get = __property_get_CurrentFileName)) UnicodeString CurrentFileName;
+  bool & __property_get_Enabled() const { return ::rtl::Mutable(this)->FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
 
 protected:
   void __fastcall CloseLogFile();
@@ -371,8 +371,8 @@ public:
   void Enable(const UnicodeString & Path);
   void AddStartupInfo();
   void __fastcall Log(const UnicodeString & S);
-  bool __property_get_Logging() const { return FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
-  UnicodeString __property_get_Path() const { return FPath; } __declspec(property(get = __property_get_Path)) UnicodeString Path;
+  bool & __property_get_Logging() const { return ::rtl::Mutable(this)->FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
+  UnicodeString & __property_get_Path() const { return ::rtl::Mutable(this)->FPath; } __declspec(property(get = __property_get_Path)) UnicodeString Path;
 
 private:
   UnicodeString FPath;

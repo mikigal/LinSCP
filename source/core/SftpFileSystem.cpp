@@ -916,16 +916,16 @@ public:
     return *this;
   }
 
-  unsigned int __property_get_Length() const { return FLength; } __declspec(property(get = __property_get_Length)) unsigned int Length;
+  unsigned int & __property_get_Length() const { return ::rtl::Mutable(this)->FLength; } __declspec(property(get = __property_get_Length)) unsigned int Length;
   unsigned int __property_get_RemainingLength() const { return ::rtl::Mutable(this)->GetRemainingLength(); } __declspec(property(get = __property_get_RemainingLength)) unsigned int RemainingLength;
-  unsigned char * __property_get_Data() const { return FData; } __declspec(property(get = __property_get_Data)) unsigned char * Data;
+  unsigned char * & __property_get_Data() const { return ::rtl::Mutable(this)->FData; } __declspec(property(get = __property_get_Data)) unsigned char * Data;
   unsigned char * __property_get_SendData() const { return ::rtl::Mutable(this)->GetSendData(); } __declspec(property(get = __property_get_SendData)) unsigned char * SendData;
   unsigned int __property_get_SendLength() const { return ::rtl::Mutable(this)->GetSendLength(); } __declspec(property(get = __property_get_SendLength)) unsigned int SendLength;
-  unsigned int __property_get_Capacity() const { return FCapacity; } void __property_set_Capacity(unsigned int Value) { SetCapacity(Value); } __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) unsigned int Capacity;
-  unsigned char __property_get_Type() const { return FType; } __declspec(property(get = __property_get_Type)) unsigned char Type;
+  unsigned int & __property_get_Capacity() const { return ::rtl::Mutable(this)->FCapacity; } void __property_set_Capacity(unsigned int Value) { SetCapacity(Value); } __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) unsigned int Capacity;
+  unsigned char & __property_get_Type() const { return ::rtl::Mutable(this)->FType; } __declspec(property(get = __property_get_Type)) unsigned char Type;
   unsigned char __property_get_RequestType() const { return ::rtl::Mutable(this)->GetRequestType(); } __declspec(property(get = __property_get_RequestType)) unsigned char RequestType;
-  unsigned int __property_get_MessageNumber() const { return FMessageNumber; } void __property_set_MessageNumber(unsigned int Value) { FMessageNumber = Value; } __declspec(property(get = __property_get_MessageNumber, put = __property_set_MessageNumber)) unsigned int MessageNumber;
-  TSFTPFileSystem * __property_get_ReservedBy() const { return FReservedBy; } void __property_set_ReservedBy(TSFTPFileSystem * Value) { FReservedBy = Value; } __declspec(property(get = __property_get_ReservedBy, put = __property_set_ReservedBy)) TSFTPFileSystem * ReservedBy;
+  unsigned int & __property_get_MessageNumber() const { return ::rtl::Mutable(this)->FMessageNumber; } void __property_set_MessageNumber(unsigned int Value) { FMessageNumber = Value; } __declspec(property(get = __property_get_MessageNumber, put = __property_set_MessageNumber)) unsigned int MessageNumber;
+  TSFTPFileSystem * & __property_get_ReservedBy() const { return ::rtl::Mutable(this)->FReservedBy; } void __property_set_ReservedBy(TSFTPFileSystem * Value) { FReservedBy = Value; } __declspec(property(get = __property_get_ReservedBy, put = __property_set_ReservedBy)) TSFTPFileSystem * ReservedBy;
   UnicodeString __property_get_TypeName() const { return ::rtl::Mutable(this)->GetTypeName(); } __declspec(property(get = __property_get_TypeName)) UnicodeString TypeName;
 
 private:

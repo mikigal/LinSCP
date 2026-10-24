@@ -182,15 +182,15 @@ public:
   UnicodeString ConvertFromPutty(const char * Str, size_t Length);
   struct callback_set * GetCallbackSet();
 
-  bool __property_get_Active() const { return FActive; } __declspec(property(get = __property_get_Active)) bool Active;
+  bool & __property_get_Active() const { return ::rtl::Mutable(this)->FActive; } __declspec(property(get = __property_get_Active)) bool Active;
   bool __property_get_Ready() const { return ::rtl::Mutable(this)->GetReady(); } __declspec(property(get = __property_get_Ready)) bool Ready;
-  TCaptureOutputEvent __property_get_OnCaptureOutput() const { return FOnCaptureOutput; } void __property_set_OnCaptureOutput(TCaptureOutputEvent Value) { FOnCaptureOutput = Value; } __declspec(property(get = __property_get_OnCaptureOutput, put = __property_set_OnCaptureOutput)) TCaptureOutputEvent OnCaptureOutput;
-  TDateTime __property_get_LastDataSent() const { return FLastDataSent; } __declspec(property(get = __property_get_LastDataSent)) TDateTime LastDataSent;
-  UnicodeString __property_get_LastTunnelError() const { return FLastTunnelError; } __declspec(property(get = __property_get_LastTunnelError)) UnicodeString LastTunnelError;
-  UnicodeString __property_get_UserName() const { return FUserName; } __declspec(property(get = __property_get_UserName)) UnicodeString UserName;
-  bool __property_get_Simple() const { return FSimple; } void __property_set_Simple(bool Value) { FSimple = Value; } __declspec(property(get = __property_get_Simple, put = __property_set_Simple)) bool Simple;
-  TSshImplementation __property_get_SshImplementation() const { return FSshImplementation; } __declspec(property(get = __property_get_SshImplementation)) TSshImplementation SshImplementation;
-  bool __property_get_UtfStrings() const { return FUtfStrings; } void __property_set_UtfStrings(bool Value) { FUtfStrings = Value; } __declspec(property(get = __property_get_UtfStrings, put = __property_set_UtfStrings)) bool UtfStrings;
+  TCaptureOutputEvent & __property_get_OnCaptureOutput() const { return ::rtl::Mutable(this)->FOnCaptureOutput; } void __property_set_OnCaptureOutput(TCaptureOutputEvent Value) { FOnCaptureOutput = Value; } __declspec(property(get = __property_get_OnCaptureOutput, put = __property_set_OnCaptureOutput)) TCaptureOutputEvent OnCaptureOutput;
+  TDateTime & __property_get_LastDataSent() const { return ::rtl::Mutable(this)->FLastDataSent; } __declspec(property(get = __property_get_LastDataSent)) TDateTime LastDataSent;
+  UnicodeString & __property_get_LastTunnelError() const { return ::rtl::Mutable(this)->FLastTunnelError; } __declspec(property(get = __property_get_LastTunnelError)) UnicodeString LastTunnelError;
+  UnicodeString & __property_get_UserName() const { return ::rtl::Mutable(this)->FUserName; } __declspec(property(get = __property_get_UserName)) UnicodeString UserName;
+  bool & __property_get_Simple() const { return ::rtl::Mutable(this)->FSimple; } void __property_set_Simple(bool Value) { FSimple = Value; } __declspec(property(get = __property_get_Simple, put = __property_set_Simple)) bool Simple;
+  TSshImplementation & __property_get_SshImplementation() const { return ::rtl::Mutable(this)->FSshImplementation; } __declspec(property(get = __property_get_SshImplementation)) TSshImplementation SshImplementation;
+  bool & __property_get_UtfStrings() const { return ::rtl::Mutable(this)->FUtfStrings; } void __property_set_UtfStrings(bool Value) { FUtfStrings = Value; } __declspec(property(get = __property_get_UtfStrings, put = __property_set_UtfStrings)) bool UtfStrings;
   TSecureShellMode Mode;
 };
 //---------------------------------------------------------------------------

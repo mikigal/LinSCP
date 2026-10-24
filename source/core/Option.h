@@ -34,7 +34,7 @@ public:
 
   void __fastcall LogOptions(TLogOptionEvent OnEnumOption);
 
-  int __property_get_ParamCount() const { return FParamCount; } __declspec(property(get = __property_get_ParamCount)) int ParamCount;
+  int & __property_get_ParamCount() const { return ::rtl::Mutable(this)->FParamCount; } __declspec(property(get = __property_get_ParamCount)) int ParamCount;
   UnicodeString __property_get_Param(int Index) const { return ::rtl::Mutable(this)->GetParam(Index); } __declspec(property(get = __property_get_Param)) UnicodeString Param[];
   bool __property_get_Empty() const { return ::rtl::Mutable(this)->GetEmpty(); } __declspec(property(get = __property_get_Empty)) bool Empty;
 

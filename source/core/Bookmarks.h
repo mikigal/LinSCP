@@ -66,7 +66,7 @@ protected:
   int __fastcall IndexOf(TBookmark * Bookmark);
   void __fastcall KeyChanged(int Index);
 
-  bool __property_get_Modified() const { return FModified; } void __property_set_Modified(bool Value) { FModified = Value; } __declspec(property(get = __property_get_Modified, put = __property_set_Modified)) bool Modified;
+  bool & __property_get_Modified() const { return ::rtl::Mutable(this)->FModified; } void __property_set_Modified(bool Value) { FModified = Value; } __declspec(property(get = __property_get_Modified, put = __property_set_Modified)) bool Modified;
 
 private:
   TStringList * FBookmarks;
@@ -89,11 +89,11 @@ public:
 
   UnicodeString __fastcall GetSideDirectory(TOperationSide Side);
 
-  UnicodeString __property_get_Name() const { return FName; } void __property_set_Name(UnicodeString Value) { SetName(Value); } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
-  UnicodeString __property_get_Local() const { return FLocal; } void __property_set_Local(UnicodeString Value) { SetLocal(Value); } __declspec(property(get = __property_get_Local, put = __property_set_Local)) UnicodeString Local;
-  UnicodeString __property_get_Remote() const { return FRemote; } void __property_set_Remote(UnicodeString Value) { SetRemote(Value); } __declspec(property(get = __property_get_Remote, put = __property_set_Remote)) UnicodeString Remote;
-  UnicodeString __property_get_Node() const { return FNode; } void __property_set_Node(UnicodeString Value) { SetNode(Value); } __declspec(property(get = __property_get_Node, put = __property_set_Node)) UnicodeString Node;
-  TShortCut __property_get_ShortCut() const { return FShortCut; } void __property_set_ShortCut(TShortCut Value) { SetShortCut(Value); } __declspec(property(get = __property_get_ShortCut, put = __property_set_ShortCut)) TShortCut ShortCut;
+  UnicodeString & __property_get_Name() const { return ::rtl::Mutable(this)->FName; } void __property_set_Name(UnicodeString Value) { SetName(Value); } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
+  UnicodeString & __property_get_Local() const { return ::rtl::Mutable(this)->FLocal; } void __property_set_Local(UnicodeString Value) { SetLocal(Value); } __declspec(property(get = __property_get_Local, put = __property_set_Local)) UnicodeString Local;
+  UnicodeString & __property_get_Remote() const { return ::rtl::Mutable(this)->FRemote; } void __property_set_Remote(UnicodeString Value) { SetRemote(Value); } __declspec(property(get = __property_get_Remote, put = __property_set_Remote)) UnicodeString Remote;
+  UnicodeString & __property_get_Node() const { return ::rtl::Mutable(this)->FNode; } void __property_set_Node(UnicodeString Value) { SetNode(Value); } __declspec(property(get = __property_get_Node, put = __property_set_Node)) UnicodeString Node;
+  TShortCut & __property_get_ShortCut() const { return ::rtl::Mutable(this)->FShortCut; } void __property_set_ShortCut(TShortCut Value) { SetShortCut(Value); } __declspec(property(get = __property_get_ShortCut, put = __property_set_ShortCut)) TShortCut ShortCut;
 
 protected:
   TBookmarkList * FOwner;

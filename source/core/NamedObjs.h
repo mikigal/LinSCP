@@ -9,8 +9,8 @@ class TNamedObjectList;
 class TNamedObject : public TPersistent
 {
 public:
-  UnicodeString __property_get_Name() const { return FName; } void __property_set_Name(UnicodeString Value) { SetName(Value); } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
-  bool __property_get_Hidden() const { return FHidden; } __declspec(property(get = __property_get_Hidden)) bool Hidden;
+  UnicodeString & __property_get_Name() const { return ::rtl::Mutable(this)->FName; } void __property_set_Name(UnicodeString Value) { SetName(Value); } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
+  bool & __property_get_Hidden() const { return ::rtl::Mutable(this)->FHidden; } __declspec(property(get = __property_get_Hidden)) bool Hidden;
   __fastcall TNamedObject() {}
   bool __fastcall IsSameName(const UnicodeString & Name);
   virtual int __fastcall Compare(TNamedObject * Other);

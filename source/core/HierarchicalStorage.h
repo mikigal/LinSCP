@@ -66,15 +66,15 @@ public:
 
   virtual void __fastcall Flush();
 
-  UnicodeString __property_get_Storage() const { return FStorage; } __declspec(property(get = __property_get_Storage)) UnicodeString Storage;
+  UnicodeString & __property_get_Storage() const { return ::rtl::Mutable(this)->FStorage; } __declspec(property(get = __property_get_Storage)) UnicodeString Storage;
   UnicodeString __property_get_CurrentSubKey() const { return ::rtl::Mutable(this)->GetCurrentSubKey(); } __declspec(property(get = __property_get_CurrentSubKey)) UnicodeString CurrentSubKey;
-  TStorageAccessMode __property_get_AccessMode() const { return FAccessMode; } void __property_set_AccessMode(TStorageAccessMode Value) { SetAccessMode(Value); } __declspec(property(get = __property_get_AccessMode, put = __property_set_AccessMode)) TStorageAccessMode AccessMode;
-  bool __property_get_Explicit() const { return FExplicit; } void __property_set_Explicit(bool Value) { FExplicit = Value; } __declspec(property(get = __property_get_Explicit, put = __property_set_Explicit)) bool Explicit;
-  bool __property_get_ForceSave() const { return FForceSave; } void __property_set_ForceSave(bool Value) { FForceSave = Value; } __declspec(property(get = __property_get_ForceSave, put = __property_set_ForceSave)) bool ForceSave;
-  bool __property_get_MungeStringValues() const { return FMungeStringValues; } void __property_set_MungeStringValues(bool Value) { FMungeStringValues = Value; } __declspec(property(get = __property_get_MungeStringValues, put = __property_set_MungeStringValues)) bool MungeStringValues;
+  TStorageAccessMode & __property_get_AccessMode() const { return ::rtl::Mutable(this)->FAccessMode; } void __property_set_AccessMode(TStorageAccessMode Value) { SetAccessMode(Value); } __declspec(property(get = __property_get_AccessMode, put = __property_set_AccessMode)) TStorageAccessMode AccessMode;
+  bool & __property_get_Explicit() const { return ::rtl::Mutable(this)->FExplicit; } void __property_set_Explicit(bool Value) { FExplicit = Value; } __declspec(property(get = __property_get_Explicit, put = __property_set_Explicit)) bool Explicit;
+  bool & __property_get_ForceSave() const { return ::rtl::Mutable(this)->FForceSave; } void __property_set_ForceSave(bool Value) { FForceSave = Value; } __declspec(property(get = __property_get_ForceSave, put = __property_set_ForceSave)) bool ForceSave;
+  bool & __property_get_MungeStringValues() const { return ::rtl::Mutable(this)->FMungeStringValues; } void __property_set_MungeStringValues(bool Value) { FMungeStringValues = Value; } __declspec(property(get = __property_get_MungeStringValues, put = __property_set_MungeStringValues)) bool MungeStringValues;
   UnicodeString __property_get_Source() const { return ::rtl::Mutable(this)->GetSource(); } __declspec(property(get = __property_get_Source)) UnicodeString Source;
   bool __property_get_Temporary() const { return ::rtl::Mutable(this)->GetTemporary(); } __declspec(property(get = __property_get_Temporary)) bool Temporary;
-  UnicodeString __property_get_UnmungedRoot() const { return FUnmungedRoot; } void __property_set_UnmungedRoot(UnicodeString Value) { FUnmungedRoot = Value; } __declspec(property(get = __property_get_UnmungedRoot, put = __property_set_UnmungedRoot)) UnicodeString UnmungedRoot;
+  UnicodeString & __property_get_UnmungedRoot() const { return ::rtl::Mutable(this)->FUnmungedRoot; } void __property_set_UnmungedRoot(UnicodeString Value) { FUnmungedRoot = Value; } __declspec(property(get = __property_get_UnmungedRoot, put = __property_set_UnmungedRoot)) UnicodeString UnmungedRoot;
 
 protected:
   enum THierarchicalStorageAccess : int { hsaRead = 0x01, hsaWrite = 0x02 };
@@ -96,7 +96,7 @@ protected:
   int FRootAccess;
   UnicodeString FUnmungedRoot;
 
-  bool __property_get_ForceAnsi() const { return FForceAnsi; } void __property_set_ForceAnsi(bool Value) { FForceAnsi = Value; } __declspec(property(get = __property_get_ForceAnsi, put = __property_set_ForceAnsi)) bool ForceAnsi;
+  bool & __property_get_ForceAnsi() const { return ::rtl::Mutable(this)->FForceAnsi; } void __property_set_ForceAnsi(bool Value) { FForceAnsi = Value; } __declspec(property(get = __property_get_ForceAnsi, put = __property_set_ForceAnsi)) bool ForceAnsi;
 
   UnicodeString __fastcall GetCurrentSubKey();
   UnicodeString __fastcall GetCurrentSubKeyMunged();

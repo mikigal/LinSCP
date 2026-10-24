@@ -41,7 +41,7 @@ public:
   friend class TFileOperationProgressType;
   public:
     TPersistence();
-    TFileOperationStatistics * __property_get_Statistics() const { return FStatistics; } void __property_set_Statistics(TFileOperationStatistics * Value) { FStatistics = Value; } __declspec(property(get = __property_get_Statistics, put = __property_set_Statistics)) TFileOperationStatistics * Statistics;
+    TFileOperationStatistics * & __property_get_Statistics() const { return ::rtl::Mutable(this)->FStatistics; } void __property_set_Statistics(TFileOperationStatistics * Value) { FStatistics = Value; } __declspec(property(get = __property_get_Statistics, put = __property_set_Statistics)) TFileOperationStatistics * Statistics;
 
   private:
     void Clear(bool Batch, bool Speed);
@@ -124,27 +124,27 @@ protected:
 
 public:
   // common data
-  TFileOperation __property_get_Operation() const { return FOperation; } __declspec(property(get = __property_get_Operation)) TFileOperation Operation;
+  TFileOperation & __property_get_Operation() const { return ::rtl::Mutable(this)->FOperation; } __declspec(property(get = __property_get_Operation)) TFileOperation Operation;
   // on what side if operation being processed (local/remote), source of copy
   TOperationSide __property_get_Side() const { return ::rtl::Mutable(this)->GetSide(); } __declspec(property(get = __property_get_Side)) TOperationSide Side;
-  int __property_get_Count() const { return FCount; } __declspec(property(get = __property_get_Count)) int Count;
-  UnicodeString __property_get_FileName() const { return FFileName; } __declspec(property(get = __property_get_FileName)) UnicodeString FileName;
-  UnicodeString __property_get_FullFileName() const { return FFullFileName; } __declspec(property(get = __property_get_FullFileName)) UnicodeString FullFileName;
-  UnicodeString __property_get_Directory() const { return FDirectory; } __declspec(property(get = __property_get_Directory)) UnicodeString Directory;
-  bool __property_get_AsciiTransfer() const { return FAsciiTransfer; } __declspec(property(get = __property_get_AsciiTransfer)) bool AsciiTransfer;
+  int & __property_get_Count() const { return ::rtl::Mutable(this)->FCount; } __declspec(property(get = __property_get_Count)) int Count;
+  UnicodeString & __property_get_FileName() const { return ::rtl::Mutable(this)->FFileName; } __declspec(property(get = __property_get_FileName)) UnicodeString FileName;
+  UnicodeString & __property_get_FullFileName() const { return ::rtl::Mutable(this)->FFullFileName; } __declspec(property(get = __property_get_FullFileName)) UnicodeString FullFileName;
+  UnicodeString & __property_get_Directory() const { return ::rtl::Mutable(this)->FDirectory; } __declspec(property(get = __property_get_Directory)) UnicodeString Directory;
+  bool & __property_get_AsciiTransfer() const { return ::rtl::Mutable(this)->FAsciiTransfer; } __declspec(property(get = __property_get_AsciiTransfer)) bool AsciiTransfer;
   // Can be true with SCP protocol only
-  bool __property_get_TransferringFile() const { return FTransferringFile; } __declspec(property(get = __property_get_TransferringFile)) bool TransferringFile;
-  bool __property_get_Temp() const { return FTemp; } __declspec(property(get = __property_get_Temp)) bool Temp;
+  bool & __property_get_TransferringFile() const { return ::rtl::Mutable(this)->FTransferringFile; } __declspec(property(get = __property_get_TransferringFile)) bool TransferringFile;
+  bool & __property_get_Temp() const { return ::rtl::Mutable(this)->FTemp; } __declspec(property(get = __property_get_Temp)) bool Temp;
 
   // file size to read/write
-  __int64 __property_get_LocalSize() const { return FLocalSize; } __declspec(property(get = __property_get_LocalSize)) __int64 LocalSize;
-  __int64 __property_get_LocallyUsed() const { return FLocallyUsed; } __declspec(property(get = __property_get_LocallyUsed)) __int64 LocallyUsed;
-  __int64 __property_get_TransferSize() const { return FTransferSize; } __declspec(property(get = __property_get_TransferSize)) __int64 TransferSize;
-  __int64 __property_get_TransferredSize() const { return FTransferredSize; } __declspec(property(get = __property_get_TransferredSize)) __int64 TransferredSize;
-  __int64 __property_get_SkippedSize() const { return FSkippedSize; } __declspec(property(get = __property_get_SkippedSize)) __int64 SkippedSize;
-  bool __property_get_InProgress() const { return FInProgress; } __declspec(property(get = __property_get_InProgress)) bool InProgress;
-  bool __property_get_Done() const { return FDone; } __declspec(property(get = __property_get_Done)) bool Done;
-  bool __property_get_FileInProgress() const { return FFileInProgress; } __declspec(property(get = __property_get_FileInProgress)) bool FileInProgress;
+  __int64 & __property_get_LocalSize() const { return ::rtl::Mutable(this)->FLocalSize; } __declspec(property(get = __property_get_LocalSize)) __int64 LocalSize;
+  __int64 & __property_get_LocallyUsed() const { return ::rtl::Mutable(this)->FLocallyUsed; } __declspec(property(get = __property_get_LocallyUsed)) __int64 LocallyUsed;
+  __int64 & __property_get_TransferSize() const { return ::rtl::Mutable(this)->FTransferSize; } __declspec(property(get = __property_get_TransferSize)) __int64 TransferSize;
+  __int64 & __property_get_TransferredSize() const { return ::rtl::Mutable(this)->FTransferredSize; } __declspec(property(get = __property_get_TransferredSize)) __int64 TransferredSize;
+  __int64 & __property_get_SkippedSize() const { return ::rtl::Mutable(this)->FSkippedSize; } __declspec(property(get = __property_get_SkippedSize)) __int64 SkippedSize;
+  bool & __property_get_InProgress() const { return ::rtl::Mutable(this)->FInProgress; } __declspec(property(get = __property_get_InProgress)) bool InProgress;
+  bool & __property_get_Done() const { return ::rtl::Mutable(this)->FDone; } __declspec(property(get = __property_get_Done)) bool Done;
+  bool & __property_get_FileInProgress() const { return ::rtl::Mutable(this)->FFileInProgress; } __declspec(property(get = __property_get_FileInProgress)) bool FileInProgress;
   TCancelStatus __property_get_Cancel() const { return ::rtl::Mutable(this)->GetCancel(); } __declspec(property(get = __property_get_Cancel)) TCancelStatus Cancel;
   // when operation started
   TDateTime __property_get_StartTime() const { return ::rtl::Mutable(this)->GetStartTime(); } __declspec(property(get = __property_get_StartTime)) TDateTime StartTime;
@@ -152,16 +152,16 @@ public:
   __int64 __property_get_TotalTransferred() const { return ::rtl::Mutable(this)->GetTotalTransferred(); } __declspec(property(get = __property_get_TotalTransferred)) __int64 TotalTransferred;
   __int64 __property_get_OperationTransferred() const { return ::rtl::Mutable(this)->GetOperationTransferred(); } __declspec(property(get = __property_get_OperationTransferred)) __int64 OperationTransferred;
   __int64 __property_get_TotalSize() const { return ::rtl::Mutable(this)->GetTotalSize(); } __declspec(property(get = __property_get_TotalSize)) __int64 TotalSize;
-  int __property_get_FilesFinishedSuccessfully() const { return FFilesFinishedSuccessfully; } __declspec(property(get = __property_get_FilesFinishedSuccessfully)) int FilesFinishedSuccessfully;
-  TOnceDoneOperation __property_get_InitialOnceDoneOperation() const { return FInitialOnceDoneOperation; } __declspec(property(get = __property_get_InitialOnceDoneOperation)) TOnceDoneOperation InitialOnceDoneOperation;
+  int & __property_get_FilesFinishedSuccessfully() const { return ::rtl::Mutable(this)->FFilesFinishedSuccessfully; } __declspec(property(get = __property_get_FilesFinishedSuccessfully)) int FilesFinishedSuccessfully;
+  TOnceDoneOperation & __property_get_InitialOnceDoneOperation() const { return ::rtl::Mutable(this)->FInitialOnceDoneOperation; } __declspec(property(get = __property_get_InitialOnceDoneOperation)) TOnceDoneOperation InitialOnceDoneOperation;
 
   TBatchOverwrite __property_get_BatchOverwrite() const { return ::rtl::Mutable(this)->GetBatchOverwrite(); } __declspec(property(get = __property_get_BatchOverwrite)) TBatchOverwrite BatchOverwrite;
   bool __property_get_SkipToAll() const { return ::rtl::Mutable(this)->GetSkipToAll(); } __declspec(property(get = __property_get_SkipToAll)) bool SkipToAll;
   unsigned int __property_get_CPSLimit() const { return ::rtl::Mutable(this)->GetCPSLimit(); } __declspec(property(get = __property_get_CPSLimit)) unsigned int CPSLimit;
 
-  bool __property_get_TotalSizeSet() const { return FTotalSizeSet; } __declspec(property(get = __property_get_TotalSizeSet)) bool TotalSizeSet;
+  bool & __property_get_TotalSizeSet() const { return ::rtl::Mutable(this)->FTotalSizeSet; } __declspec(property(get = __property_get_TotalSizeSet)) bool TotalSizeSet;
 
-  bool __property_get_Suspended() const { return FSuspended; } __declspec(property(get = __property_get_Suspended)) bool Suspended;
+  bool & __property_get_Suspended() const { return ::rtl::Mutable(this)->FSuspended; } __declspec(property(get = __property_get_Suspended)) bool Suspended;
 
   __fastcall TFileOperationProgressType();
   __fastcall TFileOperationProgressType(

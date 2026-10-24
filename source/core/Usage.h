@@ -31,7 +31,7 @@ public:
 
   static int __fastcall CalculateCounterSize(__int64 Size);
 
-  bool __property_get_Collect() const { return FCollect; } void __property_set_Collect(bool Value) { SetCollect(Value); } __declspec(property(get = __property_get_Collect, put = __property_set_Collect)) bool Collect;
+  bool & __property_get_Collect() const { return ::rtl::Mutable(this)->FCollect; } void __property_set_Collect(bool Value) { SetCollect(Value); } __declspec(property(get = __property_get_Collect, put = __property_set_Collect)) bool Collect;
 
 private:
   typedef std::map<UnicodeString, int> TCounters;

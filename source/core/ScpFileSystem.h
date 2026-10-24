@@ -87,8 +87,8 @@ public:
   virtual void __fastcall ClearCaches();
 
 protected:
-  TStrings * __property_get_Output() const { return FOutput; } __declspec(property(get = __property_get_Output)) TStrings * Output;
-  int __property_get_ReturnCode() const { return FReturnCode; } __declspec(property(get = __property_get_ReturnCode)) int ReturnCode;
+  TStrings * & __property_get_Output() const { return ::rtl::Mutable(this)->FOutput; } __declspec(property(get = __property_get_Output)) TStrings * Output;
+  int & __property_get_ReturnCode() const { return ::rtl::Mutable(this)->FReturnCode; } __declspec(property(get = __property_get_ReturnCode)) int ReturnCode;
 
   virtual UnicodeString __fastcall GetCurrentDirectory();
 
