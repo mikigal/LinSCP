@@ -8,7 +8,7 @@
 // Return pointer to file version info block
 void * __fastcall CreateFileInfo(UnicodeString FileName)
 {
-  unsigned long Handle;
+  unsigned int Handle;
   unsigned int Size;
   char * Result = NULL;
 

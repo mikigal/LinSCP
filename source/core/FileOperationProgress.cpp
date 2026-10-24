@@ -158,7 +158,7 @@ void __fastcall TFileOperationProgressType::Start(TFileOperation AOperation,
 //---------------------------------------------------------------------------
 void __fastcall TFileOperationProgressType::Start(TFileOperation AOperation,
   TOperationSide ASide, int ACount, bool ATemp,
-  const UnicodeString ADirectory, unsigned long ACPSLimit, TOnceDoneOperation InitialOnceDoneOperation)
+  const UnicodeString ADirectory, unsigned int ACPSLimit, TOnceDoneOperation InitialOnceDoneOperation)
 {
 
   {
@@ -232,7 +232,7 @@ void __fastcall TFileOperationProgressType::Resume()
 
     // shift timestamps for CPS calculation in advance
     // by the time the progress was suspended
-    unsigned long Stopped = (GetTickCount() - FSuspendTime);
+    unsigned int Stopped = (GetTickCount() - FSuspendTime);
     size_t i = 0;
     while (i < FPersistence.Ticks.size())
     {
@@ -417,17 +417,17 @@ void __fastcall TFileOperationProgressType::SetSpeedCounters()
 //---------------------------------------------------------------------------
 // Used in WebDAV and S3 protocols
 void __fastcall TFileOperationProgressType::ThrottleToCPSLimit(
-  unsigned long Size)
+  unsigned int Size)
 {
-  unsigned long Remaining = Size;
+  unsigned int Remaining = Size;
   while (Remaining > 0)
   {
     Remaining -= AdjustToCPSLimit(Remaining);
   }
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TFileOperationProgressType::AdjustToCPSLimit(
-  unsigned long Size)
+unsigned int __fastcall TFileOperationProgressType::AdjustToCPSLimit(
+  unsigned int Size)
 {
   SetSpeedCounters();
 
@@ -469,12 +469,12 @@ unsigned long __fastcall TFileOperationProgressType::AdjustToCPSLimit(
 }
 //---------------------------------------------------------------------------
 // Use in SCP protocol only
-unsigned long __fastcall TFileOperationProgressType::LocalBlockSize()
+unsigned int __fastcall TFileOperationProgressType::LocalBlockSize()
 {
-  unsigned long Result = TRANSFER_BUF_SIZE;
+  unsigned int Result = TRANSFER_BUF_SIZE;
   if (LocallyUsed + Result > LocalSize)
   {
-    Result = static_cast<unsigned long>(LocalSize - LocallyUsed);
+    Result = static_cast<unsigned int>(LocalSize - LocallyUsed);
   }
   Result = AdjustToCPSLimit(Result);
   return Result;
@@ -580,7 +580,7 @@ bool __fastcall TFileOperationProgressType::ClearCancelFile()
   return Result;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TFileOperationProgressType::GetCPSLimit()
+unsigned int __fastcall TFileOperationProgressType::GetCPSLimit()
 {
   unsigned int Result;
   if (FParent != NULL)
@@ -595,7 +595,7 @@ unsigned long __fastcall TFileOperationProgressType::GetCPSLimit()
   return Result;
 }
 //---------------------------------------------------------------------------
-void __fastcall TFileOperationProgressType::SetCPSLimit(unsigned long ACPSLimit)
+void __fastcall TFileOperationProgressType::SetCPSLimit(unsigned int ACPSLimit)
 {
   if (FParent != NULL)
   {
@@ -710,7 +710,7 @@ void __fastcall TFileOperationProgressType::AddTransferredToTotals(__int64 ASize
   FPersistence.TotalTransferred += ASize;
   if (ASize >= 0)
   {
-    unsigned long Ticks = GetTickCount();
+    unsigned int Ticks = GetTickCount();
     if (FPersistence.Ticks.empty() ||
         (FPersistence.Ticks.back() > Ticks) || // ticks wrap after 49.7 days
         ((Ticks - FPersistence.Ticks.back()) >= MSecsPerSec))
@@ -799,18 +799,18 @@ void __fastcall TFileOperationProgressType::AddSkippedFileSize(__int64 ASize)
 }
 //---------------------------------------------------------------------------
 // Use in SCP protocol only
-unsigned long __fastcall TFileOperationProgressType::TransferBlockSize()
+unsigned int __fastcall TFileOperationProgressType::TransferBlockSize()
 {
-  unsigned long Result = TRANSFER_BUF_SIZE;
+  unsigned int Result = TRANSFER_BUF_SIZE;
   if (TransferredSize + Result > TransferSize)
   {
-    Result = static_cast<unsigned long>(TransferSize - TransferredSize);
+    Result = static_cast<unsigned int>(TransferSize - TransferredSize);
   }
   Result = AdjustToCPSLimit(Result);
   return Result;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TFileOperationProgressType::StaticBlockSize()
+unsigned int __fastcall TFileOperationProgressType::StaticBlockSize()
 {
   return TRANSFER_BUF_SIZE;
 }
@@ -868,8 +868,8 @@ unsigned int __fastcall TFileOperationProgressType::GetCPS()
   }
   else
   {
-    unsigned long Ticks = (Suspended ? FSuspendTime : GetTickCount());
-    unsigned long TimeSpan;
+    unsigned int Ticks = (Suspended ? FSuspendTime : GetTickCount());
+    unsigned int TimeSpan;
     if (Ticks < FPersistence.Ticks.front())
     {
       // clocks has wrapped, guess 10 seconds difference

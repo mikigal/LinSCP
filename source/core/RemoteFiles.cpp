@@ -536,7 +536,7 @@ int GetPartialFileExtLen(const UnicodeString & FileName)
   return Result;
 }
 //---------------------------------------------------------------------------
-int __fastcall FakeFileImageIndex(UnicodeString FileName, unsigned long Attrs,
+int __fastcall FakeFileImageIndex(UnicodeString FileName, unsigned int Attrs,
   UnicodeString * TypeName)
 {
   Attrs |= FILE_ATTRIBUTE_NORMAL;
@@ -948,7 +948,7 @@ TRemoteFile * __fastcall TRemoteFile::Duplicate(bool Standalone) const
 void __fastcall TRemoteFile::LoadTypeInfo()
 {
   /* TODO : If file is link: Should be attributes taken from linked file? */
-  unsigned long Attrs = 0;
+  unsigned int Attrs = 0;
   if (IsDirectory) Attrs |= FILE_ATTRIBUTE_DIRECTORY;
   if (IsHidden) Attrs |= FILE_ATTRIBUTE_HIDDEN;
 
@@ -2449,10 +2449,10 @@ void __fastcall TRights::SetOctal(UnicodeString value)
   FUnknown = false;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TRights::GetNumberDecadic() const
+unsigned int __fastcall TRights::GetNumberDecadic() const
 {
-  unsigned long N = NumberSet; // used to be "Number"
-  unsigned long Result =
+  unsigned int N = NumberSet; // used to be "Number"
+  unsigned int Result =
       ((N & 07000) / 01000 * 1000) +
       ((N & 00700) /  0100 *  100) +
       ((N & 00070) /   010 *   10) +
@@ -2681,7 +2681,7 @@ __fastcall TRights::operator unsigned short() const
   return Number;
 }
 //---------------------------------------------------------------------------
-__fastcall TRights::operator unsigned long() const
+__fastcall TRights::operator unsigned int() const
 {
   return Number;
 }

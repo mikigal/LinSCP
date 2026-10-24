@@ -124,19 +124,19 @@ protected:
   bool FUtfDisablingAnnounced;
   bool FSignedTS;
   TStrings * FFixedPaths;
-  unsigned long FMaxPacketSize;
+  unsigned int FMaxPacketSize;
   bool FSupportsStatVfsV2;
   bool FSupportsHardlink;
   std::unique_ptr<TStringList> FChecksumAlgs;
   std::unique_ptr<TStringList> FChecksumSftpAlgs;
 
   void __fastcall SendCustomReadFile(TSFTPPacket * Packet, TSFTPPacket * Response,
-    unsigned long Flags);
+    unsigned int Flags);
   void __fastcall CustomReadFile(const UnicodeString FileName,
     TRemoteFile *& File, unsigned char Type, TRemoteFile * ALinkedByFile = NULL,
     int AllowStatus = -1);
   virtual UnicodeString __fastcall GetCurrentDirectory();
-  unsigned long __fastcall GotStatusPacket(TSFTPPacket * Packet, int AllowStatus, bool DoNotForceLog);
+  unsigned int __fastcall GotStatusPacket(TSFTPPacket * Packet, int AllowStatus, bool DoNotForceLog);
   bool __fastcall RemoteFileExists(const UnicodeString FullPath, TRemoteFile ** File = NULL);
   TRemoteFile * __fastcall LoadFile(TSFTPPacket * Packet,
     TRemoteFile * ALinkedByFile, const UnicodeString FileName,
@@ -180,11 +180,11 @@ protected:
   const char * __fastcall GetEOL() const;
   inline void __fastcall BusyStart();
   inline void __fastcall BusyEnd();
-  inline unsigned long __fastcall TransferBlockSize(
-    unsigned long Overhead, TFileOperationProgressType * OperationProgress);
-  inline unsigned long __fastcall UploadBlockSize(const RawByteString & Handle,
+  inline unsigned int __fastcall TransferBlockSize(
+    unsigned int Overhead, TFileOperationProgressType * OperationProgress);
+  inline unsigned int __fastcall UploadBlockSize(const RawByteString & Handle,
     TFileOperationProgressType * OperationProgress);
-  inline unsigned long __fastcall DownloadBlockSize(
+  inline unsigned int __fastcall DownloadBlockSize(
     TFileOperationProgressType * OperationProgress);
   inline int __fastcall PacketLength(unsigned char * LenBuf, int ExpectedType);
   void __fastcall Progress(TFileOperationProgressType * OperationProgress);

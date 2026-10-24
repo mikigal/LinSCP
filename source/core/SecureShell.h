@@ -150,7 +150,7 @@ public:
   const TSessionInfo & __fastcall GetSessionInfo();
   void __fastcall GetHostKeyFingerprint(UnicodeString & SHA256, UnicodeString & MD5);
   bool __fastcall SshFallbackCmd() const;
-  unsigned long __fastcall MaxPacketSize();
+  unsigned int __fastcall MaxPacketSize();
   void __fastcall ClearStdError();
   bool __fastcall GetStoredCredentialsTried();
   void __fastcall CollectUsage();

@@ -190,7 +190,7 @@ void __fastcall TOwnConsole::BreakInput()
   InputRecord.Event.KeyEvent.wRepeatCount = 1;
   InputRecord.Event.KeyEvent.uChar.UnicodeChar = L'\r';
 
-  unsigned long Written;
+  unsigned int Written;
   // this assertion occasionally fails (when console is being exited)
   DebugCheck(WriteConsoleInput(FInput, &InputRecord, 1, &Written));
   DebugAssert(Written == 1);
@@ -249,11 +249,11 @@ void __fastcall TOwnConsole::Print(UnicodeString Str, bool FromBeginning, bool /
     BufferInfo.dwCursorPosition.X = 0;
     SetConsoleCursorPosition(FOutput, BufferInfo.dwCursorPosition);
   }
-  unsigned long Written;
+  unsigned int Written;
   bool Result = WriteConsole(FOutput, Str.c_str(), Str.Length(), &Written, NULL);
   DebugAssert(Result);
   DebugUsedParam(Result);
-  DebugAssert(Str.Length() == static_cast<long>(Written));
+  DebugAssert(Str.Length() == static_cast<int>(Written));
   ProcessMessages();
 }
 //---------------------------------------------------------------------------
@@ -275,7 +275,7 @@ public:
 protected:
   virtual void __fastcall Execute()
   {
-    unsigned long Read;
+    unsigned int Read;
     FStr.SetLength(10240);
     FResult = ReadConsole(FInput, FStr.c_str(), FStr.Length(), &Read, NULL);
     DebugAssert(FResult);
@@ -296,7 +296,7 @@ private:
 //---------------------------------------------------------------------------
 bool __fastcall TOwnConsole::Input(UnicodeString & Str, bool Echo, unsigned int Timer)
 {
-  unsigned long PrevMode, NewMode;
+  unsigned int PrevMode, NewMode;
   GetConsoleMode(FInput, &PrevMode);
   NewMode = PrevMode | ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT;
   if (Echo)
@@ -371,7 +371,7 @@ int __fastcall TOwnConsole::Choice(
 {
   unsigned int ATimer = Timer;
   int Result = 0;
-  unsigned long PrevMode, NewMode;
+  unsigned int PrevMode, NewMode;
   GetConsoleMode(FInput, &PrevMode);
   NewMode = (PrevMode | ENABLE_PROCESSED_INPUT) & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
   SetConsoleMode(FInput, NewMode);
@@ -383,7 +383,7 @@ int __fastcall TOwnConsole::Choice(
   {
     do
     {
-      unsigned long Read;
+      unsigned int Read;
       INPUT_RECORD Record;
       if ((PeekConsoleInput(FInput, &Record, 1, &Read) != 0) &&
           (Read == 1))
@@ -471,7 +471,7 @@ bool __fastcall TOwnConsole::HasFlag(TConsoleFlag Flag) const
 //---------------------------------------------------------------------------
 void __fastcall TOwnConsole::WaitBeforeExit()
 {
-  unsigned long Read;
+  unsigned int Read;
   INPUT_RECORD Record;
   while (true)
   {

@@ -161,7 +161,7 @@ const int asOpUnsupported = 1 << SSH_FX_OP_UNSUPPORTED;
 const int asNoSuchFile =    1 << SSH_FX_NO_SUCH_FILE;
 const int asAll = 0xFFFF;
 //---------------------------------------------------------------------------
-#define GET_32BITC(cp, i) static_cast<unsigned long>(static_cast<unsigned char>((cp)[i]))
+#define GET_32BITC(cp, i) static_cast<unsigned int>(static_cast<unsigned char>((cp)[i]))
 #define GET_32BIT(cp) \
     ((GET_32BITC(cp, 0) << 24) | \
      (GET_32BITC(cp, 1) << 16) | \
@@ -297,7 +297,7 @@ public:
     AddByte(Value ? 1 : 0);
   }
 
-  void AddCardinal(unsigned long Value)
+  void AddCardinal(unsigned int Value)
   {
     // duplicated in Reuse()
     unsigned char Buf[4];
@@ -307,8 +307,8 @@ public:
 
   void AddInt64(__int64 Value)
   {
-    AddCardinal(static_cast<unsigned long>(Value >> 32));
-    AddCardinal(static_cast<unsigned long>(Value & 0xFFFFFFFF));
+    AddCardinal(static_cast<unsigned int>(Value >> 32));
+    AddCardinal(static_cast<unsigned int>(Value & 0xFFFFFFFF));
   }
 
   void AddData(const void * Data, int ALength)
@@ -438,8 +438,8 @@ public:
       // any way to reflect sbSignedTS here?
       // (note that casting __int64 > 2^31 < 2^32 to unsigned long is wrapped,
       // thus we never can set time after 2038, even if the server supports it)
-      AddCardinal(static_cast<unsigned long>(ATime != NULL ? *ATime : *MTime));
-      AddCardinal(static_cast<unsigned long>(MTime != NULL ? *MTime : *ATime));
+      AddCardinal(static_cast<unsigned int>(ATime != NULL ? *ATime : *MTime));
+      AddCardinal(static_cast<unsigned int>(MTime != NULL ? *MTime : *ATime));
     }
     if ((Version >= 4) && (ATime != NULL))
     {
@@ -533,21 +533,21 @@ public:
     return (RemainingLength >= sizeof(unsigned char));
   }
 
-  unsigned long GetCardinal()
+  unsigned int GetCardinal()
   {
-    unsigned long Result = PeekCardinal();
+    unsigned int Result = PeekCardinal();
     DataConsumed(sizeof(Result));
     return Result;
   }
 
   bool CanGetCardinal()
   {
-    return (RemainingLength >= sizeof(unsigned long));
+    return (RemainingLength >= sizeof(unsigned int));
   }
 
-  unsigned long GetSmallCardinal()
+  unsigned int GetSmallCardinal()
   {
-    unsigned long Result;
+    unsigned int Result;
     Need(2);
     Result = (FData[FPosition] << 8) + FData[FPosition + 1];
     DataConsumed(2);
@@ -569,7 +569,7 @@ public:
   RawByteString GetRawByteString()
   {
     RawByteString Result;
-    unsigned long Len = GetCardinal();
+    unsigned int Len = GetCardinal();
     Need(Len);
     // cannot happen anyway as Need() would raise exception
     DebugAssert(Len < SFTP_MAX_PACKET_LEN);
@@ -584,7 +584,7 @@ public:
     bool Result = CanGetCardinal();
     if (Result)
     {
-      unsigned long Len = PeekCardinal();
+      unsigned int Len = PeekCardinal();
       Size = (sizeof(Len) + Len);
       Result = (Size <= RemainingLength);
     }
@@ -628,7 +628,7 @@ public:
     DebugAssert(File);
     unsigned int Flags;
     UnicodeString ListingStr;
-    unsigned long Permissions = 0;
+    unsigned int Permissions = 0;
     bool ParsingFailed = false;
     if (Type != SSH_FXP_ATTRS)
     {
@@ -686,12 +686,12 @@ public:
       {
         File->LastAccess = UnixToDateTime(
           SignedTS ?
-            static_cast<__int64>(static_cast<signed long>(GetCardinal())) :
+            static_cast<__int64>(static_cast<signed int>(GetCardinal())) :
             static_cast<__int64>(GetCardinal()),
           DSTMode);
         File->Modification = UnixToDateTime(
           SignedTS ?
-            static_cast<__int64>(static_cast<signed long>(GetCardinal())) :
+            static_cast<__int64>(static_cast<signed int>(GetCardinal())) :
             static_cast<__int64>(GetCardinal()),
           DSTMode);
       }
@@ -742,10 +742,10 @@ public:
     {
       // while SSH_FILEXFER_ATTR_BITS is defined for SFTP5 only, vandyke 2.3.3 sets it
       // for SFTP4 as well
-      unsigned long Bits = GetCardinal();
+      unsigned int Bits = GetCardinal();
       if (Version >= 6)
       {
-        unsigned long BitsValid = GetCardinal();
+        unsigned int BitsValid = GetCardinal();
         Bits = Bits & BitsValid;
       }
       if (FLAGSET(Bits, SSH_FILEXFER_ATTR_FLAGS_HIDDEN))
@@ -1071,9 +1071,9 @@ private:
     }
   }
 
-  unsigned long PeekCardinal()
+  unsigned int PeekCardinal()
   {
-    unsigned long Result;
+    unsigned int Result;
     Need(sizeof(Result));
     Result = GET_32BIT(FData + FPosition);
     return Result;
@@ -1452,17 +1452,17 @@ public:
     return TSFTPFixedLenQueue::Init(QueueLen);
   }
 
-  void __fastcall InitFillGapRequest(__int64 Offset, unsigned long Missing,
+  void __fastcall InitFillGapRequest(__int64 Offset, unsigned int Missing,
     TSFTPPacket * Packet)
   {
     InitRequest(Packet, Offset, Missing);
   }
 
-  bool __fastcall ReceivePacket(TSFTPPacket * Packet, unsigned long & BlockSize)
+  bool __fastcall ReceivePacket(TSFTPPacket * Packet, unsigned int & BlockSize)
   {
     void * Token;
     bool Result = TSFTPFixedLenQueue::ReceivePacket(Packet, SSH_FXP_DATA, asEOF, &Token);
-    BlockSize = reinterpret_cast<unsigned long>(Token);
+    BlockSize = reinterpret_cast<unsigned int>(Token);
     return Result;
   }
 
@@ -1490,7 +1490,7 @@ protected:
   }
 
   void __fastcall InitRequest(TSFTPPacket * Request, __int64 Offset,
-    unsigned long Size)
+    unsigned int Size)
   {
     Request->ChangeType(SSH_FXP_READ);
     Request->AddString(FHandle);
@@ -1563,7 +1563,7 @@ protected:
     // Buffer for one block of data
     TFileBuffer BlockBuf;
 
-    unsigned long BlockSize = FFileSystem->UploadBlockSize(FHandle, OperationProgress);
+    unsigned int BlockSize = FFileSystem->UploadBlockSize(FHandle, OperationProgress);
     bool Result = (BlockSize > 0);
 
     if (Result)
@@ -1695,7 +1695,7 @@ private:
   TTransferInEvent FOnTransferIn;
   TFileOperationProgressType * OperationProgress;
   UnicodeString FFileName;
-  unsigned long FLastBlockSize;
+  unsigned int FLastBlockSize;
   bool FEnd;
   __int64 FTransferred;
   RawByteString FHandle;
@@ -2238,16 +2238,16 @@ inline void __fastcall TSFTPFileSystem::BusyEnd()
 }
 //---------------------------------------------------------------------------
 // size + message number + type
-const unsigned long SFTPPacketOverhead = 4 + 4 + 1;
+const unsigned int SFTPPacketOverhead = 4 + 4 + 1;
 //---------------------------------------------------------------------------
-unsigned long __fastcall TSFTPFileSystem::TransferBlockSize(
-  unsigned long Overhead, TFileOperationProgressType * OperationProgress)
+unsigned int __fastcall TSFTPFileSystem::TransferBlockSize(
+  unsigned int Overhead, TFileOperationProgressType * OperationProgress)
 {
-  const unsigned long MinPacketSize = 32768;
-  unsigned long AMaxPacketSize = FSecureShell->MaxPacketSize();
+  const unsigned int MinPacketSize = 32768;
+  unsigned int AMaxPacketSize = FSecureShell->MaxPacketSize();
   bool MaxPacketSizeValid = (AMaxPacketSize > 0);
-  unsigned long CPSRounded = TEncryption::RoundToBlock(OperationProgress->CPS());
-  unsigned long Result = CPSRounded;
+  unsigned int CPSRounded = TEncryption::RoundToBlock(OperationProgress->CPS());
+  unsigned int Result = CPSRounded;
 
   if ((FMaxPacketSize > 0) &&
       ((FMaxPacketSize < AMaxPacketSize) || !MaxPacketSizeValid))
@@ -2295,19 +2295,19 @@ unsigned long __fastcall TSFTPFileSystem::TransferBlockSize(
   return Result;
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TSFTPFileSystem::UploadBlockSize(const RawByteString & Handle,
+unsigned int __fastcall TSFTPFileSystem::UploadBlockSize(const RawByteString & Handle,
   TFileOperationProgressType * OperationProgress)
 {
   // handle length + offset + data size
-  const unsigned long UploadPacketOverhead =
-    sizeof(unsigned long) + sizeof(__int64) + sizeof(unsigned long);
+  const unsigned int UploadPacketOverhead =
+    sizeof(unsigned int) + sizeof(__int64) + sizeof(unsigned int);
   return TransferBlockSize(UploadPacketOverhead + Handle.Length(), OperationProgress);
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TSFTPFileSystem::DownloadBlockSize(
+unsigned int __fastcall TSFTPFileSystem::DownloadBlockSize(
   TFileOperationProgressType * OperationProgress)
 {
-  unsigned long Result = TransferBlockSize(sizeof(unsigned long), OperationProgress);
+  unsigned int Result = TransferBlockSize(sizeof(unsigned int), OperationProgress);
   if (FSupport->Loaded && (FSupport->MaxReadSize > 0) &&
       (Result > FSupport->MaxReadSize))
   {
@@ -2399,10 +2399,10 @@ void __fastcall TSFTPFileSystem::SendPacket(const TSFTPPacket * Packet)
   catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
-unsigned long __fastcall TSFTPFileSystem::GotStatusPacket(
+unsigned int __fastcall TSFTPFileSystem::GotStatusPacket(
   TSFTPPacket * Packet, int AllowStatus, bool DoNotForceLog)
 {
-  unsigned long Code = Packet->GetCardinal();
+  unsigned int Code = Packet->GetCardinal();
 
   static int Messages[] = {
     SFTP_STATUS_OK,
@@ -2546,7 +2546,7 @@ void __fastcall TSFTPFileSystem::RemoveReservation(int Reservation)
 //---------------------------------------------------------------------------
 inline int __fastcall TSFTPFileSystem::PacketLength(unsigned char * LenBuf, int ExpectedType)
 {
-  unsigned long Length = GET_32BIT(LenBuf);
+  unsigned int Length = GET_32BIT(LenBuf);
   if (Length > SFTP_MAX_PACKET_LEN)
   {
     UnicodeString FormatStr = ReplaceStr(LoadStr(SFTP_PACKET_TOO_BIG), L"%d", L"%u");
@@ -3191,7 +3191,7 @@ void __fastcall TSFTPFileSystem::DoStartup()
           TSFTPPacket RootsPacket(ExtensionData);
           while (RootsPacket.GetNextData() != NULL)
           {
-            unsigned long Dummy = RootsPacket.GetCardinal();
+            unsigned int Dummy = RootsPacket.GetCardinal();
             if (Dummy != 1)
             {
               break;
@@ -3443,10 +3443,10 @@ void __fastcall TSFTPFileSystem::LookupUsersGroups()
     else
     {
       TRemoteTokenList & List = *Lists[Index];
-      unsigned long Count = Packet->GetCardinal();
+      unsigned int Count = Packet->GetCardinal();
 
       List.Clear();
-      for (unsigned long Item = 0; Item < Count; Item++)
+      for (unsigned int Item = 0; Item < Count; Item++)
       {
         TRemoteToken Token(Packet->GetString(FUtfStrings));
         List.Add(Token);
@@ -3598,7 +3598,7 @@ void __fastcall TSFTPFileSystem::ReadDirectory(TRemoteFileList * FileList)
         unsigned int Count = ListingPacket.GetCardinal();
 
         int ResolvedLinks = 0;
-        for (unsigned long Index = 0; !isEOF && (Index < Count); Index++)
+        for (unsigned int Index = 0; !isEOF && (Index < Count); Index++)
         {
           std::unique_ptr<TRemoteFile> AFile(LoadFile(&ListingPacket, NULL, L"", FileList));
           TRemoteFile * File = AFile.get();
@@ -3816,7 +3816,7 @@ bool __fastcall TSFTPFileSystem::RemoteFileExists(const UnicodeString FullPath,
 }
 //---------------------------------------------------------------------------
 void __fastcall TSFTPFileSystem::SendCustomReadFile(TSFTPPacket * Packet,
-  TSFTPPacket * Response, unsigned long Flags)
+  TSFTPPacket * Response, unsigned int Flags)
 {
   if (FVersion >= 4)
   {
@@ -3830,7 +3830,7 @@ void __fastcall TSFTPFileSystem::CustomReadFile(const UnicodeString FileName,
   TRemoteFile *& File, unsigned char Type, TRemoteFile * ALinkedByFile,
   int AllowStatus)
 {
-  unsigned long Flags = SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
+  unsigned int Flags = SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
     SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_MODIFYTIME |
     SSH_FILEXFER_ATTR_OWNERGROUP;
   TSFTPPacket Packet(Type);
@@ -4405,7 +4405,7 @@ void __fastcall TSFTPFileSystem::SpaceAvailable(const UnicodeString Path,
     ASpaceAvailable.BytesAvailableToUser = 0;
     ASpaceAvailable.UnusedBytesAvailableToUser = BlockSize * AvailableBlocks;
     ASpaceAvailable.BytesPerAllocationUnit =
-      (BlockSize > std::numeric_limits<unsigned long>::max()) ? 0 : static_cast<unsigned long>(BlockSize);
+      (BlockSize > std::numeric_limits<unsigned int>::max()) ? 0 : static_cast<unsigned int>(BlockSize);
   }
 }
 //---------------------------------------------------------------------------
@@ -5060,11 +5060,11 @@ RawByteString __fastcall TSFTPFileSystem::SFTPOpenRemoteFile(
   }
   else
   {
-    unsigned long Access =
+    unsigned int Access =
       FLAGMASK(FLAGSET(OpenType, SSH_FXF_READ), ACE4_READ_DATA) |
       FLAGMASK(FLAGSET(OpenType, SSH_FXF_WRITE), ACE4_WRITE_DATA | ACE4_APPEND_DATA);
 
-    unsigned long Flags;
+    unsigned int Flags;
 
     if (FLAGSET(OpenType, SSH_FXF_CREAT | SSH_FXF_EXCL))
     {
@@ -5664,9 +5664,9 @@ void __fastcall TSFTPFileSystem::Sink(
         bool PrevIncomplete = false;
         int GapFillCount = 0;
         int GapCount = 0;
-        unsigned long Missing = 0;
-        unsigned long DataLen = 0;
-        unsigned long BlockSize = 0; // shut up
+        unsigned int Missing = 0;
+        unsigned int DataLen = 0;
+        unsigned int BlockSize = 0; // shut up
         bool ConvertToken = false;
         TEncryption Encryption(FTerminal->GetEncryptKey());
         bool Decrypt = FTerminal->IsFileEncrypted(FileName);

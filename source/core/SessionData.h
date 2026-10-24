@@ -196,7 +196,7 @@ private:
   int FSFTPUploadQueue;
   int FSFTPListingQueue;
   int FSFTPMaxVersion;
-  unsigned long FSFTPMaxPacketSize;
+  unsigned int FSFTPMaxPacketSize;
   TAutoSwitch FSFTPRealPath;
   bool FUsePosixRename;
   TDSTMode FDSTMode;
@@ -389,7 +389,7 @@ private:
   void __fastcall SetSFTPUploadQueue(int value);
   void __fastcall SetSFTPListingQueue(int value);
   void __fastcall SetSFTPMaxVersion(int value);
-  void __fastcall SetSFTPMaxPacketSize(unsigned long value);
+  void __fastcall SetSFTPMaxPacketSize(unsigned int value);
   void __fastcall SetSFTPRealPath(TAutoSwitch value);
   void SetUsePosixRename(bool value);
   void __fastcall SetSFTPBug(TSftpBug Bug, TAutoSwitch value);
@@ -688,7 +688,7 @@ public:
   int __property_get_SFTPUploadQueue() const { return FSFTPUploadQueue; } void __property_set_SFTPUploadQueue(int Value) { SetSFTPUploadQueue(Value); } __declspec(property(get = __property_get_SFTPUploadQueue, put = __property_set_SFTPUploadQueue)) int SFTPUploadQueue;
   int __property_get_SFTPListingQueue() const { return FSFTPListingQueue; } void __property_set_SFTPListingQueue(int Value) { SetSFTPListingQueue(Value); } __declspec(property(get = __property_get_SFTPListingQueue, put = __property_set_SFTPListingQueue)) int SFTPListingQueue;
   int __property_get_SFTPMaxVersion() const { return FSFTPMaxVersion; } void __property_set_SFTPMaxVersion(int Value) { SetSFTPMaxVersion(Value); } __declspec(property(get = __property_get_SFTPMaxVersion, put = __property_set_SFTPMaxVersion)) int SFTPMaxVersion;
-  unsigned long __property_get_SFTPMaxPacketSize() const { return FSFTPMaxPacketSize; } void __property_set_SFTPMaxPacketSize(unsigned long Value) { SetSFTPMaxPacketSize(Value); } __declspec(property(get = __property_get_SFTPMaxPacketSize, put = __property_set_SFTPMaxPacketSize)) unsigned long SFTPMaxPacketSize;
+  unsigned int __property_get_SFTPMaxPacketSize() const { return FSFTPMaxPacketSize; } void __property_set_SFTPMaxPacketSize(unsigned int Value) { SetSFTPMaxPacketSize(Value); } __declspec(property(get = __property_get_SFTPMaxPacketSize, put = __property_set_SFTPMaxPacketSize)) unsigned int SFTPMaxPacketSize;
   TAutoSwitch __property_get_SFTPRealPath() const { return FSFTPRealPath; } void __property_set_SFTPRealPath(TAutoSwitch Value) { SetSFTPRealPath(Value); } __declspec(property(get = __property_get_SFTPRealPath, put = __property_set_SFTPRealPath)) TAutoSwitch SFTPRealPath;
   bool __property_get_UsePosixRename() const { return FUsePosixRename; } void __property_set_UsePosixRename(bool Value) { SetUsePosixRename(Value); } __declspec(property(get = __property_get_UsePosixRename, put = __property_set_UsePosixRename)) bool UsePosixRename;
   TAutoSwitch __property_get_SFTPBug(TSftpBug Bug) const { return ::rtl::Mutable(this)->GetSFTPBug(Bug); } void __property_set_SFTPBug(TSftpBug Bug, TAutoSwitch Value) { SetSFTPBug(Bug, Value); } __declspec(property(get = __property_get_SFTPBug, put = __property_set_SFTPBug)) TAutoSwitch SFTPBug[];

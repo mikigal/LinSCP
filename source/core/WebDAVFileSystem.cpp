@@ -1989,7 +1989,7 @@ void TWebDAVFileSystem::NeonNotifier(void * UserData, ne_session_status Status, 
 
     if (Diff > 0)
     {
-      OperationProgress->ThrottleToCPSLimit(static_cast<unsigned long>(Diff));
+      OperationProgress->ThrottleToCPSLimit(static_cast<unsigned int>(Diff));
     }
 
     __int64 Total = StatusInfo->sr.total;

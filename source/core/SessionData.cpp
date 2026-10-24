@@ -4370,7 +4370,7 @@ void __fastcall TSessionData::SetSFTPMaxVersion(int value)
   SET_SESSION_PROPERTY(SFTPMaxVersion);
 }
 //---------------------------------------------------------------------
-void __fastcall TSessionData::SetSFTPMaxPacketSize(unsigned long value)
+void __fastcall TSessionData::SetSFTPMaxPacketSize(unsigned int value)
 {
   SET_SESSION_PROPERTY(SFTPMaxPacketSize);
 }

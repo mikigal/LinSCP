@@ -382,7 +382,7 @@ public:
   TRights & __fastcall operator |=(unsigned short rhr);
   TRights & __fastcall operator |=(const TRights & rhr);
   __fastcall operator unsigned short() const;
-  __fastcall operator unsigned long() const;
+  __fastcall operator unsigned int() const;
 
   UnicodeString __fastcall GetChmodStr(int Directory) const;
 
@@ -393,7 +393,7 @@ public:
   unsigned short __property_get_Number() const { return ::rtl::Mutable(this)->GetNumber(); } void __property_set_Number(unsigned short Value) { SetNumber(Value); } __declspec(property(get = __property_get_Number, put = __property_set_Number)) unsigned short Number;
   unsigned short __property_get_NumberSet() const { return FSet; } __declspec(property(get = __property_get_NumberSet)) unsigned short NumberSet;
   unsigned short __property_get_NumberUnset() const { return FUnset; } __declspec(property(get = __property_get_NumberUnset)) unsigned short NumberUnset;
-  unsigned long __property_get_NumberDecadic() const { return ::rtl::Mutable(this)->GetNumberDecadic(); } __declspec(property(get = __property_get_NumberDecadic)) unsigned long NumberDecadic;
+  unsigned int __property_get_NumberDecadic() const { return ::rtl::Mutable(this)->GetNumberDecadic(); } __declspec(property(get = __property_get_NumberDecadic)) unsigned int NumberDecadic;
   bool __property_get_ReadOnly() const { return ::rtl::Mutable(this)->GetReadOnly(); } void __property_set_ReadOnly(bool Value) { SetReadOnly(Value); } __declspec(property(get = __property_get_ReadOnly, put = __property_set_ReadOnly)) bool ReadOnly;
   bool __property_get_Right(TRight Right) const { return ::rtl::Mutable(this)->GetRight(Right); } void __property_set_Right(TRight Right, bool Value) { SetRight(Right, Value); } __declspec(property(get = __property_get_Right, put = __property_set_Right)) bool Right[];
   TState __property_get_RightUndef(TRight Right) const { return ::rtl::Mutable(this)->GetRightUndef(Right); } void __property_set_RightUndef(TRight Right, TState Value) { SetRightUndef(Right, Value); } __declspec(property(get = __property_get_RightUndef, put = __property_set_RightUndef)) TState RightUndef[];
@@ -416,7 +416,7 @@ private:
   unsigned short __fastcall GetNumber() const;
   unsigned short __fastcall GetNumberSet() const;
   unsigned short __fastcall GetNumberUnset() const;
-  unsigned long __fastcall GetNumberDecadic() const;
+  unsigned int __fastcall GetNumberDecadic() const;
   UnicodeString __fastcall GetOctal() const;
   bool __fastcall GetReadOnly();
   bool __fastcall GetRight(TRight Right) const;
@@ -640,7 +640,7 @@ UnicodeString __fastcall UserModificationStr(TDateTime DateTime,
 UnicodeString __fastcall ModificationStr(TDateTime DateTime,
   TModificationFmt Precision);
 int GetPartialFileExtLen(const UnicodeString & FileName);
-int __fastcall FakeFileImageIndex(UnicodeString FileName, unsigned long Attrs = 0,
+int __fastcall FakeFileImageIndex(UnicodeString FileName, unsigned int Attrs = 0,
   UnicodeString * TypeName = NULL);
 bool __fastcall SameUserName(const UnicodeString & UserName1, const UnicodeString & UserName2);
 UnicodeString __fastcall FormatMultiFilesToOneConfirmation(const UnicodeString & Target, bool Unix);

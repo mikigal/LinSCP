@@ -2287,7 +2287,7 @@ void __fastcall TFTPFileSystem::AutoDetectTimeDifference(TRemoteFileList * FileL
           }
           else
           {
-            LogMessage = FORMAT(L"Timezone difference of %s detected using file %s", (FormatTimeZone(static_cast<long>(FTimeDifference)), FileLog));
+            LogMessage = FORMAT(L"Timezone difference of %s detected using file %s", (FormatTimeZone(static_cast<int>(FTimeDifference)), FileLog));
           }
           FTerminal->LogEvent(LogMessage);
 

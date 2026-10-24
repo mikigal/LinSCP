@@ -4113,7 +4113,7 @@ void __fastcall TTerminal::OperationStart(
 //---------------------------------------------------------------------------
 void __fastcall TTerminal::OperationStart(
   TFileOperationProgressType & Progress, TFileOperation Operation, TOperationSide Side, int Count,
-  bool Temp, const UnicodeString & Directory, unsigned long CPSLimit, TOnceDoneOperation OnceDoneOperation)
+  bool Temp, const UnicodeString & Directory, unsigned int CPSLimit, TOnceDoneOperation OnceDoneOperation)
 {
   if (FOperationProgressPersistence != NULL)
   {
@@ -5739,8 +5739,8 @@ void __fastcall TTerminal::OpenLocalFile(const UnicodeString FileName,
         // Get file size
         FILE_OPERATION_LOOP_BEGIN
         {
-          unsigned long LSize;
-          unsigned long HSize;
+          unsigned int LSize;
+          unsigned int HSize;
           LSize = GetFileSize(Handle, &HSize);
           if ((LSize == 0xFFFFFFFF) && (GetLastError() != NO_ERROR)) RaiseLastOSError();
           *ASize = (__int64(HSize) << 32) + LSize;
