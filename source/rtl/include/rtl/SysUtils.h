@@ -334,6 +334,8 @@ UnicodeString StringReplace(const UnicodeString S, const UnicodeString OldPatter
 
 bool IsDelimiter(const UnicodeString Delimiters, const UnicodeString S, int Index);
 int LastDelimiter(const UnicodeString Delimiters, const UnicodeString S);
+// The index of the first of the delimiters in S from StartIdx, 0 if none
+int FindDelimiter(const UnicodeString Delimiters, const UnicodeString S, int StartIdx = 1);
 bool IsPathDelimiter(const UnicodeString S, int Index);
 
 // C-string functions

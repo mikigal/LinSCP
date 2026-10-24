@@ -10,6 +10,8 @@
 #include <cstdint>
 //---------------------------------------------------------------------------
 #define __fastcall
+// Borland accepts one underscore too
+#define _fastcall
 #define __published public
 #define PACKAGE
 #define DELPHI_PACKAGE

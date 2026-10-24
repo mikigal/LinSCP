@@ -756,6 +756,20 @@ bool IsDelimiter(const UnicodeString Delimiters, const UnicodeString S, int Inde
   return (Delimiters.Std().find(S.Std()[Index - 1]) != std::wstring::npos);
 }
 //---------------------------------------------------------------------------
+int FindDelimiter(const UnicodeString Delimiters, const UnicodeString S, int StartIdx)
+{
+  const std::wstring & Data = S.Std();
+  for (int Index = std::max(StartIdx, 1); Index <= static_cast<int>(Data.size()); Index++)
+  {
+    wchar_t Ch = Data[Index - 1];
+    if ((Ch != L'\0') && (Delimiters.Std().find(Ch) != std::wstring::npos))
+    {
+      return Index;
+    }
+  }
+  return 0;
+}
+//---------------------------------------------------------------------------
 int LastDelimiter(const UnicodeString Delimiters, const UnicodeString S)
 {
   const std::wstring & Data = S.Std();

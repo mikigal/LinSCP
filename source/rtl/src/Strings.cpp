@@ -516,4 +516,14 @@ void PrintTo(const AnsiStringBase & Str, std::ostream * Stream)
   *Stream << "\"" << Str.Std() << "\"";
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+int Pos(const UnicodeString & SubStr, const UnicodeString & S, int Offset)
+{
+  if ((Offset < 1) || (Offset > S.Length()) || SubStr.IsEmpty())
+  {
+    return 0;
+  }
+  size_t P = S.Std().find(SubStr.Std(), Offset - 1);
+  return (P == std::wstring::npos) ? 0 : static_cast<int>(P + 1);
+}
 } // namespace System

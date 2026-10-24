@@ -11,12 +11,14 @@ openscp_add_string_tables(openscp_core_strings
   "${OPENSCP_RESOURCE_DIR}/TextsCore1.rc"
   "${OPENSCP_RESOURCE_DIR}/TextsCore2.rc")
 
-# The sources that compile so far; the protocol modules follow with their
-# third-party libraries (PuTTY, neon, libs3, FileZilla)
+# The sources that compile so far; the rest follows with the protocol
+# modules and their third-party libraries (neon, libs3, FileZilla)
 add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/Bookmarks.cpp
   ${OPENSCP_CORE_DIR}/Common.cpp
+  ${OPENSCP_CORE_DIR}/Configuration.cpp
   ${OPENSCP_CORE_DIR}/CopyParam.cpp
+  ${OPENSCP_CORE_DIR}/Cryptography.cpp
   ${OPENSCP_CORE_DIR}/Exceptions.cpp
   ${OPENSCP_CORE_DIR}/FileBuffer.cpp
   ${OPENSCP_CORE_DIR}/FileInfo.cpp
@@ -24,6 +26,7 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/FileOperationProgress.cpp
   ${OPENSCP_CORE_DIR}/FileSystems.cpp
   ${OPENSCP_CORE_DIR}/Global.cpp
+  ${OPENSCP_CORE_DIR}/HierarchicalStorage.cpp
   ${OPENSCP_CORE_DIR}/NamedObjs.cpp
   ${OPENSCP_CORE_DIR}/Option.cpp
   ${OPENSCP_CORE_DIR}/Queue.cpp
@@ -31,6 +34,7 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/ScpFileSystem.cpp
   ${OPENSCP_CORE_DIR}/Script.cpp
   ${OPENSCP_CORE_DIR}/Security.cpp
+  ${OPENSCP_CORE_DIR}/SessionData.cpp
   ${OPENSCP_CORE_DIR}/SessionInfo.cpp
   ${OPENSCP_CORE_DIR}/SftpFileSystem.cpp
   ${OPENSCP_CORE_DIR}/Usage.cpp)
@@ -41,16 +45,19 @@ target_include_directories(openscp_core PUBLIC "${OPENSCP_CORE_DIR}" "${OPENSCP_
 target_sources(openscp_core INTERFACE $<TARGET_OBJECTS:openscp_core_strings>)
 # Upstream code: C++Builder pragmas, and warnings we do not fix in upstream
 # sources (designated initializers out of order in MakeMethod, unhandled
-# enumerators, signedness, casts of GetProcAddress results). An interface
-# library linked after openscp::options, so that the flags follow -Wall.
+# enumerators, signedness, casts of GetProcAddress results, memset/memcpy
+# of C++ objects, NULL for reserved DWORD arguments). An interface library
+# linked after openscp::options, so that the flags follow -Wall.
 add_library(openscp_upstream_warnings INTERFACE)
 target_compile_options(openscp_upstream_warnings INTERFACE
   -Wno-unknown-pragmas
   -Wno-reorder-init-list
   -Wno-switch
   -Wno-sign-compare
-  -Wno-cast-function-type-mismatch)
+  -Wno-cast-function-type-mismatch
+  -Wno-nontrivial-memcall
+  -Wno-null-conversion)
 
 target_link_libraries(openscp_core
   PRIVATE openscp::options openscp_upstream_warnings
-  PUBLIC openscp::linux OpenSSL::SSL OpenSSL::Crypto)
+  PUBLIC openscp::linux openscp::putty OpenSSL::SSL OpenSSL::Crypto)

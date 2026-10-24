@@ -1815,7 +1815,7 @@ void __fastcall TIniFileStorage::Flush()
       {
         try
         {
-          std::unique_ptr<TStream> Stream(new TSafeHandleStream(int(Handle)));
+          std::unique_ptr<TStream> Stream(new TSafeHandleStream(reinterpret_cast<NativeUInt>(Handle)));
           { ::rtl::TFinally Finally([&]()
           {
             CloseHandle(Handle);

@@ -158,6 +158,9 @@ void PrintTo(const UnicodeString & Str, std::ostream * Stream);
 //---------------------------------------------------------------------------
 typedef UnicodeString String;
 typedef UnicodeString TFileName;
+//---------------------------------------------------------------------------
+// System.Pos: the 1-based index of SubStr in S from Offset, 0 if none
+int Pos(const UnicodeString & SubStr, const UnicodeString & S, int Offset = 1);
 } // namespace System
 //---------------------------------------------------------------------------
 namespace std

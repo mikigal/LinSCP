@@ -4,7 +4,7 @@
  *
  * Derived from PuTTY 0.85's unix/platform.h, without the GTK front end,
  * and with WinSCP's additions from windows/platform.h: the per-session
- * socket selection (do_select), the redirection of PuTTY's registry
+ * descriptor selection (uxsel in callback sets), the redirection of PuTTY's registry
  * storage to WinSCP's (reg_*_winscp) and the critical section guarding
  * PuTTY's shared state.
  */
@@ -61,6 +61,7 @@ struct Filename {
     char *path;
 };
 FILE *f_open(const struct Filename *, char const *, bool);
+Filename *filename_from_utf8(const char *utf8); // WINSCP
 
 #ifndef SUPERSEDE_FONTSPEC_FOR_TESTING
 struct FontSpec {
@@ -119,15 +120,25 @@ void (*putty_signal(int sig, void (*func)(int)))(int);
 void block_signal(int sig, bool block_it);
 
 /*
- * Sockets (network.c). WinSCP drives the sockets of each session itself:
- * network.c tells the session, through do_select, in which events (rwx:
- * SELECT_R, SELECT_W, SELECT_X; 0 to stop) on a descriptor it is interested,
- * and the session reports them back with select_result.
+ * The interface used by uxsel.c: descriptors to wait for and the
+ * callbacks to call when they are ready. WinSCP runs a separate event loop
+ * for each session (TSecureShell), so every descriptor belongs to the
+ * callback set of a session, and the session enumerates its own ones
+ * (first_fd, next_fd), waits for them and reports their events
+ * (select_result).
  */
+typedef void (*uxsel_callback_fn)(int fd, int event);
+void uxsel_set(struct callback_set *set, int fd, int rwx, uxsel_callback_fn callback); // WINSCP
+void uxsel_del(int fd);
 enum { SELECT_R = 1, SELECT_W = 2, SELECT_X = 4 };
-void do_select(Plug *plug, int fd, int rwx); // WINSCP
 void select_result(int fd, int event);
-#define sk_getxdmdata(socket, lenp) (NULL)
+int first_fd(struct callback_set *set, int *state, int *rwx); // WINSCP
+int next_fd(struct callback_set *set, int *state, int *rwx); // WINSCP
+
+/*
+ * Spare functions exported directly from network.c.
+ */
+void *sk_getxdmdata(Socket *sock, int *lenp);
 int sk_net_get_fd(Socket *sock);
 SockAddr *unix_sock_addr(const char *path);
 Socket *new_unix_listener(SockAddr *listenaddr, Plug *plug);
@@ -135,7 +146,9 @@ Socket *new_unix_listener(SockAddr *listenaddr, Plug *plug);
 /* network.c: network error reporting helper taking an OS error code */
 void plug_closing_errno(Plug *plug, int error);
 
+#ifndef __cplusplus /* the type is not complete yet, C++ warns about it */
 SeatPromptResult make_spr_sw_abort_errno(const char *prefix, int errno_value);
+#endif
 
 /*
  * peerinfo.c, wrapping getsockopt(SO_PEERCRED).
@@ -162,8 +175,10 @@ static inline bool sk_peer_trusted(Socket *sock)
     return fd >= 0 && socket_peer_is_same_user(fd);
 }
 
-/* Unix-specific API for making a SubprocessWaiter */
-SubprocessWaiter *subproc_waiter_from_pid(pid_t pid);
+/* Unix-specific API for making a SubprocessWaiter, in the callback set
+ * of a session (WINSCP); subproc_waiter_reap only reaps the process */
+SubprocessWaiter *subproc_waiter_from_pid(struct callback_set *set, pid_t pid);
+void subproc_waiter_reap(struct callback_set *set, pid_t pid);
 
 /*
  * WinSCP stores PuTTY's settings (host keys, sessions to import) in its
@@ -175,8 +190,24 @@ SubprocessWaiter *subproc_waiter_from_pid(pid_t pid);
 #define PUTTY_REG_PARENT_CHILD "PuTTY"
 #define PUTTY_REG_GPARENT "Software"
 #define PUTTY_REG_GPARENT_CHILD "SimonTatham"
+#ifndef HKEY_CURRENT_USER
+#define HKEY_CURRENT_USER ((HKEY)(uintptr_t)0x80000001)
+#endif
 int reg_override_winscp(void);
 HKEY open_regkey_fn_winscp(bool create, bool write, HKEY base, const char *path, ...);
+#define open_regkey_ro(base, ...) \
+    (reg_override_winscp() ? open_regkey_fn_winscp(false, false, base, __VA_ARGS__, (const char *)NULL) : NULL)
+#define create_regkey(base, ...) \
+    (reg_override_winscp() ? open_regkey_fn_winscp(true, true, base, __VA_ARGS__, (const char *)NULL) : NULL)
+/* windows/utils/escape_registry_key.c (portable) */
+void escape_registry_key(const char *in, strbuf *out);
+void unescape_registry_key(const char *in, strbuf *out);
+/* utils/registry.c: the values of the keys */
+void close_regkey(HKEY key);
+bool get_reg_dword(HKEY key, const char *name, DWORD *out);
+bool put_reg_dword(HKEY key, const char *name, DWORD value);
+char *get_reg_sz(HKEY key, const char *name);
+bool put_reg_sz(HKEY key, const char *name, const char *str);
 void close_regkey_winscp(HKEY key);
 void putty_registry_pass(bool enable);
 bool get_reg_dword_winscp(HKEY key, const char *name, DWORD *out);
