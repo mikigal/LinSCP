@@ -2,17 +2,35 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## M1 — RTL shim (in progress)
+## M1 — RTL shim (done, 2026-10-24)
+
+Exit criteria met: the shim's L1 tests pass under ASan/UBSan, and the core headers, converted
+by `bcb2clang`, parse against the shim (`unit.bcb2clang.test_core_headers`; the only
+exceptions are `PuttyIntf.h`, `NeonIntf.h` and `WebDAVFileSystem.h`, which stop at the
+missing PuTTY/neon headers of M3/M4).
 
 `source/rtl` (`openscp::rtl`): the Delphi RTL subset the core uses, in standard C++. Headers
-named like C++Builder's (`System.hpp`, `SysUtils.hpp`, ...) in `source/rtl/include` include
-the implementation headers in `source/rtl/include/rtl`. Tests: `tests/unit/rtl`.
+named like C++Builder's (`System.hpp`, `SysUtils.hpp`, `Classes.hpp`, `vcl.h`, ...) in
+`source/rtl/include` include the implementation headers in `source/rtl/include/rtl`.
+Tests: `tests/unit/rtl` (GoogleTest).
 
-Done so far: `UnicodeString`, `AnsiStringT` (`AnsiString`, `UTF8String`, `RawByteString`),
-character set conversions, C++Builder-style `sprintf`, `TObject`/`__classid`, `TMethodPtr`
-(replacement of `__closure`), `Set`, `DynamicArray`, `TVarRec`/`ARRAYOFCONST`, `Format`,
-float formatting and parsing, exceptions, resource strings, integer/string routines, file
-names, files and `FindFirst`, `TDateTime` and date routines, `TFormatSettings`, `Variant`.
+- System: `UnicodeString`, `AnsiStringT` (`AnsiString`, `UTF8String`, `RawByteString`),
+  character set conversions, `sprintf` with Windows conventions, `TObject`/`__classid`,
+  `TMethodPtr` (the replacement of `__closure`), `Set`, `DynamicArray`, `StaticArray`,
+  `TVarRec`/`ARRAYOFCONST`, `TDateTime`, `Variant`, resource strings, command line, `Random`,
+  Windows types and error codes.
+- SysUtils: exceptions, `Format` and float conversions with Delphi rounding, integer and
+  string routines, file names, files, `FindFirst`, dates, `TFormatSettings` (from the locale),
+  `TEncoding`. StrUtils, Math, DateUtils (with `TTimeZone`), TimeSpan, Types.
+- Classes: `TPersistent`, `TList`, `TStrings`/`TStringList`, streams; Contnrs (`TObjectList`),
+  SyncObjs (`TCriticalSection`, `TEvent`), IniFiles (`TMemIniFile`), Masks (`TMask`), IOUtils,
+  Base64 (Soap.EncdDecd), WideStrUtils, System.JSON, a read-only XML DOM on expat
+  (Xml.XMLIntf/XMLDoc), declarations of System.Win.Registry.
+
+`tools/bcb2clang/bcb2clang.py` converts the declaration-level dialect (pulled forward from M2,
+it is needed for the headers to parse): `__property` and `__closure` declarations and
+backslashes in `#include` paths. Statements (`try`/`__finally`, method pointer assignments)
+follow in M2. Tests: `tests/unit/bcb2clang`.
 
 Decisions:
 
@@ -20,6 +38,13 @@ Decisions:
   Clang-based compilers; C++20's rewritten comparison candidates make mixed-type comparisons
   with implicit conversions ambiguous (e.g. `Variant == UnicodeString`), which compile fine
   in C++17. The shim headers must stay C++17.
+- **Properties get generated accessors.** Clang checks the access of a `__declspec(property)`
+  accessor where the property is used, while C++Builder code declares public properties with
+  private getters. Every converted property therefore gets inline accessors in its own access
+  section that forward to the real ones (`__property_get_X`, `__property_set_X`); getters are
+  `const` and call through `rtl::Mutable(this)`, so they work whether the real getter is
+  `const` or not, and they return the real getter's type, as C++Builder does. Use sites stay
+  unchanged.
 - The ANSI code page is UTF-8, so `AnsiString`, `UTF8String` and `RawByteString` hold UTF-8
   and convert to each other by copying bytes. Other code pages go through iconv.
 - UTF-8 decoding is lossless: invalid bytes map to U+DC80..U+DCFF and back
@@ -31,12 +56,40 @@ Decisions:
   `source/linux`.
 - `sLineBreak` is LF; file names are case-sensitive; `RenameFile` does not replace an
   existing target (like `MoveFile`); `FindFirst` treats `*.*` as `*` and only `*`/`?` as
-  wildcards, as on Windows.
+  wildcards, as on Windows; attributes follow links and add `faSymLink` (like a Windows
+  directory link: `faDirectory | faSymLink`).
 - Locale-independent case mapping (C.UTF-8). `AnsiCompareStr`/`AnsiCompareText` compare by
   Unicode case folding (lowercase sorts first among otherwise equal strings), not by locale
   collation.
-- Global RTL objects (`EmptyStr`, `FormatSettings`, `CmdLine`) use `init_priority`, so they
-  are constructed before the core's static objects.
+- `TEncoding::ANSI`/`Default` are UTF-8 without BOM, `TEncoding::UTF8` writes a BOM.
+- Global RTL objects (`EmptyStr`, `FormatSettings`, `TEncoding` instances, `CmdLine`) use
+  `init_priority`, so they are constructed before the core's static objects.
+- Sources are ASCII; non-ASCII characters in literals are `\u` escapes.
+
+Findings for M2:
+
+- Delphi-style classes (derived from `TObject`) dispatch virtual calls made from constructors
+  and destructors to the most derived class; C++ does not. The RTL accounts for it (e.g.
+  `TObjectList`, `TStringList` free owned objects in their own destructors); the core's
+  `TObject`-derived classes need an audit for virtual calls in constructors/destructors.
+- Some overload sets are ambiguous on Linux where they are not on Windows, because `long` is
+  64-bit (e.g. integer arguments mixed with `__int64`). The RTL adds `long`/`long long`
+  overloads (`IntToStr`, `TVarRec`, ...) and makes `Min`/`Max` templates.
+- `Common.cpp` passes `ShortMonthNames.Size()` (12) to `IndexStr` as the index of the last
+  element; with C++Builder's `StaticArray` this reads one element past the end. To fix when
+  the core compiles.
+- `MakeMethod` (`Common.h`) and `NeonIntf.cpp` reinterpret closures as `TMethod`; the
+  `TMethodPtr` layout differs, so these need a manual change (`TMethodPtr` has a
+  data + function constructor for it).
+- The core relies on `Variant` rounding floats half to even when converting to integers
+  (`FtpFileSystem.cpp` time difference); implemented.
+
+## Next: M2 — core compilation
+
+Extend `bcb2clang` to statements (`try`/`__finally`, method pointer assignments, `__classid`
+in casts), write `convert.py` and the `upstream-converted` branch (see `UPSTREAM.md`),
+generate the resource string tables from the `.rc` files, compile `libopenscp-core` with UI
+callbacks as stubs, then L1 tests of core logic.
 
 ## M0 — Infrastructure (done, 2026-10-24)
 

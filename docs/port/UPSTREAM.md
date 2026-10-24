@@ -28,6 +28,13 @@ Fork point: `master` was created from upstream `3b3f02479` (2026-10-24, Issue 24
 - When the converter itself changes, its new output arrives through the next
   `upstream-converted` commit like any other change.
 
+## Converter
+
+`tools/bcb2clang/bcb2clang.py` converts single files (in place, or into `--output-dir`); the
+tree-wide `convert.py` used below is added in M2 together with the statement-level
+conversions. The conversion keeps every line where it was, so diffs between converted
+revisions stay small.
+
 ## Initial setup (milestone M2, once the converter exists)
 
 ```bash

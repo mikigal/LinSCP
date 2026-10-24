@@ -61,8 +61,18 @@ mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tes
 - Test VM over SSH (root, from milestone M3): FTP/FTPS, WebDAV, S3, password authentication.
   Provisioned only by scripts in `tools/testenv/vm/`.
 
+## Layout
+
+- `source/rtl`: the Delphi RTL shim (`openscp::rtl`); `include/` has C++Builder header names
+  (`System.hpp`, `Classes.hpp`, `vcl.h`, ...), the implementation headers are in
+  `include/rtl/`. Tests in `tests/unit/rtl`.
+- `tools/bcb2clang`: converter of the C++Builder dialect; `tests/unit/bcb2clang` also checks
+  that the converted core headers parse against the shim.
+
 ## Code style
 
 New C++ code follows the WinSCP conventions so ported and new code read the same: Allman
 braces, 2-space indentation, `T` class prefix, `F` field prefix, `A` prefix for parameters that
 would clash with properties, PascalCase for functions and locals. Python follows PEP 8.
+C++ is C++17 (the dialect of the upstream core). Source files are ASCII: write non-ASCII
+characters in literals as `\u` escapes.

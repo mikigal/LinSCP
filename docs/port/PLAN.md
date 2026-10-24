@@ -89,7 +89,8 @@ in Qt.**
 - **`tools/bcb2clang/`** — a script (Python, tokenizer with bracket matching) performing a
   deterministic conversion:
   - `__property T X = { read = FX, write = SetX };` → `__declspec(property(...)) T X;`
-    (+ generated accessors for field-backed properties),
+    with generated inline accessors that forward to the declared ones (Clang checks accessor
+    access at use sites, and C++Builder code has public properties with private accessors),
   - `typedef void __fastcall (__closure *TEvt)(Args)` → `typedef TMethodPtr<void(Args)> TEvt;`
     (an object+method delegate, comparable like Delphi's `TMethod`),
   - `try { A } __finally { B }` → a block with a scope guard (B runs on exit, including on
@@ -322,4 +323,9 @@ GUI on top of a verified core.
 - 2026-10-24: commits go directly to `master`, local only; the user pushes.
 - 2026-10-24: we keep pulling new upstream WinSCP releases (vendor branch workflow).
 - 2026-10-24: everything in the repository is written in English.
+- 2026-10-24: the project builds as C++17, the dialect of the upstream core (C++20 makes some
+  of its mixed-type comparisons ambiguous).
+- 2026-10-24: OS errors in the RTL and the platform layer are Windows error codes; the ANSI code
+  page is UTF-8; the declaration-level part of `bcb2clang` was done in M1 (needed for the core
+  headers to parse).
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.
