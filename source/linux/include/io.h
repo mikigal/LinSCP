@@ -14,6 +14,10 @@
 #define _O_APPEND O_APPEND
 #define _O_BINARY 0
 #define _O_TEXT 0
+#ifndef O_BINARY
+#define O_BINARY 0
+#define O_TEXT 0
+#endif
 
 inline int _open_osfhandle(intptr_t Handle, int)
 {

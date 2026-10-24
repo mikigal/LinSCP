@@ -68,6 +68,15 @@ public:
       const_cast<C *>(static_cast<const C *>(Object)), Method, &InvokeMember<C, R (C::*)(A...) const>);
   }
 
+  // A closure of another type, reinterpreted as C++Builder's casts between
+  // closure types do: calling it is valid only through its original type
+  template <typename S>
+  explicit TMethodPtr(const TMethodPtr<S> & Other) noexcept :
+    FCode(Other.FCode),
+    FData(Other.FData)
+  {
+  }
+
   // A plain function receiving the data pointer as its first argument,
   // the equivalent of a TMethod whose Code is a function taking Self.
   TMethodPtr(void * Data, R (*Function)(void *, A...))
@@ -96,6 +105,7 @@ public:
   void * GetData() const noexcept { return FData; }
 
 private:
+  template <typename S> friend class TMethodPtr;
   typedef R (*TInvoker)(const TMethodPtr & Self, A... Args);
 
   template <class C, typename M>

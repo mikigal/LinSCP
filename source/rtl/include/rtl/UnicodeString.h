@@ -34,6 +34,8 @@ public:
   UnicodeString(const wchar_t * Src, int Len);
   UnicodeString(const char * Src);
   UnicodeString(const char * Src, int Len);
+  // UTF-32, as wchar_t
+  UnicodeString(const char32_t * Src);
   UnicodeString(char Src);
   UnicodeString(wchar_t Src);
   UnicodeString(short Src);
@@ -63,6 +65,7 @@ public:
   UnicodeString operator +(const wchar_t * Rhs) const;
   friend UnicodeString operator +(const wchar_t * Lhs, const UnicodeString & Rhs);
   friend UnicodeString operator +(const char * Lhs, const UnicodeString & Rhs);
+  friend UnicodeString operator +(const char32_t * Lhs, const UnicodeString & Rhs);
 
   // Ordinal comparison, as C++Builder's operators
   bool operator ==(const UnicodeString & Rhs) const { return FData == Rhs.FData; }
@@ -158,6 +161,12 @@ void PrintTo(const UnicodeString & Str, std::ostream * Stream);
 //---------------------------------------------------------------------------
 typedef UnicodeString String;
 typedef UnicodeString TFileName;
+//---------------------------------------------------------------------------
+// Also declared here, not only as friends, so that they apply to operands
+// that convert to UnicodeString (L"?" + UTF8String, as in C++Builder)
+UnicodeString operator +(const wchar_t * Lhs, const UnicodeString & Rhs);
+UnicodeString operator +(const char * Lhs, const UnicodeString & Rhs);
+UnicodeString operator +(const char32_t * Lhs, const UnicodeString & Rhs);
 //---------------------------------------------------------------------------
 // System.Pos: the 1-based index of SubStr in S from Offset, 0 if none
 int Pos(const UnicodeString & SubStr, const UnicodeString & S, int Offset = 1);

@@ -108,6 +108,15 @@ UnicodeString::UnicodeString(const char * Src)
   }
 }
 //---------------------------------------------------------------------------
+UnicodeString::UnicodeString(const char32_t * Src)
+{
+  static_assert(sizeof(wchar_t) == sizeof(char32_t), "wchar_t is UTF-32");
+  for (const char32_t * P = Src; (P != nullptr) && (*P != 0); P++)
+  {
+    FData += static_cast<wchar_t>(*P);
+  }
+}
+//---------------------------------------------------------------------------
 UnicodeString::UnicodeString(const char * Src, int Len)
 {
   if ((Src != nullptr) && (Len > 0))
@@ -183,6 +192,11 @@ UnicodeString operator +(const char * Lhs, const UnicodeString & Rhs)
   UnicodeString Result(Lhs);
   Result += Rhs;
   return Result;
+}
+//---------------------------------------------------------------------------
+UnicodeString operator +(const char32_t * Lhs, const UnicodeString & Rhs)
+{
+  return UnicodeString(Lhs) + Rhs;
 }
 //---------------------------------------------------------------------------
 bool UnicodeString::operator ==(const wchar_t * Rhs) const
