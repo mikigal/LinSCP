@@ -196,5 +196,60 @@ class FtpFeaturesTest(FtpTestCase):
         self.assertIn('Session ID reused', log, 'vsftpd requires the reuse of the TLS session for data')
 
 
+class FtpEngineTest(FtpTestCase):
+    """The FileZilla engine's thread, sockets, name resolution and timers."""
+
+    def test_connection_refused(self):
+        self.port = 2999
+        result = self.cli.commands(self.open_command(), 'exit', args=('/ini=nul',))
+        self.assertEqual(result.returncode, 1, result)
+        self.assertIn('Connection refused', result.output)
+
+    def test_ipv4_name_resolution(self):
+        # With IPv4 only, the engine resolves names asynchronously
+        # (WSAAsyncGetHostByName); nothing listens on the port
+        result = self.cli.commands(
+            'open ftp://user:password@localhost:1/ -rawsettings AddressFamily=1', 'exit', args=('/ini=nul',))
+        self.assertEqual(result.returncode, 1, result)
+        self.assertIn('Connection refused', result.output)
+        result = self.cli.commands(
+            'open ftp://user:password@openscp.invalid/ -rawsettings AddressFamily=1', 'exit', args=('/ini=nul',))
+        self.assertEqual(result.returncode, 1, result)
+        self.assertNotIn('Connection refused', result.output)
+
+    def test_interrupt_transfer(self):
+        self.files().write('%s/big.bin' % self.remote, os.urandom(64 * 1024 * 1024))
+        console = self.cli.spawn_pty('/ini=nul')
+        console.expect('winscp> ')
+        console.send(self.open_command() + '\n')
+        console.expect('winscp> ')
+        # Slowly, not to finish before the interrupt
+        console.send('get -speed=1024 "%s/big.bin" "%s/"\n' % (self.remote, self.local))
+        console.expect(r'big\.bin +\| +[0-9]+ KB')
+        console.send('\x03')
+        console.expect('winscp> ')
+        # The session still works
+        console.send('ls "%s"\n' % self.remote)
+        console.expect('big\\.bin')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 0, console.text)
+        partial = [path for path in self.local.iterdir() if path.name.startswith('big.bin')]
+        self.assertLess(sum(path.stat().st_size for path in partial), 64 * 1024 * 1024)
+
+    def test_keepalive(self):
+        log = self.work / 'session.log'
+        console = self.cli.spawn_pty('/ini=nul', '/loglevel=1', '/log=%s' % log)
+        console.expect('winscp> ')
+        console.send(self.open_command(extra=['-rawsettings', 'FtpPingInterval=1']) + '\n')
+        console.expect('winscp> ')
+        time.sleep(4)
+        console.send('pwd\n')
+        console.expect('winscp> ')
+        console.send('exit\n')
+        self.assertEqual(console.wait(), 0, console.text)
+        self.assertIn('Sending dummy command to keep session alive.', log.read_text(errors='replace'))
+
+
 if __name__ == '__main__':
     unittest.main()
