@@ -2,6 +2,95 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Next: M3 — SSH and the CLI
+
+`openscp-cli` (port of `ConsoleRunner`, with the console implementation of `core/Interface.h`
+and a configuration class in the application layer), L2 tests of SFTP and SCP against the
+local sshd and the test VM, the VM provisioning script (`tools/testenv/vm/`). PuTTY's `unix/`
+part and `SecureShell` on `poll()` were already done in M2.
+
+## M2 — Core compilation (done, 2026-10-24)
+
+Exit criteria met: `libopenscp-core` (`openscp::core`) links into executables, and the L1
+tests of core logic (`openscp_core_tests`) pass under ASan/UBSan.
+
+- `bcb2clang` converts statements too: `try`/`__finally` (a `::rtl::TFinally` scope guard,
+  also in macro definitions), references to methods (`::rtl::MethodPtr(Object,
+  &TClass::Method)`, resolved with a table of the classes of all core files and the RTL
+  properties), non-public inheritance from Delphi-style classes (made public) and unscoped
+  enumerations (given the underlying type `int`). `convert.py` converts a tree,
+  `update-upstream.sh` records conversions on the `upstream-converted` branch (`UPSTREAM.md`).
+- `tools/rc2cpp` generates C++ string tables from the `.rc` files (`TextsCore*.rc`,
+  `TextsFileZilla.rc`); they register with the RTL's `LoadStr` before the core's static
+  objects are constructed.
+- `source/linux` (`openscp::linux`): the Windows API the core uses, with C linkage, in
+  `include/winapi/` (SDK header names in `include/`): files (a `HANDLE` is an fd), kernel
+  objects (events, threads, processes, waits that poll sockets), WinSock on POSIX sockets,
+  time zones from tzdata, CryptoAPI on OpenSSL, an empty registry, COM stubs, XDG folders,
+  version information.
+- PuTTY: the portable sources of WinSCP's `Putty.cbproj` plus `source/putty/unix`, derived
+  from PuTTY 0.85's `unix/` with WinSCP's changes (callback sets per session, `uxsel` per
+  callback set, the agent via `SSH_AUTH_SOCK`, subprocesses waited for with pidfds, storage
+  through the core's registry hooks, character sets via iconv). `SecureShell` waits on the
+  session's file descriptors with `poll()`.
+- neon and libs3 build from the in-tree (WinSCP-modified) sources with the system OpenSSL
+  and expat (`source/libneon`, `source/libs3`).
+- The FileZilla engine is MFC-based and stays for M4; `source/libfilezilla` implements
+  `TFileZillaIntf` with a stub whose `Init` throws, so the core links and an FTP session
+  fails to open with an error.
+- `tests/unit/core`: the test implementation of `core/Interface.h` (no UI, configuration
+  without storage) and tests of file masks, listing parsing, permissions, remote paths,
+  session URLs, transfer settings and general helpers.
+
+Decisions:
+
+- **Third-party code was pulled into M2** (PuTTY's `unix/`, neon, libs3): the core is
+  monolithic, even a file mask test links `TTerminal` and with it every file system.
+- **Delphi object semantics in the RTL**: `TObject::operator new` and the storage of thrown
+  objects (`--wrap=__cxa_allocate_exception`) are zero-filled, as Delphi objects are; the core
+  leaves fields uninitialized (`TSessionData`, `ExtException`). Delphi-style objects in new
+  code must be heap-allocated, as in C++Builder.
+- **Dialect conversions instead of manual edits** where C++Builder semantics differ: public
+  inheritance from Delphi classes (C++Builder allocates and casts them ignoring the access),
+  `int` enumerations (C++Builder, like MSVC; `TGssLib(-1)` compares as negative). On Windows
+  `wint_t` is `wchar_t`, so the RTL adds `wchar_t` overloads of `towupper`/`towlower`.
+- The core's headers are system headers for its consumers (their upstream warnings are not
+  reported in our code).
+- The application name and the SSH client version string are the front end's
+  (`AppNameString`, `SshVersionString` in `Interface.h`); OpenSCP uses `OpenSCP`.
+
+Manual edits in upstream directories (keep the list current; `git diff upstream-converted
+master -- source/core source/putty libs` shows them):
+
+- `core/Common.cpp`, `HierarchicalStorage.cpp`, `Queue.cpp`, `CoreMain.cpp`,
+  `SecureShell.cpp`, `Terminal.cpp`: pointer/integer casts that truncate on LP64 (module
+  handles, file handles, `TStrings::Objects` flags), a functional cast of a closure type.
+- `core/PuttyIntf.cpp`: does not include `windows/platform.h` (the PuTTY headers bring the
+  platform's own).
+- `core/SecureShell.cpp`: the event loop waits with `poll()` on the session's descriptors
+  (`EventSelectLoop`).
+- `putty/puttyexp.h`: `select_result` is declared by the platform header.
+- `libs/neon/src/config.h`: includes `neon-linux-config.h` outside Windows.
+
+Findings for later milestones:
+
+- SIGPIPE must be ignored by the applications (writes to closed sockets).
+- Local paths: audit `\\` literals in the core (e.g. `FileName + L"\\*"` in
+  `DoRecursiveDeleteFile`), `\\?\` long path prefixes (`ApiPath`), `ValidLocalFileName`
+  (Windows-invalid characters, path traversal protection) — M3, with the transfer tests.
+- Unavailable on Linux: local-to-local synchronization through COM `IFileOperation`,
+  SSPI/NTLM for WebDAV; moving to the trash only in the home directory's file system.
+- `SessionInfo`'s memory statistics use `VirtualQuery` with pointer arithmetic from NULL,
+  which UBSan may report.
+- `Security.cpp` has a size assertion that fails only in `_DEBUG` builds (not defined).
+- Exceptions copied with their implicit copy constructors share `ExtException`'s
+  `FMoreMessages` (C++Builder never copies Delphi objects); watch for double deletes under
+  ASan when exceptions are rethrown by value.
+- Upstream bugs (also on Windows, left as they are): `UnixExtractFileExt` returns a wrong part
+  of a path that has directories (its only caller passes a name); `ParseShortEngMonthName`
+  passes `ShortMonthNames.Size()` as the highest index, so an unknown name reads one element
+  past the array (inside `TFormatSettings`, unnoticed by ASan).
+
 ## M1 — RTL shim (done, 2026-10-24)
 
 Exit criteria met: the shim's L1 tests pass under ASan/UBSan, and the core headers, converted
@@ -83,13 +172,6 @@ Findings for M2:
   data + function constructor for it).
 - The core relies on `Variant` rounding floats half to even when converting to integers
   (`FtpFileSystem.cpp` time difference); implemented.
-
-## Next: M2 — core compilation
-
-Extend `bcb2clang` to statements (`try`/`__finally`, method pointer assignments, `__classid`
-in casts), write `convert.py` and the `upstream-converted` branch (see `UPSTREAM.md`),
-generate the resource string tables from the `.rc` files, compile `libopenscp-core` with UI
-callbacks as stubs, then L1 tests of core logic.
 
 ## M0 — Infrastructure (done, 2026-10-24)
 

@@ -328,4 +328,9 @@ GUI on top of a verified core.
 - 2026-10-24: OS errors in the RTL and the platform layer are Windows error codes; the ANSI code
   page is UTF-8; the declaration-level part of `bcb2clang` was done in M1 (needed for the core
   headers to parse).
+- 2026-10-24: PuTTY's `unix/` part, neon and libs3 were built in M2 (the core does not link
+  without them); the FileZilla engine is a stub until M4.
+- 2026-10-24: Delphi object semantics live in the RTL (zero-filled objects and thrown
+  exceptions); C++Builder semantics that differ at the language level (inheritance access,
+  `int` enumerations) are `bcb2clang` conversions, not manual edits.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.
