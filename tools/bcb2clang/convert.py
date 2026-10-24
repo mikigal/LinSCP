@@ -57,12 +57,14 @@ def convert_tree(root):
         paths = _sources(root, directory, recursive=False)
         dialect_paths += paths
         table = bcb2clang.make_class_table(paths)
-        jobs += [(path, path, lambda text, table=table: bcb2clang.convert_source(text, table)) for path in paths]
+        jobs += [(path, path, lambda text, table=table, path=path: bcb2clang.convert_source(
+            text, table, bcb2clang.is_header(path))) for path in paths]
     # The ported files refer to the core's classes and to each other's
     ported = [(root / source, root / target) for source, target in sorted(PORTED_FILES.items())
               if (root / source).is_file()]
     table = bcb2clang.make_class_table(dialect_paths + [source for source, _ in ported])
-    jobs += [(source, target, lambda text: bcb2clang.convert_source(text, table)) for source, target in ported]
+    jobs += [(source, target, lambda text, source=source: bcb2clang.convert_source(
+        text, table, bcb2clang.is_header(source))) for source, target in ported]
     for directory in INCLUDE_DIRS:
         jobs += [(path, path, bcb2clang.convert_includes) for path in _sources(root, directory, recursive=True)]
     for source, target, convert in jobs:

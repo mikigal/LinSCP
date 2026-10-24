@@ -26,6 +26,9 @@ Conversions:
 - Unscoped enumerations without a fixed underlying type get ``int``, the
   type C++Builder gives them (as MSVC does): values outside the
   enumerators' range (``TGssLib(-1)``) are valid and compare as signed.
+- In source files (not headers), ``inline`` goes from the definitions of
+  members outside of their classes (``void inline TA::M() { ... }``):
+  C++Builder emits them as external functions, other files call them.
 - ``long`` becomes ``int`` (``unsigned long`` ``unsigned int``, also in
   macro definitions): Windows is LLP64, the core relies on a 32-bit long
   (``sizeof(unsigned long)`` in the SFTP packets, sign extensions with
@@ -1120,6 +1123,39 @@ def convert_enums(tokens):
 
 
 # ---------------------------------------------------------------------------
+# Inline member definitions
+# ---------------------------------------------------------------------------
+
+def convert_inline_definitions(tokens):
+    """Removes inline from the definitions of members outside of their
+    classes (at namespace scope): C++Builder emits them as external
+    functions. For source files only (in headers, inline is needed)."""
+    result = list(tokens)
+    depth = 0
+    for i, token in enumerate(tokens):
+        if token.kind == 'punct':
+            if token.text in _OPENING:
+                depth += 1
+            elif token.text in _CLOSING:
+                depth -= 1
+            continue
+        if depth != 0 or token.kind != 'ident' or token.text != 'inline':
+            continue
+        # The declarator: a qualified name before the parameters
+        j = _next_significant(tokens, i)
+        qualified = False
+        while j < len(tokens) and tokens[j].text not in ('(', ';', '{', '='):
+            if tokens[j].text == '::':
+                qualified = True
+            j = _next_significant(tokens, j)
+        if qualified and j < len(tokens) and tokens[j].text == '(':
+            result[i] = Token('ident', '')
+            if i + 1 < len(tokens) and tokens[i + 1].kind == 'ws' and '\n' not in tokens[i + 1].text:
+                result[i + 1] = Token('ws', '')
+    return result
+
+
+# ---------------------------------------------------------------------------
 # long
 # ---------------------------------------------------------------------------
 
@@ -1200,9 +1236,10 @@ def convert_base_access(tokens, table):
 
 # ---------------------------------------------------------------------------
 
-def convert_source(text, table=None):
+def convert_source(text, table=None, header=True):
     """Returns the converted source text. Method references are converted
-    with the classes of the table, by default those declared in the text."""
+    with the classes of the table, by default those declared in the text.
+    header is False for source files."""
     tokens = tokenize(text)
     if table is None:
         table = ClassTable()
@@ -1210,6 +1247,8 @@ def convert_source(text, table=None):
     tokens = convert_preprocessor(tokens)
     # Before the conversions that copy types into generated code
     tokens = convert_long(tokens)
+    if not header:
+        tokens = convert_inline_definitions(tokens)
     tokens = convert_closures(tokens)
     tokens = convert_properties(tokens)
     tokens = convert_base_access(tokens, table)
@@ -1242,6 +1281,10 @@ def write_source(path, text):
 RTL_HEADERS = Path(__file__).resolve().parents[2] / 'source' / 'rtl' / 'include' / 'rtl'
 
 
+def is_header(path):
+    return Path(path).suffix.lower() in ('.h', '.hpp')
+
+
 def make_class_table(paths):
     """The classes declared in the files, for converting method references
     in any of them, plus the properties of the RTL shim."""
@@ -1262,7 +1305,7 @@ def main(argv=None):
     table = make_class_table(args.files)
     for path in args.files:
         try:
-            converted = convert_source(read_source(path), table)
+            converted = convert_source(read_source(path), table, is_header(path))
         except ConversionError as error:
             print('%s: %s' % (path, error), file=sys.stderr)
             failed = True

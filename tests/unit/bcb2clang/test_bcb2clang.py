@@ -345,6 +345,24 @@ class EnumTest(unittest.TestCase):
                 self.assertEqual(convert(text), text)
 
 
+class InlineDefinitionTest(unittest.TestCase):
+    def test_source_files(self):
+        self.assertEqual(
+            bcb2clang.convert_source('void __fastcall inline TA::M(int A)\n{\n}\n', header=False),
+            'void __fastcall TA::M(int A)\n{\n}\n')
+        self.assertEqual(
+            bcb2clang.convert_source('inline void TA::TB::M() {}\n', header=False), 'void TA::TB::M() {}\n')
+
+    def test_unchanged(self):
+        for text, header in [
+                ('inline void TA::M() {}\n', True),
+                ('inline static int F(int A) { return A; }\n', False),
+                ('class TA {\n  inline void M();\n};\n', False),
+                ('namespace N { inline int F() { return std::max(1, 2); } }\n', False)]:
+            with self.subTest(text=text):
+                self.assertEqual(bcb2clang.convert_source(text, header=header), text)
+
+
 class LongTest(unittest.TestCase):
     def test_32_bit(self):
         self.assertEqual(convert('long A;\nunsigned long B = 1;\n'), 'int A;\nunsigned int B = 1;\n')
@@ -499,13 +517,13 @@ class UpstreamCoreTest(unittest.TestCase):
         for name, text in sorted(sources.items()):
             with self.subTest(path=name):
                 self.assertEqual(bcb2clang.untokenize(bcb2clang.tokenize(text)), text)
-                converted = bcb2clang.convert_source(text, table)
+                converted = bcb2clang.convert_source(text, table, bcb2clang.is_header(name))
                 self.assertEqual(converted.count('\n'), text.count('\n'))
                 self.assertEqual(converted.count('\r\n'), text.count('\r\n'))
                 keywords = {t.text for t in bcb2clang.tokenize(converted, preprocessor=False) if t.kind == 'ident'}
                 self.assertFalse(keywords & {'__property', '__closure', '__finally'})
                 # Converting again changes nothing
-                self.assertEqual(bcb2clang.convert_source(converted, table), converted)
+                self.assertEqual(bcb2clang.convert_source(converted, table, bcb2clang.is_header(name)), converted)
 
 
 if __name__ == '__main__':
