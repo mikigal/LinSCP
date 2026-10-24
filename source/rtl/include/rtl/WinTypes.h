@@ -193,6 +193,17 @@ typedef WIN32_FIND_DATAW * LPWIN32_FIND_DATAW;
 #define INVALID_HANDLE_VALUE (reinterpret_cast<HANDLE>(static_cast<LONG_PTR>(-1)))
 #define INFINITE 0xFFFFFFFF
 //---------------------------------------------------------------------------
+#define HKEY_CLASSES_ROOT (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000000)))
+#define HKEY_CURRENT_USER (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000001)))
+#define HKEY_LOCAL_MACHINE (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000002)))
+#define HKEY_USERS (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000003)))
+#define HKEY_CURRENT_CONFIG (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000005)))
+#define KEY_READ 0x20019
+#define KEY_WRITE 0x20006
+#define KEY_ALL_ACCESS 0xF003F
+#define KEY_WOW64_32KEY 0x0200
+#define KEY_WOW64_64KEY 0x0100
+//---------------------------------------------------------------------------
 #define S_OK (static_cast<HRESULT>(0))
 #define S_FALSE (static_cast<HRESULT>(1))
 #define E_FAIL (static_cast<HRESULT>(0x80004005))

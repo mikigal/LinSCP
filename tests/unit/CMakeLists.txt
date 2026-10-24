@@ -8,6 +8,7 @@ gtest_discover_tests(openscp_toolchain_tests
 
 add_executable(openscp_rtl_tests
   rtl/ClassesTest.cpp
+  rtl/DataFormatsTest.cpp
   rtl/DateTimeTest.cpp
   rtl/FilesTest.cpp
   rtl/FormatTest.cpp

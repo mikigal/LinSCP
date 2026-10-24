@@ -10,9 +10,14 @@ add_library(openscp_rtl STATIC
   src/Conversion.cpp
   src/DateTime.cpp
   src/DateUtils.cpp
+  src/EncdDecd.cpp
   src/Encoding.cpp
   src/Files.cpp
   src/Format.cpp
+  src/IniFiles.cpp
+  src/IOUtils.cpp
+  src/Json.cpp
+  src/Masks.cpp
   src/FormatSettings.cpp
   src/Printf.cpp
   src/Streams.cpp
@@ -21,7 +26,8 @@ add_library(openscp_rtl STATIC
   src/SysUtils.cpp
   src/System.cpp
   src/Variants.cpp
-  src/WinError.cpp)
+  src/WinError.cpp
+  src/Xml.cpp)
 add_library(openscp::rtl ALIAS openscp_rtl)
 
 target_include_directories(openscp_rtl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

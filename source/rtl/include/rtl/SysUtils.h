@@ -59,8 +59,9 @@ private:
 #define RTL_DECLARE_EXCEPTION(NAME, BASE) \
   class NAME : public BASE \
   { \
+    typedef BASE TBase; \
   public: \
-    using BASE::BASE; \
+    using TBase::TBase; \
   };
 //---------------------------------------------------------------------------
 RTL_DECLARE_EXCEPTION(EAbort, Exception)
