@@ -2,12 +2,92 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M3 — SSH and the CLI
+## M3 — SSH and the CLI (in progress)
 
-`openscp-cli` (port of `ConsoleRunner`, with the console implementation of `core/Interface.h`
-and a configuration class in the application layer), L2 tests of SFTP and SCP against the
-local sshd and the test VM, the VM provisioning script (`tools/testenv/vm/`). PuTTY's `unix/`
-part and `SecureShell` on `poll()` were already done in M2.
+Done: `openscp-cli` works for SFTP and SCP, the L2 tests against the local sshd pass under
+ASan/UBSan. Remaining: the test VM provisioning script (`tools/testenv/vm/`) and the L2 tests
+that need the VM (password, keyboard-interactive and password change authentication, banners,
+a real network).
+
+- **Ported application files**: `tools/bcb2clang/convert.py` writes converted copies of the
+  files of upstream's `source/windows` listed in `PORTED_FILES` to `source/app` and
+  `source/cli`; they are edited on `master`, so upstream changes arrive through the regular
+  merges (`UPSTREAM.md`). Ported so far: `ConsoleRunner`, `GUIConfiguration`, `ProgParams`,
+  `SynchronizeController`.
+- `source/app` (`openscp::app`), the application layer shared by the front ends:
+  `TGUIConfiguration` (resource modules of translations dropped: the internal locale only),
+  `TAppConfiguration` (the INI file `$XDG_CONFIG_HOME/openscp/openscp.ini` unless `/ini=`,
+  the master password of `TWinConfiguration`), `TProgramParams` (the process's arguments as
+  they are), `TDiscMonitor` on inotify (a thread, changes reported with
+  `TThread::Synchronize`), the common parts of `core/Interface.h`, helpers of upstream's GUI
+  code (`ApplyTabs`, `FormatMainFormCaption`, ...), string tables of `TextsWin1.rc`.
+- `source/cli` (`openscp-cli`, the counterpart of `winscp.com`): the ported `ConsoleRunner`
+  with `TUnixConsole` in place of the Windows consoles. It works as `winscp.com`: interactive
+  on a terminal (line input, echo off for passwords, choices by a single key, Esc cancels),
+  redirected input read and echoed line by line, redirected output not rewritten (progress
+  lines are committed by the next line), `/stdout` and `/stdin` streams with messages on
+  stderr. SIGINT is blocked in all threads and waited for by a thread of its own (no system
+  call gets `EINTR`); it wakes up the console and `CheckSynchronize`. SIGPIPE is ignored.
+  Not ported: `/dumpcallstack`, `/comregistration`, console titles.
+- RTL: `TComponent` (ownership), `TThread::Synchronize`/`Queue` with `CheckSynchronize`,
+  `WrapText`/`TSysCharSet`; `sprintf`'s `%ld` is 32-bit.
+- L2 tests (`tests/integration/test_cli_ssh.py`, label `ssh`): unittest (as the other Python
+  tests; pytest is not installed) with `tools/testenv/openscp_cli.py`, which runs the CLI with
+  an isolated HOME, XDG directories and TMPDIR, without the user's SSH agent, and on a
+  pseudo terminal for the interactive tests. They cover transfers (files, directories, masks,
+  permissions, timestamps, resume, streams, Unicode names and names invalid on Windows), file
+  operations, listing, synchronization, keepuptodate with Ctrl+C, host keys (fingerprints,
+  the interactive prompt and the cache), public key, agent (an agent of the test's own) and
+  passphrase authentication, XML and session logs, scripts and parameters, exit codes, stored
+  sessions in an INI file. `/copyid` is not tested locally: the local sshd runs as the user,
+  it would install the key in the user's own `~/.ssh/authorized_keys`.
+
+Decisions:
+
+- **`long` is 32-bit in the converted core** (a `bcb2clang` conversion): Windows is LLP64 and
+  the core relies on it (SFTP packets read `sizeof(unsigned long)` bytes, times are
+  sign-extended with `static_cast<signed long>`, the HMAC code XORs keys in `unsigned long`
+  steps). The RTL's `sprintf` takes `%ld` as 32-bit, as the Windows C runtime does. Where the
+  core meets other code (PuTTY's `schedule_timer`, the C library's `swscanf`), the `long`s
+  are edited by hand.
+- **Field-backed property reads return a reference to the field** (`bcb2clang`): C++Builder
+  reads the field itself, so `Rights.Number = ...` or `IncludeFileMask.Masks = ...` modify
+  the field; with a getter returning a copy the assignments were lost.
+- **Storage keys are delimited by backslashes** (`THierarchicalStorage`), not by the path
+  delimiter, so the INI file has the sections of `WinSCP.ini` (`[Sessions\name]`) and
+  `/rawconfig` takes the same keys as on Windows.
+- **Local file names follow Linux**: only `/` is invalid (`LocalInvalidChars`), no encoding of
+  trailing spaces and dots, no reserved names (`CON`, ...), no `\\?\` prefix for long paths
+  (`ApiPath`). The path traversal protection stays (`/` is encoded, or refused when the
+  replacement is off; `.` and `..` from SCP are refused).
+- Known upstream leaks on PuTTY's fatal error paths (WinSCP's seat throws a C++ exception
+  through PuTTY's C code) are suppressed for LeakSanitizer in the L2 tests
+  (`tools/testenv/lsan-suppressions.txt`); the tests that cancel the host key prompt run
+  without leak detection (a packet of the abandoned key exchange has no frame of its own).
+  The leak of `TlsCipherList` and of interrupted PuTTY callbacks were fixed.
+- As upstream: SCP has no streams (`/stdout`, `/stdin`) and no newer-only upload; Ctrl+C at
+  the prompt ends the console with exit code 0; in keepuptodate it ends watching and the
+  script goes on.
+
+Manual edits in upstream directories since M2 (see also the list in M2):
+
+- `core/HierarchicalStorage.cpp`: backslash-delimited keys (also `TOptionsIniFile`).
+- `core/Common.cpp`: `LocalInvalidChars`, `ValidLocalFileName`, `ApiPath`, the path delimiter
+  in `DoRecursiveDeleteFile`, `TlsCipherList` frees its SSL objects.
+- `core/PuttyIntf.cpp` (`schedule_timer`), `core/ScpFileSystem.cpp` (`swscanf`),
+  `core/SftpFileSystem.cpp` (a pointer-sized token): the 32-bit `long`.
+- `putty/putty.h`: `SeatOutputType` has the underlying type `int` in C++ (WinSCP passes
+  `(SeatOutputType)-1`).
+- `core/SecureShell.cpp` (`FreeBackend`): frees the PuTTY callback interrupted by an exception
+  and the callbacks and packets left of the destroyed backend (LeakSanitizer).
+
+Findings for later milestones:
+
+- The default random seed file is `$XDG_DATA_HOME/winscp.rnd`, the default log file names
+  use `%TEMP%` (not set on Linux) — to settle with the preferences (M8).
+- `TGUIConfiguration` has no translations (resource modules); M8 brings the `.ini`
+  translations.
+- The interactive console has no line editing beyond the terminal's own (no history).
 
 ## M2 — Core compilation (done, 2026-10-24)
 

@@ -68,6 +68,14 @@ mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tes
   `include/rtl/`. Tests in `tests/unit/rtl`.
 - `tools/bcb2clang`: converter of the C++Builder dialect; `tests/unit/bcb2clang` also checks
   that the converted core headers parse against the shim.
+- `source/linux`: the Windows API on Linux for the core; `source/libcore`, `source/libputty`,
+  ...: build definitions of the converted upstream code.
+- `source/app`: the application layer shared by the front ends; `source/cli`: `openscp-cli`.
+  Some of their files are converted copies of upstream's `source/windows`
+  (`PORTED_FILES` in `tools/bcb2clang/convert.py`): edit them minimally, mark edits with
+  `OpenSCP:` comments. Upstream files use CRLF line endings; keep them.
+- L2 tests: `tests/integration/test_cli_ssh.py` runs `openscp-cli` against the local sshd
+  through `tools/testenv/openscp_cli.py` (isolated environment, pseudo terminals).
 
 ## Code style
 
