@@ -332,6 +332,14 @@ typedef Set<TReplaceFlag, rfReplaceAll, rfIgnoreCase> TReplaceFlags;
 UnicodeString StringReplace(const UnicodeString S, const UnicodeString OldPattern,
   const UnicodeString NewPattern, TReplaceFlags Flags);
 
+// Delphi's set of AnsiChar
+typedef Set<unsigned char, 0, 255> TSysCharSet;
+bool CharInSet(wchar_t C, const TSysCharSet & CharSet);
+// Breaks the line with BreakStr at the BreakChars so that the lines are not
+// longer than MaxCol where possible (text in quotes is not broken)
+UnicodeString WrapText(const UnicodeString Line, const UnicodeString BreakStr,
+  const TSysCharSet & BreakChars, int MaxCol);
+
 bool IsDelimiter(const UnicodeString Delimiters, const UnicodeString S, int Index);
 int LastDelimiter(const UnicodeString Delimiters, const UnicodeString S);
 // The index of the first of the delimiters in S from StartIdx, 0 if none

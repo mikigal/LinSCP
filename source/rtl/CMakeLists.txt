@@ -29,6 +29,7 @@ add_library(openscp_rtl STATIC
   src/Strings.cpp
   src/SysUtils.cpp
   src/System.cpp
+  src/Threads.cpp
   src/Variants.cpp
   src/WinError.cpp
   src/Xml.cpp)

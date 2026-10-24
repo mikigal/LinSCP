@@ -1,6 +1,8 @@
 // System.Classes: TPersistent, TList, TStrings, TStringList
 //---------------------------------------------------------------------------
 #include <rtl/Classes.h>
+
+#include <algorithm>
 //---------------------------------------------------------------------------
 namespace System
 {
@@ -44,6 +46,40 @@ void TPersistent::AssignError(TPersistent * Source)
 UnicodeString TPersistent::GetNamePath()
 {
   return ClassName();
+}
+//---------------------------------------------------------------------------
+// TComponent
+//---------------------------------------------------------------------------
+TComponent::TComponent(TComponent * AOwner) :
+  FOwner(AOwner)
+{
+  if (FOwner != nullptr)
+  {
+    FOwner->FComponents.push_back(this);
+  }
+}
+//---------------------------------------------------------------------------
+TComponent::~TComponent()
+{
+  // The owned components remove themselves from the list
+  while (!FComponents.empty())
+  {
+    delete FComponents.back();
+  }
+  if (FOwner != nullptr)
+  {
+    std::vector<TComponent *> & Siblings = FOwner->FComponents;
+    Siblings.erase(std::find(Siblings.begin(), Siblings.end(), this));
+  }
+}
+//---------------------------------------------------------------------------
+TComponent * TComponent::GetComponent(int Index) const
+{
+  if ((Index < 0) || (Index >= ComponentCount))
+  {
+    throw EListError(SListIndexError, ARRAYOFCONST((Index)));
+  }
+  return FComponents[Index];
 }
 //---------------------------------------------------------------------------
 // TList

@@ -64,6 +64,31 @@ protected:
   void AssignError(TPersistent * Source);
 };
 //---------------------------------------------------------------------------
+// A component owns the components created with it as their owner and frees
+// them when it is freed. (No streaming, no notifications.)
+class TComponent : public TPersistent
+{
+public:
+  explicit TComponent(TComponent * AOwner);
+  virtual ~TComponent();
+
+  TComponent * GetOwner() const { return FOwner; }
+  int GetComponentCount() const { return static_cast<int>(FComponents.size()); }
+  TComponent * GetComponent(int Index) const;
+  UnicodeString GetName() const { return FName; }
+  void SetName(const UnicodeString & Value) { FName = Value; }
+
+  __declspec(property(get = GetOwner)) TComponent * Owner;
+  __declspec(property(get = GetComponentCount)) int ComponentCount;
+  __declspec(property(get = GetComponent)) TComponent * Components[];
+  __declspec(property(get = GetName, put = SetName)) UnicodeString Name;
+
+private:
+  TComponent * FOwner;
+  std::vector<TComponent *> FComponents;
+  UnicodeString FName;
+};
+//---------------------------------------------------------------------------
 typedef int (*TListSortCompare)(void * Item1, void * Item2);
 //---------------------------------------------------------------------------
 class TList : public TObject
@@ -465,6 +490,28 @@ public:
   RTL_PROPERTY_GET(Bytes, GetBytes)
   __declspec(property(get = __property_get_Bytes)) TBytes Bytes;
 };
+//---------------------------------------------------------------------------
+// Synchronization of other threads with the main thread (the one that
+// initialized the program): TThread::Synchronize runs a method in the main
+// thread and waits for it (an exception it raises is raised again in the
+// calling thread), TThread::Queue does not wait. The main thread runs the
+// requests in CheckSynchronize. Of Delphi's TThread, only these class
+// methods are implemented.
+typedef TMethodPtr<void()> TThreadMethod;
+//---------------------------------------------------------------------------
+class TThread
+{
+public:
+  static void Synchronize(TThread * Thread, TThreadMethod Method);
+  static void Queue(TThread * Thread, TThreadMethod Method);
+};
+//---------------------------------------------------------------------------
+// Runs the pending requests, waiting up to Timeout milliseconds for the
+// first one. True if any request was run. Only in the main thread.
+bool CheckSynchronize(int Timeout = 0);
+// Called in the requesting thread when a request is added, for the event
+// loop of the main thread to call CheckSynchronize
+extern TNotifyEvent WakeMainThread;
 //---------------------------------------------------------------------------
 } // namespace Classes
 } // namespace System

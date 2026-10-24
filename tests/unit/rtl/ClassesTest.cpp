@@ -624,3 +624,73 @@ TEST(ClassesTest, Interfaces)
   EXPECT_NE(Interface->QueryInterface(Other, reinterpret_cast<void **>(&Unknown)), S_OK);
   EXPECT_EQ(Unknown, nullptr);
 }
+//---------------------------------------------------------------------------
+namespace
+{
+class TSyncTarget
+{
+public:
+  void Run()
+  {
+    Threads.push_back(std::this_thread::get_id());
+  }
+  void Fail()
+  {
+    throw Exception(L"Failed");
+  }
+  void Wake(TObject *)
+  {
+    Wakes++;
+  }
+  std::vector<std::thread::id> Threads;
+  std::atomic<int> Wakes{0};
+};
+} // namespace
+//---------------------------------------------------------------------------
+TEST(TThread, SynchronizeAndQueue)
+{
+  TSyncTarget Target;
+  std::thread::id MainThread = std::this_thread::get_id();
+
+  // In the main thread, directly
+  TThread::Synchronize(nullptr, ::rtl::MethodPtr(&Target, &TSyncTarget::Run));
+  TThread::Queue(nullptr, ::rtl::MethodPtr(&Target, &TSyncTarget::Run));
+  ASSERT_EQ(Target.Threads.size(), 2U);
+  EXPECT_FALSE(CheckSynchronize());
+
+  WakeMainThread = ::rtl::MethodPtr(&Target, &TSyncTarget::Wake);
+  std::atomic<bool> Synchronized(false);
+  std::atomic<bool> Raised(false);
+  std::thread Other([&]()
+    {
+      TThread::Queue(nullptr, ::rtl::MethodPtr(&Target, &TSyncTarget::Run));
+      TThread::Synchronize(nullptr, ::rtl::MethodPtr(&Target, &TSyncTarget::Run));
+      Synchronized = true;
+      try
+      {
+        TThread::Synchronize(nullptr, ::rtl::MethodPtr(&Target, &TSyncTarget::Fail));
+      }
+      catch (Exception & E)
+      {
+        Raised = (E.Message == L"Failed");
+      }
+    });
+  while (!Synchronized || (Target.Wakes < 3))
+  {
+    CheckSynchronize(10);
+  }
+  // The failing request
+  while (CheckSynchronize(10) || !Raised)
+  {
+  }
+  Other.join();
+  WakeMainThread = nullptr;
+
+  EXPECT_TRUE(Raised);
+  EXPECT_EQ(Target.Wakes, 3);
+  ASSERT_EQ(Target.Threads.size(), 4U);
+  for (std::thread::id Thread : Target.Threads)
+  {
+    EXPECT_EQ(Thread, MainThread);
+  }
+}

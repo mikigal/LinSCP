@@ -715,6 +715,104 @@ UnicodeString DequotedStr(const UnicodeString S, wchar_t AQuote)
   return AnsiDequotedStr(S, AQuote);
 }
 //---------------------------------------------------------------------------
+bool CharInSet(wchar_t C, const TSysCharSet & CharSet)
+{
+  return (C <= 0xFF) && CharSet.Contains(static_cast<unsigned char>(C));
+}
+//---------------------------------------------------------------------------
+UnicodeString WrapText(const UnicodeString Line, const UnicodeString BreakStr,
+  const TSysCharSet & BreakChars, int MaxCol)
+{
+  // Delphi's algorithm: a break is made at the last break character before
+  // the line exceeds MaxCol; the break characters following it are dropped;
+  // existing BreakStr breaks are kept
+  TSysCharSet QuoteChars;
+  QuoteChars << '\'' << '"';
+  const UnicodeString LineBreak(sLineBreak);
+  int Col = 1;
+  int Pos = 1;
+  int LinePos = 1;
+  int BreakPos = 0;
+  wchar_t QuoteChar = L'\0';
+  bool ExistingBreak = false;
+  int LineLen = Line.Length();
+  int BreakLen = BreakStr.Length();
+  UnicodeString Result;
+  while (Pos <= LineLen)
+  {
+    wchar_t CurChar = Line[Pos];
+    if ((BreakLen > 0) && (CurChar == BreakStr[1]))
+    {
+      if (QuoteChar == L'\0')
+      {
+        ExistingBreak = (Line.SubString(Pos, BreakLen) == BreakStr);
+        if (ExistingBreak)
+        {
+          Pos += BreakLen - 1;
+          BreakPos = Pos;
+        }
+      }
+    }
+    else if (CharInSet(CurChar, BreakChars))
+    {
+      if (QuoteChar == L'\0')
+      {
+        BreakPos = Pos;
+      }
+    }
+    else if (CharInSet(CurChar, QuoteChars))
+    {
+      if (CurChar == QuoteChar)
+      {
+        QuoteChar = L'\0';
+      }
+      else if (QuoteChar == L'\0')
+      {
+        QuoteChar = CurChar;
+      }
+    }
+    Pos++;
+    Col++;
+    if (!CharInSet(QuoteChar, QuoteChars) &&
+        (ExistingBreak || ((Col > MaxCol) && (BreakPos > LinePos))))
+    {
+      Col = 1;
+      Result += Line.SubString(LinePos, BreakPos - LinePos + 1);
+      if (!CharInSet(CurChar, QuoteChars))
+      {
+        while (Pos <= LineLen)
+        {
+          if (CharInSet(Line[Pos], BreakChars))
+          {
+            Pos++;
+            ExistingBreak = false;
+          }
+          else if (Line.SubString(Pos, LineBreak.Length()) == LineBreak)
+          {
+            Pos += LineBreak.Length();
+            ExistingBreak = true;
+          }
+          else
+          {
+            break;
+          }
+        }
+      }
+      if ((Pos <= LineLen) && !ExistingBreak)
+      {
+        Result += BreakStr;
+      }
+
+      BreakPos++;
+      LinePos = BreakPos;
+      Pos = LinePos;
+      ExistingBreak = false;
+    }
+  }
+  Result += Line.SubString(LinePos, LineLen - LinePos + 1);
+  return Result;
+}
+//---------------------------------------------------------------------------
 UnicodeString StringReplace(const UnicodeString S, const UnicodeString OldPattern,
   const UnicodeString NewPattern, TReplaceFlags Flags)
 {
