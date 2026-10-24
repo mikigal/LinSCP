@@ -327,6 +327,23 @@ class BaseAccessTest(unittest.TestCase):
         self.assertFalse(table.is_delphi_class('TUnknown'))
 
 
+class EnumTest(unittest.TestCase):
+    def test_underlying_type(self):
+        self.assertEqual(convert('enum TA { a, b };\n'), 'enum TA : int { a, b };\n')
+        self.assertEqual(convert('enum\n{\n  x = 1\n};\n'), 'enum : int\n{\n  x = 1\n};\n')
+        self.assertEqual(convert('typedef enum { c } TC;\n'), 'typedef enum : int { c } TC;\n')
+
+    def test_unchanged(self):
+        for text in [
+                'enum class TA { a };\n',
+                'enum struct TA { a };\n',
+                'enum TA : unsigned char { a };\n',
+                'enum TA x;\n',
+                'void f(enum TA a);\n']:
+            with self.subTest(text=text):
+                self.assertEqual(convert(text), text)
+
+
 class LineEndingTest(unittest.TestCase):
     def test_crlf(self):
         source = '#define M(X) \\\r\n  X\r\ntypedef void __fastcall (__closure *TEvent)\r\n  (int A);\r\n'

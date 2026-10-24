@@ -21,6 +21,9 @@ Conversions:
   ``TObject``) becomes public: C++Builder allocates such objects and casts
   them with Delphi's RTTI, which ignore the access of a base, and the RTL
   shim's ``TObject::operator new`` must stay accessible.
+- Unscoped enumerations without a fixed underlying type get ``int``, the
+  type C++Builder gives them (as MSVC does): values outside the
+  enumerators' range (``TGssLib(-1)``) are valid and compare as signed.
 - Backslashes in ``#include`` paths become slashes.
 
 Line endings (the upstream sources use CRLF) are kept.
@@ -1085,6 +1088,29 @@ def convert_preprocessor(tokens):
 
 
 # ---------------------------------------------------------------------------
+# Enumerations
+# ---------------------------------------------------------------------------
+
+def convert_enums(tokens):
+    """Gives unscoped enumerations without a fixed underlying type the
+    underlying type int."""
+    result = list(tokens)
+    for i, token in enumerate(tokens):
+        if token.kind != 'ident' or token.text != 'enum':
+            continue
+        j = _next_significant(tokens, i)
+        if j >= len(tokens) or tokens[j].text in ('class', 'struct'):
+            continue
+        anchor = i
+        if tokens[j].kind == 'ident':
+            anchor = j
+            j = _next_significant(tokens, j)
+        if j < len(tokens) and tokens[j].text == '{':
+            result[anchor] = Token('ident', tokens[anchor].text + ' : int')
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Inheritance from Delphi-style classes
 # ---------------------------------------------------------------------------
 
@@ -1136,6 +1162,7 @@ def convert_source(text, table=None):
     tokens = convert_closures(tokens)
     tokens = convert_properties(tokens)
     tokens = convert_base_access(tokens, table)
+    tokens = convert_enums(tokens)
     tokens = convert_method_references(tokens, table)
     tokens = convert_finally(tokens)
     result = untokenize(tokens)
