@@ -80,16 +80,16 @@ public:
   void __fastcall Idle();
 
   bool __property_get_IsEmpty() const { return ::rtl::Mutable(this)->GetIsEmpty(); } __declspec(property(get = __property_get_IsEmpty)) bool IsEmpty;
-  int __property_get_TransfersLimit() const { return FTransfersLimit; } void __property_set_TransfersLimit(int Value) { SetTransfersLimit(Value); } __declspec(property(get = __property_get_TransfersLimit, put = __property_set_TransfersLimit)) int TransfersLimit;
-  int __property_get_KeepDoneItemsFor() const { return FKeepDoneItemsFor; } void __property_set_KeepDoneItemsFor(int Value) { SetKeepDoneItemsFor(Value); } __declspec(property(get = __property_get_KeepDoneItemsFor, put = __property_set_KeepDoneItemsFor)) int KeepDoneItemsFor;
+  int & __property_get_TransfersLimit() const { return ::rtl::Mutable(this)->FTransfersLimit; } void __property_set_TransfersLimit(int Value) { SetTransfersLimit(Value); } __declspec(property(get = __property_get_TransfersLimit, put = __property_set_TransfersLimit)) int TransfersLimit;
+  int & __property_get_KeepDoneItemsFor() const { return ::rtl::Mutable(this)->FKeepDoneItemsFor; } void __property_set_KeepDoneItemsFor(int Value) { SetKeepDoneItemsFor(Value); } __declspec(property(get = __property_get_KeepDoneItemsFor, put = __property_set_KeepDoneItemsFor)) int KeepDoneItemsFor;
   int __property_get_ParallelDurationThreshold() const { return ::rtl::Mutable(this)->GetParallelDurationThreshold(); } __declspec(property(get = __property_get_ParallelDurationThreshold)) int ParallelDurationThreshold;
-  bool __property_get_Enabled() const { return FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
-  TQueryUserEvent __property_get_OnQueryUser() const { return FOnQueryUser; } void __property_set_OnQueryUser(TQueryUserEvent Value) { FOnQueryUser = Value; } __declspec(property(get = __property_get_OnQueryUser, put = __property_set_OnQueryUser)) TQueryUserEvent OnQueryUser;
-  TPromptUserEvent __property_get_OnPromptUser() const { return FOnPromptUser; } void __property_set_OnPromptUser(TPromptUserEvent Value) { FOnPromptUser = Value; } __declspec(property(get = __property_get_OnPromptUser, put = __property_set_OnPromptUser)) TPromptUserEvent OnPromptUser;
-  TExtendedExceptionEvent __property_get_OnShowExtendedException() const { return FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
-  TQueueListUpdate __property_get_OnListUpdate() const { return FOnListUpdate; } void __property_set_OnListUpdate(TQueueListUpdate Value) { FOnListUpdate = Value; } __declspec(property(get = __property_get_OnListUpdate, put = __property_set_OnListUpdate)) TQueueListUpdate OnListUpdate;
-  TQueueItemUpdateEvent __property_get_OnQueueItemUpdate() const { return FOnQueueItemUpdate; } void __property_set_OnQueueItemUpdate(TQueueItemUpdateEvent Value) { FOnQueueItemUpdate = Value; } __declspec(property(get = __property_get_OnQueueItemUpdate, put = __property_set_OnQueueItemUpdate)) TQueueItemUpdateEvent OnQueueItemUpdate;
-  TQueueEventEvent __property_get_OnEvent() const { return FOnEvent; } void __property_set_OnEvent(TQueueEventEvent Value) { FOnEvent = Value; } __declspec(property(get = __property_get_OnEvent, put = __property_set_OnEvent)) TQueueEventEvent OnEvent;
+  bool & __property_get_Enabled() const { return ::rtl::Mutable(this)->FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
+  TQueryUserEvent & __property_get_OnQueryUser() const { return ::rtl::Mutable(this)->FOnQueryUser; } void __property_set_OnQueryUser(TQueryUserEvent Value) { FOnQueryUser = Value; } __declspec(property(get = __property_get_OnQueryUser, put = __property_set_OnQueryUser)) TQueryUserEvent OnQueryUser;
+  TPromptUserEvent & __property_get_OnPromptUser() const { return ::rtl::Mutable(this)->FOnPromptUser; } void __property_set_OnPromptUser(TPromptUserEvent Value) { FOnPromptUser = Value; } __declspec(property(get = __property_get_OnPromptUser, put = __property_set_OnPromptUser)) TPromptUserEvent OnPromptUser;
+  TExtendedExceptionEvent & __property_get_OnShowExtendedException() const { return ::rtl::Mutable(this)->FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
+  TQueueListUpdate & __property_get_OnListUpdate() const { return ::rtl::Mutable(this)->FOnListUpdate; } void __property_set_OnListUpdate(TQueueListUpdate Value) { FOnListUpdate = Value; } __declspec(property(get = __property_get_OnListUpdate, put = __property_set_OnListUpdate)) TQueueListUpdate OnListUpdate;
+  TQueueItemUpdateEvent & __property_get_OnQueueItemUpdate() const { return ::rtl::Mutable(this)->FOnQueueItemUpdate; } void __property_set_OnQueueItemUpdate(TQueueItemUpdateEvent Value) { FOnQueueItemUpdate = Value; } __declspec(property(get = __property_get_OnQueueItemUpdate, put = __property_set_OnQueueItemUpdate)) TQueueItemUpdateEvent OnQueueItemUpdate;
+  TQueueEventEvent & __property_get_OnEvent() const { return ::rtl::Mutable(this)->FOnEvent; } void __property_set_OnEvent(TQueueEventEvent Value) { FOnEvent = Value; } __declspec(property(get = __property_get_OnEvent, put = __property_set_OnEvent)) TQueueEventEvent OnEvent;
 
 protected:
   friend class TTerminalItem;
@@ -183,7 +183,7 @@ public:
   static bool __fastcall IsUserActionStatus(TStatus Status);
 
   TStatus __property_get_Status() const { return ::rtl::Mutable(this)->GetStatus(); } __declspec(property(get = __property_get_Status)) TStatus Status;
-  HANDLE __property_get_CompleteEvent() const { return FCompleteEvent; } void __property_set_CompleteEvent(HANDLE Value) { FCompleteEvent = Value; } __declspec(property(get = __property_get_CompleteEvent, put = __property_set_CompleteEvent)) HANDLE CompleteEvent;
+  HANDLE & __property_get_CompleteEvent() const { return ::rtl::Mutable(this)->FCompleteEvent; } void __property_set_CompleteEvent(HANDLE Value) { FCompleteEvent = Value; } __declspec(property(get = __property_get_CompleteEvent, put = __property_set_CompleteEvent)) HANDLE CompleteEvent;
 
 protected:
   TStatus FStatus;
@@ -237,9 +237,9 @@ public:
 
   TFileOperationProgressType * __property_get_ProgressData() const { return ::rtl::Mutable(this)->GetProgressData(); } __declspec(property(get = __property_get_ProgressData)) TFileOperationProgressType * ProgressData;
   __int64 __property_get_TotalTransferred() const { return ::rtl::Mutable(this)->GetTotalTransferred(); } __declspec(property(get = __property_get_TotalTransferred)) __int64 TotalTransferred;
-  TQueueItem::TInfo * __property_get_Info() const { return FInfo; } __declspec(property(get = __property_get_Info)) TQueueItem::TInfo * Info;
-  TQueueItem::TStatus __property_get_Status() const { return FStatus; } __declspec(property(get = __property_get_Status)) TQueueItem::TStatus Status;
-  bool __property_get_ProcessingUserAction() const { return FProcessingUserAction; } __declspec(property(get = __property_get_ProcessingUserAction)) bool ProcessingUserAction;
+  TQueueItem::TInfo * & __property_get_Info() const { return ::rtl::Mutable(this)->FInfo; } __declspec(property(get = __property_get_Info)) TQueueItem::TInfo * Info;
+  TQueueItem::TStatus & __property_get_Status() const { return ::rtl::Mutable(this)->FStatus; } __declspec(property(get = __property_get_Status)) TQueueItem::TStatus Status;
+  bool & __property_get_ProcessingUserAction() const { return ::rtl::Mutable(this)->FProcessingUserAction; } __declspec(property(get = __property_get_ProcessingUserAction)) bool ProcessingUserAction;
   int __property_get_Index() const { return ::rtl::Mutable(this)->GetIndex(); } __declspec(property(get = __property_get_Index)) int Index;
   // Clang warns on property backed by private field which is never used
   void * UserData;
@@ -271,7 +271,7 @@ public:
   TQueueItemProxy * __fastcall FindByQueueItem(TQueueItem * QueueItem);
 
   int __property_get_Count() const { return ::rtl::Mutable(this)->GetCount(); } __declspec(property(get = __property_get_Count)) int Count;
-  int __property_get_DoneCount() const { return FDoneCount; } __declspec(property(get = __property_get_DoneCount)) int DoneCount;
+  int & __property_get_DoneCount() const { return ::rtl::Mutable(this)->FDoneCount; } __declspec(property(get = __property_get_DoneCount)) int DoneCount;
   int __property_get_ActiveCount() const { return ::rtl::Mutable(this)->GetActiveCount(); } __declspec(property(get = __property_get_ActiveCount)) int ActiveCount;
   int __property_get_DoneAndActiveCount() const { return ::rtl::Mutable(this)->GetDoneAndActiveCount(); } __declspec(property(get = __property_get_DoneAndActiveCount)) int DoneAndActiveCount;
   int __property_get_ActivePrimaryCount() const { return ::rtl::Mutable(this)->GetActivePrimaryCount(); } __declspec(property(get = __property_get_ActivePrimaryCount)) int ActivePrimaryCount;
@@ -423,9 +423,9 @@ public:
   bool __fastcall Release();
   void __fastcall Idle();
 
-  TNotifyEvent __property_get_OnIdle() const { return FOnIdle; } void __property_set_OnIdle(TNotifyEvent Value) { FOnIdle = Value; } __declspec(property(get = __property_get_OnIdle, put = __property_set_OnIdle)) TNotifyEvent OnIdle;
-  bool __property_get_Cancelling() const { return FCancel; } __declspec(property(get = __property_get_Cancelling)) bool Cancelling;
-  bool __property_get_AllowAbandon() const { return FAllowAbandon; } void __property_set_AllowAbandon(bool Value) { FAllowAbandon = Value; } __declspec(property(get = __property_get_AllowAbandon, put = __property_set_AllowAbandon)) bool AllowAbandon;
+  TNotifyEvent & __property_get_OnIdle() const { return ::rtl::Mutable(this)->FOnIdle; } void __property_set_OnIdle(TNotifyEvent Value) { FOnIdle = Value; } __declspec(property(get = __property_get_OnIdle, put = __property_set_OnIdle)) TNotifyEvent OnIdle;
+  bool & __property_get_Cancelling() const { return ::rtl::Mutable(this)->FCancel; } __declspec(property(get = __property_get_Cancelling)) bool Cancelling;
+  bool & __property_get_AllowAbandon() const { return ::rtl::Mutable(this)->FAllowAbandon; } void __property_set_AllowAbandon(bool Value) { FAllowAbandon = Value; } __declspec(property(get = __property_get_AllowAbandon, put = __property_set_AllowAbandon)) bool AllowAbandon;
 
 
 protected:

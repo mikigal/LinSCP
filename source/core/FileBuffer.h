@@ -29,9 +29,9 @@ public:
   void __fastcall WriteToStream(TStream * Stream, const DWORD Len);
   void __fastcall WriteToOut(TTransferOutEvent OnTransferOut, TObject * Sender, const DWORD Len);
   void Reset();
-  TMemoryStream * __property_get_Memory() const { return FMemory; } __declspec(property(get = __property_get_Memory)) TMemoryStream * Memory;
+  TMemoryStream * & __property_get_Memory() const { return ::rtl::Mutable(this)->FMemory; } __declspec(property(get = __property_get_Memory)) TMemoryStream * Memory;
   char * __property_get_Data() const { return ::rtl::Mutable(this)->GetData(); } __declspec(property(get = __property_get_Data)) char * Data;
-  int __property_get_Size() const { return FSize; } void __property_set_Size(int Value) { SetSize(Value); } __declspec(property(get = __property_get_Size, put = __property_set_Size)) int Size;
+  int & __property_get_Size() const { return ::rtl::Mutable(this)->FSize; } void __property_set_Size(int Value) { SetSize(Value); } __declspec(property(get = __property_get_Size, put = __property_set_Size)) int Size;
 
 private:
   TMemoryStream * FMemory;

@@ -83,7 +83,7 @@ public:
   UnicodeString __property_get_FirstLine() const { return ::rtl::Mutable(this)->GetFirstLine(); } __declspec(property(get = __property_get_FirstLine)) UnicodeString FirstLine;
   bool __property_get_InteractiveCommand(TFSCommand Cmd) const { return ::rtl::Mutable(this)->GetInteractiveCommand(Cmd); } __declspec(property(get = __property_get_InteractiveCommand)) bool InteractiveCommand[];
   UnicodeString __property_get_LastLine() const { return ::rtl::Mutable(this)->GetLastLine(); } __declspec(property(get = __property_get_LastLine)) UnicodeString LastLine;
-  TSessionData * __property_get_SessionData() const { return FSessionData; } void __property_set_SessionData(TSessionData * Value) { FSessionData = Value; } __declspec(property(get = __property_get_SessionData, put = __property_set_SessionData)) TSessionData * SessionData;
+  TSessionData * & __property_get_SessionData() const { return ::rtl::Mutable(this)->FSessionData; } void __property_set_SessionData(TSessionData * Value) { FSessionData = Value; } __declspec(property(get = __property_get_SessionData, put = __property_set_SessionData)) TSessionData * SessionData;
   UnicodeString __property_get_ReturnVar() const { return ::rtl::Mutable(this)->GetReturnVar(); } void __property_set_ReturnVar(UnicodeString Value) { FReturnVar = Value; } __declspec(property(get = __property_get_ReturnVar, put = __property_set_ReturnVar)) UnicodeString ReturnVar;
 };
 //===========================================================================

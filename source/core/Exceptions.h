@@ -28,8 +28,8 @@ public:
   __fastcall ExtException(UnicodeString Msg, UnicodeString MoreMessages, UnicodeString HelpKeyword = L"");
   __fastcall ExtException(UnicodeString Msg, TStrings* MoreMessages, bool Own, UnicodeString HelpKeyword = L"");
   __fastcall virtual ~ExtException(void);
-  TStrings* __property_get_MoreMessages() const { return FMoreMessages; } __declspec(property(get = __property_get_MoreMessages)) TStrings* MoreMessages;
-  UnicodeString __property_get_HelpKeyword() const { return FHelpKeyword; } __declspec(property(get = __property_get_HelpKeyword)) UnicodeString HelpKeyword;
+  TStrings* & __property_get_MoreMessages() const { return ::rtl::Mutable(this)->FMoreMessages; } __declspec(property(get = __property_get_MoreMessages)) TStrings* MoreMessages;
+  UnicodeString & __property_get_HelpKeyword() const { return ::rtl::Mutable(this)->FHelpKeyword; } __declspec(property(get = __property_get_HelpKeyword)) UnicodeString HelpKeyword;
 
   inline __fastcall ExtException(const UnicodeString Msg, const TVarRec * Args, const int Args_Size) :
     Sysutils::Exception(Msg, Args, Args_Size)

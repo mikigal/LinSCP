@@ -37,8 +37,8 @@ class TScriptProcParams : public TOptions
 public:
   __fastcall TScriptProcParams(const UnicodeString & FullCommand, const UnicodeString & ParamsStr);
 
-  UnicodeString __property_get_ParamsStr() const { return FParamsStr; } __declspec(property(get = __property_get_ParamsStr)) UnicodeString ParamsStr;
-  UnicodeString __property_get_FullCommand() const { return FFullCommand; } __declspec(property(get = __property_get_FullCommand)) UnicodeString FullCommand;
+  UnicodeString & __property_get_ParamsStr() const { return ::rtl::Mutable(this)->FParamsStr; } __declspec(property(get = __property_get_ParamsStr)) UnicodeString ParamsStr;
+  UnicodeString & __property_get_FullCommand() const { return ::rtl::Mutable(this)->FFullCommand; } __declspec(property(get = __property_get_FullCommand)) UnicodeString FullCommand;
 
 private:
   UnicodeString FParamsStr;
@@ -64,20 +64,20 @@ public:
 
   static void __fastcall RequireParams(TScriptProcParams * Parameters, int MinParams);
 
-  TScriptPrintEvent __property_get_OnPrint() const { return FOnPrint; } void __property_set_OnPrint(TScriptPrintEvent Value) { FOnPrint = Value; } __declspec(property(get = __property_get_OnPrint, put = __property_set_OnPrint)) TScriptPrintEvent OnPrint;
-  TExtendedExceptionEvent __property_get_OnShowExtendedException() const { return FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
-  TSynchronizeDirectory __property_get_OnTerminalSynchronizeDirectory() const { return FOnTerminalSynchronizeDirectory; } void __property_set_OnTerminalSynchronizeDirectory(TSynchronizeDirectory Value) { FOnTerminalSynchronizeDirectory = Value; } __declspec(property(get = __property_get_OnTerminalSynchronizeDirectory, put = __property_set_OnTerminalSynchronizeDirectory)) TSynchronizeDirectory OnTerminalSynchronizeDirectory;
-  TScriptSynchronizeStartStop __property_get_OnSynchronizeStartStop() const { return FOnSynchronizeStartStop; } void __property_set_OnSynchronizeStartStop(TScriptSynchronizeStartStop Value) { FOnSynchronizeStartStop = Value; } __declspec(property(get = __property_get_OnSynchronizeStartStop, put = __property_set_OnSynchronizeStartStop)) TScriptSynchronizeStartStop OnSynchronizeStartStop;
-  TScriptProgressEvent __property_get_OnProgress() const { return FOnProgress; } void __property_set_OnProgress(TScriptProgressEvent Value) { FOnProgress = Value; } __declspec(property(get = __property_get_OnProgress, put = __property_set_OnProgress)) TScriptProgressEvent OnProgress;
-  TCopyParamType __property_get_CopyParam() const { return FCopyParam; } void __property_set_CopyParam(TCopyParamType Value) { SetCopyParam(Value); } __declspec(property(get = __property_get_CopyParam, put = __property_set_CopyParam)) TCopyParamType CopyParam;
-  int __property_get_SynchronizeParams() const { return FSynchronizeParams; } void __property_set_SynchronizeParams(int Value) { SetSynchronizeParams(Value); } __declspec(property(get = __property_get_SynchronizeParams, put = __property_set_SynchronizeParams)) int SynchronizeParams;
-  TBatchMode __property_get_Batch() const { return FBatch; } __declspec(property(get = __property_get_Batch)) TBatchMode Batch;
-  TTerminal * __property_get_Terminal() const { return FTerminal; } __declspec(property(get = __property_get_Terminal)) TTerminal * Terminal;
-  bool __property_get_Groups() const { return FGroups; } void __property_set_Groups(bool Value) { FGroups = Value; } __declspec(property(get = __property_get_Groups, put = __property_set_Groups)) bool Groups;
-  bool __property_get_WantsProgress() const { return FWantsProgress; } void __property_set_WantsProgress(bool Value) { FWantsProgress = Value; } __declspec(property(get = __property_get_WantsProgress, put = __property_set_WantsProgress)) bool WantsProgress;
-  bool __property_get_UsageWarnings() const { return FUsageWarnings; } void __property_set_UsageWarnings(bool Value) { FUsageWarnings = Value; } __declspec(property(get = __property_get_UsageWarnings, put = __property_set_UsageWarnings)) bool UsageWarnings;
-  TTransferOutEvent __property_get_OnTransferOut() const { return FOnTransferOut; } void __property_set_OnTransferOut(TTransferOutEvent Value) { FOnTransferOut = Value; } __declspec(property(get = __property_get_OnTransferOut, put = __property_set_OnTransferOut)) TTransferOutEvent OnTransferOut;
-  TTransferInEvent __property_get_OnTransferIn() const { return FOnTransferIn; } void __property_set_OnTransferIn(TTransferInEvent Value) { FOnTransferIn = Value; } __declspec(property(get = __property_get_OnTransferIn, put = __property_set_OnTransferIn)) TTransferInEvent OnTransferIn;
+  TScriptPrintEvent & __property_get_OnPrint() const { return ::rtl::Mutable(this)->FOnPrint; } void __property_set_OnPrint(TScriptPrintEvent Value) { FOnPrint = Value; } __declspec(property(get = __property_get_OnPrint, put = __property_set_OnPrint)) TScriptPrintEvent OnPrint;
+  TExtendedExceptionEvent & __property_get_OnShowExtendedException() const { return ::rtl::Mutable(this)->FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
+  TSynchronizeDirectory & __property_get_OnTerminalSynchronizeDirectory() const { return ::rtl::Mutable(this)->FOnTerminalSynchronizeDirectory; } void __property_set_OnTerminalSynchronizeDirectory(TSynchronizeDirectory Value) { FOnTerminalSynchronizeDirectory = Value; } __declspec(property(get = __property_get_OnTerminalSynchronizeDirectory, put = __property_set_OnTerminalSynchronizeDirectory)) TSynchronizeDirectory OnTerminalSynchronizeDirectory;
+  TScriptSynchronizeStartStop & __property_get_OnSynchronizeStartStop() const { return ::rtl::Mutable(this)->FOnSynchronizeStartStop; } void __property_set_OnSynchronizeStartStop(TScriptSynchronizeStartStop Value) { FOnSynchronizeStartStop = Value; } __declspec(property(get = __property_get_OnSynchronizeStartStop, put = __property_set_OnSynchronizeStartStop)) TScriptSynchronizeStartStop OnSynchronizeStartStop;
+  TScriptProgressEvent & __property_get_OnProgress() const { return ::rtl::Mutable(this)->FOnProgress; } void __property_set_OnProgress(TScriptProgressEvent Value) { FOnProgress = Value; } __declspec(property(get = __property_get_OnProgress, put = __property_set_OnProgress)) TScriptProgressEvent OnProgress;
+  TCopyParamType & __property_get_CopyParam() const { return ::rtl::Mutable(this)->FCopyParam; } void __property_set_CopyParam(TCopyParamType Value) { SetCopyParam(Value); } __declspec(property(get = __property_get_CopyParam, put = __property_set_CopyParam)) TCopyParamType CopyParam;
+  int & __property_get_SynchronizeParams() const { return ::rtl::Mutable(this)->FSynchronizeParams; } void __property_set_SynchronizeParams(int Value) { SetSynchronizeParams(Value); } __declspec(property(get = __property_get_SynchronizeParams, put = __property_set_SynchronizeParams)) int SynchronizeParams;
+  TBatchMode & __property_get_Batch() const { return ::rtl::Mutable(this)->FBatch; } __declspec(property(get = __property_get_Batch)) TBatchMode Batch;
+  TTerminal * & __property_get_Terminal() const { return ::rtl::Mutable(this)->FTerminal; } __declspec(property(get = __property_get_Terminal)) TTerminal * Terminal;
+  bool & __property_get_Groups() const { return ::rtl::Mutable(this)->FGroups; } void __property_set_Groups(bool Value) { FGroups = Value; } __declspec(property(get = __property_get_Groups, put = __property_set_Groups)) bool Groups;
+  bool & __property_get_WantsProgress() const { return ::rtl::Mutable(this)->FWantsProgress; } void __property_set_WantsProgress(bool Value) { FWantsProgress = Value; } __declspec(property(get = __property_get_WantsProgress, put = __property_set_WantsProgress)) bool WantsProgress;
+  bool & __property_get_UsageWarnings() const { return ::rtl::Mutable(this)->FUsageWarnings; } void __property_set_UsageWarnings(bool Value) { FUsageWarnings = Value; } __declspec(property(get = __property_get_UsageWarnings, put = __property_set_UsageWarnings)) bool UsageWarnings;
+  TTransferOutEvent & __property_get_OnTransferOut() const { return ::rtl::Mutable(this)->FOnTransferOut; } void __property_set_OnTransferOut(TTransferOutEvent Value) { FOnTransferOut = Value; } __declspec(property(get = __property_get_OnTransferOut, put = __property_set_OnTransferOut)) TTransferOutEvent OnTransferOut;
+  TTransferInEvent & __property_get_OnTransferIn() const { return ::rtl::Mutable(this)->FOnTransferIn; } void __property_set_OnTransferIn(TTransferInEvent Value) { FOnTransferIn = Value; } __declspec(property(get = __property_get_OnTransferIn, put = __property_set_OnTransferIn)) TTransferInEvent OnTransferIn;
 
 protected:
   TTerminal * FTerminal;
@@ -212,12 +212,12 @@ public:
 
   void __fastcall MaskPasswordInCommandLine(UnicodeString & Command, bool Recurse);
 
-  TScriptInputEvent __property_get_OnInput() const { return FOnInput; } void __property_set_OnInput(TScriptInputEvent Value) { FOnInput = Value; } __declspec(property(get = __property_get_OnInput, put = __property_set_OnInput)) TScriptInputEvent OnInput;
-  TScriptQueryCancelEvent __property_get_OnQueryCancel() const { return FOnQueryCancel; } void __property_set_OnQueryCancel(TScriptQueryCancelEvent Value) { FOnQueryCancel = Value; } __declspec(property(get = __property_get_OnQueryCancel, put = __property_set_OnQueryCancel)) TScriptQueryCancelEvent OnQueryCancel;
-  TPromptUserEvent __property_get_OnTerminalPromptUser() const { return FOnTerminalPromptUser; } void __property_set_OnTerminalPromptUser(TPromptUserEvent Value) { FOnTerminalPromptUser = Value; } __declspec(property(get = __property_get_OnTerminalPromptUser, put = __property_set_OnTerminalPromptUser)) TPromptUserEvent OnTerminalPromptUser;
-  TQueryUserEvent __property_get_OnTerminalQueryUser() const { return FOnTerminalQueryUser; } void __property_set_OnTerminalQueryUser(TQueryUserEvent Value) { FOnTerminalQueryUser = Value; } __declspec(property(get = __property_get_OnTerminalQueryUser, put = __property_set_OnTerminalQueryUser)) TQueryUserEvent OnTerminalQueryUser;
-  TScriptPrintProgressEvent __property_get_OnPrintProgress() const { return FOnPrintProgress; } void __property_set_OnPrintProgress(TScriptPrintProgressEvent Value) { FOnPrintProgress = Value; } __declspec(property(get = __property_get_OnPrintProgress, put = __property_set_OnPrintProgress)) TScriptPrintProgressEvent OnPrintProgress;
-  bool __property_get_Continue() const { return FContinue; } __declspec(property(get = __property_get_Continue)) bool Continue;
+  TScriptInputEvent & __property_get_OnInput() const { return ::rtl::Mutable(this)->FOnInput; } void __property_set_OnInput(TScriptInputEvent Value) { FOnInput = Value; } __declspec(property(get = __property_get_OnInput, put = __property_set_OnInput)) TScriptInputEvent OnInput;
+  TScriptQueryCancelEvent & __property_get_OnQueryCancel() const { return ::rtl::Mutable(this)->FOnQueryCancel; } void __property_set_OnQueryCancel(TScriptQueryCancelEvent Value) { FOnQueryCancel = Value; } __declspec(property(get = __property_get_OnQueryCancel, put = __property_set_OnQueryCancel)) TScriptQueryCancelEvent OnQueryCancel;
+  TPromptUserEvent & __property_get_OnTerminalPromptUser() const { return ::rtl::Mutable(this)->FOnTerminalPromptUser; } void __property_set_OnTerminalPromptUser(TPromptUserEvent Value) { FOnTerminalPromptUser = Value; } __declspec(property(get = __property_get_OnTerminalPromptUser, put = __property_set_OnTerminalPromptUser)) TPromptUserEvent OnTerminalPromptUser;
+  TQueryUserEvent & __property_get_OnTerminalQueryUser() const { return ::rtl::Mutable(this)->FOnTerminalQueryUser; } void __property_set_OnTerminalQueryUser(TQueryUserEvent Value) { FOnTerminalQueryUser = Value; } __declspec(property(get = __property_get_OnTerminalQueryUser, put = __property_set_OnTerminalQueryUser)) TQueryUserEvent OnTerminalQueryUser;
+  TScriptPrintProgressEvent & __property_get_OnPrintProgress() const { return ::rtl::Mutable(this)->FOnPrintProgress; } void __property_set_OnPrintProgress(TScriptPrintProgressEvent Value) { FOnPrintProgress = Value; } __declspec(property(get = __property_get_OnPrintProgress, put = __property_set_OnPrintProgress)) TScriptPrintProgressEvent OnPrintProgress;
+  bool & __property_get_Continue() const { return ::rtl::Mutable(this)->FContinue; } __declspec(property(get = __property_get_Continue)) bool Continue;
 
 protected:
   TScriptInputEvent FOnInput;
