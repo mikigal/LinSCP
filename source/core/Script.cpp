@@ -24,7 +24,7 @@ __fastcall TScriptProcParams::TScriptProcParams(const UnicodeString & FullComman
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
-class TScriptCommands : TStringList
+class TScriptCommands : public TStringList
 {
 public:
   typedef TMethodPtr<void(TScriptProcParams * Parameters)> TCommandProc;
