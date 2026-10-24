@@ -15,12 +15,27 @@ def convert(text):
     return bcb2clang.convert_source(text)
 
 
+def upstream_core_sources():
+    """{name: text} of the pristine upstream core converted on the
+    upstream-converted branch (read from git), or None."""
+    def git(*args):
+        return subprocess.run(['git', '-C', str(ROOT)] + list(args), capture_output=True, check=True).stdout
+    try:
+        # One parent: the initial conversion; two: previous conversion and upstream
+        revision = git('rev-list', '--parents', '-n1', 'refs/heads/upstream-converted').split()[-1].decode()
+        names = git('ls-tree', '--name-only', revision, 'source/core/').decode().split()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {Path(name).name: git('show', '%s:%s' % (revision, name)).decode('utf-8', errors='surrogateescape')
+            for name in names if Path(name).suffix in ('.h', '.cpp')}
+
+
 def squeeze(text):
     return ' '.join(text.split())
 
 
 class TokenizerTest(unittest.TestCase):
-    def test_round_trip_of_upstream_sources(self):
+    def test_round_trip_of_core_sources(self):
         files = sorted((ROOT / 'source' / 'core').glob('*.[hc]*'))
         self.assertTrue(files)
         for path in files:
@@ -386,13 +401,19 @@ class PreprocessorTest(unittest.TestCase):
         self.assertEqual(convert('#define P "a\\b"\n'), '#define P "a\\b"\n')
 
 
-class CoreSourcesTest(unittest.TestCase):
-    def test_line_counts_are_kept(self):
-        paths = sorted((ROOT / 'source' / 'core').glob('*.[hc]*'))
-        table = bcb2clang.make_class_table(paths)
-        for path in paths:
-            text = path.read_bytes().decode('utf-8', errors='surrogateescape')
-            with self.subTest(path=path.name):
+class UpstreamCoreTest(unittest.TestCase):
+    def test_conversion(self):
+        sources = upstream_core_sources()
+        if sources is None:
+            self.skipTest('no upstream-converted branch')
+        table = bcb2clang.ClassTable()
+        for text in sources.values():
+            table.add_source(text)
+        table.add_rtl_headers(bcb2clang.RTL_HEADERS)
+        self.assertGreater(len(table.classes), 100)
+        for name, text in sorted(sources.items()):
+            with self.subTest(path=name):
+                self.assertEqual(bcb2clang.untokenize(bcb2clang.tokenize(text)), text)
                 converted = bcb2clang.convert_source(text, table)
                 self.assertEqual(converted.count('\n'), text.count('\n'))
                 self.assertEqual(converted.count('\r\n'), text.count('\r\n'))

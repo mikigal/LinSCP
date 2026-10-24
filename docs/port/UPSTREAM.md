@@ -30,45 +30,35 @@ Fork point: `master` was created from upstream `3b3f02479` (2026-10-24, Issue 24
 
 ## Converter
 
-`tools/bcb2clang/bcb2clang.py` converts single files (in place, or into `--output-dir`); the
-tree-wide `convert.py` used below is added in M2 together with the statement-level
-conversions. The conversion keeps every line where it was, so diffs between converted
-revisions stay small.
-
-## Initial setup (milestone M2, once the converter exists)
-
-```bash
-git switch -c upstream-converted 3b3f02479
-tools/bcb2clang/convert.py .            # converts the tree in place
-git add -A && git commit -m "Convert upstream 3b3f02479 with bcb2clang"
-git switch master
-git merge upstream-converted            # no conflicts: master has not touched these files yet
-```
+`tools/bcb2clang/convert.py ROOT` converts a tree in place: `source/core` from the C++Builder
+dialect (`bcb2clang.py`, with method references resolved against the classes of all core
+files), and the `#include` paths of the other built upstream directories (`source/putty`,
+`source/filezilla`). The conversion keeps every line where it was (a `try`/`__finally`
+statement keeps its line count, its `__finally` block moves in front of the `try` block), so
+diffs between converted revisions stay small.
 
 ## Updating to a new upstream revision
 
-The new `upstream-converted` commit must contain the converter's output for *pristine* new
-upstream sources (not the converter run over a merge result), while recording upstream as a
-parent so that history stays connected:
+`tools/bcb2clang/update-upstream.sh [REVISION [MESSAGE_SUFFIX]]` (default `upstream/master`)
+records a conversion on `upstream-converted`:
 
 ```bash
 git fetch upstream
-NEW=$(git rev-parse upstream/master)
-git worktree add ../openscp-convert "$NEW"           # pristine new upstream
-tools/bcb2clang/convert.py ../openscp-convert        # converter from master's working tree
-git -C ../openscp-convert add -A
-TREE=$(git -C ../openscp-convert write-tree)
-COMMIT=$(git commit-tree "$TREE" -p upstream-converted -p "$NEW" \
-  -m "Convert upstream ${NEW:0:9} with bcb2clang")
-git branch -f upstream-converted "$COMMIT"
-git worktree remove --force ../openscp-convert
-
-git switch master
-git merge upstream-converted            # base = previous upstream-converted commit
+tools/bcb2clang/update-upstream.sh      # converts upstream/master
+git merge upstream-converted            # on master
 ```
 
-The merge base is the previous `upstream-converted` commit, so the merge applies
-`convert(new) − convert(old)` onto `master`. Conflicts appear only where our manual changes
-overlap upstream changes. After resolving them: build, run the full test suite, commit.
+The script checks out REVISION pristine in a temporary worktree, runs `convert.py` from the
+current working tree on it, and commits the result with the previous `upstream-converted`
+commit and REVISION as parents (the converter's output for *pristine* upstream sources, not the
+converter run over a merge result). The merge base of the following merge into `master` is the
+previous `upstream-converted` commit, so the merge applies `convert(new) - convert(old)` onto
+`master`. Conflicts appear only where our manual changes overlap upstream changes. After
+resolving them: build, run the full test suite, commit.
 
-This sequence will be wrapped in `tools/bcb2clang/update-upstream.sh` in M2.
+**When the converter changes**, run the script again for the upstream revision that is already
+converted, and merge: `master` then receives exactly the converter's changes. The script does
+nothing if the conversion did not change.
+
+The branch was created on 2026-10-24 by `update-upstream.sh 3b3f02479` (no previous
+`upstream-converted` commit: the only parent is the upstream revision).

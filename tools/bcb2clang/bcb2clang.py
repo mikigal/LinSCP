@@ -1035,14 +1035,19 @@ _INCLUDE_RE = re.compile(r'^(\s*#\s*include\s*)([<"])([^>"]*)([>"])(.*)$', re.S)
 _DEFINE_RE = re.compile(r'^(\s*#\s*define\s+\w+(?:\([^)]*\))?)(.*)$', re.S)
 
 
+def _convert_include(token):
+    match = _INCLUDE_RE.match(token.text)
+    if match and '\\' in match.group(3):
+        token = Token('pp', match.group(1) + match.group(2) + match.group(3).replace('\\', '/') +
+                      match.group(4) + match.group(5))
+    return token
+
+
 def convert_preprocessor(tokens):
     result = []
     for token in tokens:
         if token.kind == 'pp':
-            match = _INCLUDE_RE.match(token.text)
-            if match and '\\' in match.group(3):
-                token = Token('pp', match.group(1) + match.group(2) + match.group(3).replace('\\', '/') +
-                              match.group(4) + match.group(5))
+            token = _convert_include(token)
             match = _DEFINE_RE.match(token.text)
             if match and '__finally' in match.group(2):
                 body = untokenize(convert_finally(tokenize(match.group(2), preprocessor=False)))
@@ -1072,13 +1077,19 @@ def convert_source(text, table=None):
     return result
 
 
-def _read(path):
+def convert_includes(text):
+    """Converts only the #include paths, for upstream code that is not in the
+    C++Builder dialect (PuTTY, FileZilla)."""
+    return untokenize([_convert_include(t) if t.kind == 'pp' else t for t in tokenize(text)])
+
+
+def read_source(path):
     data = Path(path).read_bytes()
     # Upstream sources are UTF-8 (some with a BOM) or plain ASCII
     return data.decode('utf-8', errors='surrogateescape')
 
 
-def _write(path, text):
+def write_source(path, text):
     Path(path).write_bytes(text.encode('utf-8', errors='surrogateescape'))
 
 
@@ -1090,7 +1101,7 @@ def make_class_table(paths):
     in any of them, plus the properties of the RTL shim."""
     table = ClassTable()
     for path in paths:
-        table.add_source(_read(path))
+        table.add_source(read_source(path))
     table.add_rtl_headers(RTL_HEADERS)
     return table
 
@@ -1105,7 +1116,7 @@ def main(argv=None):
     table = make_class_table(args.files)
     for path in args.files:
         try:
-            converted = convert_source(_read(path), table)
+            converted = convert_source(read_source(path), table)
         except ConversionError as error:
             print('%s: %s' % (path, error), file=sys.stderr)
             failed = True
@@ -1113,8 +1124,8 @@ def main(argv=None):
         target = (args.output_dir / path.name) if args.output_dir else path
         if args.output_dir:
             args.output_dir.mkdir(parents=True, exist_ok=True)
-        if not target.exists() or _read(target) != converted:
-            _write(target, converted)
+        if not target.exists() or read_source(target) != converted:
+            write_source(target, converted)
     return 1 if failed else 0
 
 

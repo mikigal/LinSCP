@@ -25,7 +25,7 @@ gtest_discover_tests(openscp_rtl_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
 # bcb2clang, and the converted core headers parsing against the RTL shim
-foreach(BCB2CLANG_TEST test_bcb2clang test_core_headers)
+foreach(BCB2CLANG_TEST test_bcb2clang test_convert test_core_headers)
   add_test(NAME unit.bcb2clang.${BCB2CLANG_TEST}
     COMMAND Python3::Interpreter -m unittest -v ${BCB2CLANG_TEST}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bcb2clang")
