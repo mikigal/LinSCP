@@ -3,8 +3,11 @@
 // their Windows signatures and semantics.
 //
 // A SOCKET is the socket descriptor (as UINT_PTR, which the core declares
-// itself). The error of the last socket call is errno; WSAGetLastError maps
-// it to a WinSock error code (rtl/WinError.h), WSASetLastError stores one.
+// itself). As on Windows, the error of the last socket call is the last
+// error of the thread (GetLastError, a WinSock error code of
+// rtl/WinError.h): the functions of this header set it when they fail, to
+// the WinSock error of errno. POSIX functions without a Windows overload
+// below (socket) do not set it.
 //
 // WSAEventSelect associates sockets with an event: waiting for the event
 // (WaitForSingleObject, WaitForMultipleObjects) polls the sockets too, and
@@ -115,9 +118,8 @@ WINAPI_EXTERN_C_BEGIN
 // initialize
 int WSAStartup(WORD VersionRequested, LPWSADATA WSAData);
 int WSACleanup();
-// The error of the last socket call (errno), as a WinSock error code
+// GetLastError and SetLastError
 int WSAGetLastError();
-// Codes without an errno equivalent are kept as they are
 void WSASetLastError(int Error);
 int closesocket(SOCKET Socket);
 // Network events 0 remove the association
@@ -150,10 +152,13 @@ int recv(SOCKET Socket, char * Buffer, int Length, int Flags);
 int send(SOCKET Socket, const char * Buffer, int Length, int Flags);
 int connect(SOCKET Socket, const sockaddr * Name, int NameLength);
 SOCKET accept(SOCKET Socket, sockaddr * Address, int * AddressLength);
+int bind(SOCKET Socket, const sockaddr * Name, int NameLength);
 int listen(SOCKET Socket, int Backlog);
+int shutdown(SOCKET Socket, int How);
 int getpeername(SOCKET Socket, sockaddr * Name, int * NameLength);
 int getsockname(SOCKET Socket, sockaddr * Name, int * NameLength);
 int getsockopt(SOCKET Socket, int Level, int OptionName, char * OptionValue, int * OptionLength);
+int setsockopt(SOCKET Socket, int Level, int OptionName, const char * OptionValue, int OptionLength);
 // FIONREAD and FIONBIO
 int ioctlsocket(SOCKET Socket, long Command, DWORD * Argument);
 //---------------------------------------------------------------------------
@@ -162,6 +167,9 @@ namespace winapi
 // The WinSock error code of an errno value (WSAEWOULDBLOCK for a connect in
 // progress)
 int ErrnoToWsaError(int Error);
+// Sets the last error to the WinSock error of the errno value; returns
+// SOCKET_ERROR
+int FailWithErrno(int Error);
 }
 //---------------------------------------------------------------------------
 #endif

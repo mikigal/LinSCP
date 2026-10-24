@@ -959,7 +959,7 @@ int WSAAsyncSelect(SOCKET Socket, HWND Window, UINT Message, long Events)
     int Flags = fcntl(Fd, F_GETFL);
     if ((Flags < 0) || (fcntl(Fd, F_SETFL, Flags | O_NONBLOCK) < 0))
     {
-      return SOCKET_ERROR;
+      return winapi::FailWithErrno(errno);
     }
     winapi::SelectSocket(Fd, NULL, 0);
   }
@@ -967,8 +967,7 @@ int WSAAsyncSelect(SOCKET Socket, HWND Window, UINT Message, long Events)
   TWindow * Object = FindWindow(Window);
   if ((Events != 0) && (Object == NULL))
   {
-    errno = EINVAL;
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(EINVAL);
   }
   TSocket & Data = State().Sockets[Fd];
   if (Events == 0)
@@ -1051,7 +1050,7 @@ HANDLE WSAAsyncGetHostByName(HWND Window, UINT Message, const char * Name, char 
   TQueue * Queue = (Object != NULL) ? FindQueue(Object->ThreadId) : NULL;
   if (Queue == NULL)
   {
-    errno = EINVAL;
+    winapi::FailWithErrno(EINVAL);
     return NULL;
   }
   HANDLE Request = reinterpret_cast<HANDLE>(++State().LastAsyncRequest);
@@ -1077,8 +1076,7 @@ int WSACancelAsyncRequest(HANDLE AsyncTaskHandle)
   }
   if (Removed == 0)
   {
-    errno = EALREADY;
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(EALREADY);
   }
   return 0;
 }

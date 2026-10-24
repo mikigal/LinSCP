@@ -523,17 +523,28 @@ TEST_F(MessagesTest, AsyncGetHostByName)
 //---------------------------------------------------------------------------
 TEST(WinSockTest, LastError)
 {
-  WSASetLastError(WSAEWOULDBLOCK);
-  EXPECT_EQ(WSAGetLastError(), WSAEWOULDBLOCK);
-  // Codes without an errno equivalent survive
-  WSASetLastError(WSAEINPROGRESS);
-  EXPECT_EQ(WSAGetLastError(), WSAEINPROGRESS);
+  // The last error of the thread, as on Windows
   WSASetLastError(WSANOTINITIALISED);
   EXPECT_EQ(WSAGetLastError(), WSANOTINITIALISED);
-  WSASetLastError(WSAECONNABORTED);
+  EXPECT_EQ(GetLastError(), static_cast<DWORD>(WSANOTINITIALISED));
+  SetLastError(WSAECONNABORTED);
   EXPECT_EQ(WSAGetLastError(), WSAECONNABORTED);
-  WSASetLastError(0);
-  EXPECT_EQ(WSAGetLastError(), 0);
+
+  // Set by the failing socket functions, not changed by errno later
+  SOCKET Socket = socket(AF_INET, SOCK_STREAM, 0);
+  DWORD One = 1;
+  ASSERT_EQ(ioctlsocket(Socket, FIONBIO, &One), 0);
+  char Byte;
+  EXPECT_EQ(recv(Socket, &Byte, 1, 0), SOCKET_ERROR);
+  errno = ENOENT;
+  EXPECT_EQ(WSAGetLastError(), WSAENOTCONN);
+  sockaddr_in Address = {};
+  Address.sin_family = AF_INET;
+  EXPECT_EQ(connect(Socket, reinterpret_cast<sockaddr *>(&Address), 1), SOCKET_ERROR);
+  EXPECT_EQ(WSAGetLastError(), WSAEINVAL);
+  EXPECT_EQ(closesocket(Socket), 0);
+  EXPECT_EQ(closesocket(Socket), SOCKET_ERROR);
+  EXPECT_EQ(WSAGetLastError(), WSAEBADF);
 
   WSADATA Data;
   EXPECT_EQ(WSAStartup(MAKEWORD(1, 1), &Data), 0);

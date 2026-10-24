@@ -15,11 +15,6 @@ namespace winapi
 //---------------------------------------------------------------------------
 int ErrnoToWsaError(int Error)
 {
-  // A WinSock code without an errno equivalent, stored by WSASetLastError
-  if (Error >= WSABASEERR)
-  {
-    return Error;
-  }
   switch (Error)
   {
     // A non-blocking connect on Windows fails with WSAEWOULDBLOCK
@@ -29,7 +24,24 @@ int ErrnoToWsaError(int Error)
   }
 }
 //---------------------------------------------------------------------------
+int FailWithErrno(int Error)
+{
+  WSASetLastError(ErrnoToWsaError(Error));
+  return SOCKET_ERROR;
+}
+//---------------------------------------------------------------------------
 } // namespace winapi
+//---------------------------------------------------------------------------
+namespace
+{
+//---------------------------------------------------------------------------
+// The result of a POSIX socket call; the error of a failed one
+int Result(int Value)
+{
+  return (Value < 0) ? winapi::FailWithErrno(errno) : Value;
+}
+//---------------------------------------------------------------------------
+} // namespace
 //---------------------------------------------------------------------------
 int WSAStartup(WORD VersionRequested, LPWSADATA WSAData)
 {
@@ -58,15 +70,12 @@ int WSACleanup()
 //---------------------------------------------------------------------------
 int WSAGetLastError()
 {
-  return winapi::ErrnoToWsaError(errno);
+  return static_cast<int>(GetLastError());
 }
 //---------------------------------------------------------------------------
 void WSASetLastError(int Error)
 {
-  int Errno = rtl::WinErrorToErrno(static_cast<DWORD>(Error));
-  // Codes that do not survive the round trip are kept as they are (no errno
-  // is that high)
-  errno = ((Errno != 0) && (winapi::ErrnoToWsaError(Errno) == Error)) ? Errno : Error;
+  SetLastError(static_cast<DWORD>(Error));
 }
 //---------------------------------------------------------------------------
 int closesocket(SOCKET Socket)
@@ -74,7 +83,7 @@ int closesocket(SOCKET Socket)
   int Fd = static_cast<int>(Socket);
   winapi::SelectSocket(Fd, NULL, 0);
   winapi::SocketClosed(Fd);
-  return close(Fd);
+  return Result(close(Fd));
 }
 //---------------------------------------------------------------------------
 int WSAEventSelect(SOCKET Socket, WSAEVENT Event, long NetworkEvents)
@@ -82,8 +91,7 @@ int WSAEventSelect(SOCKET Socket, WSAEVENT Event, long NetworkEvents)
   int Fd = static_cast<int>(Socket);
   if (!winapi::SelectSocket(Fd, Event, NetworkEvents))
   {
-    errno = EINVAL;
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(EINVAL);
   }
   if (NetworkEvents != 0)
   {
@@ -91,7 +99,7 @@ int WSAEventSelect(SOCKET Socket, WSAEVENT Event, long NetworkEvents)
     int Flags = fcntl(Fd, F_GETFL);
     if ((Flags < 0) || (fcntl(Fd, F_SETFL, Flags | O_NONBLOCK) < 0))
     {
-      return SOCKET_ERROR;
+      return winapi::FailWithErrno(errno);
     }
   }
   return 0;
@@ -104,12 +112,11 @@ int WSAEnumNetworkEvents(SOCKET Socket, WSAEVENT, LPWSANETWORKEVENTS NetworkEven
   pollfd Poll = { Fd, POLLIN | POLLPRI, 0 };
   if (poll(&Poll, 1, 0) < 0)
   {
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(errno);
   }
   if ((Poll.revents & POLLNVAL) != 0)
   {
-    errno = EBADF;
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(ENOTSOCK);
   }
   if ((Poll.revents & POLLPRI) != 0)
   {
@@ -119,16 +126,16 @@ int WSAEnumNetworkEvents(SOCKET Socket, WSAEVENT, LPWSANETWORKEVENTS NetworkEven
   {
     int Error = 0;
     socklen_t ErrorLen = sizeof(Error);
-    getsockopt(Fd, SOL_SOCKET, SO_ERROR, &Error, &ErrorLen);
+    ::getsockopt(Fd, SOL_SOCKET, SO_ERROR, &Error, &ErrorLen);
     NetworkEvents->lNetworkEvents |= FD_CLOSE;
-    NetworkEvents->iErrorCode[FD_CLOSE_BIT] = winapi::ErrnoToWsaError(Error);
+    NetworkEvents->iErrorCode[FD_CLOSE_BIT] = (Error != 0) ? winapi::ErrnoToWsaError(Error) : 0;
   }
   else if ((Poll.revents & POLLIN) != 0)
   {
     int Listening = 0;
     socklen_t ListeningLen = sizeof(Listening);
     char Byte;
-    if ((getsockopt(Fd, SOL_SOCKET, SO_ACCEPTCONN, &Listening, &ListeningLen) == 0) && Listening)
+    if ((::getsockopt(Fd, SOL_SOCKET, SO_ACCEPTCONN, &Listening, &ListeningLen) == 0) && Listening)
     {
       NetworkEvents->lNetworkEvents |= FD_ACCEPT;
     }
@@ -147,8 +154,7 @@ int WSAEnumNetworkEvents(SOCKET Socket, WSAEVENT, LPWSANETWORKEVENTS NetworkEven
 int WSAIoctl(
   SOCKET, DWORD, LPVOID, DWORD, LPVOID, DWORD, LPDWORD, LPWSAOVERLAPPED, LPWSAOVERLAPPED_COMPLETION_ROUTINE)
 {
-  errno = EOPNOTSUPP;
-  return SOCKET_ERROR;
+  return winapi::FailWithErrno(EOPNOTSUPP);
 }
 //---------------------------------------------------------------------------
 // The socket functions with Windows signatures; the POSIX ones are called
@@ -157,25 +163,26 @@ int WSAIoctl(
 int recv(SOCKET Socket, char * Buffer, int Length, int Flags)
 {
   int Fd = static_cast<int>(Socket);
-  ssize_t Result = ::recv(Fd, static_cast<void *>(Buffer), static_cast<size_t>(Length), Flags);
-  winapi::SocketCalled(Fd, winapi::scRecv, static_cast<int>(Result), errno);
-  return static_cast<int>(Result);
+  int Received = static_cast<int>(::recv(Fd, static_cast<void *>(Buffer), static_cast<size_t>(Length), Flags));
+  winapi::SocketCalled(Fd, winapi::scRecv, Received, errno);
+  return Result(Received);
 }
 //---------------------------------------------------------------------------
 int send(SOCKET Socket, const char * Buffer, int Length, int Flags)
 {
   int Fd = static_cast<int>(Socket);
-  ssize_t Result = ::send(Fd, static_cast<const void *>(Buffer), static_cast<size_t>(Length), Flags | MSG_NOSIGNAL);
-  winapi::SocketCalled(Fd, winapi::scSend, static_cast<int>(Result), errno, Length);
-  return static_cast<int>(Result);
+  int Sent = static_cast<int>(
+    ::send(Fd, static_cast<const void *>(Buffer), static_cast<size_t>(Length), Flags | MSG_NOSIGNAL));
+  winapi::SocketCalled(Fd, winapi::scSend, Sent, errno, Length);
+  return Result(Sent);
 }
 //---------------------------------------------------------------------------
 int connect(SOCKET Socket, const sockaddr * Name, int NameLength)
 {
   int Fd = static_cast<int>(Socket);
-  int Result = ::connect(Fd, Name, static_cast<socklen_t>(NameLength));
-  winapi::SocketCalled(Fd, winapi::scConnect, Result, errno);
-  return Result;
+  int Connected = ::connect(Fd, Name, static_cast<socklen_t>(NameLength));
+  winapi::SocketCalled(Fd, winapi::scConnect, Connected, errno);
+  return Result(Connected);
 }
 //---------------------------------------------------------------------------
 SOCKET accept(SOCKET Socket, sockaddr * Address, int * AddressLength)
@@ -185,45 +192,62 @@ SOCKET accept(SOCKET Socket, sockaddr * Address, int * AddressLength)
   // As on Windows, the accepted socket is non-blocking as the listening one
   int ListeningFlags = fcntl(Fd, F_GETFL);
   int Flags = SOCK_CLOEXEC | (((ListeningFlags >= 0) && ((ListeningFlags & O_NONBLOCK) != 0)) ? SOCK_NONBLOCK : 0);
-  int Result = ::accept4(Fd, Address, (AddressLength != NULL) ? &Length : NULL, Flags);
-  if ((Result >= 0) && (AddressLength != NULL))
+  int Accepted = ::accept4(Fd, Address, (AddressLength != NULL) ? &Length : NULL, Flags);
+  if ((Accepted >= 0) && (AddressLength != NULL))
   {
     *AddressLength = static_cast<int>(Length);
   }
-  winapi::SocketCalled(Fd, winapi::scAccept, Result, errno);
-  return (Result >= 0) ? static_cast<SOCKET>(Result) : INVALID_SOCKET;
+  winapi::SocketCalled(Fd, winapi::scAccept, Accepted, errno);
+  return (Result(Accepted) >= 0) ? static_cast<SOCKET>(Accepted) : INVALID_SOCKET;
+}
+//---------------------------------------------------------------------------
+int bind(SOCKET Socket, const sockaddr * Name, int NameLength)
+{
+  return Result(::bind(static_cast<int>(Socket), Name, static_cast<socklen_t>(NameLength)));
 }
 //---------------------------------------------------------------------------
 int listen(SOCKET Socket, int Backlog)
 {
   int Fd = static_cast<int>(Socket);
-  int Result = ::listen(Fd, Backlog);
-  winapi::SocketCalled(Fd, winapi::scListen, Result, errno);
-  return Result;
+  int Listening = ::listen(Fd, Backlog);
+  winapi::SocketCalled(Fd, winapi::scListen, Listening, errno);
+  return Result(Listening);
+}
+//---------------------------------------------------------------------------
+int shutdown(SOCKET Socket, int How)
+{
+  return Result(::shutdown(static_cast<int>(Socket), How));
 }
 //---------------------------------------------------------------------------
 int getpeername(SOCKET Socket, sockaddr * Name, int * NameLength)
 {
   socklen_t Length = static_cast<socklen_t>(*NameLength);
-  int Result = ::getpeername(static_cast<int>(Socket), Name, &Length);
+  int Value = ::getpeername(static_cast<int>(Socket), Name, &Length);
   *NameLength = static_cast<int>(Length);
-  return Result;
+  return Result(Value);
 }
 //---------------------------------------------------------------------------
 int getsockname(SOCKET Socket, sockaddr * Name, int * NameLength)
 {
   socklen_t Length = static_cast<socklen_t>(*NameLength);
-  int Result = ::getsockname(static_cast<int>(Socket), Name, &Length);
+  int Value = ::getsockname(static_cast<int>(Socket), Name, &Length);
   *NameLength = static_cast<int>(Length);
-  return Result;
+  return Result(Value);
 }
 //---------------------------------------------------------------------------
 int getsockopt(SOCKET Socket, int Level, int OptionName, char * OptionValue, int * OptionLength)
 {
   socklen_t Length = static_cast<socklen_t>(*OptionLength);
-  int Result = ::getsockopt(static_cast<int>(Socket), Level, OptionName, static_cast<void *>(OptionValue), &Length);
+  int Value = ::getsockopt(static_cast<int>(Socket), Level, OptionName, static_cast<void *>(OptionValue), &Length);
   *OptionLength = static_cast<int>(Length);
-  return Result;
+  return Result(Value);
+}
+//---------------------------------------------------------------------------
+int setsockopt(SOCKET Socket, int Level, int OptionName, const char * OptionValue, int OptionLength)
+{
+  return Result(::setsockopt(
+    static_cast<int>(Socket), Level, OptionName, static_cast<const void *>(OptionValue),
+    static_cast<socklen_t>(OptionLength)));
 }
 //---------------------------------------------------------------------------
 int ioctlsocket(SOCKET Socket, long Command, DWORD * Argument)
@@ -234,7 +258,7 @@ int ioctlsocket(SOCKET Socket, long Command, DWORD * Argument)
     int Available = 0;
     if (ioctl(Fd, FIONREAD, &Available) < 0)
     {
-      return SOCKET_ERROR;
+      return winapi::FailWithErrno(errno);
     }
     *Argument = static_cast<DWORD>(Available);
     return 0;
@@ -244,15 +268,14 @@ int ioctlsocket(SOCKET Socket, long Command, DWORD * Argument)
     int Flags = fcntl(Fd, F_GETFL);
     if (Flags < 0)
     {
-      return SOCKET_ERROR;
+      return winapi::FailWithErrno(errno);
     }
     Flags = (*Argument != 0) ? (Flags | O_NONBLOCK) : (Flags & ~O_NONBLOCK);
-    return (fcntl(Fd, F_SETFL, Flags) < 0) ? SOCKET_ERROR : 0;
+    return Result(fcntl(Fd, F_SETFL, Flags));
   }
   else
   {
-    errno = EINVAL;
-    return SOCKET_ERROR;
+    return winapi::FailWithErrno(EINVAL);
   }
 }
 //---------------------------------------------------------------------------
