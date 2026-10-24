@@ -41,6 +41,21 @@ class ConvertTreeTest(unittest.TestCase):
         # Directories that are not built are left alone
         self.assertEqual(self.read('source/windows/W.cpp'), '#include "a\\b.h"\r\n')
 
+    def test_ported_files(self):
+        self.write('source/core/A.h', 'class TA {\r\n  TNotifyEvent OnX;\r\n};\r\n')
+        self.write('source/windows/GUIConfiguration.h', 'class TG {\r\n  void M(TObject *);\r\n};\r\n')
+        upstream = 'void TG::M(TObject *)\r\n{\r\n  TA * A = new TA();\r\n  A->OnX = M;\r\n}\r\n'
+        self.write('source/windows/GUIConfiguration.cpp', upstream)
+        self.assertEqual(convert.convert_tree(self.root), [])
+        # Converted copies, with method references resolved against the ported classes
+        self.assertEqual(
+            self.read('source/app/GUIConfiguration.cpp'),
+            'void TG::M(TObject *)\r\n{\r\n  TA * A = new TA();\r\n  A->OnX = ::rtl::MethodPtr(this, &TG::M);\r\n}\r\n')
+        self.assertEqual(self.read('source/app/GUIConfiguration.h'), 'class TG {\r\n  void M(TObject *);\r\n};\r\n')
+        # The upstream files stay pristine; missing ported files are skipped
+        self.assertEqual(self.read('source/windows/GUIConfiguration.cpp'), upstream)
+        self.assertFalse((self.root / 'source/cli/ConsoleRunner.cpp').exists())
+
     def test_errors(self):
         self.write('source/core/B.cpp', 'void F() { try { } __finally { return; } }\n')
         errors = convert.convert_tree(self.root)

@@ -28,6 +28,20 @@ Fork point: `master` was created from upstream `3b3f02479` (2026-10-24, Issue 24
 - When the converter itself changes, its new output arrives through the next
   `upstream-converted` commit like any other change.
 
+## Ported application files
+
+The application layer of upstream (`source/windows`) mixes portable logic with VCL and Win32
+code. The files that the Linux front ends are ported from are listed in `PORTED_FILES` of
+`tools/bcb2clang/convert.py`: the converter writes their converted copies to the directories
+of the Linux application layer (`source/app`, shared by the front ends, and `source/cli`),
+while `source/windows` itself stays pristine. The copies are then edited on `master` for
+Linux, so upstream changes of these files arrive through the regular merge of
+`upstream-converted`, and conflicts show where they meet our edits. The other files in these
+directories are our own.
+
+To port another file, add it to `PORTED_FILES`, run `update-upstream.sh` for the revision
+that is already converted (see below) and merge, then edit the copy.
+
 ## Converter
 
 `tools/bcb2clang/convert.py ROOT` converts a tree in place: `source/core` from the C++Builder
