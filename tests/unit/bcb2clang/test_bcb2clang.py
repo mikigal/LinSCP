@@ -109,7 +109,8 @@ class PropertyTest(unittest.TestCase):
     def test_fields(self):
         source = 'class A {\npublic:\n  __property TStrings * List = { read=FList, write=FList };\nprivate:\n  TStrings * FList;\n};'
         result = convert(source)
-        self.assertIn('TStrings * __property_get_List() const { return FList; }', result)
+        # A reference: C++Builder reads the field itself
+        self.assertIn('TStrings * & __property_get_List() const { return ::rtl::Mutable(this)->FList; }', result)
         self.assertIn('void __property_set_List(TStrings * Value) { FList = Value; }', result)
 
     def test_field_detection(self):
@@ -121,13 +122,13 @@ class PropertyTest(unittest.TestCase):
             '  __property int Other = { read = FOther };\n'
             'private:\n  UnicodeString FName;\n  int FData;\n  int FOther();\n};')
         result = convert(source)
-        self.assertIn('return FName;', result)
-        self.assertIn('return FData;', result)
+        self.assertIn('return ::rtl::Mutable(this)->FName;', result)
+        self.assertIn('return ::rtl::Mutable(this)->FData;', result)
         self.assertIn('return ::rtl::Mutable(this)->FOther();', result)
 
     def test_inherited_names_follow_the_naming_convention(self):
         result = convert('class B : public A {\n  __property int X = { read = FX, write = SetX };\n};')
-        self.assertIn('return FX;', result)
+        self.assertIn('return ::rtl::Mutable(this)->FX;', result)
         self.assertIn('SetX(Value);', result)
 
     def test_getter_return_type(self):

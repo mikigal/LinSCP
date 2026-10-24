@@ -9,7 +9,9 @@ Conversions:
 
 - ``__property T X = { read = R, write = W, index = I, ... };`` becomes
   ``__declspec(property(get = ..., put = ...)) T X;``. Field-backed reads and
-  writes and ``index`` specifiers get generated inline accessors.
+  writes and ``index`` specifiers get generated inline accessors; a
+  field-backed read returns a reference to the field, as C++Builder reads
+  the field itself.
 - ``R __fastcall (__closure * Name)(Args)`` becomes
   ``TMethodPtr<R(Args)> Name`` (in typedefs, members and parameters).
 - References to methods (``OnX = Method;``, ``&Object->Method``, ...) become
@@ -477,7 +479,10 @@ def _convert_property(tokens, start, end, kinds):
         get = '__property_get_%s' % name
         return_type = type_text
         if not index_names and index is None and _is_field(read, kinds):
-            body = 'return %s;' % read
+            # C++Builder reads the field itself, so its members can be
+            # modified through the property (Rights.Number = ...)
+            return_type = type_text + ' &'
+            body = 'return ::rtl::Mutable(this)->%s;' % read
         else:
             # Through a mutable this: works whether the getter is const or not
             body = 'return ::rtl::Mutable(this)->%s(%s);' % (read, ', '.join(arguments))
