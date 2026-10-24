@@ -896,7 +896,8 @@ UnicodeString __fastcall THierarchicalStorage::IncludeTrailingBackslash(const Un
   }
   else
   {
-    return ::IncludeTrailingBackslash(S);
+    // OpenSCP: keys are delimited by backslashes, not by the path delimiter
+    return EndsStr(L"\\", S) ? S : (S + L"\\");
   }
 }
 //---------------------------------------------------------------------------
@@ -909,7 +910,8 @@ UnicodeString __fastcall THierarchicalStorage::ExcludeTrailingBackslash(const Un
   }
   else
   {
-    return ::ExcludeTrailingBackslash(S);
+    // OpenSCP: keys are delimited by backslashes, not by the path delimiter
+    return EndsStr(L"\\", S) ? S.SubString(1, S.Length() - 1) : S;
   }
 }
 //---------------------------------------------------------------------------
@@ -1915,7 +1917,7 @@ __fastcall TOptionsIniFile::TOptionsIniFile(TStrings * Options, TWriteMode Write
   FRootKey = RootKey;
   if (!FRootKey.IsEmpty())
   {
-    FRootKey += PathDelim;
+    FRootKey += L'\\'; // OpenSCP: not the path delimiter
   }
 }
 //---------------------------------------------------------------------------
@@ -1944,7 +1946,7 @@ bool __fastcall TOptionsIniFile::AllowSection(const UnicodeString & Section)
   UnicodeString Name = Section;
   if (!Name.IsEmpty())
   {
-    Name += PathDelim;
+    Name += L'\\'; // OpenSCP: not the path delimiter
   }
   bool Result = SameText(Name.SubString(1, FRootKey.Length()), FRootKey);
   return Result;
@@ -1955,7 +1957,7 @@ UnicodeString __fastcall TOptionsIniFile::FormatKey(const UnicodeString & Sectio
   UnicodeString Result = Section;
   if (!Result.IsEmpty())
   {
-    Result += PathDelim;
+    Result += L'\\'; // OpenSCP: not the path delimiter
   }
   Result += Ident; // Can be empty, when called from a constructor, AllowSection or ReadSection
   if (DebugAlwaysTrue(AllowSection(Section)))
@@ -2016,7 +2018,7 @@ void __fastcall TOptionsIniFile::ReadSection(const UnicodeString Section, TStrin
       {
         UnicodeString Name = FOptions->Names[Index];
         if (SameText(Name.SubString(1, SectionPrefix.Length()), SectionPrefix) &&
-            (LastDelimiter(PathDelim, Name) <= SectionPrefix.Length()))
+            (LastDelimiter(L"\\", Name) <= SectionPrefix.Length()))
         {
           Strings->Add(Name.SubString(SectionPrefix.Length() + 1, Name.Length() - SectionPrefix.Length()));
         }
@@ -2033,7 +2035,7 @@ void __fastcall TOptionsIniFile::ReadSections(TStrings * Strings)
   for (int Index = 0; Index < FOptions->Count; Index++)
   {
     UnicodeString Name = FOptions->Names[Index];
-    int P = LastDelimiter(PathDelim, Name);
+    int P = LastDelimiter(L"\\", Name);
     if (P > 0)
     {
       UnicodeString Section = Name.SubString(1, P - 1);

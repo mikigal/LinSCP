@@ -4349,6 +4349,10 @@ TStrings * TlsCipherList()
   }
   while (CipherName != NULL);
 
+  // OpenSCP: freed (LeakSanitizer)
+  SSL_free(Ssl);
+  SSL_CTX_free(Ctx);
+
   return Result.release();
 }
 //---------------------------------------------------------------------------
