@@ -115,9 +115,6 @@ private:
 };
 //---------------------------------------------------------------------------
 typedef DynamicArray<Byte> TBytes;
-typedef DynamicArray<UnicodeString> TStringDynArray;
-typedef DynamicArray<int> TIntegerDynArray;
-typedef DynamicArray<Byte> TByteDynArray;
 //---------------------------------------------------------------------------
 } // namespace System
 //---------------------------------------------------------------------------

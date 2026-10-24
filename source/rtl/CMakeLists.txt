@@ -7,10 +7,12 @@
 add_library(openscp_rtl STATIC
   src/Conversion.cpp
   src/DateTime.cpp
+  src/DateUtils.cpp
   src/Files.cpp
   src/Format.cpp
   src/FormatSettings.cpp
   src/Printf.cpp
+  src/StrUtils.cpp
   src/Strings.cpp
   src/SysUtils.cpp
   src/System.cpp

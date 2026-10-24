@@ -12,7 +12,8 @@ add_executable(openscp_rtl_tests
   rtl/FormatTest.cpp
   rtl/StringsTest.cpp
   rtl/SystemTest.cpp
-  rtl/SysUtilsTest.cpp)
+  rtl/SysUtilsTest.cpp
+  rtl/UtilsTest.cpp)
 target_link_libraries(openscp_rtl_tests PRIVATE
   openscp::rtl
   openscp::options
