@@ -224,6 +224,11 @@ static ssize_t neon_read_func(void * userdata, char * buf, size_t len)
         return 0;
     }
 
+    // OpenSCP: neon asks for no data (with no buffer) to rewind the body
+    if (len == 0) {
+        return 0;
+    }
+
     // Don't tell the callback that we are willing to accept more data than we
     // really are
     if (len > request->toS3CallbackBytesRemaining) {

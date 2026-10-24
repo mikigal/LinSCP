@@ -31,6 +31,13 @@ target_compile_options(openscp_libs3 PRIVATE
   # As WinSCP's makefile, and variable length arrays (C++ compilation of C code)
   -Wno-deprecated-declarations
   -Wno-vla-cxx-extension)
+# libs3 makes variable length arrays of zero elements (empty bucket
+# listings), which GCC and Clang allow; not reported by UBSan (linked after
+# openscp::sanitize, so that the flag follows -fsanitize=undefined)
+add_library(openscp_libs3_sanitize INTERFACE)
+if(OPENSCP_SANITIZE)
+  target_compile_options(openscp_libs3_sanitize INTERFACE -fno-sanitize=vla-bound)
+endif()
 target_link_libraries(openscp_libs3
-  PRIVATE openscp::sanitize openscp::linux
+  PRIVATE openscp::sanitize openscp_libs3_sanitize openscp::linux
   PUBLIC openscp::neon OpenSSL::SSL OpenSSL::Crypto EXPAT::EXPAT)
