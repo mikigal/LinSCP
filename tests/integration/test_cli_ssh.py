@@ -613,6 +613,37 @@ class ConfigurationTest(CliTestCase):
             args=('/ini=%s' % ini,))
         self.assertEqual(result.returncode, 0, result)
 
+    def test_batchsettings(self):
+        ini = self.work / 'sessions.ini'
+        ini.write_text('[Sessions\\a%20one]\nHostName=one\n\n[Sessions\\b]\nHostName=two\n')
+        result = self.cli.run('/ini=%s' % ini, '/batchsettings', 'a*', 'PortNumber=2222')
+        self.assertEqual(result.returncode, 0, result)
+        self.assertIn('a one', result.stdout)
+        sections = ('\n' + ini.read_text()).split('\n[')
+        session_a = next(section for section in sections if section.startswith('Sessions\\a%20one]'))
+        session_b = next(section for section in sections if section.startswith('Sessions\\b]'))
+        self.assertIn('\nPortNumber=2222\n', session_a)
+        self.assertNotIn('\nPortNumber=', session_b)
+
+    def test_rawtransfersettings(self):
+        source = self.write_local('t.txt', 't')
+        os.utime(source, (1000000000, 1000000000))
+        result = self.cli.commands(
+            self.open_command(), 'put "%s" "%s/"' % (source, self.remote), 'exit',
+            args=('/ini=nul', '/rawtransfersettings', 'PreserveTime=0'))
+        self.assertEqual(result.returncode, 0, result)
+        self.assertGreater((self.remote / 't.txt').stat().st_mtime, 1000000000 + 1000)
+
+    def test_help_and_info(self):
+        result = self.cli.run('/help')
+        self.assertEqual(result.returncode, 0, result)
+        self.assertIn('OpenSCP, Version', result.stdout)
+        self.assertIn('/keygen', result.stdout)
+        result = self.cli.run('/info')
+        self.assertEqual(result.returncode, 0, result)
+        self.assertIn('SSH implementation: PuTTY', result.stdout)
+        self.assertIn('TLS/SSL implementation: OpenSSL', result.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
