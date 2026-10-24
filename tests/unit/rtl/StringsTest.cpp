@@ -163,6 +163,8 @@ TEST(UnicodeString, Printf)
   EXPECT_EQ(S.sprintf(L"%Ld %I64u %lld", 1LL << 40, 1ULL << 63, -1LL),
     L"1099511627776 9223372036854775808 -1");
   EXPECT_EQ(S.sprintf(L"%x %X %08x %o", 255, 255, 255, 8), L"ff FF 000000ff 10");
+  // long is 32-bit on Windows
+  EXPECT_EQ(S.sprintf(L"%ld %lu %lx", -2, 4000000000U, 0xFFFFFFFFU), L"-2 4000000000 ffffffff");
   EXPECT_EQ(S.sprintf(L"%c%c%%", L'\u0142', L'b'), L"\u0142b%");
   EXPECT_EQ(S.sprintf(L"%.2s|%*d", L"abcdef", 4, 7), L"ab|   7");
   EXPECT_EQ(S.sprintf(L"%s", static_cast<const wchar_t *>(nullptr)), L"(null)");

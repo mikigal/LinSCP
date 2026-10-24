@@ -134,8 +134,8 @@ class PropertyTest(unittest.TestCase):
         source = 'class A {\n  const TList * GetList();\npublic:\n  __property TList * List = { read = GetList };\n};'
         self.assertIn('const TList * __property_get_List() const', convert(source))
         # Overloaded getters: the declared type
-        source = 'class A {\n  int Get();\n  bool Get(int);\npublic:\n  __property long X = { read = Get };\n};'
-        self.assertIn('long __property_get_X() const', convert(source))
+        source = 'class A {\n  int Get();\n  bool Get(int);\npublic:\n  __property __int64 X = { read = Get };\n};'
+        self.assertIn('__int64 __property_get_X() const', convert(source))
 
     def test_index_specifier(self):
         source = 'class A {\n  __property TStrings * IncludeStr = { read = GetStr, index = MASK_INDEX(false, true) };\n};'
@@ -342,6 +342,33 @@ class EnumTest(unittest.TestCase):
                 'void f(enum TA a);\n']:
             with self.subTest(text=text):
                 self.assertEqual(convert(text), text)
+
+
+class LongTest(unittest.TestCase):
+    def test_32_bit(self):
+        self.assertEqual(convert('long A;\nunsigned long B = 1;\n'), 'int A;\nunsigned int B = 1;\n')
+        self.assertEqual(convert('signed long C; long int D; unsigned long int E;\n'),
+                         'signed int C; int D; unsigned int E;\n')
+        self.assertEqual(convert('x = static_cast<unsigned long>(y);\n'), 'x = static_cast<unsigned int>(y);\n')
+        self.assertEqual(convert('#define M(X) static_cast<unsigned long>(X)\n'),
+                         '#define M(X) static_cast<unsigned int>(X)\n')
+        # In types copied to generated code
+        self.assertEqual(
+            squeeze(convert('typedef void __fastcall (__closure *TEvent)(unsigned long A);\n')),
+            'typedef TMethodPtr<void(unsigned int A)> TEvent;')
+
+    def test_unchanged(self):
+        for text in [
+                'long long A; unsigned long long B; long double C;\n',
+                '__int64 D; // long\n',
+                'const char * E = "long";\n',
+                'int longest;\n',
+                '#define F 1L\n']:
+            with self.subTest(text=text):
+                self.assertEqual(convert(text), text)
+
+    def test_line_count(self):
+        self.assertEqual(convert('long\nint A;\n'), '\nint A;\n')
 
 
 class LineEndingTest(unittest.TestCase):

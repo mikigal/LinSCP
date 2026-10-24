@@ -222,7 +222,8 @@ std::wstring DoPrintf(const CharT * Format, va_list Args, bool Wide)
             case lnLL:
             case lnBigL:
             case lnJ: Value = va_arg(Args, long long); break;
-            case lnL:
+            // long is 32-bit on Windows (and so in the converted core)
+            case lnL: Value = va_arg(Args, int); break;
             case lnZ:
             case lnT: Value = va_arg(Args, long); break;
             case lnH: Value = static_cast<short>(va_arg(Args, int)); break;
@@ -244,7 +245,8 @@ std::wstring DoPrintf(const CharT * Format, va_list Args, bool Wide)
             case lnLL:
             case lnBigL:
             case lnJ: Value = va_arg(Args, unsigned long long); break;
-            case lnL:
+            // long is 32-bit on Windows (and so in the converted core)
+            case lnL: Value = va_arg(Args, unsigned int); break;
             case lnZ:
             case lnT: Value = va_arg(Args, unsigned long); break;
             case lnH: Value = static_cast<unsigned short>(va_arg(Args, unsigned int)); break;

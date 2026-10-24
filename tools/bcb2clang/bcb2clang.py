@@ -24,6 +24,10 @@ Conversions:
 - Unscoped enumerations without a fixed underlying type get ``int``, the
   type C++Builder gives them (as MSVC does): values outside the
   enumerators' range (``TGssLib(-1)``) are valid and compare as signed.
+- ``long`` becomes ``int`` (``unsigned long`` ``unsigned int``, also in
+  macro definitions): Windows is LLP64, the core relies on a 32-bit long
+  (``sizeof(unsigned long)`` in the SFTP packets, sign extensions with
+  ``static_cast<signed long>``). ``long long`` and ``long double`` stay.
 - Backslashes in ``#include`` paths become slashes.
 
 Line endings (the upstream sources use CRLF) are kept.
@@ -1111,6 +1115,46 @@ def convert_enums(tokens):
 
 
 # ---------------------------------------------------------------------------
+# long
+# ---------------------------------------------------------------------------
+
+def _convert_long_tokens(tokens):
+    result = list(tokens)
+    for i, token in enumerate(tokens):
+        if token.kind != 'ident' or token.text != 'long':
+            continue
+        j = _next_significant(tokens, i)
+        if j < len(tokens) and tokens[j].text in ('long', 'double'):
+            continue
+        previous = _prev_significant(tokens, i)
+        if previous >= 0 and tokens[previous].text == 'long':
+            continue
+        if j < len(tokens) and tokens[j].text == 'int':
+            # long int: just int (the whitespace up to it goes too, unless it breaks the line)
+            result[i] = Token('ident', '')
+            if j == i + 2 and '\n' not in tokens[i + 1].text:
+                result[i + 1] = Token('ws', '')
+        else:
+            result[i] = Token('ident', 'int')
+    return result
+
+
+def convert_long(tokens):
+    """Makes long 32-bit, as in C++Builder: long (alone or with int, signed,
+    unsigned) becomes int; long long and long double stay. Also in the
+    bodies of macro definitions."""
+    result = []
+    for token in _convert_long_tokens(tokens):
+        if token.kind == 'pp':
+            match = _DEFINE_RE.match(token.text)
+            if match and re.search(r'\blong\b', match.group(2)):
+                body = untokenize(_convert_long_tokens(tokenize(match.group(2), preprocessor=False)))
+                token = Token('pp', match.group(1) + body)
+        result.append(token)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Inheritance from Delphi-style classes
 # ---------------------------------------------------------------------------
 
@@ -1159,6 +1203,8 @@ def convert_source(text, table=None):
         table = ClassTable()
         table.add_tokens(tokens)
     tokens = convert_preprocessor(tokens)
+    # Before the conversions that copy types into generated code
+    tokens = convert_long(tokens)
     tokens = convert_closures(tokens)
     tokens = convert_properties(tokens)
     tokens = convert_base_access(tokens, table)

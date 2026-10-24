@@ -2,8 +2,9 @@
 // by UnicodeString::sprintf and AnsiString::sprintf.
 //
 // In a wide format, %s and %c take wide arguments and %hs/%S narrow ones; in a
-// narrow format it is the other way round. %Ld, %I64d and %qd take 64-bit
-// integers, %Id size_t. Numbers are always formatted in the "C" locale.
+// narrow format it is the other way round. %ld takes a 32-bit integer (long is
+// 32-bit on Windows), %Ld, %lld, %I64d and %qd 64-bit integers, %Id size_t.
+// Numbers are always formatted in the "C" locale.
 //---------------------------------------------------------------------------
 #ifndef RtlPrintfH
 #define RtlPrintfH
