@@ -116,7 +116,7 @@ void __fastcall TSecureShell::ResetSessionInfo()
   FSessionInfoValid = false;
 }
 //---------------------------------------------------------------------------
-inline void __fastcall TSecureShell::UpdateSessionInfo()
+void __fastcall TSecureShell::UpdateSessionInfo()
 {
   if (!FSessionInfoValid)
   {
@@ -1587,7 +1587,7 @@ void __fastcall TSecureShell::FatalError(UnicodeString Error, UnicodeString Help
   FUI->FatalError(NULL, Error, HelpKeyword);
 }
 //---------------------------------------------------------------------------
-void __fastcall inline TSecureShell::LogEvent(const UnicodeString & Str)
+void __fastcall TSecureShell::LogEvent(const UnicodeString & Str)
 {
   if (FLog->Logging)
   {
@@ -1788,7 +1788,7 @@ void __fastcall TSecureShell::Close()
   Discard();
 }
 //---------------------------------------------------------------------------
-void inline __fastcall TSecureShell::CheckConnection(int Message)
+void __fastcall TSecureShell::CheckConnection(int Message)
 {
   if (!FActive || (backend_exitcode(FBackendHandle) >= 0))
   {
