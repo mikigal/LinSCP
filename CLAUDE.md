@@ -62,8 +62,11 @@ mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tes
 ## Test servers (`tools/testenv`)
 
 - `local_sshd.py`: unprivileged OpenSSH on `127.0.0.1` with its own keys (public key auth only).
-- Test VM over SSH (root, from milestone M3): FTP/FTPS, WebDAV, S3, password authentication.
-  Provisioned only by scripts in `tools/testenv/vm/`.
+- Test VM over SSH (root): password and keyboard-interactive authentication, later FTP/FTPS,
+  WebDAV, S3. Provisioned only by `tools/testenv/vm/provision.sh` (idempotent), run with
+  `OPENSCP_TEST_VM=<address> tools/testenv/testvm.py provision`; reached only with its own key
+  in `tools/testenv/vm/state/` (ignored by git). Its tests run with
+  `OPENSCP_TEST_VM=<address> ctest --preset dev -L vm` and are skipped without the variable.
 
 ## Layout
 

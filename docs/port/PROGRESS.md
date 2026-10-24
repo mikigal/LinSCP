@@ -2,12 +2,16 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## M3 — SSH and the CLI (in progress)
+## Next: M4 — FTP/FTPS, WebDAV, S3
 
-Done: `openscp-cli` works for SFTP and SCP, the L2 tests against the local sshd pass under
-ASan/UBSan and with the release build. Remaining: the test VM provisioning script (`tools/testenv/vm/`) and the L2 tests
-that need the VM (password, keyboard-interactive and password change authentication, banners,
-a real network).
+The FileZilla engine (MFC shim, `poll()` reactor), WebDAV and S3 L2 tests; the FTP, FTPS,
+WebDAV and S3 servers in `tools/testenv/vm/provision.sh`.
+
+## M3 — SSH and the CLI (done, 2026-10-24)
+
+Exit criteria met: `openscp-cli` works for SFTP and SCP; the L2 tests pass against the local
+sshd (under ASan/UBSan and with the release build) and against the test VM (passwords,
+keyboard-interactive, password change, resume, synchronize; host keys and the agent locally).
 
 - **Ported application files**: `tools/bcb2clang/convert.py` writes converted copies of the
   files of upstream's `source/windows` listed in `PORTED_FILES` to `source/app` and
@@ -41,6 +45,18 @@ a real network).
   passphrase authentication, XML and session logs, scripts and parameters, exit codes, stored
   sessions in an INI file. `/copyid` is not tested locally: the local sshd runs as the user,
   it would install the key in the user's own `~/.ssh/authorized_keys`.
+
+- **Test VM** (Debian 13, an LXC container; its address in `OPENSCP_TEST_VM`): reached as
+  root over SSH with a key of its own (`tools/testenv/vm/state/`, ignored by git), never with
+  the user's `~/.ssh` or agent. `tools/testenv/vm/provision.sh` (idempotent, run with
+  `tools/testenv/testvm.py provision`) sets up a second OpenSSH server on port 2222 (the one
+  on port 22 stays for root, so no test can lock the provisioning out) with test users per
+  authentication method (`tools/testenv/vm/testvm.env`): password only, keyboard-interactive
+  (PAM), an expired password, public key and password, a chrooted SFTP user, a user for
+  `/copyid`. `tests/integration/test_cli_vm.py` (label `vm`) is skipped without the VM.
+  As upstream, scripting asks for no other credentials once a pre-entered password was used
+  (a password change needs the password typed in), and the CLI does not show banners (only
+  the GUI does).
 
 Decisions:
 
