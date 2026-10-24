@@ -18,6 +18,16 @@ set_tests_properties(integration.cli_ssh PROPERTIES
   ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
   TIMEOUT 600)
 
+# L2 against the test VM (tools/testenv/testvm.py): skipped unless
+# OPENSCP_TEST_VM is set, e.g. OPENSCP_TEST_VM=10.10.100.170 ctest --preset dev -L vm
+add_test(NAME integration.cli_vm
+  COMMAND Python3::Interpreter -m unittest -v test_cli_vm
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties(integration.cli_vm PROPERTIES
+  LABELS "integration;vm"
+  ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+  TIMEOUT 900)
+
 if(OPENSCP_BUILD_HARNESS)
   add_test(NAME integration.wlharness
     COMMAND Python3::Interpreter -m unittest -v test_wlharness
