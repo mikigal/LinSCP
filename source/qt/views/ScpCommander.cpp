@@ -1,6 +1,7 @@
 // The main window with the Commander interface.
 //---------------------------------------------------------------------------
 #include <QtTools.h>
+#include <QtInterface.h>
 
 #include "ScpCommander.h"
 
@@ -28,5 +29,14 @@ TScpCommanderForm::~TScpCommanderForm()
 void TScpCommanderForm::UpdateCaption()
 {
   setWindowTitle(ToQString(FormatMainFormCaption(UnicodeString())));
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::NewSession()
+{
+  std::unique_ptr<TObjectList> DataList(new TObjectList());
+  if (DoLoginDialog(DataList.get(), this, false))
+  {
+    // Connecting follows
+  }
 }
 //---------------------------------------------------------------------------

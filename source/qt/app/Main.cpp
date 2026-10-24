@@ -11,6 +11,8 @@
 #include "Automation.h"
 #endif
 
+#include <QTimer>
+
 #include <csignal>
 //---------------------------------------------------------------------------
 static int Execute()
@@ -22,6 +24,8 @@ static int Execute()
   {
     TScpCommanderForm ScpCommander;
     ScpCommander.show();
+    // The site manager on startup
+    QTimer::singleShot(0, &ScpCommander, [&ScpCommander]() { ScpCommander.NewSession(); });
     Result = QApplication::exec();
   }
 #ifdef OPENSCP_AUTOMATION

@@ -7,6 +7,7 @@
 #include <AppPCH.h>
 //---------------------------------------------------------------------------
 class TTerminal;
+class QWidget;
 //---------------------------------------------------------------------------
 const int mpNeverAskAgainCheck =   0x01;
 const int mpAllowContinueOnError = 0x02;
@@ -58,5 +59,16 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E);
 bool InputDialog(const UnicodeString & ACaption,
   const UnicodeString & APrompt, UnicodeString & Value,
   TStrings * History = NULL, bool PathInput = false, bool Echo = true);
+// Saves the session as a site, asking for its name and whether to save
+// its password unless ForceDialog is false and the answers are known;
+// returns the new site or NULL when cancelled
+TSessionData * DoSaveSession(TSessionData * SessionData,
+  TSessionData * OriginalSession, bool ForceDialog, TStrings * AdditionalFolders);
+// Checks that a site can be saved under the name (or overwrite a site)
+void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName);
+
+// dialogs/LoginDialog.cpp
+// The site manager: fills DataList with the sessions to open
+bool DoLoginDialog(TList * DataList, QWidget * Parent, bool NeedTerminal);
 //---------------------------------------------------------------------------
 #endif

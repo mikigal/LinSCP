@@ -15,6 +15,8 @@ public:
   virtual ~TScpCommanderForm();
 
   void UpdateCaption();
+  // Opens sessions selected in the site manager
+  void NewSession();
 };
 //---------------------------------------------------------------------------
 #endif

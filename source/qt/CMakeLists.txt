@@ -9,6 +9,7 @@ add_library(openscp_qt STATIC
   app/QtInterface.cpp
   app/QtTools.cpp
   dialogs/CustomDialog.cpp
+  dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
   views/ScpCommander.cpp)
 

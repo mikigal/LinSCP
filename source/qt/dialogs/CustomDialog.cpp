@@ -3,6 +3,8 @@
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
+#include <AppConfiguration.h>
+
 #include "CustomDialog.h"
 
 #include <QApplication>
@@ -214,5 +216,210 @@ bool InputDialog(const UnicodeString & ACaption,
 {
   TInputDialog Dialog(ACaption, APrompt, History, Echo);
   return Dialog.Execute(Value);
+}
+//---------------------------------------------------------------------------
+static void AskForMasterPasswordIfNotSetAndNeededToPersistSessionData(TSessionData * SessionData)
+{
+  if (!Configuration->DisablePasswordStoring &&
+      SessionData->HasAnyPassword() &&
+      AppConfiguration->UseMasterPassword)
+  {
+    AppConfiguration->AskForMasterPasswordIfNotSet();
+  }
+}
+//---------------------------------------------------------------------------
+class TSaveSessionDialog : public TCustomDialog
+{
+public:
+  TSaveSessionDialog(bool CanSavePassword, bool NotRecommendedSavingPassword, TStrings * AdditionalFolders);
+
+  bool Execute(UnicodeString & SessionName, bool & SavePassword, const UnicodeString & OriginalSessionName);
+
+protected:
+  virtual void DoValidate() override;
+  virtual void DoChange(bool & CanSubmit) override;
+
+private:
+  UnicodeString FOriginalSessionName;
+  QLineEdit * SessionNameEdit;
+  QComboBox * FolderCombo;
+  QCheckBox * SavePasswordCheck;
+  UnicodeString FRootFolder;
+
+  UnicodeString GetSessionName();
+};
+//---------------------------------------------------------------------------
+TSaveSessionDialog::TSaveSessionDialog(
+  bool CanSavePassword, bool NotRecommendedSavingPassword, TStrings * AdditionalFolders)
+{
+  setObjectName(QStringLiteral("SaveSessionDialog"));
+  setWindowTitle(ToQString(LoadStr(SAVE_SESSION_CAPTION)));
+
+  SessionNameEdit = new QLineEdit(this);
+  SessionNameEdit->setObjectName(QStringLiteral("SessionNameEdit"));
+  AddEditLikeControl(SessionNameEdit, CreateLabel(LoadStr(SAVE_SESSION_PROMPT)));
+
+  FRootFolder = LoadStr(SAVE_SESSION_ROOT_FOLDER2);
+  std::unique_ptr<TStringList> Folders(new TStringList());
+  if (AdditionalFolders != NULL)
+  {
+    Folders->AddStrings(AdditionalFolders);
+  }
+  for (int Index = 0; Index < StoredSessions->Count; Index++)
+  {
+    TSessionData * Data = StoredSessions->Sessions[Index];
+    if (!Data->Special && !Data->IsWorkspace)
+    {
+      UnicodeString Folder = Data->FolderName;
+      if (!Folder.IsEmpty() && Folders->IndexOf(Folder) < 0)
+      {
+        Folders->Add(Folder);
+      }
+    }
+  }
+  Folders->Sort();
+  FolderCombo = new QComboBox(this);
+  FolderCombo->setObjectName(QStringLiteral("FolderCombo"));
+  FolderCombo->setEditable(true);
+  FolderCombo->setInsertPolicy(QComboBox::NoInsert);
+  FolderCombo->addItem(ToQString(FRootFolder));
+  for (int Index = 0; Index < Folders->Count; Index++)
+  {
+    FolderCombo->addItem(ToQString(Folders->Strings[Index]));
+  }
+  AddEditLikeControl(FolderCombo, CreateLabel(LoadStr(SAVE_SESSION_FOLDER)));
+
+  int SavePasswordCaption =
+    NotRecommendedSavingPassword ? SAVE_SESSION_PASSWORD :
+      (AppConfiguration->UseMasterPassword ? SAVE_SESSION_PASSWORD_MASTER : SAVE_SESSION_PASSWORD_RECOMMENDED);
+  SavePasswordCheck = CreateAndAddCheckBox(LoadStr(SavePasswordCaption));
+  SavePasswordCheck->setObjectName(QStringLiteral("SavePasswordCheck"));
+  SavePasswordCheck->setEnabled(CanSavePassword);
+  setMinimumWidth(fontMetrics().averageCharWidth() * 50);
+}
+//---------------------------------------------------------------------------
+bool TSaveSessionDialog::Execute(
+  UnicodeString & SessionName, bool & SavePassword, const UnicodeString & OriginalSessionName)
+{
+  FOriginalSessionName = OriginalSessionName;
+  SessionNameEdit->setText(ToQString(TSessionData::ExtractLocalName(SessionName)));
+  UnicodeString Folder = TSessionData::ExtractFolderName(SessionName);
+  FolderCombo->setEditText(ToQString(Folder.IsEmpty() ? FRootFolder : Folder));
+  SavePasswordCheck->setChecked(SavePassword);
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    SessionName = GetSessionName();
+    SavePassword = SavePasswordCheck->isChecked();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+UnicodeString TSaveSessionDialog::GetSessionName()
+{
+  UnicodeString Folder;
+  UnicodeString FolderText = ToUnicodeString(FolderCombo->currentText());
+  if (FolderText != FRootFolder)
+  {
+    Folder = FolderText;
+  }
+  return TSessionData::ComposePath(Folder, ToUnicodeString(SessionNameEdit->text()));
+}
+//---------------------------------------------------------------------------
+void TSaveSessionDialog::DoValidate()
+{
+  TSessionData::ValidateName(ToUnicodeString(SessionNameEdit->text()));
+  SessionNameValidate(GetSessionName(), FOriginalSessionName);
+  UnicodeString Folder = TSessionData::ExtractFolderName(GetSessionName());
+  if (!Folder.IsEmpty() && StoredSessions->IsWorkspace(Folder))
+  {
+    throw Exception(FMTLOAD(WORKSPACE_NOT_FOLDER, (Folder)));
+  }
+  if (SavePasswordCheck->isEnabled() && SavePasswordCheck->isChecked() &&
+      AppConfiguration->UseMasterPassword)
+  {
+    AppConfiguration->AskForMasterPasswordIfNotSet();
+  }
+  TCustomDialog::DoValidate();
+}
+//---------------------------------------------------------------------------
+void TSaveSessionDialog::DoChange(bool & CanSubmit)
+{
+  CanSubmit = !SessionNameEdit->text().isEmpty();
+  TCustomDialog::DoChange(CanSubmit);
+}
+//---------------------------------------------------------------------------
+TSessionData * DoSaveSession(TSessionData * SessionData,
+  TSessionData * OriginalSession, bool ForceDialog, TStrings * AdditionalFolders)
+{
+  bool SavePassword = false;
+  bool * PSavePassword;
+  bool NotRecommendedSavingPassword =
+    !AppConfiguration->UseMasterPassword &&
+    !SameText(SessionData->UserName, AnonymousUserName);
+  if (Configuration->DisablePasswordStoring ||
+      !SessionData->HasAnySessionPassword())
+  {
+    PSavePassword = NULL;
+  }
+  else
+  {
+    PSavePassword = &SavePassword;
+    SavePassword =
+      ((OriginalSession != NULL) && OriginalSession->HasAnySessionPassword()) ||
+      !NotRecommendedSavingPassword;
+  }
+
+  UnicodeString SessionName = SessionData->SessionName;
+  bool Result;
+  if (!ForceDialog && ((PSavePassword == NULL) || SavePassword))
+  {
+    // Asks before the site starts being saved, so that cancelling the
+    // prompt does not leave it saved partially
+    AskForMasterPasswordIfNotSetAndNeededToPersistSessionData(SessionData);
+    Result = true;
+  }
+  else
+  {
+    TSaveSessionDialog Dialog((PSavePassword != NULL), NotRecommendedSavingPassword, AdditionalFolders);
+    Result = Dialog.Execute(SessionName, SavePassword, SessionData->Name);
+  }
+
+  TSessionData * NewSession = NULL;
+  if (Result)
+  {
+    if ((PSavePassword != NULL) && !SavePassword)
+    {
+      SessionData->ClearSessionPasswords();
+    }
+
+    NewSession = StoredSessions->NewSession(SessionName, SessionData);
+    // modified only, explicit
+    StoredSessions->Save(false, true);
+    if (!SessionData->HostKey.IsEmpty())
+    {
+      SessionData->CacheHostKeyIfNotCached();
+    }
+  }
+  return NewSession;
+}
+//---------------------------------------------------------------------------
+void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName)
+{
+  TSessionData::ValidatePath(Text);
+
+  DebugAssert(StoredSessions);
+  TSessionData * Data = static_cast<TSessionData *>(StoredSessions->FindByName(Text));
+  if (Data && Data->Special)
+  {
+    MessageDialog(FMTLOAD(CANNOT_OVERWRITE_SPECIAL_SESSION, (Text)), qtError, qaOK);
+    Abort();
+  }
+  else if ((Data != NULL) && !Data->IsSameName(OriginalName) &&
+    MessageDialog(MainInstructions(FMTLOAD(CONFIRM_OVERWRITE_SESSION, (Text))),
+      qtConfirmation, qaYes | qaNo) != qaYes)
+  {
+    Abort();
+  }
 }
 //---------------------------------------------------------------------------

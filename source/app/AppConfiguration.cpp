@@ -31,6 +31,10 @@ void __fastcall TAppConfiguration::Default()
   FPlainMasterPasswordEncrypt = L"";
   FPlainMasterPasswordDecrypt = L"";
   FMasterPasswordVerifier = L"";
+
+  FConfirmDeleting = true;
+  FLastStoredSession = L"";
+  FOpenedStoredSessionFolders = L"";
 }
 //---------------------------------------------------------------------------
 UnicodeString TAppConfiguration::TemporaryDir(bool Mask)
@@ -56,7 +60,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
   return TGUIConfiguration::CreateScpStorage(SessionList);
 }
 //---------------------------------------------------------------------------
-// The keys of TWinConfiguration's "Security" section
+// The keys of TWinConfiguration
 #define BLOCK(KEY, CANCREATE, BLOCK) \
   if (Storage->OpenSubKeyPath(KEY, CANCREATE)) \
   { \
@@ -65,6 +69,11 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
   }
 #define KEY(TYPE, VAR) KEYEX(TYPE, VAR, PropertyToKey(TEXT(#VAR)))
 #define REGCONFIG(CANCREATE) \
+  BLOCK(L"Interface", CANCREATE, \
+    KEY(Bool,    FConfirmDeleting); \
+    KEY(String,  FLastStoredSession); \
+    KEY(String,  FOpenedStoredSessionFolders); \
+  ); \
   BLOCK(L"Security", CANCREATE, \
     KEY(Bool,    FUseMasterPassword); \
     KEY(String,  FMasterPasswordVerifier); \
@@ -176,5 +185,20 @@ void __fastcall TAppConfiguration::AskForMasterPasswordIfNotSet()
   {
     AskForMasterPassword();
   }
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetConfirmDeleting(bool value)
+{
+  SET_CONFIG_PROPERTY(ConfirmDeleting);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetLastStoredSession(UnicodeString value)
+{
+  SET_CONFIG_PROPERTY(LastStoredSession);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetOpenedStoredSessionFolders(UnicodeString value)
+{
+  SET_CONFIG_PROPERTY(OpenedStoredSessionFolders);
 }
 //---------------------------------------------------------------------------
