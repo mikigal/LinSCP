@@ -1,5 +1,8 @@
 """Unit tests of the C++Builder dialect converter (tools/bcb2clang)."""
 
+import os
+import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -153,6 +156,229 @@ class PropertyTest(unittest.TestCase):
             convert('class A { __property int X = { default = 0 }; };')
 
 
+class FinallyTest(unittest.TestCase):
+    def test_block(self):
+        source = (
+            '  try\n  {\n    Use(List);\n  }\n'
+            '  __finally\n  {\n    delete List;\n  }\n')
+        self.assertEqual(convert(source), (
+            '  { ::rtl::TFinally Finally([&]()\n  {\n    delete List;\n  }); try\n'
+            '  {\n    Use(List);\n  }\n'
+            '  catch (...) { Finally.Unwind(); } }\n'))
+
+    def test_comments_and_single_statement_context(self):
+        source = 'if (A) try { X(); } // done\n__finally /* c */ { Y(); }\nZ();\n'
+        result = convert(source)
+        self.assertEqual(result.count('\n'), source.count('\n'))
+        self.assertEqual(
+            squeeze(result),
+            'if (A) { ::rtl::TFinally Finally([&]() /* c */ { Y(); }); try { X(); } // done '
+            'catch (...) { Finally.Unwind(); } } Z();')
+
+    def test_nested(self):
+        source = (
+            'try {\n'
+            '  try { A(); } __finally { B(); }\n'
+            '} __finally {\n'
+            '  try { C(); } __finally { D(); }\n'
+            '}\n')
+        result = convert(source)
+        self.assertNotIn('__finally', result)
+        self.assertEqual(result.count('\n'), source.count('\n'))
+        self.assertEqual(result.count('::rtl::TFinally'), 3)
+        # The outer finally block, with its nested try, comes first
+        self.assertLess(result.index('C()'), result.index('A()'))
+        self.assertLess(result.index('D()'), result.index('A()'))
+
+    def test_macro(self):
+        source = '#define BLOCK(B) \\\r\n  if (Open()) try { B } __finally { Close(); }\r\nint X;\r\n'
+        self.assertEqual(convert(source), (
+            '#define BLOCK(B) \\\r\n  if (Open()) { ::rtl::TFinally Finally([&]() { Close(); }); try { B } '
+            'catch (...) { Finally.Unwind(); } }\r\nint X;\r\n'))
+
+    def test_errors(self):
+        with self.assertRaisesRegex(bcb2clang.ConversionError, 'return in a __finally block'):
+            convert('try { A(); } __finally { return; }')
+        with self.assertRaises(bcb2clang.ConversionError):
+            convert('{ A(); } __finally { B(); }')
+
+
+class MethodReferenceTest(unittest.TestCase):
+    CLASSES = (
+        '#define CALL(X) X()\n'
+        'class TBase : public TObject {\npublic:\n'
+        '  void Handler(int X);\n  static void Static(int X);\n'
+        '  __property TNotify OnEvent = { read = FOnEvent, write = FOnEvent };\n'
+        '  TNotify FOnEvent;\n};\n'
+        'class TOther {\npublic:\n  void Handler(int X);\n  void Other(int X);\n  int Value;\n};\n'
+        'class TDerived : public TBase {\npublic:\n  void Run();\n  TOther * FOther;\n};\n')
+
+    def run_body(self, body):
+        text = self.CLASSES + 'void TDerived::Run()\n{\n' + body + '\n}\n'
+        result = convert(text)
+        self.assertEqual(result.count('\n'), text.count('\n'))
+        return result.split('void TDerived::Run()\n{\n', 1)[1].rsplit('\n}\n', 1)[0]
+
+    def test_own_methods(self):
+        self.assertEqual(self.run_body('OnEvent = Handler;'), 'OnEvent = ::rtl::MethodPtr(this, &TDerived::Handler);')
+        self.assertEqual(self.run_body('Register(&Handler, 1);'), 'Register(::rtl::MethodPtr(this, &TDerived::Handler), 1);')
+
+    def test_methods_of_other_objects(self):
+        self.assertEqual(self.run_body('Process(FOther->Other);'), 'Process(::rtl::MethodPtr(FOther, &TOther::Other));')
+        # Handler is a method of more classes, the type of FOther tells which
+        self.assertEqual(self.run_body('Process(&FOther->Handler);'), 'Process(::rtl::MethodPtr(FOther, &TOther::Handler));')
+        self.assertEqual(
+            self.run_body('TOther * Local = FOther;\nProcess(Local->Handler);'),
+            'TOther * Local = FOther;\nProcess(::rtl::MethodPtr(Local, &TOther::Handler));')
+        self.assertEqual(
+            self.run_body('Process(FOther\n  ->Other);'), 'Process(::rtl::MethodPtr(FOther, &TOther::Other)\n);')
+        self.assertEqual(
+            self.run_body('TOther Object;\nProcess(&Object.Handler);'),
+            'TOther Object;\nProcess(::rtl::MethodPtr(&Object, &TOther::Handler));')
+
+    def test_macros(self):
+        source = (
+            'class TA {\n  void M();\n  void N();\n  TA * FA;\n};\n'
+            '#define RUN(X) Run(M, X); Run(FA->M); Write ## X(M)\n'
+            'void TA::N()\n{\n  RUN(1);\n}\n')
+        self.assertIn(
+            '#define RUN(X) Run(::rtl::MethodPtr(this, &TA::M), X); Run(::rtl::MethodPtr(FA, &TA::M)); Write ## X(M)\n',
+            convert(source))
+
+    def test_unchanged(self):
+        for body in [
+                'Handler(1);',
+                'Run2(Static);',
+                'X = A & Handler;',
+                'int Handler = 1;\nUse(Handler);',
+                'Use(FOther->Value);',
+                'Use(FOther->Handler(1));',
+                'CALL(Handler);',
+                'Use(&TDerived::Handler);',
+                'Use(Unknown.Handler);',
+                'OnEvent = FOnEvent;']:
+            with self.subTest(body=body):
+                self.assertEqual(self.run_body(body), body)
+
+    def test_inline_member_functions(self):
+        result = convert('class TInline {\n  void A() { Set(B); }\n  void B();\n};\n')
+        self.assertIn('void A() { Set(::rtl::MethodPtr(this, &TInline::B)); }', result)
+
+    def test_class_table_across_files(self):
+        table = bcb2clang.ClassTable()
+        table.add_source('class TA {\n  void M();\n  void N();\n};\n')
+        self.assertEqual(
+            bcb2clang.convert_source('void TA::N()\n{\n  Run(M);\n}\n', table),
+            'void TA::N()\n{\n  Run(::rtl::MethodPtr(this, &TA::M));\n}\n')
+
+
+class LineEndingTest(unittest.TestCase):
+    def test_crlf(self):
+        source = '#define M(X) \\\r\n  X\r\ntypedef void __fastcall (__closure *TEvent)\r\n  (int A);\r\n'
+        result = convert(source)
+        self.assertTrue(result.startswith('#define M(X) \\\r\n  X\r\n'))
+        self.assertEqual(result.count('\r\n'), source.count('\r\n'))
+        self.assertNotRegex(result, '[^\r]\n')
+
+
+FINALLY_PROGRAM = r'''
+#include <rtl/Finally.h>
+#include <cstdio>
+#include <stdexcept>
+#include <string>
+
+static std::string Log;
+
+static int ReturnInTry()
+{
+  int Value = 0;
+  try
+  {
+    Value = 5;
+    Log += "a";
+    return 1;
+  }
+  __finally
+  {
+    // Sees the state left by the try block
+    Log += std::to_string(Value);
+  }
+}
+
+static void LoopJumps()
+{
+  for (int I = 0; I < 3; I++)
+  {
+    try
+    {
+      if (I == 0) continue;
+      if (I == 2) break;
+      Log += "c";
+    }
+    __finally
+    {
+      Log += "d";
+    }
+  }
+}
+
+static void ExceptionInTry()
+{
+  try
+  {
+    try { throw std::runtime_error("e"); }
+    __finally { Log += "f"; }
+  }
+  catch (const std::exception & E) { Log += E.what(); }
+}
+
+static void ExceptionInFinallyReplacesTheCurrentOne()
+{
+  try
+  {
+    try { throw std::runtime_error("1"); }
+    __finally { throw std::logic_error("2"); }
+  }
+  catch (const std::logic_error & E) { Log += E.what(); }
+}
+
+static void ExceptionInFinallyAfterNormalExit()
+{
+  try
+  {
+    try { Log += "g"; }
+    __finally { throw std::logic_error("3"); }
+  }
+  catch (const std::logic_error & E) { Log += E.what(); }
+}
+
+int main()
+{
+  int Result = ReturnInTry();
+  LoopJumps();
+  ExceptionInTry();
+  ExceptionInFinallyReplacesTheCurrentOne();
+  ExceptionInFinallyAfterNormalExit();
+  std::printf("%d %s\n", Result, Log.c_str());
+  return 0;
+}
+'''
+
+
+class FinallySemanticsTest(unittest.TestCase):
+    def test_converted_program(self):
+        with tempfile.TemporaryDirectory(prefix='openscp-finally-') as temp:
+            source = Path(temp) / 'finally.cpp'
+            source.write_text(convert(FINALLY_PROGRAM))
+            program = Path(temp) / 'finally'
+            subprocess.run([
+                os.environ.get('OPENSCP_CXX', 'clang++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                '-fsanitize=address,undefined', '-I', str(ROOT / 'source' / 'rtl' / 'include'),
+                str(source), '-o', str(program)], check=True)
+            result = subprocess.run([str(program)], capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, '1 a5dcddfe2g3\n')
+
+
 class PreprocessorTest(unittest.TestCase):
     def test_include_paths(self):
         self.assertEqual(convert('#include <proxy\\proxy.h>\n'), '#include <proxy/proxy.h>\n')
@@ -160,17 +386,20 @@ class PreprocessorTest(unittest.TestCase):
         self.assertEqual(convert('#define P "a\\b"\n'), '#define P "a\\b"\n')
 
 
-class CoreHeadersTest(unittest.TestCase):
+class CoreSourcesTest(unittest.TestCase):
     def test_line_counts_are_kept(self):
-        for path in sorted((ROOT / 'source' / 'core').glob('*.h')):
+        paths = sorted((ROOT / 'source' / 'core').glob('*.[hc]*'))
+        table = bcb2clang.make_class_table(paths)
+        for path in paths:
             text = path.read_bytes().decode('utf-8', errors='surrogateescape')
             with self.subTest(path=path.name):
-                converted = convert(text)
+                converted = bcb2clang.convert_source(text, table)
                 self.assertEqual(converted.count('\n'), text.count('\n'))
-                self.assertNotIn('__property ', converted)
-                self.assertNotIn('__closure', converted)
+                self.assertEqual(converted.count('\r\n'), text.count('\r\n'))
+                keywords = {t.text for t in bcb2clang.tokenize(converted, preprocessor=False) if t.kind == 'ident'}
+                self.assertFalse(keywords & {'__property', '__closure', '__finally'})
                 # Converting again changes nothing
-                self.assertEqual(convert(converted), converted)
+                self.assertEqual(bcb2clang.convert_source(converted, table), converted)
 
 
 if __name__ == '__main__':

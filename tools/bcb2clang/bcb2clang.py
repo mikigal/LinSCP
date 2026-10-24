@@ -5,14 +5,21 @@ See docs/port/PLAN.md, section 3.2. The conversion is deterministic and keeps
 every line where it was, so that diffs between converted upstream revisions
 stay small and compiler diagnostics point at the original lines.
 
-Handled so far (declarations, enough for the core's headers):
+Conversions:
 
 - ``__property T X = { read = R, write = W, index = I, ... };`` becomes
   ``__declspec(property(get = ..., put = ...)) T X;``. Field-backed reads and
   writes and ``index`` specifiers get generated inline accessors.
 - ``R __fastcall (__closure * Name)(Args)`` becomes
   ``TMethodPtr<R(Args)> Name`` (in typedefs, members and parameters).
+- References to methods (``OnX = Method;``, ``&Object->Method``, ...) become
+  ``::rtl::MethodPtr(Object, &TClass::Method)``; which names are methods is
+  known from the classes of all converted files (ClassTable).
+- ``try { A } __finally { B }`` becomes a scope guard (``::rtl::TFinally``),
+  also in macro definitions.
 - Backslashes in ``#include`` paths become slashes.
+
+Line endings (the upstream sources use CRLF) are kept.
 
 Keywords with a direct equivalent (``__fastcall``, ``__published``,
 ``__int64``, ...) are macros or typedefs of the RTL shim (source/rtl) and are
@@ -29,7 +36,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 _TOKEN_RE = re.compile(r'''
-    (?P<ws>(?:[ \t\r\n\f\v]|\\\n)+)
+    (?P<ws>(?:[ \t\r\n\f\v]|\\\r?\n)+)
   | (?P<comment>//[^\n]*|/\*.*?\*/)
   | (?P<string>(?:u8|u|U|L)?R"(?P<delim>[^()\\\s]{0,16})\(.*?\)(?P=delim)"
              |(?:u8|u|U|L)?"(?:\\.|[^"\\\n])*")
@@ -64,7 +71,7 @@ def _preprocessor_end(text, pos):
         if newline < 0:
             return len(text)
         # A comment may hide a line break; keep it simple: only backslash continuations
-        if newline > 0 and text[newline - 1] == '\\':
+        if text[end:newline].rstrip('\r').endswith('\\'):
             end = newline + 1
             continue
         if text[end:newline].count('/*') > text[end:newline].count('*/'):
@@ -75,11 +82,13 @@ def _preprocessor_end(text, pos):
         return newline
 
 
-def tokenize(text):
-    """Splits text into tokens; ''.join(t.text for t in tokens) == text."""
+def tokenize(text, preprocessor=True):
+    """Splits text into tokens; ''.join(t.text for t in tokens) == text.
+    Preprocessor directives are single tokens, unless preprocessor is False
+    (for the text of a directive)."""
     tokens = []
     pos = 0
-    at_line_start = True
+    at_line_start = preprocessor
     length = len(text)
     while pos < length:
         if at_line_start:
@@ -104,7 +113,7 @@ def tokenize(text):
         tokens.append(Token(kind, token_text))
         pos = match.end()
         if kind == 'ws':
-            if '\n' in token_text:
+            if '\n' in token_text and preprocessor:
                 at_line_start = True
         elif kind == 'comment' and token_text.startswith('/*') and '\n' in token_text:
             # A block comment does not start a line for the preprocessor
@@ -496,10 +505,534 @@ def convert_properties(tokens):
 
 
 # ---------------------------------------------------------------------------
+# try/__finally
+# ---------------------------------------------------------------------------
+
+_JUMPS = {'return', 'break', 'continue', 'goto'}
+
+
+def convert_finally(tokens):
+    """``try { A } __finally { B }`` becomes a scope guard running B, see
+    source/rtl/include/rtl/Finally.h. B moves in front of A; the line count
+    of the whole statement stays the same."""
+    result = list(tokens)
+    while True:
+        position = next((i for i, t in enumerate(result) if t.kind == 'ident' and t.text == '__finally'), None)
+        if position is None:
+            return result
+        try_close = _prev_significant(result, position)
+        if try_close < 0 or result[try_close].text != '}':
+            raise ConversionError('__finally not preceded by a block')
+        depth = 0
+        try_open = try_close
+        while try_open >= 0:
+            text = result[try_open].text if result[try_open].kind == 'punct' else None
+            if text == '}':
+                depth += 1
+            elif text == '{':
+                depth -= 1
+                if depth == 0:
+                    break
+            try_open -= 1
+        try_index = _prev_significant(result, try_open)
+        if try_index < 0 or result[try_index].kind != 'ident' or result[try_index].text != 'try':
+            raise ConversionError('__finally does not follow a try block')
+        finally_open = _next_significant(result, position)
+        if finally_open >= len(result) or result[finally_open].text != '{':
+            raise ConversionError('__finally without a block')
+        finally_close = _matching(result, finally_open)
+        # B runs in a lambda, where jumps would not leave the enclosing function or loop
+        jumps = {t.text for t in result[finally_open:finally_close] if t.kind == 'ident'} & _JUMPS
+        if jumps:
+            raise ConversionError('%s in a __finally block' % ', '.join(sorted(jumps)))
+
+        replacement = (
+            [Token('converted', '{ ::rtl::TFinally Finally([&]()')] +
+            result[position + 1:finally_open] +
+            result[finally_open:finally_close + 1] +
+            [Token('converted', '); try')] +
+            result[try_index + 1:try_open] +
+            result[try_open:try_close + 1] +
+            result[try_close + 1:position] +
+            [Token('converted', 'catch (...) { Finally.Unwind(); } }')])
+        result[try_index:finally_close + 1] = replacement
+
+
+# ---------------------------------------------------------------------------
+# Method references
+# ---------------------------------------------------------------------------
+#
+# C++Builder makes a closure of a method named without a call: ``OnX = Method;``,
+# ``Run(Method)``, ``&Method``, ``Object->Method`` and ``&Object->Method``. In
+# standard C++ these must name the class, so they become
+# ``::rtl::MethodPtr(Object, &TClass::Method)`` (source/rtl/include/rtl/Closure.h).
+# Which names are methods is known from the class declarations of all files
+# being converted (a ClassTable).
+
+class ClassInfo:
+    def __init__(self, name, bases):
+        self.name = name
+        self.bases = bases
+        # Non-static member functions
+        self.methods = set()
+        self.static_methods = set()
+        # Data members and properties
+        self.fields = set()
+        # Identifiers in the declarations of data members
+        self.field_types = {}
+
+
+_CLASS_KEYS = {'class', 'struct'}
+_CLASS_NAME_NOISE = {'PACKAGE', 'DELPHICLASS', 'final', 'alignas'}
+_BASE_NOISE = {'public', 'protected', 'private', 'virtual'}
+
+
+def _add_field(info, tokens, statement_start, name_index):
+    info.fields.add(tokens[name_index].text)
+    info.field_types[tokens[name_index].text] = [
+        t.text for t in tokens[statement_start:name_index] if t.kind == 'ident']
+
+
+def _class_members(tokens, open_index, close_index, info):
+    depth = 0
+    i = open_index + 1
+    statement_start = i
+    while i < close_index:
+        token = tokens[i]
+        if token.kind == 'ident' and token.text == '__property' and depth == 0:
+            end = _statement_end(tokens, i)
+            stop = next((j for j in range(i + 1, end) if tokens[j].text in ('[', '=')), None)
+            if stop is not None:
+                info.fields.add(tokens[_prev_significant(tokens, stop)].text)
+            i = end + 1
+            statement_start = i
+            continue
+        if token.kind == 'punct':
+            previous = _prev_significant(tokens, i)
+            previous_name = tokens[previous].text if (previous > open_index and tokens[previous].kind == 'ident') else None
+            if depth == 0 and token.text == ':' and previous > open_index and tokens[previous].text == ')':
+                # Constructor initializer list: skip to the body
+                while (i < close_index) and (tokens[i].text != '{'):
+                    i += 1
+                continue
+            if token.text in ('{', '('):
+                if token.text == '(' and depth == 0 and previous_name is not None:
+                    declaration = {t.text for t in tokens[statement_start:previous] if t.kind == 'ident'}
+                    if declaration & {'typedef', 'friend'}:
+                        pass
+                    elif 'static' in declaration:
+                        info.static_methods.add(previous_name)
+                    elif previous_name != info.name:
+                        info.methods.add(previous_name)
+                depth += 1
+            elif token.text in ('}', ')'):
+                depth -= 1
+                if depth == 0 and token.text == '}':
+                    statement_start = i + 1
+            elif depth == 0 and token.text in (';', ':'):
+                if token.text == ';' and previous_name is not None:
+                    _add_field(info, tokens, statement_start, previous)
+                statement_start = i + 1
+            elif depth == 0 and token.text in ('=', '[', ',') and previous_name is not None:
+                _add_field(info, tokens, statement_start, previous)
+        i += 1
+
+
+class ClassTable:
+    """Classes declared in a set of sources: their bases and members."""
+
+    def __init__(self):
+        self.classes = {}
+        # Names of properties and fields of classes not in the table (RTL)
+        self.other_fields = set()
+        # Function-like macros: their arguments are not necessarily expressions
+        self.macros = set()
+
+    def add_source(self, text):
+        self.add_tokens(tokenize(text))
+
+    def add_tokens(self, tokens):
+        for token in tokens:
+            if token.kind == 'pp':
+                match = re.match(r'\s*#\s*define\s+(\w+)\(', token.text)
+                if match:
+                    self.macros.add(match.group(1))
+        for i, token in enumerate(tokens):
+            if token.kind != 'ident' or token.text not in _CLASS_KEYS:
+                continue
+            previous = _prev_significant(tokens, i)
+            if previous >= 0 and tokens[previous].text in ('friend', 'enum'):
+                continue
+            # The name is the last identifier before ':' or '{'
+            name = None
+            j = _next_significant(tokens, i)
+            while j < len(tokens) and tokens[j].kind == 'ident':
+                if tokens[j].text not in _CLASS_NAME_NOISE:
+                    name = tokens[j].text
+                j = _next_significant(tokens, j)
+            if name is None or j >= len(tokens) or tokens[j].text not in (':', '{'):
+                continue
+            bases = []
+            if tokens[j].text == ':':
+                while j < len(tokens) and tokens[j].text not in ('{', ';'):
+                    if tokens[j].kind == 'ident' and tokens[j].text not in _BASE_NOISE:
+                        following = _next_significant(tokens, j)
+                        if tokens[following].text in (',', '{'):
+                            bases.append(tokens[j].text)
+                    j += 1
+                if j >= len(tokens) or tokens[j].text != '{':
+                    continue
+            info = self.classes.setdefault(name, ClassInfo(name, bases))
+            info.bases = bases or info.bases
+            _class_members(tokens, j, _matching(tokens, j), info)
+
+    def add_rtl_headers(self, directory):
+        """Property names declared by the RTL shim's headers."""
+        for path in sorted(Path(directory).glob('*.h')):
+            text = path.read_text(errors='replace')
+            self.other_fields.update(re.findall(r'__declspec\(property\([^)]*\)\)[^;]*?(\w+)\s*(?:\[\])*;', text))
+
+    def lineage(self, name):
+        """The class and its known bases."""
+        result = []
+        pending = [name]
+        while pending:
+            info = self.classes.get(pending.pop(0))
+            if info is not None and info not in result:
+                result.append(info)
+                pending.extend(info.bases)
+        return result
+
+    def field_class(self, class_name, name):
+        """The class of the data member name of the class, if it is one of the table."""
+        for info in self.lineage(class_name):
+            if name in info.field_types:
+                return next((t for t in info.field_types[name] if t in self.classes), None)
+        return None
+
+    def is_method_of(self, class_name, name):
+        lineage = self.lineage(class_name)
+        for info in lineage:
+            if name in info.fields or name in info.static_methods:
+                return False
+            if name in info.methods:
+                return True
+        return False
+
+    def declaring_class(self, name):
+        """The base-most class declaring the method name, if the name is
+        unambiguously a method."""
+        if name in self.other_fields:
+            return None
+        declaring = []
+        for info in self.classes.values():
+            if name in info.fields or name in info.static_methods:
+                return None
+            if name in info.methods:
+                declaring.append(info.name)
+        for candidate in declaring:
+            if all(candidate in [i.name for i in self.lineage(other)] for other in declaring):
+                return candidate
+        return None
+
+
+_NOT_TYPES = {
+    'return', 'throw', 'case', 'else', 'new', 'delete', 'sizeof', 'typeid', 'goto', 'do',
+    'co_return', 'co_yield', 'co_await', 'and', 'or', 'not'}
+_VALUE_END = {')', ']'}
+
+
+def _ends_value(token):
+    """Whether a token ends an operand, so that a following '&' is binary."""
+    if token.kind in ('number', 'string', 'char'):
+        return True
+    if token.kind == 'ident':
+        return token.text not in _NOT_TYPES
+    return token.kind == 'punct' and token.text in _VALUE_END
+
+
+def _local_names(tokens, start, end):
+    """Names declared by parameters and local declarations in tokens[start:end],
+    mapped to the identifier of their type."""
+    names = {}
+    for i in range(start, end):
+        token = tokens[i]
+        if token.kind != 'ident':
+            continue
+        previous = _prev_significant(tokens, i)
+        following = _next_significant(tokens, i)
+        if following >= len(tokens) or tokens[following].text not in (';', '=', '(', '[', ',', ')', ':'):
+            continue
+        before = tokens[previous] if previous >= 0 else None
+        if before is None:
+            continue
+        if before.kind == 'punct' and before.text in ('*', '&'):
+            # A declarator (TType * Name), not an operator (X * Name, &Name)
+            before = tokens[_prev_significant(tokens, previous)]
+        if (before.kind == 'ident' and before.text not in _NOT_TYPES) or before.text == '>':
+            names[token.text] = before.text if before.kind == 'ident' else None
+    return names
+
+
+def _member_functions(tokens, table):
+    """(class name, parameters open, body close) of member function definitions."""
+    result = []
+    for info_name, open_index, close_index in _class_bodies(tokens, table):
+        # Inline member functions
+        depth = 0
+        for i in range(open_index + 1, close_index):
+            token = tokens[i]
+            if token.kind != 'punct':
+                continue
+            if token.text == '(' and depth == 0:
+                close = _matching(tokens, i)
+                body = _function_body(tokens, close)
+                if body is not None:
+                    result.append((info_name, i, _matching(tokens, body)))
+            if token.text in _OPENING:
+                depth += 1
+            elif token.text in _CLOSING:
+                depth -= 1
+    # Out-of-class definitions: TClass::Name(...) { ... }
+    for i, token in enumerate(tokens):
+        if token.kind != 'ident' or token.text not in table.classes:
+            continue
+        scope = _next_significant(tokens, i)
+        if scope >= len(tokens) or tokens[scope].text != '::':
+            continue
+        previous = _prev_significant(tokens, i)
+        if previous >= 0 and tokens[previous].text in ('::', '->', '.'):
+            continue
+        name = _next_significant(tokens, scope)
+        if name < len(tokens) and tokens[name].text == '~':
+            name = _next_significant(tokens, name)
+        if name >= len(tokens) or tokens[name].kind != 'ident':
+            continue
+        paren = _next_significant(tokens, name)
+        if paren >= len(tokens) or tokens[paren].text != '(':
+            continue
+        body = _function_body(tokens, _matching(tokens, paren))
+        if body is not None:
+            result.append((token.text, paren, _matching(tokens, body)))
+    return result
+
+
+def _class_bodies(tokens, table):
+    for i, token in enumerate(tokens):
+        if token.kind != 'ident' or token.text not in _CLASS_KEYS:
+            continue
+        j = _next_significant(tokens, i)
+        name = None
+        while j < len(tokens) and tokens[j].kind == 'ident':
+            if tokens[j].text not in _CLASS_NAME_NOISE:
+                name = tokens[j].text
+            j = _next_significant(tokens, j)
+        if name not in table.classes:
+            continue
+        while j < len(tokens) and tokens[j].text not in ('{', ';'):
+            j += 1
+        if j < len(tokens) and tokens[j].text == '{':
+            yield name, j, _matching(tokens, j)
+
+
+_FUNCTION_QUALIFIERS = {'const', 'noexcept', 'override', 'final', 'volatile', '__fastcall'}
+
+
+def _function_body(tokens, params_close):
+    """Index of the '{' of the body of a function whose parameter list closes at params_close."""
+    i = _next_significant(tokens, params_close)
+    while i < len(tokens) and tokens[i].kind == 'ident' and tokens[i].text in _FUNCTION_QUALIFIERS:
+        i = _next_significant(tokens, i)
+    if i < len(tokens) and tokens[i].text == ':':
+        # Constructor initializer list
+        depth = 0
+        while i < len(tokens):
+            text = tokens[i].text if tokens[i].kind == 'punct' else None
+            if text == '{' and depth == 0:
+                break
+            if text in ('(', '['):
+                depth += 1
+            elif text in (')', ']'):
+                depth -= 1
+            elif text == ';' and depth == 0:
+                return None
+            i += 1
+    if i < len(tokens) and tokens[i].text == '{':
+        return i
+    return None
+
+
+def _object_start(tokens, arrow):
+    """First token of the postfix expression before the '->' at arrow."""
+    i = _prev_significant(tokens, arrow)
+    start = None
+    while i >= 0:
+        token = tokens[i]
+        if token.kind == 'punct' and token.text in (')', ']'):
+            depth = 0
+            while i >= 0:
+                text = tokens[i].text if tokens[i].kind == 'punct' else None
+                if text in (')', ']'):
+                    depth += 1
+                elif text in ('(', '['):
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i -= 1
+            start = i
+            i = _prev_significant(tokens, i)
+            if i >= 0 and tokens[i].kind == 'ident':
+                # Function call or array element
+                start = i
+                i = _prev_significant(tokens, i)
+        elif token.kind == 'ident' and token.text not in _NOT_TYPES:
+            start = i
+            i = _prev_significant(tokens, i)
+        else:
+            break
+        if i >= 0 and tokens[i].kind == 'punct' and tokens[i].text in ('->', '.', '::'):
+            i = _prev_significant(tokens, i)
+            continue
+        break
+    return start
+
+
+def _in_macro_arguments(tokens, index, macros):
+    """Whether tokens[index] is directly in the arguments of a function-like macro."""
+    depth = 0
+    i = index - 1
+    while i >= 0:
+        text = tokens[i].text if tokens[i].kind == 'punct' else None
+        if text in (')', ']'):
+            depth += 1
+        elif text in ('(', '['):
+            if depth == 0:
+                if text == '[':
+                    return False
+                name = _prev_significant(tokens, i)
+                return name >= 0 and tokens[name].kind == 'ident' and tokens[name].text in macros
+            depth -= 1
+        elif text in ('{', '}', ';') and depth == 0:
+            return False
+        i -= 1
+    return False
+
+
+def _method_references(result, start, end, class_name, locals_, table, macros):
+    """Replacements (start, end, text) of the method references in result[start:end]
+    within a member function of class_name."""
+    replacements = []
+    i = start - 1
+    while i < end - 1:
+        i += 1
+        token = result[i]
+        if token.kind != 'ident':
+            continue
+        following = _next_significant(result, i)
+        if following < len(result) and result[following].text in ('(', '::', '<', '##', '->', '.'):
+            continue
+        previous = _prev_significant(result, i)
+        before = result[previous] if previous >= 0 else Token('punct', ';')
+        if before.kind == 'punct' and before.text in ('##', '#'):
+            continue
+        if before.kind == 'punct' and before.text in ('->', '.'):
+            object_start = _object_start(result, previous)
+            if object_start is None or _in_macro_arguments(result, object_start, macros):
+                continue
+            object_class = None
+            if _next_significant(result, object_start) == previous and result[object_start].kind == 'ident':
+                object_name = result[object_start].text
+                if object_name == 'this':
+                    object_class = class_name
+                elif object_name in locals_:
+                    object_class = locals_[object_name]
+                else:
+                    object_class = table.field_class(class_name, object_name)
+            if object_class in table.classes:
+                if not table.is_method_of(object_class, token.text):
+                    continue
+                declaring = object_class
+            elif before.text == '->':
+                declaring = table.declaring_class(token.text)
+                if declaring is None:
+                    continue
+            else:
+                continue
+            object_text = _flat(result, object_start, previous)
+            if before.text == '.':
+                object_text = '&' + object_text
+            address = _prev_significant(result, object_start)
+            if address >= 0 and result[address].text == '&' and not _ends_value(result[_prev_significant(result, address)]):
+                object_start = address
+            replacements.append((object_start, i, '::rtl::MethodPtr(%s, &%s::%s)' % (object_text, declaring, token.text)))
+            continue
+        if before.kind == 'punct' and before.text in ('::', '~'):
+            continue
+        if token.text in locals_ or not table.is_method_of(class_name, token.text):
+            continue
+        if _in_macro_arguments(result, i, macros):
+            continue
+        reference_start = i
+        if before.kind == 'punct' and before.text == '&':
+            if _ends_value(result[_prev_significant(result, previous)]):
+                continue
+            reference_start = previous
+        elif before.kind == 'ident' and before.text not in _NOT_TYPES:
+            # A declaration
+            continue
+        replacements.append((reference_start, i, '::rtl::MethodPtr(this, &%s::%s)' % (class_name, token.text)))
+    return replacements
+
+
+def _apply_replacements(tokens, replacements):
+    for start, end, text in sorted(replacements, reverse=True):
+        # Keep the line count
+        text += '\n' * _text(tokens, start, end + 1).count('\n')
+        tokens[start:end + 1] = [Token('converted', text)]
+
+
+def convert_method_references(tokens, table):
+    if table is None:
+        return tokens
+    result = list(tokens)
+    functions = _member_functions(result, table)
+    replacements = []
+    for class_name, params_open, body_close in functions:
+        locals_ = _local_names(result, params_open + 1, body_close)
+        replacements += _method_references(
+            result, _matching(result, params_open) + 1, body_close, class_name, locals_, table, table.macros)
+    # Macros defined for the member functions that follow them
+    for index, token in enumerate(result):
+        match = _DEFINE_RE.match(token.text) if token.kind == 'pp' else None
+        if match is None:
+            continue
+        following = [f for f in functions if f[1] > index]
+        if not following:
+            continue
+        class_name, params_open, body_close = min(following, key=lambda f: f[1])
+        body = tokenize(match.group(2), preprocessor=False)
+        parameters = re.search(r'\(([^)]*)\)$', match.group(1))
+        parameters = re.findall(r'\w+', parameters.group(1)) if parameters else []
+        # Names local to the function, and the macro's parameters
+        locals_ = _local_names(result, params_open + 1, body_close)
+        locals_.update(dict.fromkeys(parameters))
+        macro_replacements = _method_references(
+            body, 0, len(body), class_name, locals_, table, table.macros | set(parameters))
+        if macro_replacements:
+            _apply_replacements(body, macro_replacements)
+            result[index] = Token('pp', match.group(1) + untokenize(body))
+    _apply_replacements(result, replacements)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Preprocessor
 # ---------------------------------------------------------------------------
 
 _INCLUDE_RE = re.compile(r'^(\s*#\s*include\s*)([<"])([^>"]*)([>"])(.*)$', re.S)
+
+
+_DEFINE_RE = re.compile(r'^(\s*#\s*define\s+\w+(?:\([^)]*\))?)(.*)$', re.S)
 
 
 def convert_preprocessor(tokens):
@@ -510,19 +1043,33 @@ def convert_preprocessor(tokens):
             if match and '\\' in match.group(3):
                 token = Token('pp', match.group(1) + match.group(2) + match.group(3).replace('\\', '/') +
                               match.group(4) + match.group(5))
+            match = _DEFINE_RE.match(token.text)
+            if match and '__finally' in match.group(2):
+                body = untokenize(convert_finally(tokenize(match.group(2), preprocessor=False)))
+                token = Token('pp', match.group(1) + body)
         result.append(token)
     return result
 
 
 # ---------------------------------------------------------------------------
 
-def convert_source(text):
-    """Returns the converted source text."""
+def convert_source(text, table=None):
+    """Returns the converted source text. Method references are converted
+    with the classes of the table, by default those declared in the text."""
     tokens = tokenize(text)
+    if table is None:
+        table = ClassTable()
+        table.add_tokens(tokens)
     tokens = convert_preprocessor(tokens)
     tokens = convert_closures(tokens)
     tokens = convert_properties(tokens)
-    return untokenize(tokens)
+    tokens = convert_method_references(tokens, table)
+    tokens = convert_finally(tokens)
+    result = untokenize(tokens)
+    if '\r\n' in text:
+        # Line breaks added by the conversion follow the file's convention
+        result = re.sub(r'(?<!\r)\n', '\r\n', result)
+    return result
 
 
 def _read(path):
@@ -535,6 +1082,19 @@ def _write(path, text):
     Path(path).write_bytes(text.encode('utf-8', errors='surrogateescape'))
 
 
+RTL_HEADERS = Path(__file__).resolve().parents[2] / 'source' / 'rtl' / 'include' / 'rtl'
+
+
+def make_class_table(paths):
+    """The classes declared in the files, for converting method references
+    in any of them, plus the properties of the RTL shim."""
+    table = ClassTable()
+    for path in paths:
+        table.add_source(_read(path))
+    table.add_rtl_headers(RTL_HEADERS)
+    return table
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('files', nargs='+', type=Path, help='source files to convert')
@@ -542,9 +1102,10 @@ def main(argv=None):
                         help='write converted files here (same names) instead of in place')
     args = parser.parse_args(argv)
     failed = False
+    table = make_class_table(args.files)
     for path in args.files:
         try:
-            converted = convert_source(_read(path))
+            converted = convert_source(_read(path), table)
         except ConversionError as error:
             print('%s: %s' % (path, error), file=sys.stderr)
             failed = True

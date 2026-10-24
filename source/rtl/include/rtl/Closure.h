@@ -118,4 +118,47 @@ private:
 //---------------------------------------------------------------------------
 } // namespace System
 //---------------------------------------------------------------------------
+namespace rtl
+{
+//---------------------------------------------------------------------------
+// An object and one of its methods, convertible to the TMethodPtr of the
+// method's signature. tools/bcb2clang converts C++Builder's references to
+// methods (`OnEvent = Method;`, `&Method`, `&Object->Method`) to
+// `::rtl::MethodPtr(Object, &TClass::Method)`.
+template <class O, typename M>
+class TMethodBinder
+{
+public:
+  TMethodBinder(O * Object, M Method) noexcept :
+    FObject(Object),
+    FMethod(Method)
+  {
+  }
+
+  template <typename S>
+  operator System::TMethodPtr<S>() const noexcept
+  {
+    return System::TMethodPtr<S>(FObject, FMethod);
+  }
+
+private:
+  O * FObject;
+  M FMethod;
+};
+//---------------------------------------------------------------------------
+template <class O, typename M>
+TMethodBinder<O, M> MethodPtr(O * Object, M Method) noexcept
+{
+  return TMethodBinder<O, M>(Object, Method);
+}
+//---------------------------------------------------------------------------
+// Delphi has no const objects; a method of a const object binds as well
+template <class O, typename M>
+TMethodBinder<O, M> MethodPtr(const O * Object, M Method) noexcept
+{
+  return TMethodBinder<O, M>(const_cast<O *>(Object), Method);
+}
+//---------------------------------------------------------------------------
+} // namespace rtl
+//---------------------------------------------------------------------------
 #endif

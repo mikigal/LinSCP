@@ -11,6 +11,7 @@
 #include <rtl/AnsiString.h>
 #include <rtl/Object.h>
 #include <rtl/Closure.h>
+#include <rtl/Finally.h>
 #include <rtl/Set.h>
 #include <rtl/DynamicArray.h>
 #include <rtl/VarRec.h>
