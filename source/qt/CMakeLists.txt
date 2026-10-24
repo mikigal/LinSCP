@@ -1,0 +1,26 @@
+# openscp: the graphical front end (Qt 6 Widgets, docs/port/PLAN.md section
+# 3.4). Everything but main() is in the openscp_qt library, which the GUI
+# component tests link too.
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+
+add_library(openscp_qt STATIC
+  app/OpenScpApplication.cpp
+  app/QtInterface.cpp
+  app/QtTools.cpp
+  views/ScpCommander.cpp)
+
+set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
+target_include_directories(openscp_qt PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/app"
+  "${CMAKE_CURRENT_SOURCE_DIR}/views")
+# Qt's lowercase keywords (signals, slots, emit) are macros of common words;
+# Q_SIGNALS, Q_SLOTS and Q_EMIT cannot clash with the headers of the core
+# and the libraries it includes
+target_compile_definitions(openscp_qt PUBLIC QT_NO_KEYWORDS)
+target_link_libraries(openscp_qt
+  PRIVATE openscp::options
+  PUBLIC openscp::app Qt6::Widgets)
+
+add_executable(openscp app/Main.cpp)
+target_link_libraries(openscp PRIVATE openscp_qt openscp::options)

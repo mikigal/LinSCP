@@ -43,6 +43,7 @@ add_subdirectory(source/libfilezilla)
 add_subdirectory(source/libcore)
 add_subdirectory(source/app)
 add_subdirectory(source/cli)
+add_subdirectory(source/qt)
 
 if(OPENSCP_BUILD_TESTS)
   enable_testing()
