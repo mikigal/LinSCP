@@ -1,0 +1,55 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development (Debug, ASan+UBSan, tests, harness)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "OPENSCP_SANITIZE": "ON",
+        "OPENSCP_BUILD_TESTS": "ON",
+        "OPENSCP_BUILD_HARNESS": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (RelWithDebInfo, no tests)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "OPENSCP_SANITIZE": "OFF",
+        "OPENSCP_BUILD_TESTS": "OFF",
+        "OPENSCP_BUILD_HARNESS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev" },
+    { "name": "release", "configurePreset": "release" }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "unit",
+      "inherits": "dev",
+      "filter": { "include": { "label": "unit" } }
+    }
+  ]
+}
