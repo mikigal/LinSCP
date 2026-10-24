@@ -9,14 +9,14 @@ set(OPENSCP_RESOURCE_DIR "${PROJECT_SOURCE_DIR}/source/resource")
 # Resource strings of the core (LoadStr)
 openscp_add_string_tables(openscp_core_strings
   "${OPENSCP_RESOURCE_DIR}/TextsCore1.rc"
-  "${OPENSCP_RESOURCE_DIR}/TextsCore2.rc")
+  "${OPENSCP_RESOURCE_DIR}/TextsCore2.rc"
+  "${OPENSCP_RESOURCE_DIR}/TextsFileZilla.rc")
 
-# The sources that compile so far; CoreMain and FtpFileSystem follow with the
-# FileZilla engine
 add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/Bookmarks.cpp
   ${OPENSCP_CORE_DIR}/Common.cpp
   ${OPENSCP_CORE_DIR}/Configuration.cpp
+  ${OPENSCP_CORE_DIR}/CoreMain.cpp
   ${OPENSCP_CORE_DIR}/CopyParam.cpp
   ${OPENSCP_CORE_DIR}/Cryptography.cpp
   ${OPENSCP_CORE_DIR}/Exceptions.cpp
@@ -25,6 +25,7 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/FileMasks.cpp
   ${OPENSCP_CORE_DIR}/FileOperationProgress.cpp
   ${OPENSCP_CORE_DIR}/FileSystems.cpp
+  ${OPENSCP_CORE_DIR}/FtpFileSystem.cpp
   ${OPENSCP_CORE_DIR}/Global.cpp
   ${OPENSCP_CORE_DIR}/HierarchicalStorage.cpp
   ${OPENSCP_CORE_DIR}/Http.cpp
@@ -47,7 +48,10 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/WebDAVFileSystem.cpp)
 add_library(openscp::core ALIAS openscp_core)
 
-target_include_directories(openscp_core PUBLIC "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
+target_include_directories(openscp_core PRIVATE "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
+# For consumers, the core's headers are system headers: their upstream
+# warnings (see below) are not reported in the consumers' code
+target_include_directories(openscp_core SYSTEM INTERFACE "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
 # The string tables register themselves; consumers link their objects directly
 target_sources(openscp_core INTERFACE $<TARGET_OBJECTS:openscp_core_strings>)
 # Upstream code: C++Builder pragmas, and warnings we do not fix in upstream
@@ -70,4 +74,4 @@ target_compile_options(openscp_upstream_warnings INTERFACE
 
 target_link_libraries(openscp_core
   PRIVATE openscp::options openscp_upstream_warnings
-  PUBLIC openscp::linux openscp::putty openscp::neon openscp::libs3 OpenSSL::SSL OpenSSL::Crypto)
+  PUBLIC openscp::linux openscp::putty openscp::neon openscp::libs3 openscp::filezilla OpenSSL::SSL OpenSSL::Crypto)

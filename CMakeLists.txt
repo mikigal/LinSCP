@@ -39,6 +39,7 @@ add_subdirectory(source/linux)
 add_subdirectory(source/libputty)
 add_subdirectory(source/libneon)
 add_subdirectory(source/libs3)
+add_subdirectory(source/libfilezilla)
 add_subdirectory(source/libcore)
 
 if(OPENSCP_BUILD_TESTS)
