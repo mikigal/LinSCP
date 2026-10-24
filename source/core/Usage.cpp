@@ -49,7 +49,10 @@ void __fastcall TUsage::Load(THierarchicalStorage * Storage)
   if (Storage->OpenSubKey(L"Values", false))
   {
     TStrings * Names = new TStringList();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Names;
+    }); try
     {
       Storage->GetValueNames(Names);
       for (int Index = 0; Index < Names->Count; Index++)
@@ -59,10 +62,7 @@ void __fastcall TUsage::Load(THierarchicalStorage * Storage)
       }
       Storage->CloseSubKey();
     }
-    __finally
-    {
-      delete Names;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 
   Load(Storage, L"PeriodCounters", FPeriodCounters);
@@ -75,7 +75,10 @@ void __fastcall TUsage::Load(THierarchicalStorage * Storage,
   if (Storage->OpenSubKey(Name, false))
   {
     TStrings * Names = new TStringList();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Names;
+    }); try
     {
       Storage->GetValueNames(Names);
       for (int Index = 0; Index < Names->Count; Index++)
@@ -86,10 +89,7 @@ void __fastcall TUsage::Load(THierarchicalStorage * Storage,
       }
       Storage->CloseSubKey();
     }
-    __finally
-    {
-      delete Names;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------

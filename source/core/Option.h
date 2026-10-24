@@ -6,7 +6,7 @@
 //---------------------------------------------------------------------------
 enum TOptionType { otParam, otSwitch };
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure *TLogOptionEvent)(const UnicodeString & LogStr);
+typedef TMethodPtr<void(const UnicodeString & LogStr)> TLogOptionEvent;
 //---------------------------------------------------------------------------
 class TOptions
 {
@@ -34,9 +34,9 @@ public:
 
   void __fastcall LogOptions(TLogOptionEvent OnEnumOption);
 
-  __property int ParamCount = { read = FParamCount };
-  __property UnicodeString Param[int Index] = { read = GetParam };
-  __property bool Empty = { read = GetEmpty };
+  int __property_get_ParamCount() const { return FParamCount; } __declspec(property(get = __property_get_ParamCount)) int ParamCount;
+  UnicodeString __property_get_Param(int Index) const { return ::rtl::Mutable(this)->GetParam(Index); } __declspec(property(get = __property_get_Param)) UnicodeString Param[];
+  bool __property_get_Empty() const { return ::rtl::Mutable(this)->GetEmpty(); } __declspec(property(get = __property_get_Empty)) bool Empty;
 
 protected:
   UnicodeString FSwitchMarks;

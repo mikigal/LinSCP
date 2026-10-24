@@ -36,39 +36,39 @@ class TTerminalUI;
 struct TSynchronizeFileData;
 typedef std::vector<__int64> TCalculatedSizes;
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure *TQueryUserEvent)
-  (TObject * Sender, const UnicodeString Query, TStrings * MoreMessages, unsigned int Answers,
-   const TQueryParams * Params, unsigned int & Answer, TQueryType QueryType, void * Arg);
-typedef void __fastcall (__closure *TPromptUserEvent)
-  (TTerminal * Terminal, TPromptKind Kind, UnicodeString Name, UnicodeString Instructions,
-   TStrings * Prompts, TStrings * Results, bool & Result, void * Arg);
-typedef void __fastcall (__closure *TDisplayBannerEvent)
-  (TTerminal * Terminal, UnicodeString SessionName, const UnicodeString & Banner,
-   bool & NeverShowAgain, int Options, unsigned int & Params);
-typedef void __fastcall (__closure *TExtendedExceptionEvent)
-  (TTerminal * Terminal, Exception * E, void * Arg);
-typedef void __fastcall (__closure *TReadDirectoryEvent)(System::TObject * Sender, Boolean ReloadOnly);
-typedef void __fastcall (__closure *TReadDirectoryProgressEvent)(
-  System::TObject* Sender, int Progress, int ResolvedLinks, bool & Cancel);
-typedef void __fastcall (__closure *TProcessFileEvent)
-  (const UnicodeString FileName, const TRemoteFile * File, void * Param);
-typedef void __fastcall (__closure *TProcessFileEventEx)
-  (const UnicodeString FileName, const TRemoteFile * File, void * Param, int Index);
-typedef int __fastcall (__closure *TFileOperationEvent)
-  (void * Param1, void * Param2);
-typedef void __fastcall (__closure *TSynchronizeDirectory)
-  (const UnicodeString & LocalDirectory, const UnicodeString & RemoteDirectory,
-   bool & Continue, bool Collect, const TSynchronizeOptions * Options);
-typedef void __fastcall (__closure *TUpdatedSynchronizationChecklistItems)(
-  const TSynchronizeChecklist::TItemList & Items);
-typedef void __fastcall (__closure *TDeleteLocalFileEvent)(
-  const UnicodeString FileName, bool Alternative, int & Deleted);
-typedef int __fastcall (__closure *TDirectoryModifiedEvent)
-  (TTerminal * Terminal, const UnicodeString Directory, bool SubDirs);
-typedef void __fastcall (__closure *TInformationEvent)
-  (TTerminal * Terminal, const UnicodeString & Str, int Phase, const UnicodeString & Additional);
-typedef void __fastcall (__closure *TCustomCommandEvent)
-  (TTerminal * Terminal, const UnicodeString & Command, bool & Handled);
+typedef TMethodPtr<void(TObject * Sender, const UnicodeString Query, TStrings * MoreMessages, unsigned int Answers,
+   const TQueryParams * Params, unsigned int & Answer, TQueryType QueryType, void * Arg)>
+ TQueryUserEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, TPromptKind Kind, UnicodeString Name, UnicodeString Instructions,
+   TStrings * Prompts, TStrings * Results, bool & Result, void * Arg)>
+ TPromptUserEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, UnicodeString SessionName, const UnicodeString & Banner,
+   bool & NeverShowAgain, int Options, unsigned int & Params)>
+ TDisplayBannerEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, Exception * E, void * Arg)>
+ TExtendedExceptionEvent;
+typedef TMethodPtr<void(System::TObject * Sender, Boolean ReloadOnly)> TReadDirectoryEvent;
+typedef TMethodPtr<void(
+  System::TObject* Sender, int Progress, int ResolvedLinks, bool & Cancel)> TReadDirectoryProgressEvent;
+typedef TMethodPtr<void(const UnicodeString FileName, const TRemoteFile * File, void * Param)>
+ TProcessFileEvent;
+typedef TMethodPtr<void(const UnicodeString FileName, const TRemoteFile * File, void * Param, int Index)>
+ TProcessFileEventEx;
+typedef TMethodPtr<int(void * Param1, void * Param2)>
+ TFileOperationEvent;
+typedef TMethodPtr<void(const UnicodeString & LocalDirectory, const UnicodeString & RemoteDirectory,
+   bool & Continue, bool Collect, const TSynchronizeOptions * Options)>
+ TSynchronizeDirectory;
+typedef TMethodPtr<void(
+  const TSynchronizeChecklist::TItemList & Items)> TUpdatedSynchronizationChecklistItems;
+typedef TMethodPtr<void(
+  const UnicodeString FileName, bool Alternative, int & Deleted)> TDeleteLocalFileEvent;
+typedef TMethodPtr<int(TTerminal * Terminal, const UnicodeString Directory, bool SubDirs)>
+ TDirectoryModifiedEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, const UnicodeString & Str, int Phase, const UnicodeString & Additional)>
+ TInformationEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, const UnicodeString & Command, bool & Handled)>
+ TCustomCommandEvent;
 //---------------------------------------------------------------------------
 const unsigned int folNone = 0x00;
 const unsigned int folAllowSkip = 0x01;
@@ -542,7 +542,7 @@ protected:
   TEncryptedFileNames::const_iterator __fastcall GetEncryptedFileName(const UnicodeString & Path);
   bool __fastcall IsFileEncrypted(const UnicodeString & Path, bool EncryptNewFiles = false);
 
-  __property TFileOperationProgressType * OperationProgress = { read=FOperationProgress };
+  TFileOperationProgressType * __property_get_OperationProgress() const { return FOperationProgress; } __declspec(property(get = __property_get_OperationProgress)) TFileOperationProgressType * OperationProgress;
 
 public:
   __fastcall TTerminal(TSessionData * SessionData, TConfiguration * Configuration, TActionLog * ActionLog = NULL);
@@ -681,47 +681,47 @@ public:
   static UnicodeString __fastcall ExpandFileName(UnicodeString Path,
     const UnicodeString BasePath);
 
-  __property TSessionData * SessionData = { read = FSessionData };
-  __property TSessionLog * Log = { read = FLog };
-  __property TActionLog * ActionLog = { read = FActionLog };
-  __property TConfiguration * Configuration = { read = FConfiguration };
-  __property bool Active = { read = GetActive };
-  __property TSessionStatus Status = { read = FStatus };
-  __property UnicodeString CurrentDirectory = { read = GetCurrentDirectory, write = SetCurrentDirectory };
-  __property bool ExceptionOnFail = { read = GetExceptionOnFail, write = SetExceptionOnFail };
-  __property TRemoteDirectory * Files = { read = FFiles };
-  __property TNotifyEvent OnChangeDirectory = { read = FOnChangeDirectory, write = FOnChangeDirectory };
-  __property TReadDirectoryEvent OnReadDirectory = { read = FOnReadDirectory, write = FOnReadDirectory };
-  __property TNotifyEvent OnStartReadDirectory = { read = FOnStartReadDirectory, write = FOnStartReadDirectory };
-  __property TReadDirectoryProgressEvent OnReadDirectoryProgress = { read = FOnReadDirectoryProgress, write = FOnReadDirectoryProgress };
-  __property TDeleteLocalFileEvent OnDeleteLocalFile = { read = FOnDeleteLocalFile, write = FOnDeleteLocalFile };
-  __property TNotifyEvent OnInitializeLog = { read = FOnInitializeLog, write = FOnInitializeLog };
-  __property const TRemoteTokenList * Groups = { read = GetGroups };
-  __property const TRemoteTokenList * Users = { read = GetUsers };
-  __property const TRemoteTokenList * Membership = { read = GetMembership };
-  __property TFileOperationProgressEvent OnProgress  = { read=FOnProgress, write=FOnProgress };
-  __property TFileOperationFinished OnFinished  = { read=FOnFinished, write=FOnFinished };
-  __property TCurrentFSProtocol FSProtocol = { read = FFSProtocol };
-  __property bool UseBusyCursor = { read = FUseBusyCursor, write = FUseBusyCursor };
-  __property UnicodeString UserName = { read=GetUserName };
-  __property bool IsCapable[TFSCapability Capability] = { read = GetIsCapable };
-  __property bool AreCachesEmpty = { read = GetAreCachesEmpty };
-  __property bool CommandSessionOpened = { read = GetCommandSessionOpened };
-  __property TTerminal * CommandSession = { read = GetCommandSession };
-  __property TTerminal * PrimaryTerminal = { read = GetPrimaryTerminal };
-  __property bool AutoReadDirectory = { read = FAutoReadDirectory, write = FAutoReadDirectory };
-  __property TStrings * FixedPaths = { read = GetFixedPaths };
-  __property bool ResolvingSymlinks = { read = GetResolvingSymlinks };
-  __property UnicodeString Password = { read = GetPassword };
-  __property bool StoredCredentialsTried = { read = GetStoredCredentialsTried };
-  __property TQueryUserEvent OnQueryUser = { read = FOnQueryUser, write = FOnQueryUser };
-  __property TPromptUserEvent OnPromptUser = { read = FOnPromptUser, write = FOnPromptUser };
-  __property TDisplayBannerEvent OnDisplayBanner = { read = FOnDisplayBanner, write = FOnDisplayBanner };
-  __property TExtendedExceptionEvent OnShowExtendedException = { read = FOnShowExtendedException, write = FOnShowExtendedException };
-  __property TInformationEvent OnInformation = { read = FOnInformation, write = FOnInformation };
-  __property TCustomCommandEvent OnCustomCommand = { read = FOnCustomCommand, write = FOnCustomCommand };
-  __property TNotifyEvent OnClose = { read = FOnClose, write = FOnClose };
-  __property int TunnelLocalPortNumber = { read = FTunnelLocalPortNumber };
+  TSessionData * __property_get_SessionData() const { return FSessionData; } __declspec(property(get = __property_get_SessionData)) TSessionData * SessionData;
+  TSessionLog * __property_get_Log() const { return FLog; } __declspec(property(get = __property_get_Log)) TSessionLog * Log;
+  TActionLog * __property_get_ActionLog() const { return FActionLog; } __declspec(property(get = __property_get_ActionLog)) TActionLog * ActionLog;
+  TConfiguration * __property_get_Configuration() const { return FConfiguration; } __declspec(property(get = __property_get_Configuration)) TConfiguration * Configuration;
+  bool __property_get_Active() const { return ::rtl::Mutable(this)->GetActive(); } __declspec(property(get = __property_get_Active)) bool Active;
+  TSessionStatus __property_get_Status() const { return FStatus; } __declspec(property(get = __property_get_Status)) TSessionStatus Status;
+  UnicodeString __property_get_CurrentDirectory() const { return ::rtl::Mutable(this)->GetCurrentDirectory(); } void __property_set_CurrentDirectory(UnicodeString Value) { SetCurrentDirectory(Value); } __declspec(property(get = __property_get_CurrentDirectory, put = __property_set_CurrentDirectory)) UnicodeString CurrentDirectory;
+  bool __property_get_ExceptionOnFail() const { return ::rtl::Mutable(this)->GetExceptionOnFail(); } void __property_set_ExceptionOnFail(bool Value) { SetExceptionOnFail(Value); } __declspec(property(get = __property_get_ExceptionOnFail, put = __property_set_ExceptionOnFail)) bool ExceptionOnFail;
+  TRemoteDirectory * __property_get_Files() const { return FFiles; } __declspec(property(get = __property_get_Files)) TRemoteDirectory * Files;
+  TNotifyEvent __property_get_OnChangeDirectory() const { return FOnChangeDirectory; } void __property_set_OnChangeDirectory(TNotifyEvent Value) { FOnChangeDirectory = Value; } __declspec(property(get = __property_get_OnChangeDirectory, put = __property_set_OnChangeDirectory)) TNotifyEvent OnChangeDirectory;
+  TReadDirectoryEvent __property_get_OnReadDirectory() const { return FOnReadDirectory; } void __property_set_OnReadDirectory(TReadDirectoryEvent Value) { FOnReadDirectory = Value; } __declspec(property(get = __property_get_OnReadDirectory, put = __property_set_OnReadDirectory)) TReadDirectoryEvent OnReadDirectory;
+  TNotifyEvent __property_get_OnStartReadDirectory() const { return FOnStartReadDirectory; } void __property_set_OnStartReadDirectory(TNotifyEvent Value) { FOnStartReadDirectory = Value; } __declspec(property(get = __property_get_OnStartReadDirectory, put = __property_set_OnStartReadDirectory)) TNotifyEvent OnStartReadDirectory;
+  TReadDirectoryProgressEvent __property_get_OnReadDirectoryProgress() const { return FOnReadDirectoryProgress; } void __property_set_OnReadDirectoryProgress(TReadDirectoryProgressEvent Value) { FOnReadDirectoryProgress = Value; } __declspec(property(get = __property_get_OnReadDirectoryProgress, put = __property_set_OnReadDirectoryProgress)) TReadDirectoryProgressEvent OnReadDirectoryProgress;
+  TDeleteLocalFileEvent __property_get_OnDeleteLocalFile() const { return FOnDeleteLocalFile; } void __property_set_OnDeleteLocalFile(TDeleteLocalFileEvent Value) { FOnDeleteLocalFile = Value; } __declspec(property(get = __property_get_OnDeleteLocalFile, put = __property_set_OnDeleteLocalFile)) TDeleteLocalFileEvent OnDeleteLocalFile;
+  TNotifyEvent __property_get_OnInitializeLog() const { return FOnInitializeLog; } void __property_set_OnInitializeLog(TNotifyEvent Value) { FOnInitializeLog = Value; } __declspec(property(get = __property_get_OnInitializeLog, put = __property_set_OnInitializeLog)) TNotifyEvent OnInitializeLog;
+  const TRemoteTokenList * __property_get_Groups() const { return ::rtl::Mutable(this)->GetGroups(); } __declspec(property(get = __property_get_Groups)) const TRemoteTokenList * Groups;
+  const TRemoteTokenList * __property_get_Users() const { return ::rtl::Mutable(this)->GetUsers(); } __declspec(property(get = __property_get_Users)) const TRemoteTokenList * Users;
+  const TRemoteTokenList * __property_get_Membership() const { return ::rtl::Mutable(this)->GetMembership(); } __declspec(property(get = __property_get_Membership)) const TRemoteTokenList * Membership;
+  TFileOperationProgressEvent __property_get_OnProgress() const { return FOnProgress; } void __property_set_OnProgress(TFileOperationProgressEvent Value) { FOnProgress = Value; } __declspec(property(get = __property_get_OnProgress, put = __property_set_OnProgress)) TFileOperationProgressEvent OnProgress;
+  TFileOperationFinished __property_get_OnFinished() const { return FOnFinished; } void __property_set_OnFinished(TFileOperationFinished Value) { FOnFinished = Value; } __declspec(property(get = __property_get_OnFinished, put = __property_set_OnFinished)) TFileOperationFinished OnFinished;
+  TCurrentFSProtocol __property_get_FSProtocol() const { return FFSProtocol; } __declspec(property(get = __property_get_FSProtocol)) TCurrentFSProtocol FSProtocol;
+  bool __property_get_UseBusyCursor() const { return FUseBusyCursor; } void __property_set_UseBusyCursor(bool Value) { FUseBusyCursor = Value; } __declspec(property(get = __property_get_UseBusyCursor, put = __property_set_UseBusyCursor)) bool UseBusyCursor;
+  UnicodeString __property_get_UserName() const { return ::rtl::Mutable(this)->GetUserName(); } __declspec(property(get = __property_get_UserName)) UnicodeString UserName;
+  bool __property_get_IsCapable(TFSCapability Capability) const { return ::rtl::Mutable(this)->GetIsCapable(Capability); } __declspec(property(get = __property_get_IsCapable)) bool IsCapable[];
+  bool __property_get_AreCachesEmpty() const { return ::rtl::Mutable(this)->GetAreCachesEmpty(); } __declspec(property(get = __property_get_AreCachesEmpty)) bool AreCachesEmpty;
+  bool __property_get_CommandSessionOpened() const { return ::rtl::Mutable(this)->GetCommandSessionOpened(); } __declspec(property(get = __property_get_CommandSessionOpened)) bool CommandSessionOpened;
+  TTerminal * __property_get_CommandSession() const { return ::rtl::Mutable(this)->GetCommandSession(); } __declspec(property(get = __property_get_CommandSession)) TTerminal * CommandSession;
+  TTerminal * __property_get_PrimaryTerminal() const { return ::rtl::Mutable(this)->GetPrimaryTerminal(); } __declspec(property(get = __property_get_PrimaryTerminal)) TTerminal * PrimaryTerminal;
+  bool __property_get_AutoReadDirectory() const { return FAutoReadDirectory; } void __property_set_AutoReadDirectory(bool Value) { FAutoReadDirectory = Value; } __declspec(property(get = __property_get_AutoReadDirectory, put = __property_set_AutoReadDirectory)) bool AutoReadDirectory;
+  TStrings * __property_get_FixedPaths() const { return ::rtl::Mutable(this)->GetFixedPaths(); } __declspec(property(get = __property_get_FixedPaths)) TStrings * FixedPaths;
+  bool __property_get_ResolvingSymlinks() const { return ::rtl::Mutable(this)->GetResolvingSymlinks(); } __declspec(property(get = __property_get_ResolvingSymlinks)) bool ResolvingSymlinks;
+  UnicodeString __property_get_Password() const { return ::rtl::Mutable(this)->GetPassword(); } __declspec(property(get = __property_get_Password)) UnicodeString Password;
+  bool __property_get_StoredCredentialsTried() const { return ::rtl::Mutable(this)->GetStoredCredentialsTried(); } __declspec(property(get = __property_get_StoredCredentialsTried)) bool StoredCredentialsTried;
+  TQueryUserEvent __property_get_OnQueryUser() const { return FOnQueryUser; } void __property_set_OnQueryUser(TQueryUserEvent Value) { FOnQueryUser = Value; } __declspec(property(get = __property_get_OnQueryUser, put = __property_set_OnQueryUser)) TQueryUserEvent OnQueryUser;
+  TPromptUserEvent __property_get_OnPromptUser() const { return FOnPromptUser; } void __property_set_OnPromptUser(TPromptUserEvent Value) { FOnPromptUser = Value; } __declspec(property(get = __property_get_OnPromptUser, put = __property_set_OnPromptUser)) TPromptUserEvent OnPromptUser;
+  TDisplayBannerEvent __property_get_OnDisplayBanner() const { return FOnDisplayBanner; } void __property_set_OnDisplayBanner(TDisplayBannerEvent Value) { FOnDisplayBanner = Value; } __declspec(property(get = __property_get_OnDisplayBanner, put = __property_set_OnDisplayBanner)) TDisplayBannerEvent OnDisplayBanner;
+  TExtendedExceptionEvent __property_get_OnShowExtendedException() const { return FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
+  TInformationEvent __property_get_OnInformation() const { return FOnInformation; } void __property_set_OnInformation(TInformationEvent Value) { FOnInformation = Value; } __declspec(property(get = __property_get_OnInformation, put = __property_set_OnInformation)) TInformationEvent OnInformation;
+  TCustomCommandEvent __property_get_OnCustomCommand() const { return FOnCustomCommand; } void __property_set_OnCustomCommand(TCustomCommandEvent Value) { FOnCustomCommand = Value; } __declspec(property(get = __property_get_OnCustomCommand, put = __property_set_OnCustomCommand)) TCustomCommandEvent OnCustomCommand;
+  TNotifyEvent __property_get_OnClose() const { return FOnClose; } void __property_set_OnClose(TNotifyEvent Value) { FOnClose = Value; } __declspec(property(get = __property_get_OnClose, put = __property_set_OnClose)) TNotifyEvent OnClose;
+  int __property_get_TunnelLocalPortNumber() const { return FTunnelLocalPortNumber; } __declspec(property(get = __property_get_TunnelLocalPortNumber)) int TunnelLocalPortNumber;
 };
 //---------------------------------------------------------------------------
 class TSecondaryTerminal : public TTerminal
@@ -733,7 +733,7 @@ public:
 
   void __fastcall UpdateFromMain();
 
-  __property TTerminal * MainTerminal = { read = FMainTerminal };
+  TTerminal * __property_get_MainTerminal() const { return FMainTerminal; } __declspec(property(get = __property_get_MainTerminal)) TTerminal * MainTerminal;
 
 protected:
   virtual void __fastcall DirectoryLoaded(TRemoteFileList * FileList);
@@ -756,7 +756,7 @@ public:
   void __fastcall FreeAndNullTerminal(TTerminal * & Terminal);
   void __fastcall RecryptPasswords();
 
-  __property TTerminal * Terminals[int Index]  = { read=GetTerminal };
+  TTerminal * __property_get_Terminals(int Index) const { return ::rtl::Mutable(this)->GetTerminal(Index); } __declspec(property(get = __property_get_Terminals)) TTerminal * Terminals[];
 
 protected:
   virtual TTerminal * __fastcall CreateTerminal(TSessionData * Data);
@@ -930,13 +930,13 @@ public:
   static bool GetOnlyFile(TStrings * FileList, UnicodeString & FileName, TObject *& Object);
   static TCollectedFileList * GetFileList(TStrings * FileList, int Index);
   static UnicodeString GetPartPrefix(const UnicodeString & FileName);
-  __property TOperationSide Side = { read = FSide };
-  __property const TCopyParamType * CopyParam = { read = FCopyParam };
-  __property int Params = { read = FParams };
-  __property UnicodeString TargetDir = { read = FTargetDir };
-  __property TFileOperationProgressType * MainOperationProgress = { read = FMainOperationProgress };
-  __property UnicodeString MainName = { read = FMainName };
-  __property bool IsParallelFileTransfer = { read = FIsParallelFileTransfer };
+  TOperationSide __property_get_Side() const { return FSide; } __declspec(property(get = __property_get_Side)) TOperationSide Side;
+  const TCopyParamType * __property_get_CopyParam() const { return FCopyParam; } __declspec(property(get = __property_get_CopyParam)) const TCopyParamType * CopyParam;
+  int __property_get_Params() const { return FParams; } __declspec(property(get = __property_get_Params)) int Params;
+  UnicodeString __property_get_TargetDir() const { return FTargetDir; } __declspec(property(get = __property_get_TargetDir)) UnicodeString TargetDir;
+  TFileOperationProgressType * __property_get_MainOperationProgress() const { return FMainOperationProgress; } __declspec(property(get = __property_get_MainOperationProgress)) TFileOperationProgressType * MainOperationProgress;
+  UnicodeString __property_get_MainName() const { return FMainName; } __declspec(property(get = __property_get_MainName)) UnicodeString MainName;
+  bool __property_get_IsParallelFileTransfer() const { return FIsParallelFileTransfer; } __declspec(property(get = __property_get_IsParallelFileTransfer)) bool IsParallelFileTransfer;
 
 private:
   struct TDirectoryData

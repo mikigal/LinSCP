@@ -59,14 +59,14 @@ public:
   void SetRoots(TStrings * LocalFileList, const UnicodeString & RemoteRoot);
   void SetRoots(const UnicodeString & LocalRoot, TStrings * RemoteFileList);
 
-  __property UnicodeString Masks = { read = FStr, write = SetMasks };
-  __property bool NoImplicitMatchWithDirExcludeMask = { read = FNoImplicitMatchWithDirExcludeMask, write = FNoImplicitMatchWithDirExcludeMask };
-  __property bool AllDirsAreImplicitlyIncluded = { read = FAllDirsAreImplicitlyIncluded, write = FAllDirsAreImplicitlyIncluded };
+  UnicodeString __property_get_Masks() const { return FStr; } void __property_set_Masks(UnicodeString Value) { SetMasks(Value); } __declspec(property(get = __property_get_Masks, put = __property_set_Masks)) UnicodeString Masks;
+  bool __property_get_NoImplicitMatchWithDirExcludeMask() const { return FNoImplicitMatchWithDirExcludeMask; } void __property_set_NoImplicitMatchWithDirExcludeMask(bool Value) { FNoImplicitMatchWithDirExcludeMask = Value; } __declspec(property(get = __property_get_NoImplicitMatchWithDirExcludeMask, put = __property_set_NoImplicitMatchWithDirExcludeMask)) bool NoImplicitMatchWithDirExcludeMask;
+  bool __property_get_AllDirsAreImplicitlyIncluded() const { return FAllDirsAreImplicitlyIncluded; } void __property_set_AllDirsAreImplicitlyIncluded(bool Value) { FAllDirsAreImplicitlyIncluded = Value; } __declspec(property(get = __property_get_AllDirsAreImplicitlyIncluded, put = __property_set_AllDirsAreImplicitlyIncluded)) bool AllDirsAreImplicitlyIncluded;
 
-  __property TStrings * IncludeFileMasksStr = { read = GetMasksStr, index = MASK_INDEX(false, true) };
-  __property TStrings * ExcludeFileMasksStr = { read = GetMasksStr, index = MASK_INDEX(false, false) };
-  __property TStrings * IncludeDirectoryMasksStr = { read = GetMasksStr, index = MASK_INDEX(true, true) };
-  __property TStrings * ExcludeDirectoryMasksStr = { read = GetMasksStr, index = MASK_INDEX(true, false) };
+  TStrings * __property_get_IncludeFileMasksStr() const { return ::rtl::Mutable(this)->GetMasksStr(MASK_INDEX(false, true)); } __declspec(property(get = __property_get_IncludeFileMasksStr)) TStrings * IncludeFileMasksStr;
+  TStrings * __property_get_ExcludeFileMasksStr() const { return ::rtl::Mutable(this)->GetMasksStr(MASK_INDEX(false, false)); } __declspec(property(get = __property_get_ExcludeFileMasksStr)) TStrings * ExcludeFileMasksStr;
+  TStrings * __property_get_IncludeDirectoryMasksStr() const { return ::rtl::Mutable(this)->GetMasksStr(MASK_INDEX(true, true)); } __declspec(property(get = __property_get_IncludeDirectoryMasksStr)) TStrings * IncludeDirectoryMasksStr;
+  TStrings * __property_get_ExcludeDirectoryMasksStr() const { return ::rtl::Mutable(this)->GetMasksStr(MASK_INDEX(true, false)); } __declspec(property(get = __property_get_ExcludeDirectoryMasksStr)) TStrings * ExcludeDirectoryMasksStr;
 
 private:
   int FForceDirectoryMasks;
@@ -137,9 +137,9 @@ bool __fastcall IsFileNameMask(const UnicodeString & Mask);
 bool __fastcall IsEffectiveFileNameMask(const UnicodeString & Mask);
 UnicodeString __fastcall DelimitFileNameMask(UnicodeString Mask);
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure * TCustomCommandPatternEvent)
-  (int Index, const UnicodeString Pattern, void * Arg, UnicodeString & Replacement,
-   bool & LastPass);
+typedef TMethodPtr<void(int Index, const UnicodeString Pattern, void * Arg, UnicodeString & Replacement,
+   bool & LastPass)>
+ TCustomCommandPatternEvent;
 //---------------------------------------------------------------------------
 class TCustomCommand
 {
@@ -206,7 +206,7 @@ struct TCustomCommandData
     TSessionData * SessionData, const UnicodeString & AUserName,
     const UnicodeString & Password);
 
-  __property TSessionData * SessionData = { read = GetSessionData };
+  TSessionData * __property_get_SessionData() const { return ::rtl::Mutable(this)->GetSessionData(); } __declspec(property(get = __property_get_SessionData)) TSessionData * SessionData;
 
   void __fastcall operator=(const TCustomCommandData & Data);
 

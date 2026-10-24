@@ -691,7 +691,13 @@ TTerminalQueueStatus * __fastcall TTerminalQueue::CreateStatus(TTerminalQueueSta
   TTerminalQueueStatus * Status = new TTerminalQueueStatus();
   try
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      if (Current != NULL)
+      {
+        delete Current;
+      }
+    }); try
     {
       TGuard Guard(FItemsSection);
 
@@ -699,13 +705,7 @@ TTerminalQueueStatus * __fastcall TTerminalQueue::CreateStatus(TTerminalQueueSta
       Status->SetDoneCount(Status->Count);
       UpdateStatusForList(Status, FItems, Current);
     }
-    __finally
-    {
-      if (Current != NULL)
-      {
-        delete Current;
-      }
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   catch(...)
   {
@@ -1241,11 +1241,11 @@ __fastcall TTerminalItem::TTerminalItem(TTerminalQueue * Queue, int Index) :
   {
     FTerminal->UseBusyCursor = false;
 
-    FTerminal->OnQueryUser = TerminalQueryUser;
-    FTerminal->OnPromptUser = TerminalPromptUser;
-    FTerminal->OnShowExtendedException = TerminalShowExtendedException;
-    FTerminal->OnProgress = OperationProgress;
-    FTerminal->OnFinished = OperationFinished;
+    FTerminal->OnQueryUser = ::rtl::MethodPtr(this, &TTerminalItem::TerminalQueryUser);
+    FTerminal->OnPromptUser = ::rtl::MethodPtr(this, &TTerminalItem::TerminalPromptUser);
+    FTerminal->OnShowExtendedException = ::rtl::MethodPtr(this, &TTerminalItem::TerminalShowExtendedException);
+    FTerminal->OnProgress = ::rtl::MethodPtr(this, &TTerminalItem::OperationProgress);
+    FTerminal->OnFinished = ::rtl::MethodPtr(this, &TTerminalItem::OperationFinished);
   }
   catch(...)
   {
@@ -1432,7 +1432,11 @@ bool __fastcall TTerminalItem::WaitForUserAction(
 
   TQueueItem::TStatus PrevStatus = FItem->GetStatus();
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FUserAction = NULL;
+    FItem->SetStatus(PrevStatus);
+  }); try
   {
     FUserAction = UserAction;
 
@@ -1441,11 +1445,7 @@ bool __fastcall TTerminalItem::WaitForUserAction(
 
     Result = !FTerminated && WaitForEvent() && !FCancel;
   }
-  __finally
-  {
-    FUserAction = NULL;
-    FItem->SetStatus(PrevStatus);
-  }
+  catch (...) { Finally.Unwind(); } }
 
   return Result;
 }
@@ -1561,17 +1561,17 @@ void __fastcall TTerminalItem::OperationProgress(
     FPause = false;
     ProgressData.Suspend();
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      FItem->SetStatus(PrevStatus);
+      ProgressData.Resume();
+    }); try
     {
       FItem->SetStatus(TQueueItem::qsPaused);
 
       WaitForEvent();
     }
-    __finally
-    {
-      FItem->SetStatus(PrevStatus);
-      ProgressData.Resume();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 
   if (IsCancelled())
@@ -1888,14 +1888,14 @@ bool __fastcall TQueueItemProxy::ProcessUserAction()
 
   bool Result;
   FProcessingUserAction = true;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FProcessingUserAction = false;
+  }); try
   {
     Result = FQueue->ItemProcessUserAction(FQueueItem, NULL);
   }
-  __finally
-  {
-    FProcessingUserAction = false;
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -2180,14 +2180,14 @@ void __fastcall TTransferQueueItem::DoExecute(TTerminal * Terminal)
 
   DebugAssert(Terminal != NULL);
   FParallelOperation.reset(new TParallelOperation(FInfo->Side));
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FParallelOperation->WaitFor();
+  }); try
   {
     DoTransferExecute(Terminal, FParallelOperation.get());
   }
-  __finally
-  {
-    FParallelOperation->WaitFor();
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TTransferQueueItem::ProgressUpdated()
@@ -2355,7 +2355,11 @@ void __fastcall TParallelTransferQueueItem::DoExecute(TTerminal * Terminal)
     // Count not known and won't be needed as we will always have TotalSize as  we always transfer a single file at a time.
     Operation, FParallelOperation->Side, -1, Temp, FParallelOperation->TargetDir, 0, odoIdle);
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    OperationProgress.Stop();
+    FParallelOperation->RemoveClient();
+  }); try
   {
     bool Continue = true;
     do
@@ -2372,11 +2376,7 @@ void __fastcall TParallelTransferQueueItem::DoExecute(TTerminal * Terminal)
     }
     while (Continue);
   }
-  __finally
-  {
-    OperationProgress.Stop();
-    FParallelOperation->RemoveClient();
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 // TDownloadQueueItem
@@ -2518,16 +2518,16 @@ __fastcall TTerminalThread::TTerminalThread(TTerminal * Terminal) :
   FOnReadDirectoryProgress = FTerminal->OnReadDirectoryProgress;
   FOnInitializeLog = FTerminal->OnInitializeLog;
 
-  FTerminal->OnInformation = TerminalInformation;
-  FTerminal->OnQueryUser = TerminalQueryUser;
-  FTerminal->OnPromptUser = TerminalPromptUser;
-  FTerminal->OnShowExtendedException = TerminalShowExtendedException;
-  FTerminal->OnDisplayBanner = TerminalDisplayBanner;
-  FTerminal->OnChangeDirectory = TerminalChangeDirectory;
-  FTerminal->OnReadDirectory = TerminalReadDirectory;
-  FTerminal->OnStartReadDirectory = TerminalStartReadDirectory;
-  FTerminal->OnReadDirectoryProgress = TerminalReadDirectoryProgress;
-  FTerminal->OnInitializeLog = TerminalInitializeLog;
+  FTerminal->OnInformation = ::rtl::MethodPtr(this, &TTerminalThread::TerminalInformation);
+  FTerminal->OnQueryUser = ::rtl::MethodPtr(this, &TTerminalThread::TerminalQueryUser);
+  FTerminal->OnPromptUser = ::rtl::MethodPtr(this, &TTerminalThread::TerminalPromptUser);
+  FTerminal->OnShowExtendedException = ::rtl::MethodPtr(this, &TTerminalThread::TerminalShowExtendedException);
+  FTerminal->OnDisplayBanner = ::rtl::MethodPtr(this, &TTerminalThread::TerminalDisplayBanner);
+  FTerminal->OnChangeDirectory = ::rtl::MethodPtr(this, &TTerminalThread::TerminalChangeDirectory);
+  FTerminal->OnReadDirectory = ::rtl::MethodPtr(this, &TTerminalThread::TerminalReadDirectory);
+  FTerminal->OnStartReadDirectory = ::rtl::MethodPtr(this, &TTerminalThread::TerminalStartReadDirectory);
+  FTerminal->OnReadDirectoryProgress = ::rtl::MethodPtr(this, &TTerminalThread::TerminalReadDirectoryProgress);
+  FTerminal->OnInitializeLog = ::rtl::MethodPtr(this, &TTerminalThread::TerminalInitializeLog);
 
   Start();
 }
@@ -2586,7 +2586,10 @@ void __fastcall TTerminalThread::Idle()
   // unconditional Enter() here would deadlock.
   if (FSection->TryEnter())
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      FSection->Release();
+    }); try
     {
       // only when running user action already,
       // so that the exception is caught, saved and actually
@@ -2598,17 +2601,14 @@ void __fastcall TTerminalThread::Idle()
       }
       FPendingIdle = true;
     }
-    __finally
-    {
-      FSection->Release();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
 void TTerminalThread::StartTerminalReopenNonInteractive()
 {
   FNonInteractive = true;
-  StartAction(TerminalReopenEvent);
+  StartAction(::rtl::MethodPtr(this, &TTerminalThread::TerminalReopenEvent));
 }
 //---------------------------------------------------------------------------
 TTerminalReopenResult TTerminalThread::IsTerminalReopenComplete()
@@ -2663,12 +2663,12 @@ void TTerminalThread::ContinueTerminalReopenInteractive()
 //---------------------------------------------------------------------------
 void __fastcall TTerminalThread::TerminalOpen()
 {
-  RunAction(TerminalOpenEvent);
+  RunAction(::rtl::MethodPtr(this, &TTerminalThread::TerminalOpenEvent));
 }
 //---------------------------------------------------------------------------
 void __fastcall TTerminalThread::TerminalReopen()
 {
-  RunAction(TerminalReopenEvent);
+  RunAction(::rtl::MethodPtr(this, &TTerminalThread::TerminalReopenEvent));
 }
 //---------------------------------------------------------------------------
 void TTerminalThread::DiscardException()
@@ -2731,7 +2731,11 @@ void TTerminalThread::CompleteAction()
   DebugAssert(FOnIdle != NULL);
   try
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      FAction = NULL;
+      DiscardException();
+    }); try
     {
       bool Done = false;
       const unsigned int MaxWait = 50;
@@ -2783,11 +2787,7 @@ void TTerminalThread::CompleteAction()
         Rethrow(FException);
       }
     }
-    __finally
-    {
-      FAction = NULL;
-      DiscardException();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   catch(...)
   {
@@ -2845,14 +2845,14 @@ void __fastcall TTerminalThread::Rethrow(Exception *& Exception)
 {
   if (Exception != NULL)
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      SAFE_DESTROY(Exception);
+    }); try
     {
       RethrowException(Exception);
     }
-    __finally
-    {
-      SAFE_DESTROY(Exception);
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -2916,7 +2916,11 @@ void __fastcall TTerminalThread::WaitForUserAction(TUserAction * UserAction)
     // have to save it as we can go recursive via TQueryParams::TimerEvent,
     // see TTerminalThread::TerminalQueryUser
     TUserAction * PrevUserAction = FUserAction;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      FUserAction = PrevUserAction;
+      DiscardException();
+    }); try
     {
       FUserAction = UserAction;
 
@@ -2968,11 +2972,7 @@ void __fastcall TTerminalThread::WaitForUserAction(TUserAction * UserAction)
         Rethrow(FIdleException);
       }
     }
-    __finally
-    {
-      FUserAction = PrevUserAction;
-      DiscardException();
-    }
+    catch (...) { Finally.Unwind(); } }
 
     // Contrary to a call before, this is unconditional,
     // otherwise cancelling authentication won't work,

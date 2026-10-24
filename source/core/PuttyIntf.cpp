@@ -20,7 +20,7 @@ extern const bool share_can_be_upstream = false;
 //---------------------------------------------------------------------------
 extern "C"
 {
-#include <windows\platform.h>
+#include <windows/platform.h>
 }
 const UnicodeString OriginalPuttyRegistryStorageKey(_T(PUTTY_REG_POS));
 const UnicodeString KittyRegistryStorageKey(L"Software\\9bis.com\\KiTTY");
@@ -190,7 +190,11 @@ static SeatPromptResult get_userpass_input(Seat * seat, prompts_t * p)
   SeatPromptResult Result;
   TStrings * Prompts = new TStringList();
   TStrings * Results = new TStringList();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Prompts;
+    delete Results;
+  }); try
   {
     UnicodeString Name = UTF8ToString(p->name);
 
@@ -238,11 +242,7 @@ static SeatPromptResult get_userpass_input(Seat * seat, prompts_t * p)
       Result = SPR_USER_ABORT;
     }
   }
-  __finally
-  {
-    delete Prompts;
-    delete Results;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   return Result;
 }
@@ -690,7 +690,10 @@ bool IsKeyEncrypted(TKeyType KeyType, const UnicodeString & FileName, UnicodeStr
   bool Result;
   char * CommentStr = NULL;
   Filename * KeyFile = filename_from_utf8(UtfFileName.c_str());
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    filename_free(KeyFile);
+  }); try
   {
     switch (KeyType)
     {
@@ -710,10 +713,7 @@ bool IsKeyEncrypted(TKeyType KeyType, const UnicodeString & FileName, UnicodeStr
         break;
     }
   }
-  __finally
-  {
-    filename_free(KeyFile);
-  }
+  catch (...) { Finally.Unwind(); } }
 
   if (CommentStr != NULL)
   {
@@ -736,7 +736,11 @@ TPrivateKey * LoadKey(TKeyType KeyType, const UnicodeString & FileName, const Un
   struct ssh2_userkey * Ssh2Key = NULL;
   const char * ErrorStr = NULL;
   AnsiString AnsiPassphrase = Passphrase;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    Shred(AnsiPassphrase);
+    filename_free(KeyFile);
+  }); try
   {
     switch (KeyType)
     {
@@ -755,11 +759,7 @@ TPrivateKey * LoadKey(TKeyType KeyType, const UnicodeString & FileName, const Un
         break;
     }
   }
-  __finally
-  {
-    Shred(AnsiPassphrase);
-    filename_free(KeyFile);
-  }
+  catch (...) { Finally.Unwind(); } }
 
   if (Ssh2Key == NULL)
   {
@@ -841,7 +841,10 @@ void AddCertificateToKey(TPrivateKey * PrivateKey, const UnicodeString & Certifi
   Filename * CertFilename = filename_from_utf8(UtfCertificateFileName.c_str());
 
   LoadedFile * CertLoadedFile;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    filename_free(CertFilename);
+  }); try
   {
     const char * ErrorStr = NULL;
     CertLoadedFile = lf_load_keyfile(CertFilename, &ErrorStr);
@@ -851,14 +854,14 @@ void AddCertificateToKey(TPrivateKey * PrivateKey, const UnicodeString & Certifi
       throw ExtException(FMTLOAD(CERTIFICATE_UNOPENABLE, (CertificateFileName)), Error);
     }
   }
-  __finally
-  {
-    filename_free(CertFilename);
-  }
+  catch (...) { Finally.Unwind(); } }
 
   strbuf * Pub = strbuf_new();
   char * AlgorithmName = NULL;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    lf_free(CertLoadedFile);
+  }); try
   {
     const char * ErrorStr = NULL;
     char * CommentStr = NULL;
@@ -870,13 +873,14 @@ void AddCertificateToKey(TPrivateKey * PrivateKey, const UnicodeString & Certifi
     }
     sfree(CommentStr);
   }
-  __finally
-  {
-    lf_free(CertLoadedFile);
-  }
+  catch (...) { Finally.Unwind(); } }
 
   const ssh_keyalg * KeyAlg;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    strbuf_free(Pub);
+    sfree(AlgorithmName);
+  }); try
   {
     KeyAlg = find_pubkey_alg(AlgorithmName);
     if (KeyAlg == NULL)
@@ -915,11 +919,7 @@ void AddCertificateToKey(TPrivateKey * PrivateKey, const UnicodeString & Certifi
     ssh_key_free(Ssh2Key->key);
     Ssh2Key->key = NewKey;
   }
-  __finally
-  {
-    strbuf_free(Pub);
-    sfree(AlgorithmName);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void SaveKey(TKeyType KeyType, const UnicodeString & FileName,
@@ -927,7 +927,10 @@ void SaveKey(TKeyType KeyType, const UnicodeString & FileName,
 {
   UTF8String UtfFileName = UTF8String(FileName);
   Filename * KeyFile = filename_from_utf8(UtfFileName.c_str());
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    filename_free(KeyFile);
+  }); try
   {
     struct ssh2_userkey * Ssh2Key = reinterpret_cast<struct ssh2_userkey *>(PrivateKey);
     AnsiString AnsiPassphrase = Passphrase;
@@ -954,10 +957,7 @@ void SaveKey(TKeyType KeyType, const UnicodeString & FileName,
         break;
     }
   }
-  __finally
-  {
-    filename_free(KeyFile);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void FreeKey(TPrivateKey * PrivateKey)
@@ -979,7 +979,10 @@ RawByteString LoadPublicKey(
   RawByteString Result;
   UTF8String UtfFileName = UTF8String(FileName);
   Filename * KeyFile = filename_from_utf8(UtfFileName.c_str());
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    filename_free(KeyFile);
+  }); try
   {
     char * AlgorithmStr = NULL;
     char * CommentStr = NULL;
@@ -999,10 +1002,7 @@ RawByteString LoadPublicKey(
     Result = StrBufToString(PublicKeyBuf);
     strbuf_free(PublicKeyBuf);
   }
-  __finally
-  {
-    filename_free(KeyFile);
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -1022,7 +1022,11 @@ bool __fastcall HasGSSAPI(UnicodeString CustomPath)
   {
     Conf * conf = conf_new();
     ssh_gss_liblist * List = NULL;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      ssh_gss_cleanup(List);
+      conf_free(conf);
+    }); try
     {
       Filename * filename = filename_from_utf8(UTF8String(CustomPath).c_str());
       conf_set_filename(conf, CONF_ssh_gss_custom, filename);
@@ -1038,11 +1042,7 @@ bool __fastcall HasGSSAPI(UnicodeString CustomPath)
            (library->release_cred(library, &ctx) == SSH_GSS_OK)) ? 1 : 0;
       }
     }
-    __finally
-    {
-      ssh_gss_cleanup(List);
-      conf_free(conf);
-    }
+    catch (...) { Finally.Unwind(); } }
 
     if (has < 0)
     {
@@ -1059,7 +1059,10 @@ static void __fastcall DoNormalizeFingerprint(UnicodeString & Fingerprint, Unico
   // We may use find_pubkey_alg, but it gets complicated with normalized fingerprint
   // as the names have different number of dashes
   get_hostkey_algs(-1, &Count, &SignKeys);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    sfree(SignKeys);
+  }); try
   {
     for (int Index = 0; Index < Count; Index++)
     {
@@ -1091,10 +1094,7 @@ static void __fastcall DoNormalizeFingerprint(UnicodeString & Fingerprint, Unico
       }
     }
   }
-  __finally
-  {
-    sfree(SignKeys);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall NormalizeFingerprint(UnicodeString & Fingerprint, UnicodeString & KeyName)
@@ -1160,7 +1160,11 @@ UnicodeString CalculateFileChecksum(TStream * Stream, const UnicodeString & Alg)
 {
   RawByteString Buf;
   ssh_hash * Hash = ssh_hash_new(GetHashAlg(Alg));
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    Buf.SetLength(SizeToIntChecked(ssh_hash_alg(Hash)->hlen));
+    ssh_hash_final(Hash, reinterpret_cast<unsigned char *>(Buf.c_str()));
+  }); try
   {
     const int BlockSize = 32 * 1024;
     TFileBuffer Buffer;
@@ -1176,11 +1180,7 @@ UnicodeString CalculateFileChecksum(TStream * Stream, const UnicodeString & Alg)
     }
     while (Read > 0);
   }
-  __finally
-  {
-    Buf.SetLength(SizeToIntChecked(ssh_hash_alg(Hash)->hlen));
-    ssh_hash_final(Hash, reinterpret_cast<unsigned char *>(Buf.c_str()));
-  }
+  catch (...) { Finally.Unwind(); } }
 
   UnicodeString Result = BytesToHex(Buf);
 
@@ -1197,7 +1197,12 @@ UnicodeString __fastcall ParseOpenSshPubLine(const UnicodeString & Line, const s
   BinarySource Source[1];
   BinarySource_BARE_INIT(Source, UtfLine.c_str(), UtfLine.Length());
   UnicodeString Result;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    strbuf_free(PubBlobBuf);
+    sfree(AlgorithmName);
+    sfree(CommentPtr);
+  }); try
   {
     if (!openssh_loadpub(Source, &AlgorithmName, BinarySink_UPCAST(PubBlobBuf), &CommentPtr, &ErrorStr))
     {
@@ -1223,12 +1228,7 @@ UnicodeString __fastcall ParseOpenSshPubLine(const UnicodeString & Line, const s
       Algorithm->freekey(Key);
     }
   }
-  __finally
-  {
-    strbuf_free(PubBlobBuf);
-    sfree(AlgorithmName);
-    sfree(CommentPtr);
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -1238,7 +1238,10 @@ void ParseCertificatePublicKey(const UnicodeString & Str, RawByteString & Public
   AnsiString AnsiStr = AnsiString(Str);
   ptrlen Data = ptrlen_from_asciz(AnsiStr.c_str());
   strbuf * Blob = strbuf_new();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    strbuf_free(Blob);
+  }); try
   {
     // See if we have a plain base64-encoded public key blob.
     if (base64_valid(Data))
@@ -1287,10 +1290,7 @@ void ParseCertificatePublicKey(const UnicodeString & Str, RawByteString & Public
 
     PublicKey = StrBufToString(Blob);
   }
-  __finally
-  {
-    strbuf_free(Blob);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 bool IsCertificateValidityExpressionValid(
@@ -1416,7 +1416,10 @@ TStrings * SshHostKeyList()
     cp_ssh_keyalg * SignKeys;
     int Count;
     get_hostkey_algs(Type, &Count, &SignKeys);
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      sfree(SignKeys);
+    }); try
     {
       for (int Index = 0; Index < Count; Index++)
       {
@@ -1425,10 +1428,7 @@ TStrings * SshHostKeyList()
         Result->Add(Name);
       }
     }
-    __finally
-    {
-      sfree(SignKeys);
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   return Result.release();
 }
@@ -1486,15 +1486,15 @@ void WritePuttySettings(THierarchicalStorage * Storage, const UnicodeString & AS
     TGuard Guard(PuttyStorageSection.get());
     TValueRestorer<TPuttyRegistryMode> PuttyRegistryModeRestorer(PuttyRegistryMode, prmCollect);
     Conf * conf = conf_new();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      conf_free(conf);
+    }); try
     {
       do_defaults(NULL, conf);
       save_settings(NULL, conf);
     }
-    __finally
-    {
-      conf_free(conf);
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 
   std::unique_ptr<TStrings> Settings(new TStringList());
@@ -1538,16 +1538,16 @@ void SavePuttyDefaults(const UnicodeString & Name)
   TGuard Guard(PuttyStorageSection.get());
   TValueRestorer<TPuttyRegistryMode> PuttyRegistryModeRestorer(PuttyRegistryMode, prmPass);
   Conf * conf = conf_new();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    conf_free(conf);
+  }); try
   {
     PuttyDefaults(conf);
     AnsiString PuttyName = PuttyStr(Name);
     save_settings(PuttyName.c_str(), conf);
   }
-  __finally
-  {
-    conf_free(conf);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 struct host_ca_enum

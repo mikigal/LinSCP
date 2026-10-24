@@ -197,7 +197,10 @@ void __fastcall TConfiguration::Default()
 
   TRegistryStorage * AdminStorage;
   AdminStorage = new TRegistryStorage(RegistryStorageKey, HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete AdminStorage;
+  }); try
   {
     if (AdminStorage->OpenRootKey(false))
     {
@@ -205,10 +208,7 @@ void __fastcall TConfiguration::Default()
       AdminStorage->CloseSubKey();
     }
   }
-  __finally
-  {
-    delete AdminStorage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   RandomSeedFile = FDefaultRandomSeedFile;
   PuttyRegistryStorageKey = OriginalPuttyRegistryStorageKey;
@@ -352,7 +352,7 @@ UnicodeString __fastcall TConfiguration::PropertyToKey(const UnicodeString & Pro
 }
 //---------------------------------------------------------------------------
 #define BLOCK(KEY, CANCREATE, BLOCK) \
-  if (Storage->OpenSubKeyPath(KEY, CANCREATE)) try { BLOCK } __finally { Storage->CloseSubKeyPath(); }
+  if (Storage->OpenSubKeyPath(KEY, CANCREATE)) { ::rtl::TFinally Finally([&]() { Storage->CloseSubKeyPath(); }); try { BLOCK } catch (...) { Finally.Unwind(); } }
 #define KEY(TYPE, VAR) KEYEX(TYPE, VAR, PropertyToKey(TEXT(#VAR)))
 #define REGCONFIG(CANCREATE) \
   BLOCK(L"Interface", CANCREATE, \
@@ -446,7 +446,10 @@ void __fastcall TConfiguration::DoSave(bool All, bool Explicit)
   if (FDontSave) return;
 
   THierarchicalStorage * AStorage = CreateConfigStorage();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete AStorage;
+  }); try
   {
     AStorage->AccessMode = smReadWrite;
     AStorage->Explicit = Explicit;
@@ -456,10 +459,7 @@ void __fastcall TConfiguration::DoSave(bool All, bool Explicit)
     bool ConfigAll = All || AStorage->Temporary;
     DoSave(AStorage, ConfigAll);
   }
-  __finally
-  {
-    delete AStorage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   Saved();
 
@@ -505,7 +505,11 @@ void __fastcall TConfiguration::Export(const UnicodeString & FileName)
 
   THierarchicalStorage * Storage = NULL;
   THierarchicalStorage * ExportStorage = NULL;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete ExportStorage;
+    delete Storage;
+  }); try
   {
     ExportStorage = TIniFileStorage::CreateFromPath(FileName);
     ExportStorage->AccessMode = smReadWrite;
@@ -518,11 +522,7 @@ void __fastcall TConfiguration::Export(const UnicodeString & FileName)
 
     DoSave(ExportStorage, true);
   }
-  __finally
-  {
-    delete ExportStorage;
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   StoredSessions->Export(FileName);
 }
@@ -531,7 +531,11 @@ void __fastcall TConfiguration::Import(const UnicodeString & FileName)
 {
   THierarchicalStorage * Storage = NULL;
   THierarchicalStorage * ImportStorage = NULL;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete ImportStorage;
+    delete Storage;
+  }); try
   {
     ImportStorage = TIniFileStorage::CreateFromPath(FileName);
     ImportStorage->AccessMode = smRead;
@@ -554,11 +558,7 @@ void __fastcall TConfiguration::Import(const UnicodeString & FileName)
       StoredSessions->Load(ImportStorage);
     }
   }
-  __finally
-  {
-    delete ImportStorage;
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   // save all and explicit
   DoSave(true, true);
@@ -639,15 +639,15 @@ void __fastcall TConfiguration::Load(THierarchicalStorage * Storage)
 {
   TGuard Guard(FCriticalSection);
   TStorageAccessMode StorageAccessMode = Storage->AccessMode;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    Storage->AccessMode = StorageAccessMode;
+  }); try
   {
     Storage->AccessMode = smRead;
     LoadFrom(Storage);
   }
-  __finally
-  {
-    Storage->AccessMode = StorageAccessMode;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 bool __fastcall TConfiguration::CopySubKey(THierarchicalStorage * Source, THierarchicalStorage * Target, const UnicodeString & Name)
@@ -719,7 +719,10 @@ void __fastcall TConfiguration::LoadDirectoryChangesCache(const UnicodeString Se
   TRemoteDirectoryChangesCache * DirectoryChangesCache)
 {
   THierarchicalStorage * Storage = CreateConfigStorage();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     Storage->AccessMode = smRead;
     if (Storage->OpenSubKey(ConfigurationSubKey, false) &&
@@ -729,17 +732,17 @@ void __fastcall TConfiguration::LoadDirectoryChangesCache(const UnicodeString Se
       DirectoryChangesCache->Deserialize(Storage->ReadBinaryData(SessionKey));
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TConfiguration::SaveDirectoryChangesCache(const UnicodeString SessionKey,
   TRemoteDirectoryChangesCache * DirectoryChangesCache)
 {
   THierarchicalStorage * Storage = CreateConfigStorage();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     Storage->AccessMode = smReadWrite;
     if (Storage->OpenSubKey(ConfigurationSubKey, true) &&
@@ -750,10 +753,7 @@ void __fastcall TConfiguration::SaveDirectoryChangesCache(const UnicodeString Se
       Storage->WriteBinaryData(SessionKey, Data);
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall TConfiguration::BannerHash(const UnicodeString & Banner)
@@ -1306,14 +1306,14 @@ UnicodeString __fastcall TConfiguration::GetFileVersion(const UnicodeString & Fi
 {
   UnicodeString Result;
   void * FileInfo = CreateFileInfo(FileName);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileInfo(FileInfo);
+  }); try
   {
     Result = GetFileVersion(GetFixedFileInfo(FileInfo));
   }
-  __finally
-  {
-    FreeFileInfo(FileInfo);
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -1346,7 +1346,13 @@ UnicodeString TConfiguration::GetFileFileInfoString(const UnicodeString & Key, c
 
   UnicodeString Result;
   void * Info = GetFileApplicationInfo(FileName);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (!FileName.IsEmpty())
+    {
+      FreeFileInfo(Info);
+    }
+  }); try
   {
     if ((Info != NULL) && (GetTranslationCount(Info) > 0))
     {
@@ -1359,13 +1365,7 @@ UnicodeString TConfiguration::GetFileFileInfoString(const UnicodeString & Key, c
       DebugAssert(!FileName.IsEmpty());
     }
   }
-  __finally
-  {
-    if (!FileName.IsEmpty())
-    {
-      FreeFileInfo(Info);
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -1597,7 +1597,11 @@ void __fastcall TConfiguration::MoveStorage(TStorage AStorage, const UnicodeStri
       THierarchicalStorage * SourceStorage = NULL;
       THierarchicalStorage * TargetStorage = NULL;
 
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        delete SourceStorage;
+        delete TargetStorage;
+      }); try
       {
         SourceStorage = CreateConfigStorage();
         SourceStorage->AccessMode = smRead;
@@ -1614,11 +1618,7 @@ void __fastcall TConfiguration::MoveStorage(TStorage AStorage, const UnicodeStri
         // when switching from ini to registry
         CopyData(SourceStorage, TargetStorage);
       }
-      __finally
-      {
-        delete SourceStorage;
-        delete TargetStorage;
-      }
+      catch (...) { Finally.Unwind(); } }
 
       // save all and explicit,
       // this also removes an INI file, when switching to registry storage

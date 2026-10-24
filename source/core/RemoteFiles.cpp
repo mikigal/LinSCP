@@ -1478,14 +1478,14 @@ void __fastcall TRemoteFile::FindLinkedFile()
     Terminal->ExceptionOnFail = true;
     try
     {
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        Terminal->ExceptionOnFail = false;
+      }); try
       {
         Terminal->ReadSymlink(this, FLinkedFile);
       }
-      __finally
-      {
-        Terminal->ExceptionOnFail = false;
-      }
+      catch (...) { Finally.Unwind(); } }
     }
     catch (Exception &E)
     {
@@ -1796,7 +1796,10 @@ void __fastcall TRemoteDirectoryCache::Clear()
 {
   TGuard Guard(FSection);
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    TStringList::Clear();
+  }); try
   {
     for (int Index = 0; Index < Count; Index++)
     {
@@ -1804,10 +1807,7 @@ void __fastcall TRemoteDirectoryCache::Clear()
       Objects[Index] = NULL;
     }
   }
-  __finally
-  {
-    TStringList::Clear();
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 bool __fastcall TRemoteDirectoryCache::GetIsEmpty() const
@@ -2033,7 +2033,10 @@ void __fastcall TRemoteDirectoryChangesCache::Serialize(UnicodeString & Data)
   if (ACount > FMaxSize)
   {
     TStrings * Limited = new TStringList();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Limited;
+    }); try
     {
       int Index = ACount - FMaxSize;
       while (Index < ACount)
@@ -2043,10 +2046,7 @@ void __fastcall TRemoteDirectoryChangesCache::Serialize(UnicodeString & Data)
       }
       Data += Limited->Text;
     }
-    __finally
-    {
-      delete Limited;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   else
   {

@@ -953,16 +953,16 @@ void __fastcall TFTPFileSystem::AnyCommand(const UnicodeString Command,
 
   DebugAssert(FOnCaptureOutput == NULL);
   FOnCaptureOutput = OutputEvent;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FOnCaptureOutput = NULL;
+  }); try
   {
     SendCommand(Command);
 
     GotReply(WaitForCommandReply(), REPLY_2XX_CODE | REPLY_3XX_CODE);
   }
-  __finally
-  {
-    FOnCaptureOutput = NULL;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TFTPFileSystem::ResetCaches()
@@ -1071,7 +1071,10 @@ void __fastcall TFTPFileSystem::ChangeFileProperties(const UnicodeString AFileNa
   {
     TRemoteFile * OwnedFile = NULL;
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete OwnedFile;
+    }); try
     {
       UnicodeString FileName = AbsolutePath(AFileName, false);
 
@@ -1085,7 +1088,7 @@ void __fastcall TFTPFileSystem::ChangeFileProperties(const UnicodeString AFileNa
       {
         try
         {
-          FTerminal->ProcessDirectory(AFileName, FTerminal->ChangeFileProperties,
+          FTerminal->ProcessDirectory(AFileName, ::rtl::MethodPtr(FTerminal, &TTerminal::ChangeFileProperties),
             (void*)Properties);
         }
         catch(...)
@@ -1116,10 +1119,7 @@ void __fastcall TFTPFileSystem::ChangeFileProperties(const UnicodeString AFileNa
 
       GotReply(WaitForCommandReply(), REPLY_2XX_CODE);
     }
-    __finally
-    {
-      delete OwnedFile;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   else
   {
@@ -1271,7 +1271,13 @@ void __fastcall TFTPFileSystem::CalculateFilesChecksum(
         OperationProgress->SetFile(File->FileName);
         Action.FileName(File->FullFileName);
         bool Success = false;
-        try
+        { ::rtl::TFinally Finally([&]()
+        {
+          if (FirstLevel)
+          {
+            OperationProgress->Finish(File->FileName, Success, OnceDoneOperation);
+          }
+        }); try
         {
           UnicodeString Checksum = DoCalculateFileChecksum(Alg, File);
 
@@ -1282,13 +1288,7 @@ void __fastcall TFTPFileSystem::CalculateFilesChecksum(
           Action.Checksum(Alg, Checksum);
           Success = true;
         }
-        __finally
-        {
-          if (FirstLevel)
-          {
-            OperationProgress->Finish(File->FileName, Success, OnceDoneOperation);
-          }
-        }
+        catch (...) { Finally.Unwind(); } }
       }
       catch (Exception & E)
       {
@@ -1847,7 +1847,10 @@ void __fastcall TFTPFileSystem::CustomCommandOnFile(const UnicodeString /*FileNa
 void __fastcall TFTPFileSystem::DoStartup()
 {
   TStrings * PostLoginCommands = new TStringList();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete PostLoginCommands;
+  }); try
   {
     PostLoginCommands->Text = FTerminal->SessionData->PostLoginCommands;
     for (int Index = 0; Index < PostLoginCommands->Count; Index++)
@@ -1861,10 +1864,7 @@ void __fastcall TFTPFileSystem::DoStartup()
       }
     }
   }
-  __finally
-  {
-    delete PostLoginCommands;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   if (SupportsCommand(CsidCommand))
   {
@@ -2020,7 +2020,10 @@ void __fastcall TFTPFileSystem::ReadCurrentDirectory()
     TStrings * Response = NULL;
     GotReply(WaitForCommandReply(), REPLY_2XX_CODE, L"", &Code, &Response);
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Response;
+    }); try
     {
       DebugAssert(Response != NULL);
       bool Result = false;
@@ -2073,10 +2076,7 @@ void __fastcall TFTPFileSystem::ReadCurrentDirectory()
         throw Exception(FMTLOAD(FTP_RESPONSE_ERROR, (Command, Response->Text)));
       }
     }
-    __finally
-    {
-      delete Response;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -2411,7 +2411,10 @@ void __fastcall TFTPFileSystem::DoReadFile(const UnicodeString & AFileName,
   }
 
   TRemoteFileList * FileList = new TRemoteFileList();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete FileList;
+  }); try
   {
     // Duplicate() call below would use this to compose FullFileName
     FileList->Directory = FilePath;
@@ -2427,10 +2430,7 @@ void __fastcall TFTPFileSystem::DoReadFile(const UnicodeString & AFileName,
 
     FLastDataSent = Now();
   }
-  __finally
-  {
-    delete FileList;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 bool __fastcall TFTPFileSystem::SupportsReadingFile()
@@ -3000,15 +3000,15 @@ bool __fastcall TFTPFileSystem::ProcessMessage()
 //---------------------------------------------------------------------------
 void __fastcall TFTPFileSystem::DiscardMessages()
 {
-  try
-  {
-    while (ProcessMessage());
-  }
-  __finally
+  { ::rtl::TFinally Finally([&]()
   {
     FReply = 0;
     FCommandReply = 0;
+  }); try
+  {
+    while (ProcessMessage());
   }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TFTPFileSystem::WaitForMessages()
@@ -3036,21 +3036,21 @@ void __fastcall TFTPFileSystem::PoolForFatalNonCommandReply()
 
   unsigned int Reply;
 
-  try
-  {
-    // discard up to one reply
-    // (it should not happen here that two replies are posted anyway)
-    while (ProcessMessage() && (FReply == 0));
-    Reply = FReply;
-  }
-  __finally
+  { ::rtl::TFinally Finally([&]()
   {
     FReply = 0;
     DebugAssert(FCommandReply == 0);
     FCommandReply = 0;
     DebugAssert(FWaitingForReply);
     FWaitingForReply = false;
+  }); try
+  {
+    // discard up to one reply
+    // (it should not happen here that two replies are posted anyway)
+    while (ProcessMessage() && (FReply == 0));
+    Reply = FReply;
   }
+  catch (...) { Finally.Unwind(); } }
 
   if (Reply != 0)
   {
@@ -3126,20 +3126,20 @@ unsigned int __fastcall TFTPFileSystem::WaitForReply(bool Command, bool WantLast
 
   unsigned int Reply;
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FReply = 0;
+    FCommandReply = 0;
+    DebugAssert(FWaitingForReply);
+    FWaitingForReply = false;
+  }); try
   {
     unsigned int & ReplyToAwait = (Command ? FCommandReply : FReply);
     DoWaitForReply(ReplyToAwait, WantLastCode);
 
     Reply = ReplyToAwait;
   }
-  __finally
-  {
-    FReply = 0;
-    FCommandReply = 0;
-    DebugAssert(FWaitingForReply);
-    FWaitingForReply = false;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   return Reply;
 }
@@ -3186,7 +3186,10 @@ UnicodeString __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned i
   UnicodeString Error, unsigned int * Code, TStrings ** Response)
 {
   UnicodeString Result;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    ResetReply();
+  }); try
   {
     if (FLAGSET(Reply, TFileZillaIntf::REPLY_OK))
     {
@@ -3361,14 +3364,14 @@ UnicodeString __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned i
         // for fatal error, it is essential that there is some message
         DebugAssert(!Error.IsEmpty());
         ExtException * E = new ExtException(Error, MoreMessages, true, HelpKeyword);
-        try
+        { ::rtl::TFinally Finally([&]()
+        {
+          delete E;
+        }); try
         {
           FTerminal->FatalError(E, L"");
         }
-        __finally
-        {
-          delete E;
-        }
+        catch (...) { Finally.Unwind(); } }
       }
       else
       {
@@ -3399,10 +3402,7 @@ UnicodeString __fastcall TFTPFileSystem::GotReply(unsigned int Reply, unsigned i
       FLastErrorResponse = new TStringList();
     }
   }
-  __finally
-  {
-    ResetReply();
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------

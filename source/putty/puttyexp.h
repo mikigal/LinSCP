@@ -26,7 +26,7 @@ int have_any_ssh2_hostkey(Seat * seat, const char * host, int port);
 
 // from wingss.c
 
-#include "ssh\gss.h"
+#include "ssh/gss.h"
 
 void wingss_cleanup(void);
 

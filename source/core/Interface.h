@@ -87,7 +87,7 @@ const int qpAllowContinueOnError = 0x04;
 const int qpIgnoreAbort =          0x08;
 const int qpWaitInBatch =          0x10;
 
-typedef void __fastcall (__closure *TButtonSubmitEvent)(TObject * Sender, unsigned int & Answer);
+typedef TMethodPtr<void(TObject * Sender, unsigned int & Answer)> TButtonSubmitEvent;
 
 struct TQueryButtonAlias
 {
@@ -108,7 +108,7 @@ struct TQueryButtonAlias
   static TQueryButtonAlias CreateIgnoreAsRenameGrouppedWithNo();
 };
 
-typedef void __fastcall (__closure *TQueryParamsTimerEvent)(unsigned int & Result);
+typedef TMethodPtr<void(unsigned int & Result)> TQueryParamsTimerEvent;
 enum TQueryType { qtConfirmation, qtWarning, qtError, qtInformation };
 
 struct TQueryParams
@@ -156,11 +156,11 @@ bool __fastcall IsPasswordOrPassphrasePrompt(TPromptKind Kind, TStrings * Prompt
 bool __fastcall IsPasswordPrompt(TPromptKind Kind, TStrings * Prompts);
 void __fastcall AnswerNameAndCaption(unsigned int Answer, UnicodeString & Name, UnicodeString & Caption);
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure *TFileFoundEvent)
-  (TTerminal * Terminal, const UnicodeString FileName, const TRemoteFile * File,
-   bool & Cancel);
-typedef void __fastcall (__closure *TFindingFileEvent)
-  (TTerminal * Terminal, const UnicodeString Directory, bool & Cancel);
+typedef TMethodPtr<void(TTerminal * Terminal, const UnicodeString FileName, const TRemoteFile * File,
+   bool & Cancel)>
+ TFileFoundEvent;
+typedef TMethodPtr<void(TTerminal * Terminal, const UnicodeString Directory, bool & Cancel)>
+ TFindingFileEvent;
 //---------------------------------------------------------------------------
 class TOperationVisualizer
 {

@@ -109,7 +109,7 @@ public:
   virtual void __fastcall UpdateFromMain(TCustomFileSystem * MainFileSystem) = 0;
   virtual void __fastcall ClearCaches() = 0;
 
-  __property UnicodeString CurrentDirectory = { read = GetCurrentDirectory };
+  UnicodeString __property_get_CurrentDirectory() const { return ::rtl::Mutable(this)->GetCurrentDirectory(); } __declspec(property(get = __property_get_CurrentDirectory)) UnicodeString CurrentDirectory;
 
 protected:
   TTerminal * FTerminal;

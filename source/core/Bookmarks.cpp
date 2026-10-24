@@ -36,7 +36,10 @@ void __fastcall TBookmarks::Load(THierarchicalStorage * Storage)
     if (Storage->OpenSubKey(Keys[i], false))
     {
       TStrings * BookmarkKeys = new TStringList();
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        delete BookmarkKeys;
+      }); try
       {
         Storage->GetSubKeyNames(BookmarkKeys);
         for (int Index = 0; Index < BookmarkKeys->Count; Index++)
@@ -62,10 +65,7 @@ void __fastcall TBookmarks::Load(THierarchicalStorage * Storage)
           }
         }
       }
-      __finally
-      {
-        delete BookmarkKeys;
-      }
+      catch (...) { Finally.Unwind(); } }
       Storage->CloseSubKey();
     }
   }
@@ -77,7 +77,10 @@ void __fastcall TBookmarks::LoadLevel(THierarchicalStorage * Storage, const Unic
   int Index, TBookmarkList * BookmarkList)
 {
   TStrings * Names = new TStringList();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Names;
+  }); try
   {
     Storage->GetValueNames(Names);
     UnicodeString Name;
@@ -145,10 +148,7 @@ void __fastcall TBookmarks::LoadLevel(THierarchicalStorage * Storage, const Unic
       }
     }
   }
-  __finally
-  {
-    delete Names;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TBookmarks::Save(THierarchicalStorage * Storage, bool All)

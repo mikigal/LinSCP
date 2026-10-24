@@ -9,8 +9,8 @@ enum TEOLType { eolLF /* \n */, eolCRLF /* \r\n */, eolCR /* \r */ };
 const int cpRemoveCtrlZ = 0x01;
 const int cpRemoveBOM =   0x02;
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure *TTransferOutEvent)(TObject * Sender, const unsigned char * Data, size_t Len);
-typedef size_t __fastcall (__closure *TTransferInEvent)(TObject * Sender, unsigned char * Data, size_t Len);
+typedef TMethodPtr<void(TObject * Sender, const unsigned char * Data, size_t Len)> TTransferOutEvent;
+typedef TMethodPtr<size_t(TObject * Sender, unsigned char * Data, size_t Len)> TTransferInEvent;
 //---------------------------------------------------------------------------
 class TFileBuffer
 {
@@ -29,9 +29,9 @@ public:
   void __fastcall WriteToStream(TStream * Stream, const DWORD Len);
   void __fastcall WriteToOut(TTransferOutEvent OnTransferOut, TObject * Sender, const DWORD Len);
   void Reset();
-  __property TMemoryStream * Memory  = { read=FMemory };
-  __property char * Data = { read=GetData };
-  __property int Size = { read=FSize, write=SetSize };
+  TMemoryStream * __property_get_Memory() const { return FMemory; } __declspec(property(get = __property_get_Memory)) TMemoryStream * Memory;
+  char * __property_get_Data() const { return ::rtl::Mutable(this)->GetData(); } __declspec(property(get = __property_get_Data)) char * Data;
+  int __property_get_Size() const { return FSize; } void __property_set_Size(int Value) { SetSize(Value); } __declspec(property(get = __property_get_Size, put = __property_set_Size)) int Size;
 
 private:
   TMemoryStream * FMemory;

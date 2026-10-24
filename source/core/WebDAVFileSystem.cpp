@@ -326,7 +326,7 @@ TWebDAVFileSystem::TSessionContext * TWebDAVFileSystem::NeonOpen(const UnicodeSt
 
   if (Ssl)
   {
-    InitNeonTls(Result->NeonSession, InitSslSession, NeonServerSSLCallback, Result.get(), FTerminal);
+    InitNeonTls(Result->NeonSession, ::rtl::MethodPtr(this, &TWebDAVFileSystem::InitSslSession), NeonServerSSLCallback, Result.get(), FTerminal);
 
     ne_ssl_provide_clicert(Result->NeonSession, NeonProvideClientCert, Result.get());
   }
@@ -782,15 +782,15 @@ int __fastcall TWebDAVFileSystem::ReadDirectoryInternal(
   ne_propfind_handler * PropFindHandler = ne_propfind_create(FSessionContext->NeonSession, PathToNeon(Path), NE_DEPTH_ONE);
   void * DiscoveryContext = ne_lock_register_discovery(PropFindHandler);
   int Result;
-  try
-  {
-    Result = ne_propfind_allprop(PropFindHandler, NeonPropsResult, &Data);
-  }
-  __finally
+  { ::rtl::TFinally Finally([&]()
   {
     ne_lock_discovery_free(DiscoveryContext);
     ne_propfind_destroy(PropFindHandler);
+  }); try
+  {
+    Result = ne_propfind_allprop(PropFindHandler, NeonPropsResult, &Data);
   }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -1320,7 +1320,16 @@ void __fastcall TWebDAVFileSystem::Source(
   TUploadSessionAction & Action, bool & ChildError)
 {
   int FD = -1;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (FD >= 0)
+    {
+      // _close calls CloseHandle internally (even doc states, we should not call CloseHandle),
+      // but it crashes code guard
+      _close(FD);
+      Handle.Dismiss();
+    }
+  }); try
   {
     UnicodeString DestFullName = TargetDir + DestFileName;
 
@@ -1429,16 +1438,7 @@ void __fastcall TWebDAVFileSystem::Source(
       }
     }
   }
-  __finally
-  {
-    if (FD >= 0)
-    {
-      // _close calls CloseHandle internally (even doc states, we should not call CloseHandle),
-      // but it crashes code guard
-      _close(FD);
-      Handle.Dismiss();
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TWebDAVFileSystem::CopyToLocal(TStrings * FilesToCopy,
@@ -1763,7 +1763,24 @@ void __fastcall TWebDAVFileSystem::Sink(
     bool DeleteLocalFile = true;
 
     int FD = -1;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      if (FD >= 0)
+      {
+        // _close calls CloseHandle internally (even doc states, we should not call CloseHandle),
+        // but it crashes code guard
+        _close(FD);
+      }
+      else
+      {
+        CloseHandle(LocalHandle);
+      }
+
+      if (DeleteLocalFile)
+      {
+        FTerminal->DoDeleteLocalFile(DestFullName);
+      }
+    }); try
     {
       FD = _open_osfhandle(reinterpret_cast<intptr_t>(LocalHandle), O_BINARY);
       if (FD < 0)
@@ -1802,24 +1819,7 @@ void __fastcall TWebDAVFileSystem::Sink(
           LocalHandle, File->Modification, File->ModificationFmt, FTerminal->SessionData->DSTMode);
       }
     }
-    __finally
-    {
-      if (FD >= 0)
-      {
-        // _close calls CloseHandle internally (even doc states, we should not call CloseHandle),
-        // but it crashes code guard
-        _close(FD);
-      }
-      else
-      {
-        CloseHandle(LocalHandle);
-      }
-
-      if (DeleteLocalFile)
-      {
-        FTerminal->DoDeleteLocalFile(DestFullName);
-      }
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   FILE_OPERATION_LOOP_END(FMTLOAD(TRANSFER_ERROR, (FileName)));
 
@@ -2029,7 +2029,13 @@ void __fastcall TWebDAVFileSystem::LockFile(const UnicodeString & /*FileName*/, 
 {
   ClearNeonError();
   struct ne_lock * Lock = ne_lock_create();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (Lock != NULL)
+    {
+      ne_lock_destroy(Lock);
+    }
+  }); try
   {
     Lock->uri.path = ne_strdup(PathToNeon(FilePath(File)));
     Lock->depth = NE_DEPTH_INFINITE;
@@ -2047,13 +2053,7 @@ void __fastcall TWebDAVFileSystem::LockFile(const UnicodeString & /*FileName*/, 
     // ownership passed
     Lock = NULL;
   }
-  __finally
-  {
-    if (Lock != NULL)
-    {
-      ne_lock_destroy(Lock);
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TWebDAVFileSystem::RequireLockStore()
@@ -2102,7 +2102,10 @@ void __fastcall TWebDAVFileSystem::UnlockFile(const UnicodeString & FileName, co
 {
   ClearNeonError();
   struct ne_lock * Lock = ne_lock_create();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    ne_lock_destroy(Lock);
+  }); try
   {
     RawByteString Path = PathToNeon(FilePath(File));
     RawByteString LockToken;
@@ -2148,10 +2151,7 @@ void __fastcall TWebDAVFileSystem::UnlockFile(const UnicodeString & FileName, co
       DiscardLock(Path);
     }
   }
-  __finally
-  {
-    ne_lock_destroy(Lock);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TWebDAVFileSystem::UpdateFromMain(TCustomFileSystem * AMainFileSystem)

@@ -3543,7 +3543,22 @@ void __fastcall ParseCertificate(const UnicodeString & Path,
   PrivateKey = NULL;
   WrongPassphrase = false;
   bool Discard = false;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (Discard || WrongPassphrase)
+    {
+      if (PrivateKey != NULL)
+      {
+        EVP_PKEY_free(PrivateKey);
+        PrivateKey = NULL;
+      }
+      if (Certificate != NULL)
+      {
+        X509_free(Certificate);
+        Certificate = NULL;
+      }
+    }
+  }); try
   {
     try
     {
@@ -3681,22 +3696,7 @@ void __fastcall ParseCertificate(const UnicodeString & Path,
       throw;
     }
   }
-  __finally
-  {
-    if (Discard || WrongPassphrase)
-    {
-      if (PrivateKey != NULL)
-      {
-        EVP_PKEY_free(PrivateKey);
-        PrivateKey = NULL;
-      }
-      if (Certificate != NULL)
-      {
-        X509_free(Certificate);
-        Certificate = NULL;
-      }
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall CheckCertificate(const UnicodeString & Path)

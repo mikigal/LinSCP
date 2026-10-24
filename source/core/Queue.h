@@ -56,13 +56,13 @@ class TTerminalQueueStatus;
 class TQueueFileList;
 class TTerminalItem;
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure * TQueueListUpdate)
-  (TTerminalQueue * Queue);
-typedef void __fastcall (__closure * TQueueItemUpdateEvent)
-  (TTerminalQueue * Queue, TQueueItem * Item);
+typedef TMethodPtr<void(TTerminalQueue * Queue)>
+ TQueueListUpdate;
+typedef TMethodPtr<void(TTerminalQueue * Queue, TQueueItem * Item)>
+ TQueueItemUpdateEvent;
 enum TQueueEvent { qeEmpty, qeEmptyButMonitored, qePendingUserAction };
-typedef void __fastcall (__closure * TQueueEventEvent)
-  (TTerminalQueue * Queue, TQueueEvent Event);
+typedef TMethodPtr<void(TTerminalQueue * Queue, TQueueEvent Event)>
+ TQueueEventEvent;
 //---------------------------------------------------------------------------
 class TTerminalQueue : public TSignalThread
 {
@@ -79,17 +79,17 @@ public:
   TTerminalQueueStatus * __fastcall CreateStatus(TTerminalQueueStatus * Current);
   void __fastcall Idle();
 
-  __property bool IsEmpty = { read = GetIsEmpty };
-  __property int TransfersLimit = { read = FTransfersLimit, write = SetTransfersLimit };
-  __property int KeepDoneItemsFor = { read = FKeepDoneItemsFor, write = SetKeepDoneItemsFor };
-  __property int ParallelDurationThreshold = { read = GetParallelDurationThreshold };
-  __property bool Enabled = { read = FEnabled, write = SetEnabled };
-  __property TQueryUserEvent OnQueryUser = { read = FOnQueryUser, write = FOnQueryUser };
-  __property TPromptUserEvent OnPromptUser = { read = FOnPromptUser, write = FOnPromptUser };
-  __property TExtendedExceptionEvent OnShowExtendedException = { read = FOnShowExtendedException, write = FOnShowExtendedException };
-  __property TQueueListUpdate OnListUpdate = { read = FOnListUpdate, write = FOnListUpdate };
-  __property TQueueItemUpdateEvent OnQueueItemUpdate = { read = FOnQueueItemUpdate, write = FOnQueueItemUpdate };
-  __property TQueueEventEvent OnEvent = { read = FOnEvent, write = FOnEvent };
+  bool __property_get_IsEmpty() const { return ::rtl::Mutable(this)->GetIsEmpty(); } __declspec(property(get = __property_get_IsEmpty)) bool IsEmpty;
+  int __property_get_TransfersLimit() const { return FTransfersLimit; } void __property_set_TransfersLimit(int Value) { SetTransfersLimit(Value); } __declspec(property(get = __property_get_TransfersLimit, put = __property_set_TransfersLimit)) int TransfersLimit;
+  int __property_get_KeepDoneItemsFor() const { return FKeepDoneItemsFor; } void __property_set_KeepDoneItemsFor(int Value) { SetKeepDoneItemsFor(Value); } __declspec(property(get = __property_get_KeepDoneItemsFor, put = __property_set_KeepDoneItemsFor)) int KeepDoneItemsFor;
+  int __property_get_ParallelDurationThreshold() const { return ::rtl::Mutable(this)->GetParallelDurationThreshold(); } __declspec(property(get = __property_get_ParallelDurationThreshold)) int ParallelDurationThreshold;
+  bool __property_get_Enabled() const { return FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
+  TQueryUserEvent __property_get_OnQueryUser() const { return FOnQueryUser; } void __property_set_OnQueryUser(TQueryUserEvent Value) { FOnQueryUser = Value; } __declspec(property(get = __property_get_OnQueryUser, put = __property_set_OnQueryUser)) TQueryUserEvent OnQueryUser;
+  TPromptUserEvent __property_get_OnPromptUser() const { return FOnPromptUser; } void __property_set_OnPromptUser(TPromptUserEvent Value) { FOnPromptUser = Value; } __declspec(property(get = __property_get_OnPromptUser, put = __property_set_OnPromptUser)) TPromptUserEvent OnPromptUser;
+  TExtendedExceptionEvent __property_get_OnShowExtendedException() const { return FOnShowExtendedException; } void __property_set_OnShowExtendedException(TExtendedExceptionEvent Value) { FOnShowExtendedException = Value; } __declspec(property(get = __property_get_OnShowExtendedException, put = __property_set_OnShowExtendedException)) TExtendedExceptionEvent OnShowExtendedException;
+  TQueueListUpdate __property_get_OnListUpdate() const { return FOnListUpdate; } void __property_set_OnListUpdate(TQueueListUpdate Value) { FOnListUpdate = Value; } __declspec(property(get = __property_get_OnListUpdate, put = __property_set_OnListUpdate)) TQueueListUpdate OnListUpdate;
+  TQueueItemUpdateEvent __property_get_OnQueueItemUpdate() const { return FOnQueueItemUpdate; } void __property_set_OnQueueItemUpdate(TQueueItemUpdateEvent Value) { FOnQueueItemUpdate = Value; } __declspec(property(get = __property_get_OnQueueItemUpdate, put = __property_set_OnQueueItemUpdate)) TQueueItemUpdateEvent OnQueueItemUpdate;
+  TQueueEventEvent __property_get_OnEvent() const { return FOnEvent; } void __property_set_OnEvent(TQueueEventEvent Value) { FOnEvent = Value; } __declspec(property(get = __property_get_OnEvent, put = __property_set_OnEvent)) TQueueEventEvent OnEvent;
 
 protected:
   friend class TTerminalItem;
@@ -182,8 +182,8 @@ public:
 
   static bool __fastcall IsUserActionStatus(TStatus Status);
 
-  __property TStatus Status = { read = GetStatus };
-  __property HANDLE CompleteEvent = { read = FCompleteEvent, write = FCompleteEvent };
+  TStatus __property_get_Status() const { return ::rtl::Mutable(this)->GetStatus(); } __declspec(property(get = __property_get_Status)) TStatus Status;
+  HANDLE __property_get_CompleteEvent() const { return FCompleteEvent; } void __property_set_CompleteEvent(HANDLE Value) { FCompleteEvent = Value; } __declspec(property(get = __property_get_CompleteEvent, put = __property_set_CompleteEvent)) HANDLE CompleteEvent;
 
 protected:
   TStatus FStatus;
@@ -235,12 +235,12 @@ public:
   bool __fastcall SetCPSLimit(unsigned long CPSLimit);
   bool __fastcall GetCPSLimit(unsigned long & CPSLimit);
 
-  __property TFileOperationProgressType * ProgressData = { read = GetProgressData };
-  __property __int64 TotalTransferred = { read = GetTotalTransferred };
-  __property TQueueItem::TInfo * Info = { read = FInfo };
-  __property TQueueItem::TStatus Status = { read = FStatus };
-  __property bool ProcessingUserAction = { read = FProcessingUserAction };
-  __property int Index = { read = GetIndex };
+  TFileOperationProgressType * __property_get_ProgressData() const { return ::rtl::Mutable(this)->GetProgressData(); } __declspec(property(get = __property_get_ProgressData)) TFileOperationProgressType * ProgressData;
+  __int64 __property_get_TotalTransferred() const { return ::rtl::Mutable(this)->GetTotalTransferred(); } __declspec(property(get = __property_get_TotalTransferred)) __int64 TotalTransferred;
+  TQueueItem::TInfo * __property_get_Info() const { return FInfo; } __declspec(property(get = __property_get_Info)) TQueueItem::TInfo * Info;
+  TQueueItem::TStatus __property_get_Status() const { return FStatus; } __declspec(property(get = __property_get_Status)) TQueueItem::TStatus Status;
+  bool __property_get_ProcessingUserAction() const { return FProcessingUserAction; } __declspec(property(get = __property_get_ProcessingUserAction)) bool ProcessingUserAction;
+  int __property_get_Index() const { return ::rtl::Mutable(this)->GetIndex(); } __declspec(property(get = __property_get_Index)) int Index;
   // Clang warns on property backed by private field which is never used
   void * UserData;
 
@@ -270,13 +270,13 @@ public:
 
   TQueueItemProxy * __fastcall FindByQueueItem(TQueueItem * QueueItem);
 
-  __property int Count = { read = GetCount };
-  __property int DoneCount = { read = FDoneCount };
-  __property int ActiveCount = { read = GetActiveCount };
-  __property int DoneAndActiveCount = { read = GetDoneAndActiveCount };
-  __property int ActivePrimaryCount = { read = GetActivePrimaryCount };
-  __property int ActiveAndPendingPrimaryCount = { read = GetActiveAndPendingPrimaryCount };
-  __property TQueueItemProxy * Items[int Index] = { read = GetItem };
+  int __property_get_Count() const { return ::rtl::Mutable(this)->GetCount(); } __declspec(property(get = __property_get_Count)) int Count;
+  int __property_get_DoneCount() const { return FDoneCount; } __declspec(property(get = __property_get_DoneCount)) int DoneCount;
+  int __property_get_ActiveCount() const { return ::rtl::Mutable(this)->GetActiveCount(); } __declspec(property(get = __property_get_ActiveCount)) int ActiveCount;
+  int __property_get_DoneAndActiveCount() const { return ::rtl::Mutable(this)->GetDoneAndActiveCount(); } __declspec(property(get = __property_get_DoneAndActiveCount)) int DoneAndActiveCount;
+  int __property_get_ActivePrimaryCount() const { return ::rtl::Mutable(this)->GetActivePrimaryCount(); } __declspec(property(get = __property_get_ActivePrimaryCount)) int ActivePrimaryCount;
+  int __property_get_ActiveAndPendingPrimaryCount() const { return ::rtl::Mutable(this)->GetActiveAndPendingPrimaryCount(); } __declspec(property(get = __property_get_ActiveAndPendingPrimaryCount)) int ActiveAndPendingPrimaryCount;
+  TQueueItemProxy * __property_get_Items(int Index) const { return ::rtl::Mutable(this)->GetItem(Index); } __declspec(property(get = __property_get_Items)) TQueueItemProxy * Items[];
 
   bool __fastcall IsOnlyOneActiveAndNoPending();
 
@@ -423,9 +423,9 @@ public:
   bool __fastcall Release();
   void __fastcall Idle();
 
-  __property TNotifyEvent OnIdle = { read = FOnIdle, write = FOnIdle };
-  __property bool Cancelling = { read = FCancel };
-  __property bool AllowAbandon = { read = FAllowAbandon, write = FAllowAbandon };
+  TNotifyEvent __property_get_OnIdle() const { return FOnIdle; } void __property_set_OnIdle(TNotifyEvent Value) { FOnIdle = Value; } __declspec(property(get = __property_get_OnIdle, put = __property_set_OnIdle)) TNotifyEvent OnIdle;
+  bool __property_get_Cancelling() const { return FCancel; } __declspec(property(get = __property_get_Cancelling)) bool Cancelling;
+  bool __property_get_AllowAbandon() const { return FAllowAbandon; } void __property_set_AllowAbandon(bool Value) { FAllowAbandon = Value; } __declspec(property(get = __property_get_AllowAbandon, put = __property_set_AllowAbandon)) bool AllowAbandon;
 
 
 protected:

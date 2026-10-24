@@ -654,7 +654,7 @@ void TS3FileSystem::LibS3SessionCallback(ne_session_s * Session, void * Callback
     Session, Data->ProxyMethod, Data->ProxyHost, Data->ProxyPort,
     Data->ProxyUsername, Data->ProxyPassword, FileSystem->FTerminal);
 
-  SetNeonTlsInit(Session, FileSystem->InitSslSession, FileSystem->FTerminal);
+  SetNeonTlsInit(Session, ::rtl::MethodPtr(FileSystem, &TS3FileSystem::InitSslSession), FileSystem->FTerminal);
 
   ne_set_session_flag(Session, SE_SESSFLAG_SNDBUF, Data->SendBuf);
 
@@ -2224,14 +2224,14 @@ bool __fastcall TS3FileSystem::LoadFilesProperties(TStrings * FileList)
   Data.Result = false;
   Data.LoadTags = (FileList->Count == 1);
   FTerminal->BeginTransaction();
-  try
-  {
-    FTerminal->ProcessFiles(FileList, foGetProperties, LoadFileProperties, &Data);
-  }
-  __finally
+  { ::rtl::TFinally Finally([&]()
   {
     FTerminal->EndTransaction();
+  }); try
+  {
+    FTerminal->ProcessFiles(FileList, foGetProperties, ::rtl::MethodPtr(this, &TS3FileSystem::LoadFileProperties), &Data);
   }
+  catch (...) { Finally.Unwind(); } }
   return Data.Result;
 }
 //---------------------------------------------------------------------------
@@ -2755,7 +2755,15 @@ void __fastcall TS3FileSystem::Sink(
 
     bool DeleteLocalFile = true;
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      CloseHandle(LocalHandle);
+
+      if (DeleteLocalFile)
+      {
+        FTerminal->DoDeleteLocalFile(DestFullName);
+      }
+    }); try
     {
       TLibS3GetObjectDataCallbackData Data;
 
@@ -2793,15 +2801,7 @@ void __fastcall TS3FileSystem::Sink(
           LocalHandle, File->Modification, File->ModificationFmt, FTerminal->SessionData->DSTMode);
       }
     }
-    __finally
-    {
-      CloseHandle(LocalHandle);
-
-      if (DeleteLocalFile)
-      {
-        FTerminal->DoDeleteLocalFile(DestFullName);
-      }
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   FILE_OPERATION_LOOP_END(FMTLOAD(TRANSFER_ERROR, (FileName)));
 

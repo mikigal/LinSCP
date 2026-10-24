@@ -9,8 +9,8 @@ class TNamedObjectList;
 class TNamedObject : public TPersistent
 {
 public:
-  __property UnicodeString Name = { read = FName, write = SetName };
-  __property bool Hidden = { read = FHidden };
+  UnicodeString __property_get_Name() const { return FName; } void __property_set_Name(UnicodeString Value) { SetName(Value); } __declspec(property(get = __property_get_Name, put = __property_set_Name)) UnicodeString Name;
+  bool __property_get_Hidden() const { return FHidden; } __declspec(property(get = __property_get_Hidden)) bool Hidden;
   __fastcall TNamedObject() {}
   bool __fastcall IsSameName(const UnicodeString & Name);
   virtual int __fastcall Compare(TNamedObject * Other);
@@ -43,8 +43,8 @@ public:
   int __fastcall Add(TObject * AObject);
   virtual TNamedObject * __fastcall AtObject(Integer Index);
   TNamedObject * __fastcall FindByName(const UnicodeString & Name);
-  __property int Count = { read = GetCount };
-  __property int CountIncludingHidden = { read = GetCountIncludingHidden };
+  int __property_get_Count() const { return ::rtl::Mutable(this)->GetCount(); } __declspec(property(get = __property_get_Count)) int Count;
+  int __property_get_CountIncludingHidden() const { return ::rtl::Mutable(this)->GetCountIncludingHidden(); } __declspec(property(get = __property_get_CountIncludingHidden)) int CountIncludingHidden;
 };
 //---------------------------------------------------------------------------
 int __fastcall NamedObjectSortProc(void * Item1, void * Item2);

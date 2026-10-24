@@ -27,7 +27,7 @@ __fastcall TScriptProcParams::TScriptProcParams(const UnicodeString & FullComman
 class TScriptCommands : TStringList
 {
 public:
-  typedef void __fastcall (__closure *TCommandProc)(TScriptProcParams * Parameters);
+  typedef TMethodPtr<void(TScriptProcParams * Parameters)> TCommandProc;
 
   __fastcall TScriptCommands(TScript * Script);
   virtual __fastcall ~TScriptCommands();
@@ -209,7 +209,10 @@ int __fastcall TScriptCommands::FindCommand(const wchar_t ** Commands, size_t Co
 {
   int Result;
   TStringList * Strings = new TStringList;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Strings;
+  }); try
   {
     Strings->CaseSensitive = false;
 
@@ -220,10 +223,7 @@ int __fastcall TScriptCommands::FindCommand(const wchar_t ** Commands, size_t Co
 
     Result = FindCommand(Strings, Command, Matches);
   }
-  __finally
-  {
-    delete Strings;
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -340,40 +340,40 @@ void __fastcall TScript::Init()
   FWarnNonDefaultSynchronizeParams = false;
 
   FCommands = new TScriptCommands(this);
-  FCommands->Register(L"help", SCRIPT_HELP_DESC, SCRIPT_HELP_HELP, &HelpProc, 0, -1, false);
-  FCommands->Register(L"man", 0, SCRIPT_HELP_HELP, &HelpProc, 0, -1, false);
+  FCommands->Register(L"help", SCRIPT_HELP_DESC, SCRIPT_HELP_HELP, ::rtl::MethodPtr(this, &TScript::HelpProc), 0, -1, false);
+  FCommands->Register(L"man", 0, SCRIPT_HELP_HELP, ::rtl::MethodPtr(this, &TScript::HelpProc), 0, -1, false);
   // the call command does not have switches itself, but the commands may have
-  FCommands->Register(L"call", SCRIPT_CALL_DESC2, SCRIPT_CALL_HELP2, &CallProc, 1, -1, true);
-  FCommands->Register(L"!", 0, SCRIPT_CALL_HELP2, &CallProc, 1, -1, true);
-  FCommands->Register(L"pwd", SCRIPT_PWD_DESC, SCRIPT_PWD_HELP, &PwdProc, 0, 0, false);
-  FCommands->Register(L"cd", SCRIPT_CD_DESC, SCRIPT_CD_HELP, &CdProc, 0, 1, false);
-  FCommands->Register(L"ls", SCRIPT_LS_DESC, SCRIPT_LS_HELP2, &LsProc, 0, 1, false);
-  FCommands->Register(L"dir", 0, SCRIPT_LS_HELP2, &LsProc, 0, 1, false);
-  FCommands->Register(L"rm", SCRIPT_RM_DESC, SCRIPT_RM_HELP2, &RmProc, 1, -1, true);
-  FCommands->Register(L"rmdir", SCRIPT_RMDIR_DESC, SCRIPT_RMDIR_HELP, &RmDirProc, 1, -1, false);
-  FCommands->Register(L"mv", SCRIPT_MV_DESC, SCRIPT_MV_HELP2, &MvProc, 2, -1, false);
-  FCommands->Register(L"rename", 0, SCRIPT_MV_HELP2, &MvProc, 2, -1, false);
-  FCommands->Register(L"cp", SCRIPT_CP_DESC, SCRIPT_CP_HELP, &CpProc, 2, -1, false);
-  FCommands->Register(L"chmod", SCRIPT_CHMOD_DESC, SCRIPT_CHMOD_HELP2, &ChModProc, 2, -1, false);
-  FCommands->Register(L"ln", SCRIPT_LN_DESC, SCRIPT_LN_HELP, &LnProc, 2, 2, false);
-  FCommands->Register(L"symlink", 0, SCRIPT_LN_HELP, &LnProc, 2, 2, false);
-  FCommands->Register(L"mkdir", SCRIPT_MKDIR_DESC, SCRIPT_MKDIR_HELP, &MkDirProc, 1, 1, false);
-  FCommands->Register(L"get", SCRIPT_GET_DESC, SCRIPT_GET_HELP8, &GetProc, 0, -1, true);
-  FCommands->Register(L"recv", 0, SCRIPT_GET_HELP8, &GetProc, 0, -1, true);
-  FCommands->Register(L"mget", 0, SCRIPT_GET_HELP8, &GetProc, 0, -1, true);
-  FCommands->Register(L"put", SCRIPT_PUT_DESC, SCRIPT_PUT_HELP8, &PutProc, 0, -1, true);
-  FCommands->Register(L"send", 0, SCRIPT_PUT_HELP8, &PutProc, 0, -1, true);
-  FCommands->Register(L"mput", 0, SCRIPT_PUT_HELP8, &PutProc, 0, -1, true);
-  FCommands->Register(L"option", SCRIPT_OPTION_DESC, SCRIPT_OPTION_HELP7, &OptionProc, -1, 2, false);
-  FCommands->Register(L"ascii", 0, SCRIPT_OPTION_HELP7, &AsciiProc, 0, 0, false);
-  FCommands->Register(L"binary", 0, SCRIPT_OPTION_HELP7, &BinaryProc, 0, 0, false);
-  FCommands->Register(L"synchronize", SCRIPT_SYNCHRONIZE_DESC, SCRIPT_SYNCHRONIZE_HELP7, &SynchronizeProc, 0, -1, true);
-  FCommands->Register(L"keepuptodate", SCRIPT_KEEPUPTODATE_DESC, SCRIPT_KEEPUPTODATE_HELP5, &KeepUpToDateProc, 0, 2, true);
+  FCommands->Register(L"call", SCRIPT_CALL_DESC2, SCRIPT_CALL_HELP2, ::rtl::MethodPtr(this, &TScript::CallProc), 1, -1, true);
+  FCommands->Register(L"!", 0, SCRIPT_CALL_HELP2, ::rtl::MethodPtr(this, &TScript::CallProc), 1, -1, true);
+  FCommands->Register(L"pwd", SCRIPT_PWD_DESC, SCRIPT_PWD_HELP, ::rtl::MethodPtr(this, &TScript::PwdProc), 0, 0, false);
+  FCommands->Register(L"cd", SCRIPT_CD_DESC, SCRIPT_CD_HELP, ::rtl::MethodPtr(this, &TScript::CdProc), 0, 1, false);
+  FCommands->Register(L"ls", SCRIPT_LS_DESC, SCRIPT_LS_HELP2, ::rtl::MethodPtr(this, &TScript::LsProc), 0, 1, false);
+  FCommands->Register(L"dir", 0, SCRIPT_LS_HELP2, ::rtl::MethodPtr(this, &TScript::LsProc), 0, 1, false);
+  FCommands->Register(L"rm", SCRIPT_RM_DESC, SCRIPT_RM_HELP2, ::rtl::MethodPtr(this, &TScript::RmProc), 1, -1, true);
+  FCommands->Register(L"rmdir", SCRIPT_RMDIR_DESC, SCRIPT_RMDIR_HELP, ::rtl::MethodPtr(this, &TScript::RmDirProc), 1, -1, false);
+  FCommands->Register(L"mv", SCRIPT_MV_DESC, SCRIPT_MV_HELP2, ::rtl::MethodPtr(this, &TScript::MvProc), 2, -1, false);
+  FCommands->Register(L"rename", 0, SCRIPT_MV_HELP2, ::rtl::MethodPtr(this, &TScript::MvProc), 2, -1, false);
+  FCommands->Register(L"cp", SCRIPT_CP_DESC, SCRIPT_CP_HELP, ::rtl::MethodPtr(this, &TScript::CpProc), 2, -1, false);
+  FCommands->Register(L"chmod", SCRIPT_CHMOD_DESC, SCRIPT_CHMOD_HELP2, ::rtl::MethodPtr(this, &TScript::ChModProc), 2, -1, false);
+  FCommands->Register(L"ln", SCRIPT_LN_DESC, SCRIPT_LN_HELP, ::rtl::MethodPtr(this, &TScript::LnProc), 2, 2, false);
+  FCommands->Register(L"symlink", 0, SCRIPT_LN_HELP, ::rtl::MethodPtr(this, &TScript::LnProc), 2, 2, false);
+  FCommands->Register(L"mkdir", SCRIPT_MKDIR_DESC, SCRIPT_MKDIR_HELP, ::rtl::MethodPtr(this, &TScript::MkDirProc), 1, 1, false);
+  FCommands->Register(L"get", SCRIPT_GET_DESC, SCRIPT_GET_HELP8, ::rtl::MethodPtr(this, &TScript::GetProc), 0, -1, true);
+  FCommands->Register(L"recv", 0, SCRIPT_GET_HELP8, ::rtl::MethodPtr(this, &TScript::GetProc), 0, -1, true);
+  FCommands->Register(L"mget", 0, SCRIPT_GET_HELP8, ::rtl::MethodPtr(this, &TScript::GetProc), 0, -1, true);
+  FCommands->Register(L"put", SCRIPT_PUT_DESC, SCRIPT_PUT_HELP8, ::rtl::MethodPtr(this, &TScript::PutProc), 0, -1, true);
+  FCommands->Register(L"send", 0, SCRIPT_PUT_HELP8, ::rtl::MethodPtr(this, &TScript::PutProc), 0, -1, true);
+  FCommands->Register(L"mput", 0, SCRIPT_PUT_HELP8, ::rtl::MethodPtr(this, &TScript::PutProc), 0, -1, true);
+  FCommands->Register(L"option", SCRIPT_OPTION_DESC, SCRIPT_OPTION_HELP7, ::rtl::MethodPtr(this, &TScript::OptionProc), -1, 2, false);
+  FCommands->Register(L"ascii", 0, SCRIPT_OPTION_HELP7, ::rtl::MethodPtr(this, &TScript::AsciiProc), 0, 0, false);
+  FCommands->Register(L"binary", 0, SCRIPT_OPTION_HELP7, ::rtl::MethodPtr(this, &TScript::BinaryProc), 0, 0, false);
+  FCommands->Register(L"synchronize", SCRIPT_SYNCHRONIZE_DESC, SCRIPT_SYNCHRONIZE_HELP7, ::rtl::MethodPtr(this, &TScript::SynchronizeProc), 0, -1, true);
+  FCommands->Register(L"keepuptodate", SCRIPT_KEEPUPTODATE_DESC, SCRIPT_KEEPUPTODATE_HELP5, ::rtl::MethodPtr(this, &TScript::KeepUpToDateProc), 0, 2, true);
   // the echo command does not have switches actually, but it must handle dashes in its arguments
-  FCommands->Register(L"echo", SCRIPT_ECHO_DESC, SCRIPT_ECHO_HELP, &EchoProc, -1, -1, true);
-  FCommands->Register(L"stat", SCRIPT_STAT_DESC, SCRIPT_STAT_HELP, &StatProc, 1, 1, false);
-  FCommands->Register(L"checksum", SCRIPT_CHECKSUM_DESC, SCRIPT_CHECKSUM_HELP, &ChecksumProc, 2, 2, false);
-  FCommands->Register(COPYID_COMMAND, 0, 0, &CopyIdProc, 1, 1, false);
+  FCommands->Register(L"echo", SCRIPT_ECHO_DESC, SCRIPT_ECHO_HELP, ::rtl::MethodPtr(this, &TScript::EchoProc), -1, -1, true);
+  FCommands->Register(L"stat", SCRIPT_STAT_DESC, SCRIPT_STAT_HELP, ::rtl::MethodPtr(this, &TScript::StatProc), 1, 1, false);
+  FCommands->Register(L"checksum", SCRIPT_CHECKSUM_DESC, SCRIPT_CHECKSUM_HELP, ::rtl::MethodPtr(this, &TScript::ChecksumProc), 2, 2, false);
+  FCommands->Register(COPYID_COMMAND, 0, 0, ::rtl::MethodPtr(this, &TScript::CopyIdProc), 1, 1, false);
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::RequireParams(TScriptProcParams * Parameters, int MinParams)
@@ -506,7 +506,7 @@ void __fastcall TScript::Command(UnicodeString Cmd)
           if (DebugAlwaysTrue(CutToken(LogCmdParams, DummyLogCmd)))
           {
             std::unique_ptr<TScriptProcParams> Parameters(new TScriptProcParams(FCommands->ResolveCommand(Cmd), LogCmdParams));
-            Parameters->LogOptions(LogOption);
+            Parameters->LogOptions(::rtl::MethodPtr(this, &TScript::LogOption));
           }
         }
 
@@ -521,7 +521,21 @@ void __fastcall TScript::Command(UnicodeString Cmd)
           BeforeGroupTerminal->ActionLog->BeginGroup(LogCmd);
         }
         int ASessionReopenTimeout = Configuration->SessionReopenTimeout;
-        try
+        { ::rtl::TFinally Finally([&]()
+        {
+          Configuration->SessionReopenTimeout = ASessionReopenTimeout;
+
+          TTerminal * AfterGroupTerminal = FGroups ? Terminal : NULL;
+          if (AfterGroupTerminal != NULL)
+          {
+            // this happens for "open" command
+            if (AfterGroupTerminal != BeforeGroupTerminal)
+            {
+              AfterGroupTerminal->ActionLog->BeginGroup(LogCmd);
+            }
+            AfterGroupTerminal->ActionLog->EndGroup();
+          }
+        }); try
         {
           Configuration->SessionReopenTimeout = FSessionReopenTimeout;
           try
@@ -538,21 +552,7 @@ void __fastcall TScript::Command(UnicodeString Cmd)
             }
           }
         }
-        __finally
-        {
-          Configuration->SessionReopenTimeout = ASessionReopenTimeout;
-
-          TTerminal * AfterGroupTerminal = FGroups ? Terminal : NULL;
-          if (AfterGroupTerminal != NULL)
-          {
-            // this happens for "open" command
-            if (AfterGroupTerminal != BeforeGroupTerminal)
-            {
-              AfterGroupTerminal->ActionLog->BeginGroup(LogCmd);
-            }
-            AfterGroupTerminal->ActionLog->EndGroup();
-          }
-        }
+        catch (...) { Finally.Unwind(); } }
       }
     }
   }
@@ -572,7 +572,10 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
   try
   {
     TStringList * FileLists = NULL;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete FileLists;
+    }); try
     {
       for (int i = Start; i <= End; i++)
       {
@@ -654,7 +657,10 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
           if (FLAGSET(ListType, fltQueryServer))
           {
             FTerminal->ExceptionOnFail = true;
-            try
+            { ::rtl::TFinally Finally([&]()
+            {
+              FTerminal->ExceptionOnFail = false;
+            }); try
             {
               File = FTerminal->ReadFile(UnixExcludeTrailingBackslash(FileName));
               if (!File->HaveFullFileName)
@@ -662,19 +668,13 @@ TStrings * __fastcall TScript::CreateFileList(TScriptProcParams * Parameters, in
                 File->FullFileName = FileName;
               }
             }
-            __finally
-            {
-              FTerminal->ExceptionOnFail = false;
-            }
+            catch (...) { Finally.Unwind(); } }
           }
           Result->AddObject(FileName, File);
         }
       }
     }
-    __finally
-    {
-      delete FileLists;
-    }
+    catch (...) { Finally.Unwind(); } }
 
     if (FLAGSET(ListType, fltLatest) && (Result->Count > 1))
     {
@@ -1164,7 +1164,7 @@ void __fastcall TScript::CallProc(TScriptProcParams * Parameters)
   if (EnsureCommandSessionFallback(fcAnyCommand, &Action))
   {
     Action.Cancel();
-    FTerminal->AnyCommand(Parameters->ParamsStr, TerminalCaptureLog);
+    FTerminal->AnyCommand(Parameters->ParamsStr, ::rtl::MethodPtr(this, &TScript::TerminalCaptureLog));
   }
 }
 //---------------------------------------------------------------------------
@@ -1180,16 +1180,16 @@ void __fastcall TScript::StatProc(TScriptProcParams * Parameters)
   UnicodeString Path = UnixExcludeTrailingBackslash(Parameters->Param[1]);
   FTerminal->ExceptionOnFail = true;
   TRemoteFile * File = NULL;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FTerminal->ExceptionOnFail = false;
+    delete File;
+  }); try
   {
     File = FTerminal->ReadFileListing(Path);
     PrintLine(File->ListingStr);
   }
-  __finally
-  {
-    FTerminal->ExceptionOnFail = false;
-    delete File;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::DoCalculatedChecksum(
@@ -1217,7 +1217,11 @@ void __fastcall TScript::ChecksumProc(TScriptProcParams * Parameters)
     UnicodeString Alg = Parameters->Param[1];
     TStrings * FileList = CreateFileList(Parameters, 2, 2, fltQueryServer);
     FTerminal->ExceptionOnFail = true;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      FTerminal->ExceptionOnFail = false;
+      FreeFileList(FileList);
+    }); try
     {
       if ((FileList->Count != 1) ||
           DebugNotNull(dynamic_cast<TRemoteFile *>(FileList->Objects[0]))->IsDirectory)
@@ -1225,13 +1229,9 @@ void __fastcall TScript::ChecksumProc(TScriptProcParams * Parameters)
         throw Exception(FMTLOAD(NOT_FILE_ERROR, (FileList->Strings[0])));
       }
 
-      FTerminal->CalculateFilesChecksum(Alg, FileList, DoCalculatedChecksum);
+      FTerminal->CalculateFilesChecksum(Alg, FileList, ::rtl::MethodPtr(this, &TScript::DoCalculatedChecksum));
     }
-    __finally
-    {
-      FTerminal->ExceptionOnFail = false;
-      FreeFileList(FileList);
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -1305,7 +1305,10 @@ void __fastcall TScript::LsProc(TScriptProcParams * Parameters)
   // on error user may select "skip", then we get NULL
   if (FileList != NULL)
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete FileList;
+    }); try
     {
       if (FileList->Count > 0)
       {
@@ -1322,10 +1325,7 @@ void __fastcall TScript::LsProc(TScriptProcParams * Parameters)
         }
       }
     }
-    __finally
-    {
-      delete FileList;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -1337,15 +1337,15 @@ void __fastcall TScript::RmProc(TScriptProcParams * Parameters)
   TStrings * FileList = CreateFileList(
     Parameters, 1, Parameters->ParamCount,
     static_cast<TFileListType>(fltQueryServer | fltMask| FLAGMASK(OnlyFile, fltOnlyFile)));
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileList(FileList);
+  }); try
   {
     CheckParams(Parameters);
     FTerminal->DeleteFiles(FileList);
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::RmDirProc(TScriptProcParams * Parameters)
@@ -1353,14 +1353,14 @@ void __fastcall TScript::RmDirProc(TScriptProcParams * Parameters)
   CheckSession();
 
   TStrings * FileList = CreateFileList(Parameters, 1, Parameters->ParamCount, fltDirectories);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileList(FileList);
+  }); try
   {
     FTerminal->DeleteFiles(FileList);
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::DoMvOrCp(TScriptProcParams * Parameters, TFSCapability Capability, bool Cp)
@@ -1374,7 +1374,10 @@ void __fastcall TScript::DoMvOrCp(TScriptProcParams * Parameters, TFSCapability 
 
   TStrings * FileList =
     CreateFileList(Parameters, 1, Parameters->ParamCount - 1, TFileListType(fltMask | fltQueryServer));
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileList(FileList);
+  }); try
   {
     DebugAssert(Parameters->ParamCount >= 1);
     UnicodeString Target = Parameters->Param[Parameters->ParamCount];
@@ -1393,10 +1396,7 @@ void __fastcall TScript::DoMvOrCp(TScriptProcParams * Parameters, TFSCapability 
       FTerminal->MoveFiles(FileList, TargetDirectory, FileMask, DontOverwrite);
     }
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::MvProc(TScriptProcParams * Parameters)
@@ -1419,7 +1419,10 @@ void __fastcall TScript::ChModProc(TScriptProcParams * Parameters)
 
   TStrings * FileList = CreateFileList(Parameters, 2, Parameters->ParamCount,
     fltMask);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileList(FileList);
+  }); try
   {
     TRemoteProperties Properties;
     Properties.Valid = TValidProperties() << vpRights;
@@ -1427,10 +1430,7 @@ void __fastcall TScript::ChModProc(TScriptProcParams * Parameters)
 
     FTerminal->ChangeFilesProperties(FileList, &Properties);
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::LnProc(TScriptProcParams * Parameters)
@@ -1479,7 +1479,10 @@ void __fastcall TScript::GetProc(TScriptProcParams * Parameters)
   }
   TStrings * FileList = CreateFileList(Parameters, 1, LastFileParam,
     static_cast<TFileListType>(fltQueryServer | fltMask | FLAGMASK(Latest, fltLatest) | FLAGMASK(OnlyFile, fltOnlyFile)));
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FreeFileList(FileList);
+  }); try
   {
     UnicodeString TargetDirectory;
     if (CopyParam.OnTransferOut == NULL)
@@ -1508,10 +1511,7 @@ void __fastcall TScript::GetProc(TScriptProcParams * Parameters)
 
     FTerminal->CopyToLocal(FileList, TargetDirectory, &CopyParam, Params, NULL);
   }
-  __finally
-  {
-    FreeFileList(FileList);
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
@@ -1545,7 +1545,10 @@ void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
   {
     FileList = CreateLocalFileList(Parameters, 1, LastFileParam, static_cast<TFileListType>(fltMask | FLAGMASK(Latest, fltLatest)));
   }
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete FileList;
+  }); try
   {
     UnicodeString TargetDirectory;
     if (Parameters->ParamCount == 1)
@@ -1580,10 +1583,7 @@ void __fastcall TScript::PutProc(TScriptProcParams * Parameters)
 
     FTerminal->CopyToRemote(FileList, TargetDirectory, &CopyParam, Params, NULL);
   }
-  __finally
-  {
-    delete FileList;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 TTransferMode __fastcall TScript::ParseTransferModeName(UnicodeString Name)
@@ -1952,7 +1952,10 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
   DebugAssert(FSynchronizeMode < 0);
   FSynchronizeMode = TScriptCommands::FindCommand(ModeNames, std::size(ModeNames), ModeName);
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FSynchronizeMode = -1;
+  }); try
   {
     if (FSynchronizeMode < 0)
     {
@@ -2067,7 +2070,10 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
         FTerminal->SynchronizeCollect(LocalDirectory, RemoteDirectory,
           static_cast<TTerminal::TSynchronizeMode>(FSynchronizeMode),
           &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory, NULL);
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        delete Checklist;
+      }); try
       {
         int Index = 0;
         const TSynchronizeChecklist::TItem * DummyItem;
@@ -2090,16 +2096,10 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
           NoMatch(LoadStr(SCRIPT_SYNCHRONIZE_NODIFFERENCE));
         }
       }
-      __finally
-      {
-        delete Checklist;
-      }
+      catch (...) { Finally.Unwind(); } }
     }
   }
-  __finally
-  {
-    FSynchronizeMode = -1;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TScript::Synchronize(const UnicodeString LocalDirectory,
@@ -2113,15 +2113,7 @@ void __fastcall TScript::Synchronize(const UnicodeString LocalDirectory,
     TSynchronizeChecklist * AChecklist =
       FTerminal->SynchronizeCollect(LocalDirectory, RemoteDirectory, TTerminal::smRemote,
         &CopyParam, SynchronizeParams, NULL, NULL);
-    try
-    {
-      if (AChecklist->Count > 0)
-      {
-        FTerminal->SynchronizeApply(
-          AChecklist, &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory, NULL, NULL, NULL, NULL);
-      }
-    }
-    __finally
+    { ::rtl::TFinally Finally([&]()
     {
       if (Checklist == NULL)
       {
@@ -2131,7 +2123,15 @@ void __fastcall TScript::Synchronize(const UnicodeString LocalDirectory,
       {
         *Checklist = AChecklist;
       }
+    }); try
+    {
+      if (AChecklist->Count > 0)
+      {
+        FTerminal->SynchronizeApply(
+          AChecklist, &CopyParam, SynchronizeParams, OnTerminalSynchronizeDirectory, NULL, NULL, NULL, NULL);
+      }
     }
+    catch (...) { Finally.Unwind(); } }
 
     // to break line after the last transfer (if any);
     Print(L"");
@@ -2198,16 +2198,16 @@ __fastcall TManagementScript::TManagementScript(TStoredSessionList * StoredSessi
   FOnQueryCancel = NULL;
   FContinue = true;
 
-  OnTerminalSynchronizeDirectory = TerminalSynchronizeDirectory;
+  OnTerminalSynchronizeDirectory = ::rtl::MethodPtr(this, &TManagementScript::TerminalSynchronizeDirectory);
 
-  FCommands->Register(EXIT_COMMAND, SCRIPT_EXIT_DESC, SCRIPT_EXIT_HELP, &ExitProc, 0, 0, false);
-  FCommands->Register(L"bye", 0, SCRIPT_EXIT_HELP, &ExitProc, 0, 0, false);
-  FCommands->Register(L"open", SCRIPT_OPEN_DESC, SCRIPT_OPEN_HELP11, &OpenProc, 0, -1, true);
-  FCommands->Register(L"close", SCRIPT_CLOSE_DESC, SCRIPT_CLOSE_HELP, &CloseProc, 0, 1, false);
-  FCommands->Register(L"session", SCRIPT_SESSION_DESC, SCRIPT_SESSION_HELP, &SessionProc, 0, 1, false);
-  FCommands->Register(L"lpwd", SCRIPT_LPWD_DESC, SCRIPT_LPWD_HELP, &LPwdProc, 0, 0, false);
-  FCommands->Register(L"lcd", SCRIPT_LCD_DESC, SCRIPT_LCD_HELP, &LCdProc, 1, 1, false);
-  FCommands->Register(L"lls", SCRIPT_LLS_DESC, SCRIPT_LLS_HELP2, &LLsProc, 0, 1, false);
+  FCommands->Register(EXIT_COMMAND, SCRIPT_EXIT_DESC, SCRIPT_EXIT_HELP, ::rtl::MethodPtr(this, &TManagementScript::ExitProc), 0, 0, false);
+  FCommands->Register(L"bye", 0, SCRIPT_EXIT_HELP, ::rtl::MethodPtr(this, &TManagementScript::ExitProc), 0, 0, false);
+  FCommands->Register(L"open", SCRIPT_OPEN_DESC, SCRIPT_OPEN_HELP11, ::rtl::MethodPtr(this, &TManagementScript::OpenProc), 0, -1, true);
+  FCommands->Register(L"close", SCRIPT_CLOSE_DESC, SCRIPT_CLOSE_HELP, ::rtl::MethodPtr(this, &TManagementScript::CloseProc), 0, 1, false);
+  FCommands->Register(L"session", SCRIPT_SESSION_DESC, SCRIPT_SESSION_HELP, ::rtl::MethodPtr(this, &TManagementScript::SessionProc), 0, 1, false);
+  FCommands->Register(L"lpwd", SCRIPT_LPWD_DESC, SCRIPT_LPWD_HELP, ::rtl::MethodPtr(this, &TManagementScript::LPwdProc), 0, 0, false);
+  FCommands->Register(L"lcd", SCRIPT_LCD_DESC, SCRIPT_LCD_HELP, ::rtl::MethodPtr(this, &TManagementScript::LCdProc), 1, 1, false);
+  FCommands->Register(L"lls", SCRIPT_LLS_DESC, SCRIPT_LLS_HELP2, ::rtl::MethodPtr(this, &TManagementScript::LLsProc), 0, 1, false);
 }
 //---------------------------------------------------------------------------
 __fastcall TManagementScript::~TManagementScript()
@@ -2731,7 +2731,10 @@ void __fastcall TManagementScript::Connect(const UnicodeString Session,
       DefaultsOnly = FLAGSET(ParsedInfo, piDefaultsOnly);
     }
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Data;
+    }); try
     {
       if (CheckParams)
       {
@@ -2771,19 +2774,22 @@ void __fastcall TManagementScript::Connect(const UnicodeString Session,
       TTerminal * ATerminal = FTerminalList->NewTerminal(Data);
       DebugAssert(FLoggingTerminal == NULL);
       FLoggingTerminal = ATerminal;
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        FLoggingTerminal = NULL;
+      }); try
       {
         try
         {
           ATerminal->AutoReadDirectory = false;
 
-          ATerminal->OnInformation = TerminalInformation;
-          ATerminal->OnPromptUser = TerminalPromptUser;
+          ATerminal->OnInformation = ::rtl::MethodPtr(this, &TManagementScript::TerminalInformation);
+          ATerminal->OnPromptUser = ::rtl::MethodPtr(this, &TManagementScript::TerminalPromptUser);
           ATerminal->OnShowExtendedException = OnShowExtendedException;
           ATerminal->OnQueryUser = OnTerminalQueryUser;
-          ATerminal->OnProgress = TerminalOperationProgress;
-          ATerminal->OnFinished = TerminalOperationFinished;
-          ATerminal->OnInitializeLog = TerminalInitializeLog;
+          ATerminal->OnProgress = ::rtl::MethodPtr(this, &TManagementScript::TerminalOperationProgress);
+          ATerminal->OnFinished = ::rtl::MethodPtr(this, &TManagementScript::TerminalOperationFinished);
+          ATerminal->OnInitializeLog = ::rtl::MethodPtr(this, &TManagementScript::TerminalInitializeLog);
 
           ConnectTerminal(ATerminal);
         }
@@ -2808,10 +2814,7 @@ void __fastcall TManagementScript::Connect(const UnicodeString Session,
           }
         }
       }
-      __finally
-      {
-        FLoggingTerminal = NULL;
-      }
+      catch (...) { Finally.Unwind(); } }
 
       if (ATerminal != NULL)
       {
@@ -2835,10 +2838,7 @@ void __fastcall TManagementScript::Connect(const UnicodeString Session,
         PrintActiveSession();
       }
     }
-    __finally
-    {
-      delete Data;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   catch(Exception & E)
   {
@@ -2856,23 +2856,7 @@ void __fastcall TManagementScript::DoClose(TTerminal * ATerminal)
 
   bool WasActiveTerminal = (FTerminal == ATerminal);
 
-  try
-  {
-    if (ATerminal->Active)
-    {
-      ATerminal->Close();
-    }
-
-    UnicodeString SessionName = ATerminal->SessionData->SessionName;
-    FreeTerminal(ATerminal);
-    if (WasActiveTerminal)
-    {
-      FTerminal = NULL;
-    }
-
-    PrintLine(FMTLOAD(SCRIPT_SESSION_CLOSED, (SessionName)));
-  }
-  __finally
+  { ::rtl::TFinally Finally([&]()
   {
     if (WasActiveTerminal)
     {
@@ -2893,7 +2877,23 @@ void __fastcall TManagementScript::DoClose(TTerminal * ATerminal)
         PrintLine(LoadStr(SCRIPT_NO_SESSION));
       }
     }
+  }); try
+  {
+    if (ATerminal->Active)
+    {
+      ATerminal->Close();
+    }
+
+    UnicodeString SessionName = ATerminal->SessionData->SessionName;
+    FreeTerminal(ATerminal);
+    if (WasActiveTerminal)
+    {
+      FTerminal = NULL;
+    }
+
+    PrintLine(FMTLOAD(SCRIPT_SESSION_CLOSED, (SessionName)));
   }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TManagementScript::DoChangeLocalDirectory(UnicodeString Directory)

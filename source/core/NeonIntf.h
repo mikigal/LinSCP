@@ -46,7 +46,7 @@ void CheckNeonStatus(ne_session * Session, int NeonStatus,
   const UnicodeString & HostName, const UnicodeString & CustomError = L"");
 UnicodeString GetNeonRedirectUrl(ne_session * Session);
 void CheckRedirectLoop(const UnicodeString & RedirectUrl, TStrings * AttemptedUrls);
-typedef void (__closure* TNeonTlsInit)(struct ssl_st * Ssl, ne_session * Session);
+typedef TMethodPtr<void(struct ssl_st * Ssl, ne_session * Session)> TNeonTlsInit;
 void SetNeonTlsInit(ne_session * Session, TNeonTlsInit OnNeonTlsInit, TTerminal * Terminal);
 void InitNeonTls(
   ne_session * Session, TNeonTlsInit OnNeonTlsInit, ne_ssl_verify_fn VerifyCallback, void * VerifyContext,

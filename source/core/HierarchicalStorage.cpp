@@ -1816,14 +1816,14 @@ void __fastcall TIniFileStorage::Flush()
         try
         {
           std::unique_ptr<TStream> Stream(new TSafeHandleStream(int(Handle)));
-          try
+          { ::rtl::TFinally Finally([&]()
+          {
+            CloseHandle(Handle);
+          }); try
           {
             Strings->SaveToStream(Stream.get());
           }
-          __finally
-          {
-            CloseHandle(Handle);
-          }
+          catch (...) { Finally.Unwind(); } }
         }
         catch (Exception & E)
         {
@@ -1856,7 +1856,10 @@ void __fastcall TIniFileStorage::ApplyOverrides()
 
       // this all uses raw names (munged)
       TStrings * Names = new TStringList;
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        delete Names;
+      }); try
       {
         FIniFile->ReadSection(Section, Names);
 
@@ -1867,10 +1870,7 @@ void __fastcall TIniFileStorage::ApplyOverrides()
           FIniFile->WriteString(SubKey, Name, Value);
         }
       }
-      __finally
-      {
-        delete Names;
-      }
+      catch (...) { Finally.Unwind(); } }
 
       FIniFile->EraseSection(Section);
       ResetCache();
@@ -2007,7 +2007,10 @@ void __fastcall TOptionsIniFile::ReadSection(const UnicodeString Section, TStrin
     UnicodeString SectionPrefix = FormatKey(Section, UnicodeString());
 
     Strings->BeginUpdate();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      Strings->EndUpdate();
+    }); try
     {
       for (int Index = 0; Index < FOptions->Count; Index++)
       {
@@ -2019,10 +2022,7 @@ void __fastcall TOptionsIniFile::ReadSection(const UnicodeString Section, TStrin
         }
       }
     }
-    __finally
-    {
-      Strings->EndUpdate();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
