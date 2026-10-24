@@ -49,17 +49,28 @@ public:
   double GetTotalSeconds() const { return static_cast<double>(FTicks) / TicksPerSecond; }
   double GetTotalMilliseconds() const { return static_cast<double>(FTicks) / TicksPerMillisecond; }
 
-  __declspec(property(get = GetTicks)) __int64 Ticks;
-  __declspec(property(get = GetDays)) int Days;
-  __declspec(property(get = GetHours)) int Hours;
-  __declspec(property(get = GetMinutes)) int Minutes;
-  __declspec(property(get = GetSeconds)) int Seconds;
-  __declspec(property(get = GetMilliseconds)) int Milliseconds;
-  __declspec(property(get = GetTotalDays)) double TotalDays;
-  __declspec(property(get = GetTotalHours)) double TotalHours;
-  __declspec(property(get = GetTotalMinutes)) double TotalMinutes;
-  __declspec(property(get = GetTotalSeconds)) double TotalSeconds;
-  __declspec(property(get = GetTotalMilliseconds)) double TotalMilliseconds;
+  RTL_PROPERTY_GET(Ticks, GetTicks)
+  __declspec(property(get = __property_get_Ticks)) __int64 Ticks;
+  RTL_PROPERTY_GET(Days, GetDays)
+  __declspec(property(get = __property_get_Days)) int Days;
+  RTL_PROPERTY_GET(Hours, GetHours)
+  __declspec(property(get = __property_get_Hours)) int Hours;
+  RTL_PROPERTY_GET(Minutes, GetMinutes)
+  __declspec(property(get = __property_get_Minutes)) int Minutes;
+  RTL_PROPERTY_GET(Seconds, GetSeconds)
+  __declspec(property(get = __property_get_Seconds)) int Seconds;
+  RTL_PROPERTY_GET(Milliseconds, GetMilliseconds)
+  __declspec(property(get = __property_get_Milliseconds)) int Milliseconds;
+  RTL_PROPERTY_GET(TotalDays, GetTotalDays)
+  __declspec(property(get = __property_get_TotalDays)) double TotalDays;
+  RTL_PROPERTY_GET(TotalHours, GetTotalHours)
+  __declspec(property(get = __property_get_TotalHours)) double TotalHours;
+  RTL_PROPERTY_GET(TotalMinutes, GetTotalMinutes)
+  __declspec(property(get = __property_get_TotalMinutes)) double TotalMinutes;
+  RTL_PROPERTY_GET(TotalSeconds, GetTotalSeconds)
+  __declspec(property(get = __property_get_TotalSeconds)) double TotalSeconds;
+  RTL_PROPERTY_GET(TotalMilliseconds, GetTotalMilliseconds)
+  __declspec(property(get = __property_get_TotalMilliseconds)) double TotalMilliseconds;
 
   TTimeSpan Add(const TTimeSpan & TS) const { return TTimeSpan(FTicks + TS.FTicks); }
   TTimeSpan Duration() const { return TTimeSpan((FTicks < 0) ? -FTicks : FTicks); }

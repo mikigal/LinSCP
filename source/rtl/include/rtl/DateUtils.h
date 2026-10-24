@@ -147,7 +147,8 @@ public:
   UnicodeString GetAbbreviation(const TDateTime ADateTime, const bool ForceDaylight = false);
   UnicodeString GetDisplayName(const TDateTime ADateTime, const bool ForceDaylight = false);
   UnicodeString GetID();
-  __declspec(property(get = GetID)) UnicodeString ID;
+  RTL_PROPERTY_GET(ID, GetID)
+  __declspec(property(get = __property_get_ID)) UnicodeString ID;
 };
 //---------------------------------------------------------------------------
 } // namespace Dateutils

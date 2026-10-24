@@ -1,93 +1,12 @@
 // A read-only XML DOM on top of expat with the interface of Delphi's
-// Xml.XMLIntf/Xml.XMLDoc (IXMLDocument, IXMLNode, IXMLNodeList, TXMLDocument),
-// plus the reference-counted interface support it needs (IInterface,
-// TInterfacedObject, DelphiInterface, interface_cast).
+// Xml.XMLIntf/Xml.XMLDoc (IXMLDocument, IXMLNode, IXMLNodeList, TXMLDocument).
 //---------------------------------------------------------------------------
 #ifndef RtlXmlH
 #define RtlXmlH
 //---------------------------------------------------------------------------
 #include <rtl/Classes.h>
+#include <rtl/Interface.h>
 #include <rtl/Variants.h>
-
-#include <atomic>
-//---------------------------------------------------------------------------
-namespace System
-{
-//---------------------------------------------------------------------------
-class IInterface
-{
-public:
-  virtual unsigned long AddRef() = 0;
-  virtual unsigned long Release() = 0;
-
-protected:
-  virtual ~IInterface() {}
-};
-typedef IInterface IUnknown;
-//---------------------------------------------------------------------------
-class TInterfacedObject : public TObject, public virtual IInterface
-{
-public:
-  virtual unsigned long AddRef() override { return ++FRefCount; }
-  virtual unsigned long Release() override
-  {
-    unsigned long Result = --FRefCount;
-    if (Result == 0)
-    {
-      delete this;
-    }
-    return Result;
-  }
-  int GetRefCount() const { return FRefCount; }
-  __declspec(property(get = GetRefCount)) int RefCount;
-
-private:
-  std::atomic<unsigned long> FRefCount{0};
-};
-//---------------------------------------------------------------------------
-// Smart pointer to an interface (C++Builder's _di_ types)
-template <class T>
-class DelphiInterface
-{
-public:
-  DelphiInterface() noexcept = default;
-  DelphiInterface(T * Intf) : FIntf(Intf) { if (FIntf != nullptr) FIntf->AddRef(); }
-  DelphiInterface(const DelphiInterface & Src) : DelphiInterface(Src.FIntf) {}
-  DelphiInterface(DelphiInterface && Src) noexcept : FIntf(Src.FIntf) { Src.FIntf = nullptr; }
-  ~DelphiInterface() { Reset(); }
-
-  DelphiInterface & operator =(const DelphiInterface & Rhs) { DelphiInterface(Rhs).Swap(*this); return *this; }
-  DelphiInterface & operator =(DelphiInterface && Rhs) noexcept { DelphiInterface(std::move(Rhs)).Swap(*this); return *this; }
-  DelphiInterface & operator =(T * Rhs) { DelphiInterface(Rhs).Swap(*this); return *this; }
-
-  T * operator ->() const { return FIntf; }
-  operator T * () const { return FIntf; }
-  T & operator *() const { return *FIntf; }
-  T * GetInterface() const { return FIntf; }
-  bool operator !() const { return (FIntf == nullptr); }
-
-private:
-  void Reset()
-  {
-    if (FIntf != nullptr)
-    {
-      T * Intf = FIntf;
-      FIntf = nullptr;
-      Intf->Release();
-    }
-  }
-  void Swap(DelphiInterface & Other) noexcept { std::swap(FIntf, Other.FIntf); }
-
-  T * FIntf = nullptr;
-};
-//---------------------------------------------------------------------------
-template <class I, class T>
-DelphiInterface<I> interface_cast(T * Object)
-{
-  return DelphiInterface<I>(dynamic_cast<I *>(Object));
-}
-//---------------------------------------------------------------------------
-} // namespace System
 //---------------------------------------------------------------------------
 namespace Xml
 {
@@ -124,8 +43,10 @@ public:
   virtual int IndexOf(const System::UnicodeString Name) = 0;
 
   _di_IXMLNode GetNode(int Index) { return Get(Index); }
-  __declspec(property(get = GetCount)) int Count;
-  __declspec(property(get = GetNode)) _di_IXMLNode Nodes[];
+  RTL_PROPERTY_GET(Count, GetCount)
+  __declspec(property(get = __property_get_Count)) int Count;
+  RTL_PROPERTY_GET(Nodes, GetNode)
+  __declspec(property(get = __property_get_Nodes)) _di_IXMLNode Nodes[];
 };
 //---------------------------------------------------------------------------
 class IXMLNode : public virtual System::IInterface
@@ -147,20 +68,34 @@ public:
   virtual bool HasAttribute(const System::UnicodeString Name) = 0;
   virtual System::UnicodeString GetXML() = 0;
 
-  __declspec(property(get = GetNodeName)) System::UnicodeString NodeName;
-  __declspec(property(get = GetLocalName)) System::UnicodeString LocalName;
-  __declspec(property(get = GetNamespaceURI)) System::UnicodeString NamespaceURI;
-  __declspec(property(get = GetPrefix)) System::UnicodeString Prefix;
-  __declspec(property(get = GetNodeType)) TNodeType NodeType;
-  __declspec(property(get = GetNodeValue)) System::OleVariant NodeValue;
-  __declspec(property(get = GetText)) System::UnicodeString Text;
-  __declspec(property(get = GetChildNodes)) _di_IXMLNodeList ChildNodes;
-  __declspec(property(get = GetAttributeNodes)) _di_IXMLNodeList AttributeNodes;
-  __declspec(property(get = GetParentNode)) _di_IXMLNode ParentNode;
-  __declspec(property(get = GetHasChildNodes)) bool HasChildNodes;
-  __declspec(property(get = GetIsTextElement)) bool IsTextElement;
-  __declspec(property(get = GetAttribute)) System::OleVariant Attributes[];
-  __declspec(property(get = GetXML)) System::UnicodeString XML;
+  RTL_PROPERTY_GET(NodeName, GetNodeName)
+  __declspec(property(get = __property_get_NodeName)) System::UnicodeString NodeName;
+  RTL_PROPERTY_GET(LocalName, GetLocalName)
+  __declspec(property(get = __property_get_LocalName)) System::UnicodeString LocalName;
+  RTL_PROPERTY_GET(NamespaceURI, GetNamespaceURI)
+  __declspec(property(get = __property_get_NamespaceURI)) System::UnicodeString NamespaceURI;
+  RTL_PROPERTY_GET(Prefix, GetPrefix)
+  __declspec(property(get = __property_get_Prefix)) System::UnicodeString Prefix;
+  RTL_PROPERTY_GET(NodeType, GetNodeType)
+  __declspec(property(get = __property_get_NodeType)) TNodeType NodeType;
+  RTL_PROPERTY_GET(NodeValue, GetNodeValue)
+  __declspec(property(get = __property_get_NodeValue)) System::OleVariant NodeValue;
+  RTL_PROPERTY_GET(Text, GetText)
+  __declspec(property(get = __property_get_Text)) System::UnicodeString Text;
+  RTL_PROPERTY_GET(ChildNodes, GetChildNodes)
+  __declspec(property(get = __property_get_ChildNodes)) _di_IXMLNodeList ChildNodes;
+  RTL_PROPERTY_GET(AttributeNodes, GetAttributeNodes)
+  __declspec(property(get = __property_get_AttributeNodes)) _di_IXMLNodeList AttributeNodes;
+  RTL_PROPERTY_GET(ParentNode, GetParentNode)
+  __declspec(property(get = __property_get_ParentNode)) _di_IXMLNode ParentNode;
+  RTL_PROPERTY_GET(HasChildNodes, GetHasChildNodes)
+  __declspec(property(get = __property_get_HasChildNodes)) bool HasChildNodes;
+  RTL_PROPERTY_GET(IsTextElement, GetIsTextElement)
+  __declspec(property(get = __property_get_IsTextElement)) bool IsTextElement;
+  RTL_PROPERTY_GET(Attributes, GetAttribute)
+  __declspec(property(get = __property_get_Attributes)) System::OleVariant Attributes[];
+  RTL_PROPERTY_GET(XML, GetXML)
+  __declspec(property(get = __property_get_XML)) System::UnicodeString XML;
 };
 //---------------------------------------------------------------------------
 } // namespace Xmlintf
@@ -191,12 +126,18 @@ public:
   virtual System::UnicodeString GetEncoding() = 0;
   virtual System::UnicodeString GetVersion() = 0;
 
-  __declspec(property(get = GetChildNodes)) _di_IXMLNodeList ChildNodes;
-  __declspec(property(get = GetDocumentElement)) _di_IXMLNode DocumentElement;
-  __declspec(property(get = GetActive, put = SetActive)) bool Active;
-  __declspec(property(get = GetParseOptions, put = SetParseOptions)) Xmldoc::TParseOptions ParseOptions;
-  __declspec(property(get = GetEncoding)) System::UnicodeString Encoding;
-  __declspec(property(get = GetVersion)) System::UnicodeString Version;
+  RTL_PROPERTY_GET(ChildNodes, GetChildNodes)
+  __declspec(property(get = __property_get_ChildNodes)) _di_IXMLNodeList ChildNodes;
+  RTL_PROPERTY_GET(DocumentElement, GetDocumentElement)
+  __declspec(property(get = __property_get_DocumentElement)) _di_IXMLNode DocumentElement;
+  RTL_PROPERTY_GET(Active, GetActive) RTL_PROPERTY_PUT(Active, SetActive)
+  __declspec(property(get = __property_get_Active, put = __property_set_Active)) bool Active;
+  RTL_PROPERTY_GET(ParseOptions, GetParseOptions) RTL_PROPERTY_PUT(ParseOptions, SetParseOptions)
+  __declspec(property(get = __property_get_ParseOptions, put = __property_set_ParseOptions)) Xmldoc::TParseOptions ParseOptions;
+  RTL_PROPERTY_GET(Encoding, GetEncoding)
+  __declspec(property(get = __property_get_Encoding)) System::UnicodeString Encoding;
+  RTL_PROPERTY_GET(Version, GetVersion)
+  __declspec(property(get = __property_get_Version)) System::UnicodeString Version;
 };
 //---------------------------------------------------------------------------
 } // namespace Xmlintf
@@ -215,8 +156,8 @@ public:
   explicit TXMLDocument(const System::UnicodeString AFileName);
   virtual ~TXMLDocument();
 
-  virtual unsigned long AddRef() override { return TInterfacedObject::AddRef(); }
-  virtual unsigned long Release() override { return TInterfacedObject::Release(); }
+  virtual ULONG AddRef() override { return TInterfacedObject::AddRef(); }
+  virtual ULONG Release() override { return TInterfacedObject::Release(); }
 
   virtual void LoadFromFile(const System::UnicodeString AFileName) override;
   virtual void LoadFromStream(System::Classes::TStream * Stream) override;

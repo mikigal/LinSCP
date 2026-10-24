@@ -19,6 +19,8 @@
 
 // C++Builder's headers make these available everywhere
 #include <algorithm>
+#include <cstdlib>
+#include <cwctype>
 #include <memory>
 #include <vector>
 //---------------------------------------------------------------------------
@@ -117,5 +119,15 @@ void SetCommandLine(int ArgC, const char * const * ArgV);
 } // namespace rtl
 //---------------------------------------------------------------------------
 using namespace System;
+//---------------------------------------------------------------------------
+// Delphi's Boolean constants
+const bool True = true;
+const bool False = false;
+//---------------------------------------------------------------------------
+// C++Builder's C runtime: a random number in 0..Num-1 (from rand)
+inline int random(int Num)
+{
+  return static_cast<int>((static_cast<long long>(rand()) * Num) / (static_cast<long long>(RAND_MAX) + 1));
+}
 //---------------------------------------------------------------------------
 #endif

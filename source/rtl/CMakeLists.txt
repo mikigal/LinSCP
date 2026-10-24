@@ -18,8 +18,10 @@ add_library(openscp_rtl STATIC
   src/IOUtils.cpp
   src/Json.cpp
   src/Masks.cpp
+  src/Menus.cpp
   src/FormatSettings.cpp
   src/Printf.cpp
+  src/Registry.cpp
   src/Streams.cpp
   src/StrUtils.cpp
   src/Strings.cpp

@@ -3,6 +3,7 @@
 #include <Classes.hpp>
 #include <Contnrs.hpp>
 #include <System.SyncObjs.hpp>
+#include <Xml.XMLDoc.hpp>
 
 #include <gtest/gtest.h>
 
@@ -577,4 +578,49 @@ TEST(SyncObjs, CriticalSectionAndEvent)
   EXPECT_EQ(Manual.WaitFor(0), wrSignaled);
   Manual.ResetEvent();
   EXPECT_EQ(Manual.WaitFor(0), wrTimeout);
+}
+//---------------------------------------------------------------------------
+namespace
+{
+// Like the core's TRemoteDirectoryChangesCache: methods named as the
+// accessors of a base class property must not replace them
+class THidingStringList : private TStringList
+{
+public:
+  UnicodeString Read(const UnicodeString & Name) { return GetValue(Name); }
+  void Write(const UnicodeString & Name, const UnicodeString & Value) { SetValue(Name, Value); }
+  int Size() { return Count; }
+
+private:
+  UnicodeString GetValue(const UnicodeString & Name)
+  {
+    // Through the property, the base class accessor
+    return Values[Name] + L"!";
+  }
+  void SetValue(const UnicodeString & Name, const UnicodeString & Value)
+  {
+    Values[Name] = Value;
+  }
+};
+} // namespace
+//---------------------------------------------------------------------------
+TEST(ClassesTest, PropertyAccessorsAreNotHidden)
+{
+  THidingStringList List;
+  List.Write(L"a", L"1");
+  EXPECT_EQ(List.Read(L"a"), L"1!");
+  EXPECT_EQ(List.Size(), 1);
+}
+//---------------------------------------------------------------------------
+TEST(ClassesTest, Interfaces)
+{
+  TXMLDocument * Document = new TXMLDocument(static_cast<TObject *>(nullptr));
+  _di_IXMLDocument Interface = interface_cast<IXMLDocument>(Document);
+  IInterface * Unknown = nullptr;
+  EXPECT_EQ(Interface->QueryInterface(IInterface::Iid, reinterpret_cast<void **>(&Unknown)), S_OK);
+  ASSERT_NE(Unknown, nullptr);
+  Unknown->Release();
+  GUID Other = { 1, 2, 3, { 4, 5, 6, 7, 8, 9, 10, 11 } };
+  EXPECT_NE(Interface->QueryInterface(Other, reinterpret_cast<void **>(&Unknown)), S_OK);
+  EXPECT_EQ(Unknown, nullptr);
 }

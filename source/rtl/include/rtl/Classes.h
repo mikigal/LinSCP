@@ -97,10 +97,14 @@ public:
   void Put(int Index, void * Item);
   void ** GetList() { return FList.data(); }
 
-  __declspec(property(get = GetCapacity, put = SetCapacity)) int Capacity;
-  __declspec(property(get = GetCount, put = SetCount)) int Count;
-  __declspec(property(get = Get, put = Put)) void * Items[];
-  __declspec(property(get = GetList)) void ** List;
+  RTL_PROPERTY_GET(Capacity, GetCapacity) RTL_PROPERTY_PUT(Capacity, SetCapacity)
+  __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) int Capacity;
+  RTL_PROPERTY_GET(Count, GetCount) RTL_PROPERTY_PUT(Count, SetCount)
+  __declspec(property(get = __property_get_Count, put = __property_set_Count)) int Count;
+  RTL_PROPERTY_GET(Items, Get) RTL_PROPERTY_PUT(Items, Put)
+  __declspec(property(get = __property_get_Items, put = __property_set_Items)) void * Items[];
+  RTL_PROPERTY_GET(List, GetList)
+  __declspec(property(get = __property_get_List)) void ** List;
   void * operator [](int Index) { return Get(Index); }
 
 protected:
@@ -188,26 +192,46 @@ public:
   void SetDefaultEncoding(TEncoding * Value) { FDefaultEncoding = (Value != nullptr) ? Value : TEncoding::Default; }
   int GetUpdateCount() const { return FUpdateCount; }
 
-  __declspec(property(get = GetCapacity, put = SetCapacity)) int Capacity;
-  __declspec(property(get = GetCommaText, put = SetCommaText)) UnicodeString CommaText;
-  __declspec(property(get = GetCount)) int Count;
-  __declspec(property(get = GetDelimiter, put = SetDelimiter)) wchar_t Delimiter;
-  __declspec(property(get = GetDelimitedText, put = SetDelimitedText)) UnicodeString DelimitedText;
-  __declspec(property(get = GetEncoding)) TEncoding * Encoding;
-  __declspec(property(get = GetDefaultEncoding, put = SetDefaultEncoding)) TEncoding * DefaultEncoding;
-  __declspec(property(get = GetLineBreak, put = SetLineBreak)) UnicodeString LineBreak;
-  __declspec(property(get = GetName)) UnicodeString Names[];
-  __declspec(property(get = GetNameValueSeparator, put = SetNameValueSeparator)) wchar_t NameValueSeparator;
-  __declspec(property(get = GetObject, put = PutObject)) TObject * Objects[];
-  __declspec(property(get = GetQuoteChar, put = SetQuoteChar)) wchar_t QuoteChar;
-  __declspec(property(get = GetStrictDelimiter, put = SetStrictDelimiter)) bool StrictDelimiter;
-  __declspec(property(get = Get, put = Put)) UnicodeString Strings[];
-  __declspec(property(get = GetTextStr, put = SetTextStr)) UnicodeString Text;
-  __declspec(property(get = GetTrailingLineBreak, put = SetTrailingLineBreak)) bool TrailingLineBreak;
-  __declspec(property(get = GetUpdateCount)) int UpdateCount;
-  __declspec(property(get = GetValue, put = SetValue)) UnicodeString Values[];
-  __declspec(property(get = GetValueFromIndex, put = SetValueFromIndex)) UnicodeString ValueFromIndex[];
-  __declspec(property(get = GetWriteBOM, put = SetWriteBOM)) bool WriteBOM;
+  RTL_PROPERTY_GET(Capacity, GetCapacity) RTL_PROPERTY_PUT(Capacity, SetCapacity)
+  __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) int Capacity;
+  RTL_PROPERTY_GET(CommaText, GetCommaText) RTL_PROPERTY_PUT(CommaText, SetCommaText)
+  __declspec(property(get = __property_get_CommaText, put = __property_set_CommaText)) UnicodeString CommaText;
+  RTL_PROPERTY_GET(Count, GetCount)
+  __declspec(property(get = __property_get_Count)) int Count;
+  RTL_PROPERTY_GET(Delimiter, GetDelimiter) RTL_PROPERTY_PUT(Delimiter, SetDelimiter)
+  __declspec(property(get = __property_get_Delimiter, put = __property_set_Delimiter)) wchar_t Delimiter;
+  RTL_PROPERTY_GET(DelimitedText, GetDelimitedText) RTL_PROPERTY_PUT(DelimitedText, SetDelimitedText)
+  __declspec(property(get = __property_get_DelimitedText, put = __property_set_DelimitedText)) UnicodeString DelimitedText;
+  RTL_PROPERTY_GET(Encoding, GetEncoding)
+  __declspec(property(get = __property_get_Encoding)) TEncoding * Encoding;
+  RTL_PROPERTY_GET(DefaultEncoding, GetDefaultEncoding) RTL_PROPERTY_PUT(DefaultEncoding, SetDefaultEncoding)
+  __declspec(property(get = __property_get_DefaultEncoding, put = __property_set_DefaultEncoding)) TEncoding * DefaultEncoding;
+  RTL_PROPERTY_GET(LineBreak, GetLineBreak) RTL_PROPERTY_PUT(LineBreak, SetLineBreak)
+  __declspec(property(get = __property_get_LineBreak, put = __property_set_LineBreak)) UnicodeString LineBreak;
+  RTL_PROPERTY_GET(Names, GetName)
+  __declspec(property(get = __property_get_Names)) UnicodeString Names[];
+  RTL_PROPERTY_GET(NameValueSeparator, GetNameValueSeparator) RTL_PROPERTY_PUT(NameValueSeparator, SetNameValueSeparator)
+  __declspec(property(get = __property_get_NameValueSeparator, put = __property_set_NameValueSeparator)) wchar_t NameValueSeparator;
+  RTL_PROPERTY_GET(Objects, GetObject) RTL_PROPERTY_PUT(Objects, PutObject)
+  __declspec(property(get = __property_get_Objects, put = __property_set_Objects)) TObject * Objects[];
+  RTL_PROPERTY_GET(QuoteChar, GetQuoteChar) RTL_PROPERTY_PUT(QuoteChar, SetQuoteChar)
+  __declspec(property(get = __property_get_QuoteChar, put = __property_set_QuoteChar)) wchar_t QuoteChar;
+  RTL_PROPERTY_GET(StrictDelimiter, GetStrictDelimiter) RTL_PROPERTY_PUT(StrictDelimiter, SetStrictDelimiter)
+  __declspec(property(get = __property_get_StrictDelimiter, put = __property_set_StrictDelimiter)) bool StrictDelimiter;
+  RTL_PROPERTY_GET(Strings, Get) RTL_PROPERTY_PUT(Strings, Put)
+  __declspec(property(get = __property_get_Strings, put = __property_set_Strings)) UnicodeString Strings[];
+  RTL_PROPERTY_GET(Text, GetTextStr) RTL_PROPERTY_PUT(Text, SetTextStr)
+  __declspec(property(get = __property_get_Text, put = __property_set_Text)) UnicodeString Text;
+  RTL_PROPERTY_GET(TrailingLineBreak, GetTrailingLineBreak) RTL_PROPERTY_PUT(TrailingLineBreak, SetTrailingLineBreak)
+  __declspec(property(get = __property_get_TrailingLineBreak, put = __property_set_TrailingLineBreak)) bool TrailingLineBreak;
+  RTL_PROPERTY_GET(UpdateCount, GetUpdateCount)
+  __declspec(property(get = __property_get_UpdateCount)) int UpdateCount;
+  RTL_PROPERTY_GET(Values, GetValue) RTL_PROPERTY_PUT(Values, SetValue)
+  __declspec(property(get = __property_get_Values, put = __property_set_Values)) UnicodeString Values[];
+  RTL_PROPERTY_GET(ValueFromIndex, GetValueFromIndex) RTL_PROPERTY_PUT(ValueFromIndex, SetValueFromIndex)
+  __declspec(property(get = __property_get_ValueFromIndex, put = __property_set_ValueFromIndex)) UnicodeString ValueFromIndex[];
+  RTL_PROPERTY_GET(WriteBOM, GetWriteBOM) RTL_PROPERTY_PUT(WriteBOM, SetWriteBOM)
+  __declspec(property(get = __property_get_WriteBOM, put = __property_set_WriteBOM)) bool WriteBOM;
   UnicodeString operator [](int Index) { return Get(Index); }
 
 protected:
@@ -271,12 +295,18 @@ public:
   TNotifyEvent GetOnChanging() const { return FOnChanging; }
   void SetOnChanging(TNotifyEvent Value) { FOnChanging = Value; }
 
-  __declspec(property(get = GetSorted, put = SetSorted)) bool Sorted;
-  __declspec(property(get = GetDuplicates, put = SetDuplicates)) TDuplicates Duplicates;
-  __declspec(property(get = GetCaseSensitive, put = SetCaseSensitive)) bool CaseSensitive;
-  __declspec(property(get = GetOwnsObjects, put = SetOwnsObjects)) bool OwnsObjects;
-  __declspec(property(get = GetOnChange, put = SetOnChange)) TNotifyEvent OnChange;
-  __declspec(property(get = GetOnChanging, put = SetOnChanging)) TNotifyEvent OnChanging;
+  RTL_PROPERTY_GET(Sorted, GetSorted) RTL_PROPERTY_PUT(Sorted, SetSorted)
+  __declspec(property(get = __property_get_Sorted, put = __property_set_Sorted)) bool Sorted;
+  RTL_PROPERTY_GET(Duplicates, GetDuplicates) RTL_PROPERTY_PUT(Duplicates, SetDuplicates)
+  __declspec(property(get = __property_get_Duplicates, put = __property_set_Duplicates)) TDuplicates Duplicates;
+  RTL_PROPERTY_GET(CaseSensitive, GetCaseSensitive) RTL_PROPERTY_PUT(CaseSensitive, SetCaseSensitive)
+  __declspec(property(get = __property_get_CaseSensitive, put = __property_set_CaseSensitive)) bool CaseSensitive;
+  RTL_PROPERTY_GET(OwnsObjects, GetOwnsObjects) RTL_PROPERTY_PUT(OwnsObjects, SetOwnsObjects)
+  __declspec(property(get = __property_get_OwnsObjects, put = __property_set_OwnsObjects)) bool OwnsObjects;
+  RTL_PROPERTY_GET(OnChange, GetOnChange) RTL_PROPERTY_PUT(OnChange, SetOnChange)
+  __declspec(property(get = __property_get_OnChange, put = __property_set_OnChange)) TNotifyEvent OnChange;
+  RTL_PROPERTY_GET(OnChanging, GetOnChanging) RTL_PROPERTY_PUT(OnChanging, SetOnChanging)
+  __declspec(property(get = __property_get_OnChanging, put = __property_set_OnChanging)) TNotifyEvent OnChanging;
 
 protected:
   virtual void Changed();
@@ -335,8 +365,10 @@ public:
   void SetPosition(const __int64 Pos) { Seek(Pos, soBeginning); }
   virtual __int64 GetSize();
   void SetSize64(const __int64 NewSize) { SetSize(NewSize); }
-  __declspec(property(get = GetPosition, put = SetPosition)) __int64 Position;
-  __declspec(property(get = GetSize, put = SetSize64)) __int64 Size;
+  RTL_PROPERTY_GET(Position, GetPosition) RTL_PROPERTY_PUT(Position, SetPosition)
+  __declspec(property(get = __property_get_Position, put = __property_set_Position)) __int64 Position;
+  RTL_PROPERTY_GET(Size, GetSize) RTL_PROPERTY_PUT(Size, SetSize64)
+  __declspec(property(get = __property_get_Size, put = __property_set_Size)) __int64 Size;
 
   virtual void SetSize(int NewSize);
   virtual void SetSize(const __int64 NewSize);
@@ -356,7 +388,8 @@ public:
   virtual void SetSize(const __int64 NewSize) override;
 
   THandle GetHandle() const { return FHandle; }
-  __declspec(property(get = GetHandle)) THandle Handle;
+  RTL_PROPERTY_GET(Handle, GetHandle)
+  __declspec(property(get = __property_get_Handle)) THandle Handle;
 
 protected:
   THandle FHandle;
@@ -370,7 +403,8 @@ public:
   virtual ~TFileStream();
 
   UnicodeString GetFileName() const { return FFileName; }
-  __declspec(property(get = GetFileName)) UnicodeString FileName;
+  RTL_PROPERTY_GET(FileName, GetFileName)
+  __declspec(property(get = __property_get_FileName)) UnicodeString FileName;
 
 private:
   UnicodeString FFileName;
@@ -387,7 +421,8 @@ public:
   void SaveToFile(const UnicodeString FileName);
 
   void * GetMemory() const { return FMemory; }
-  __declspec(property(get = GetMemory)) void * Memory;
+  RTL_PROPERTY_GET(Memory, GetMemory)
+  __declspec(property(get = __property_get_Memory)) void * Memory;
 
 protected:
   void SetPointer(void * Ptr, NativeInt Size);
@@ -412,7 +447,8 @@ public:
 
   NativeInt GetCapacity() const { return FCapacity; }
   void SetCapacity(NativeInt NewCapacity);
-  __declspec(property(get = GetCapacity, put = SetCapacity)) NativeInt Capacity;
+  RTL_PROPERTY_GET(Capacity, GetCapacity) RTL_PROPERTY_PUT(Capacity, SetCapacity)
+  __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) NativeInt Capacity;
 
 protected:
   virtual void * Realloc(NativeInt & NewCapacity);
@@ -426,7 +462,8 @@ class TBytesStream : public TMemoryStream
 public:
   explicit TBytesStream(const TBytes & ABytes = TBytes());
   TBytes GetBytes();
-  __declspec(property(get = GetBytes)) TBytes Bytes;
+  RTL_PROPERTY_GET(Bytes, GetBytes)
+  __declspec(property(get = __property_get_Bytes)) TBytes Bytes;
 };
 //---------------------------------------------------------------------------
 } // namespace Classes

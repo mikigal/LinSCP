@@ -50,9 +50,12 @@ public:
   int GetAsInt() { return StrToInt(Value()); }
   __int64 GetAsInt64() { return StrToInt64(Value()); }
   double GetAsDouble();
-  __declspec(property(get = GetAsInt)) int AsInt;
-  __declspec(property(get = GetAsInt64)) __int64 AsInt64;
-  __declspec(property(get = GetAsDouble)) double AsDouble;
+  RTL_PROPERTY_GET(AsInt, GetAsInt)
+  __declspec(property(get = __property_get_AsInt)) int AsInt;
+  RTL_PROPERTY_GET(AsInt64, GetAsInt64)
+  __declspec(property(get = __property_get_AsInt64)) __int64 AsInt64;
+  RTL_PROPERTY_GET(AsDouble, GetAsDouble)
+  __declspec(property(get = __property_get_AsDouble)) double AsDouble;
 };
 //---------------------------------------------------------------------------
 class TJSONBool : public TJSONValue
@@ -62,7 +65,8 @@ public:
   virtual UnicodeString Value() override { return FValue ? L"true" : L"false"; }
   virtual UnicodeString ToJSON() override { return Value(); }
   bool GetAsBoolean() const { return FValue; }
-  __declspec(property(get = GetAsBoolean)) bool AsBoolean;
+  RTL_PROPERTY_GET(AsBoolean, GetAsBoolean)
+  __declspec(property(get = __property_get_AsBoolean)) bool AsBoolean;
 
 private:
   bool FValue;
@@ -96,8 +100,10 @@ public:
   TJSONArray * Add(TJSONValue * Element);
   int GetCount() const { return static_cast<int>(FElements.size()); }
   TJSONValue * GetItem(int Index);
-  __declspec(property(get = GetCount)) int Count;
-  __declspec(property(get = GetItem)) TJSONValue * Items[];
+  RTL_PROPERTY_GET(Count, GetCount)
+  __declspec(property(get = __property_get_Count)) int Count;
+  RTL_PROPERTY_GET(Items, GetItem)
+  __declspec(property(get = __property_get_Items)) TJSONValue * Items[];
 
 private:
   std::vector<TJSONValue *> FElements;
@@ -111,8 +117,10 @@ public:
   virtual ~TJSONPair() { delete FJsonString; delete FJsonValue; }
   TJSONString * GetJsonString() const { return FJsonString; }
   TJSONValue * GetJsonValue() const { return FJsonValue; }
-  __declspec(property(get = GetJsonString)) TJSONString * JsonString;
-  __declspec(property(get = GetJsonValue)) TJSONValue * JsonValue;
+  RTL_PROPERTY_GET(JsonString, GetJsonString)
+  __declspec(property(get = __property_get_JsonString)) TJSONString * JsonString;
+  RTL_PROPERTY_GET(JsonValue, GetJsonValue)
+  __declspec(property(get = __property_get_JsonValue)) TJSONValue * JsonValue;
 
 private:
   TJSONString * FJsonString;
@@ -128,7 +136,8 @@ public:
     explicit TEnumerator(TJSONObject * AObject) : FObject(AObject) {}
     bool MoveNext() { return (++FIndex < FObject->GetCount()); }
     TJSONPair * GetCurrent() { return FObject->GetPair(FIndex); }
-    __declspec(property(get = GetCurrent)) TJSONPair * Current;
+    RTL_PROPERTY_GET(Current, GetCurrent)
+    __declspec(property(get = __property_get_Current)) TJSONPair * Current;
 
   private:
     TJSONObject * FObject;
@@ -148,9 +157,12 @@ public:
   int GetCount() const { return static_cast<int>(FPairs.size()); }
   TJSONPair * GetPair(int Index);
   TJSONValue * GetValue(const UnicodeString Name);
-  __declspec(property(get = GetCount)) int Count;
-  __declspec(property(get = GetPair)) TJSONPair * Pairs[];
-  __declspec(property(get = GetValue)) TJSONValue * Values[];
+  RTL_PROPERTY_GET(Count, GetCount)
+  __declspec(property(get = __property_get_Count)) int Count;
+  RTL_PROPERTY_GET(Pairs, GetPair)
+  __declspec(property(get = __property_get_Pairs)) TJSONPair * Pairs[];
+  RTL_PROPERTY_GET(Values, GetValue)
+  __declspec(property(get = __property_get_Values)) TJSONValue * Values[];
 
 private:
   std::vector<TJSONPair *> FPairs;

@@ -32,8 +32,10 @@ include(OpenSCPStrings)
 
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 find_package(EXPAT 2.5 REQUIRED)
+find_package(OpenSSL 3 REQUIRED)
 
 add_subdirectory(source/rtl)
+add_subdirectory(source/linux)
 add_subdirectory(source/libcore)
 
 if(OPENSCP_BUILD_TESTS)

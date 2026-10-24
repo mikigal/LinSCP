@@ -64,6 +64,8 @@ typedef LONG * LPLONG;
 typedef BOOL * PBOOL;
 typedef BOOL * LPBOOL;
 typedef ULONG * PULONG;
+typedef UINT * PUINT;
+typedef UINT * LPUINT;
 typedef LONG HRESULT;
 typedef UINT_PTR WPARAM;
 typedef LONG_PTR LPARAM;
@@ -217,6 +219,7 @@ typedef VS_FIXEDFILEINFO * PVSFixedFileInfo;
 #define HKEY_LOCAL_MACHINE (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000002)))
 #define HKEY_USERS (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000003)))
 #define HKEY_CURRENT_CONFIG (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000005)))
+#define HKEY_DYN_DATA (reinterpret_cast<HKEY>(static_cast<ULONG_PTR>(0x80000006)))
 #define KEY_READ 0x20019
 #define KEY_WRITE 0x20006
 #define KEY_ALL_ACCESS 0xF003F
@@ -231,6 +234,7 @@ typedef VS_FIXEDFILEINFO * PVSFixedFileInfo;
 #define FAILED(hr) ((static_cast<HRESULT>(hr)) < 0)
 //---------------------------------------------------------------------------
 #define ERROR_SUCCESS 0L
+#define NO_ERROR 0L
 //---------------------------------------------------------------------------
 #define FILE_ATTRIBUTE_READONLY 0x00000001
 #define FILE_ATTRIBUTE_HIDDEN 0x00000002

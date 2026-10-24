@@ -35,8 +35,10 @@ struct TSize
   TSize(int ACx, int ACy) : cx(ACx), cy(ACy) {}
   int GetWidth() const { return cx; }
   int GetHeight() const { return cy; }
-  __declspec(property(get = GetWidth)) int Width;
-  __declspec(property(get = GetHeight)) int Height;
+  RTL_PROPERTY_GET(Width, GetWidth)
+  __declspec(property(get = __property_get_Width)) int Width;
+  RTL_PROPERTY_GET(Height, GetHeight)
+  __declspec(property(get = __property_get_Height)) int Height;
   bool operator ==(const TSize & Rhs) const { return (cx == Rhs.cx) && (cy == Rhs.cy); }
   bool operator !=(const TSize & Rhs) const { return !(*this == Rhs); }
 };

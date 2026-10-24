@@ -70,9 +70,12 @@ public:
   int GetHigh() const { return GetLength() - 1; }
   int GetLow() const { return 0; }
 
-  __declspec(property(get = GetLength, put = SetLength)) int Length;
-  __declspec(property(get = GetHigh)) int High;
-  __declspec(property(get = GetLow)) int Low;
+  RTL_PROPERTY_GET(Length, GetLength) RTL_PROPERTY_PUT(Length, SetLength)
+  __declspec(property(get = __property_get_Length, put = __property_set_Length)) int Length;
+  RTL_PROPERTY_GET(High, GetHigh)
+  __declspec(property(get = __property_get_High)) int High;
+  RTL_PROPERTY_GET(Low, GetLow)
+  __declspec(property(get = __property_get_Low)) int Low;
 
   DynamicArray Copy() const { return CopyRange(0, GetLength()); }
   DynamicArray CopyRange(int StartIndex, int Count) const

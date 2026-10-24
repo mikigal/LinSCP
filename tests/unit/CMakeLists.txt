@@ -24,6 +24,21 @@ target_link_libraries(openscp_rtl_tests PRIVATE
 gtest_discover_tests(openscp_rtl_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
+add_executable(openscp_linux_tests
+  linux/FileApiTest.cpp
+  linux/HandlesTest.cpp
+  linux/ShellTest.cpp
+  linux/SystemTest.cpp
+  linux/TimeApiTest.cpp)
+target_compile_definitions(openscp_linux_tests PRIVATE OPENSCP_CORE_VERSION="${OPENSCP_CORE_VERSION}")
+target_link_libraries(openscp_linux_tests PRIVATE
+  openscp::linux
+  openscp::options
+  OpenSSL::Crypto
+  GTest::gtest_main)
+gtest_discover_tests(openscp_linux_tests
+  PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
+
 add_executable(openscp_core_tests
   core/ResourceStringsTest.cpp
   $<TARGET_OBJECTS:openscp_core_strings>)

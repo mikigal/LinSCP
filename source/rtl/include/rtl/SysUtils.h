@@ -45,11 +45,16 @@ public:
   Exception * GetInnerException() const { return nullptr; }
   UnicodeString GetStackTrace() const { return UnicodeString(); }
 
-  __declspec(property(get = GetMessage, put = SetMessage)) UnicodeString Message;
-  __declspec(property(get = GetHelpContext, put = SetHelpContext)) int HelpContext;
-  __declspec(property(get = GetBaseException)) Exception * BaseException;
-  __declspec(property(get = GetInnerException)) Exception * InnerException;
-  __declspec(property(get = GetStackTrace)) UnicodeString StackTrace;
+  RTL_PROPERTY_GET(Message, GetMessage) RTL_PROPERTY_PUT(Message, SetMessage)
+  __declspec(property(get = __property_get_Message, put = __property_set_Message)) UnicodeString Message;
+  RTL_PROPERTY_GET(HelpContext, GetHelpContext) RTL_PROPERTY_PUT(HelpContext, SetHelpContext)
+  __declspec(property(get = __property_get_HelpContext, put = __property_set_HelpContext)) int HelpContext;
+  RTL_PROPERTY_GET(BaseException, GetBaseException)
+  __declspec(property(get = __property_get_BaseException)) Exception * BaseException;
+  RTL_PROPERTY_GET(InnerException, GetInnerException)
+  __declspec(property(get = __property_get_InnerException)) Exception * InnerException;
+  RTL_PROPERTY_GET(StackTrace, GetStackTrace)
+  __declspec(property(get = __property_get_StackTrace)) UnicodeString StackTrace;
 
 private:
   UnicodeString FMessage;
@@ -121,7 +126,8 @@ public:
   using Exception::Exception;
   unsigned int GetErrorCode() const { return FErrorCode; }
   void SetErrorCode(unsigned int Value) { FErrorCode = Value; }
-  __declspec(property(get = GetErrorCode, put = SetErrorCode)) unsigned int ErrorCode;
+  RTL_PROPERTY_GET(ErrorCode, GetErrorCode) RTL_PROPERTY_PUT(ErrorCode, SetErrorCode)
+  __declspec(property(get = __property_get_ErrorCode, put = __property_set_ErrorCode)) unsigned int ErrorCode;
 
 private:
   unsigned int FErrorCode = 0;
@@ -357,6 +363,13 @@ bool IsRelativePath(const UnicodeString Path);
 UnicodeString GetCurrentDir();
 bool SetCurrentDir(const UnicodeString Dir);
 UnicodeString GetEnvironmentVariable(const UnicodeString Name);
+// The version of the operating system: the Linux kernel release
+// (major.minor.patch, the patch as the build number)
+int Win32MajorVersion();
+int Win32MinorVersion();
+int Win32BuildNumber();
+UnicodeString Win32CSDVersion();
+bool CheckWin32Version(int AMajor, int AMinor = 0);
 //---------------------------------------------------------------------------
 // Files
 //---------------------------------------------------------------------------
@@ -409,7 +422,8 @@ struct TSearchRec
   UnicodeString Pattern;
 
   TDateTime GetTimeStamp() const;
-  __declspec(property(get = GetTimeStamp)) TDateTime TimeStamp;
+  RTL_PROPERTY_GET(TimeStamp, GetTimeStamp)
+  __declspec(property(get = __property_get_TimeStamp)) TDateTime TimeStamp;
 };
 // Returns 0 or an errno value. The pattern of the last path component may use
 // * and ?; "*.*" matches everything, like on Windows. Directories, hidden and
@@ -489,6 +503,9 @@ void FreeAndNil(T *& Obj)
 //---------------------------------------------------------------------------
 } // namespace Sysutils
 } // namespace System
+//---------------------------------------------------------------------------
+// Resource strings of System.SysConst (which SysUtils includes) used by the core
+#define System_Sysconst_SOSError (::System::UnicodeString(L"System Error.  Code: %d.\n%s%s"))
 //---------------------------------------------------------------------------
 namespace rtl
 {

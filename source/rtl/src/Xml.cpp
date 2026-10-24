@@ -21,7 +21,7 @@ class TXMLNodeList;
 //---------------------------------------------------------------------------
 struct TXMLTree
 {
-  std::atomic<unsigned long> RefCount{0};
+  std::atomic<ULONG> RefCount{0};
   std::vector<std::unique_ptr<TXMLNode>> Nodes;
   std::vector<std::unique_ptr<TXMLNodeList>> Lists;
 };
@@ -31,10 +31,11 @@ class TXMLNode : public TObject, public IXMLNode
 public:
   TXMLNode(TXMLTree * Tree, TNodeType Type) : FTree(Tree), FType(Type) {}
 
-  virtual unsigned long AddRef() override { return ++FTree->RefCount; }
-  virtual unsigned long Release() override
+  virtual HRESULT QueryInterface(REFIID Riid, void ** Object) override { return QueryUnknown(this, Riid, Object); }
+  virtual ULONG AddRef() override { return ++FTree->RefCount; }
+  virtual ULONG Release() override
   {
-    unsigned long Result = --FTree->RefCount;
+    ULONG Result = --FTree->RefCount;
     if (Result == 0)
     {
       delete FTree;
@@ -76,8 +77,9 @@ class TXMLNodeList : public TObject, public IXMLNodeList
 public:
   TXMLNodeList(TXMLNode * Owner, std::vector<TXMLNode *> * Nodes) : FOwner(Owner), FNodes(Nodes) {}
 
-  virtual unsigned long AddRef() override { return FOwner->AddRef(); }
-  virtual unsigned long Release() override { return FOwner->Release(); }
+  virtual HRESULT QueryInterface(REFIID Riid, void ** Object) override { return QueryUnknown(this, Riid, Object); }
+  virtual ULONG AddRef() override { return FOwner->AddRef(); }
+  virtual ULONG Release() override { return FOwner->Release(); }
 
   virtual int GetCount() override { return static_cast<int>(FNodes->size()); }
   virtual _di_IXMLNode Get(int Index) override

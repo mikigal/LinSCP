@@ -48,7 +48,8 @@ public:
   virtual bool ValueExists(const UnicodeString Section, const UnicodeString Ident);
 
   UnicodeString GetFileName() const { return FFileName; }
-  __declspec(property(get = GetFileName)) UnicodeString FileName;
+  RTL_PROPERTY_GET(FileName, GetFileName)
+  __declspec(property(get = __property_get_FileName)) UnicodeString FileName;
 
 protected:
   UnicodeString FFileName;
@@ -81,8 +82,10 @@ public:
   void SetCaseSensitive(bool Value);
   TEncoding * GetEncoding() const { return FEncoding; }
   void SetEncoding(TEncoding * Value) { FEncoding = Value; }
-  __declspec(property(get = GetCaseSensitive, put = SetCaseSensitive)) bool CaseSensitive;
-  __declspec(property(get = GetEncoding, put = SetEncoding)) TEncoding * Encoding;
+  RTL_PROPERTY_GET(CaseSensitive, GetCaseSensitive) RTL_PROPERTY_PUT(CaseSensitive, SetCaseSensitive)
+  __declspec(property(get = __property_get_CaseSensitive, put = __property_set_CaseSensitive)) bool CaseSensitive;
+  RTL_PROPERTY_GET(Encoding, GetEncoding) RTL_PROPERTY_PUT(Encoding, SetEncoding)
+  __declspec(property(get = __property_get_Encoding, put = __property_set_Encoding)) TEncoding * Encoding;
 
 private:
   TStringList * AddSection(const UnicodeString Section);

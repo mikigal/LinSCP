@@ -2,12 +2,15 @@
 //---------------------------------------------------------------------------
 #include <rtl/SysUtils.h>
 
+#include <cctype>
 #include <cerrno>
+#include <cstdlib>
 #include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
 #include <utime.h>
@@ -475,6 +478,61 @@ UnicodeString GetEnvironmentVariable(const UnicodeString Name)
 {
   const char * Value = getenv(Native(Name).c_str());
   return (Value != nullptr) ? rtl::BytesToFileName(Value) : UnicodeString();
+}
+//---------------------------------------------------------------------------
+namespace
+{
+// The numbers of the kernel release, e.g. 6.12.3 of "6.12.3-arch1-1"
+const std::vector<int> & KernelVersion()
+{
+  static const std::vector<int> Version = []()
+    {
+      std::vector<int> Result;
+      struct utsname Name;
+      if (uname(&Name) == 0)
+      {
+        const char * P = Name.release;
+        while ((Result.size() < 3) && isdigit(static_cast<unsigned char>(*P)))
+        {
+          char * End;
+          Result.push_back(static_cast<int>(strtol(P, &End, 10)));
+          P = (*End == '.') ? End + 1 : End;
+          if (End == P)
+          {
+            break;
+          }
+        }
+      }
+      Result.resize(3, 0);
+      return Result;
+    }();
+  return Version;
+}
+} // namespace
+//---------------------------------------------------------------------------
+int Win32MajorVersion()
+{
+  return KernelVersion()[0];
+}
+//---------------------------------------------------------------------------
+int Win32MinorVersion()
+{
+  return KernelVersion()[1];
+}
+//---------------------------------------------------------------------------
+int Win32BuildNumber()
+{
+  return KernelVersion()[2];
+}
+//---------------------------------------------------------------------------
+UnicodeString Win32CSDVersion()
+{
+  return UnicodeString();
+}
+//---------------------------------------------------------------------------
+bool CheckWin32Version(int AMajor, int AMinor)
+{
+  return (Win32MajorVersion() > AMajor) || ((Win32MajorVersion() == AMajor) && (Win32MinorVersion() >= AMinor));
 }
 //---------------------------------------------------------------------------
 // Files

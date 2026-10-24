@@ -48,8 +48,10 @@ public:
 
   unsigned int GetCodePage() const { return FCodePage; }
   UnicodeString GetEncodingName();
-  __declspec(property(get = GetCodePage)) unsigned int CodePage;
-  __declspec(property(get = GetEncodingName)) UnicodeString EncodingName;
+  RTL_PROPERTY_GET(CodePage, GetCodePage)
+  __declspec(property(get = __property_get_CodePage)) unsigned int CodePage;
+  RTL_PROPERTY_GET(EncodingName, GetEncodingName)
+  __declspec(property(get = __property_get_EncodingName)) UnicodeString EncodingName;
 
   // Used by the implementation
   std::string EncodeToBytes(const wchar_t * Chars, size_t Count);

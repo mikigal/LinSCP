@@ -1,5 +1,5 @@
 """The core's headers, converted by bcb2clang, parse against the RTL shim
-(milestone M1). The accessors generated for __property declarations are
+and the platform layer (milestone M1). The accessors generated for __property declarations are
 compiled too, so their getters, setters and fields are checked as well."""
 
 import os
@@ -47,6 +47,7 @@ class CoreHeadersParseTest(unittest.TestCase):
             '-Wno-unknown-pragmas', '-Wno-reorder-init-list',
             '-I', str(self.converted),
             '-I', str(ROOT / 'source' / 'rtl' / 'include'),
+            '-I', str(ROOT / 'source' / 'linux' / 'include'),
             '-I', str(ROOT / 'source' / 'resource'),
             str(unit),
         ]

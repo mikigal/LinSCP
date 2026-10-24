@@ -33,6 +33,21 @@ inline T * Mutable(const T * Object)
 }
 } // namespace rtl
 //---------------------------------------------------------------------------
+// Accessors of the RTL's properties. Clang looks the accessors of a
+// __declspec(property) up where the property is used, so a method of a
+// derived class with the name of an accessor would replace it (in Delphi,
+// the accessors are bound where the property is declared). The properties
+// therefore name forwarders with unique names, which call the real accessors
+// from the declaring class.
+#define RTL_PROPERTY_GET(Name, Getter) \
+  template <typename... A> \
+  decltype(auto) __property_get_##Name(A &&... Args) const \
+  { return ::rtl::Mutable(this)->Getter(static_cast<A &&>(Args)...); }
+#define RTL_PROPERTY_PUT(Name, Setter) \
+  template <typename... A> \
+  void __property_set_##Name(A &&... Args) \
+  { Setter(static_cast<A &&>(Args)...); }
+//---------------------------------------------------------------------------
 namespace System
 {
 typedef int Integer;

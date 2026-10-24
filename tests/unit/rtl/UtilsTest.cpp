@@ -3,6 +3,8 @@
 #include <System.StrUtils.hpp>
 #include <System.Math.hpp>
 #include <System.DateUtils.hpp>
+#include <System.Win.Registry.hpp>
+#include <Vcl.Menus.hpp>
 
 #include <gtest/gtest.h>
 
@@ -227,4 +229,43 @@ TEST(TimeSpan, Basics)
   TTimeSpan Difference = TTimeSpan::Subtract(EncodeDateTime(2026, 1, 1, 1, 0, 0, 0), EncodeDate(2026, 1, 1));
   EXPECT_DOUBLE_EQ(Difference.TotalMinutes, 60);
   EXPECT_EQ((Difference + Difference).Hours, 2);
+}
+//---------------------------------------------------------------------------
+TEST(UtilsTest, StripHotkey)
+{
+  EXPECT_EQ(StripHotkey(L"&Yes"), L"Yes");
+  EXPECT_EQ(StripHotkey(L"N&o to All"), L"No to All");
+  EXPECT_EQ(StripHotkey(L"Save && &Exit"), L"Save & Exit");
+  EXPECT_EQ(StripHotkey(L"Plain"), L"Plain");
+}
+//---------------------------------------------------------------------------
+TEST(UtilsTest, EmptyRegistry)
+{
+  TRegistry Registry(KEY_READ);
+  Registry.RootKey = HKEY_LOCAL_MACHINE;
+  EXPECT_EQ(Registry.RootKey, HKEY_LOCAL_MACHINE);
+  EXPECT_FALSE(Registry.OpenKey(L"SOFTWARE", false));
+  EXPECT_FALSE(Registry.OpenKey(L"OpenSCP", true));
+  EXPECT_FALSE(Registry.KeyExists(L"SOFTWARE"));
+  EXPECT_FALSE(Registry.ValueExists(L"Value"));
+  EXPECT_THROW(Registry.ReadString(L"Value"), ERegistryException);
+  EXPECT_THROW(Registry.WriteInteger(L"Value", 1), ERegistryException);
+  std::unique_ptr<TStringList> Names(new TStringList());
+  Names->Add(L"x");
+  Registry.GetKeyNames(Names.get());
+  EXPECT_EQ(Names->Count, 0);
+  EXPECT_EQ(Registry.CurrentKey, nullptr);
+}
+//---------------------------------------------------------------------------
+TEST(UtilsTest, BorlandCompatibility)
+{
+  EXPECT_TRUE(True);
+  EXPECT_FALSE(False);
+  for (int Index = 0; Index < 100; Index++)
+  {
+    int Value = random(7);
+    EXPECT_GE(Value, 0);
+    EXPECT_LT(Value, 7);
+  }
+  EXPECT_EQ(Format(System_Sysconst_SOSError, ARRAYOFCONST((5, L"Access denied.", L""))), L"System Error.  Code: 5.\nAccess denied.");
 }
