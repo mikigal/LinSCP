@@ -124,6 +124,7 @@ struct CERT_CHAIN_POLICY_STATUS
 };
 typedef CERT_CHAIN_POLICY_STATUS * PCERT_CHAIN_POLICY_STATUS;
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 PCCERT_CONTEXT CertCreateCertificateContext(DWORD CertEncodingType, const BYTE * CertEncoded, DWORD CertEncodedSize);
 BOOL CertFreeCertificateContext(PCCERT_CONTEXT CertContext);
 BOOL CertCreateCertificateChainEngine(PCERT_CHAIN_ENGINE_CONFIG Config, HCERTCHAINENGINE * ChainEngine);
@@ -135,5 +136,6 @@ void CertFreeCertificateChain(PCCERT_CHAIN_CONTEXT ChainContext);
 BOOL CertVerifyCertificateChainPolicy(
   LPCSTR PolicyOID, PCCERT_CHAIN_CONTEXT ChainContext, PCERT_CHAIN_POLICY_PARA PolicyPara,
   PCERT_CHAIN_POLICY_STATUS PolicyStatus);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif

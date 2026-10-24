@@ -31,6 +31,7 @@ struct DYNAMIC_TIME_ZONE_INFORMATION
 };
 typedef DYNAMIC_TIME_ZONE_INFORMATION * PDYNAMIC_TIME_ZONE_INFORMATION;
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 void GetSystemTime(LPSYSTEMTIME SystemTime);
 void GetLocalTime(LPSYSTEMTIME SystemTime);
 void GetSystemTimeAsFileTime(LPFILETIME SystemTimeAsFileTime);
@@ -48,6 +49,7 @@ DWORD GetTimeZoneInformation(LPTIME_ZONE_INFORMATION TimeZoneInformation);
 // The dynamic time zone must be NULL (the system time zone)
 BOOL GetTimeZoneInformationForYear(
   USHORT Year, PDYNAMIC_TIME_ZONE_INFORMATION DynamicTimeZoneInformation, LPTIME_ZONE_INFORMATION TimeZoneInformation);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 namespace winapi
 {

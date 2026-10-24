@@ -20,6 +20,7 @@
 #define CSIDL_FLAG_CREATE 0x8000
 #define SHGFP_TYPE_CURRENT 0
 #define SHGFP_TYPE_DEFAULT 1
+WINAPI_EXTERN_C_BEGIN
 HRESULT SHGetFolderPath(HWND Owner, int Folder, HANDLE Token, DWORD Flags, LPWSTR Path);
 BOOL SHGetSpecialFolderPath(HWND Owner, LPWSTR Path, int Folder, BOOL Create);
 //---------------------------------------------------------------------------
@@ -93,5 +94,6 @@ struct IBindCtx;
 HRESULT FindMimeFromData(
   IBindCtx * BindContext, LPCWSTR Url, LPVOID Buffer, DWORD Size, LPCWSTR MimeProposed, DWORD MimeFlags,
   LPWSTR * MimeOut, DWORD Reserved);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif

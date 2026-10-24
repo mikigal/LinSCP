@@ -35,9 +35,7 @@ void wingss_cleanup(void);
 int is_pfwd(Plug * plug);
 Seat * get_pfwd_seat(Plug * plug);
 
-// from winnet.c
-
-void select_result(WPARAM wParam, LPARAM lParam);
+// from winnet.c: select_result, declared by platform.h
 
 // from sshaesold.c
 

@@ -17,6 +17,15 @@
 #define WINAPI
 #define CALLBACK
 #define APIENTRY
+// The emulated API has C linkage, as on Windows, so that C code (PuTTY) can
+// call it too
+#ifdef __cplusplus
+#define WINAPI_EXTERN_C_BEGIN extern "C" {
+#define WINAPI_EXTERN_C_END }
+#else
+#define WINAPI_EXTERN_C_BEGIN
+#define WINAPI_EXTERN_C_END
+#endif
 //---------------------------------------------------------------------------
 #define WAIT_OBJECT_0 0x00000000L
 #define WAIT_ABANDONED 0x00000080L
@@ -42,6 +51,7 @@ typedef SECURITY_ATTRIBUTES * PSECURITY_ATTRIBUTES;
 typedef SECURITY_ATTRIBUTES * LPSECURITY_ATTRIBUTES;
 typedef DWORD (WINAPI * LPTHREAD_START_ROUTINE)(LPVOID Parameter);
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 BOOL CloseHandle(HANDLE Object);
 //---------------------------------------------------------------------------
 // Events (the name is not supported, must be NULL)
@@ -86,6 +96,7 @@ void InitializeCriticalSection(LPCRITICAL_SECTION CriticalSection);
 void DeleteCriticalSection(LPCRITICAL_SECTION CriticalSection);
 void EnterCriticalSection(LPCRITICAL_SECTION CriticalSection);
 void LeaveCriticalSection(LPCRITICAL_SECTION CriticalSection);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 namespace winapi
 {

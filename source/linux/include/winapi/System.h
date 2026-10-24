@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <type_traits>
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 // The temporary directory ($TMPDIR or /tmp) with a trailing slash
 DWORD GetTempPath(DWORD BufferLength, LPWSTR Buffer);
 // Expands %NAME% references to environment variables (Windows syntax);
@@ -100,8 +101,10 @@ enum EXTENDED_NAME_FORMAT
 };
 // The login name, for all formats
 BOOLEAN GetUserNameEx(EXTENDED_NAME_FORMAT NameFormat, LPWSTR NameBuffer, PULONG Size);
+WINAPI_EXTERN_C_END
 // The core passes unsigned long, which is 32-bit on Windows only
 BOOLEAN GetUserNameEx(EXTENDED_NAME_FORMAT NameFormat, LPWSTR NameBuffer, unsigned long * Size);
+WINAPI_EXTERN_C_BEGIN
 BOOL GetUserName(LPWSTR Buffer, LPDWORD Size);
 BOOL GetComputerName(LPWSTR Buffer, LPDWORD Size);
 //---------------------------------------------------------------------------
@@ -118,6 +121,7 @@ BOOL GetProductInfo(DWORD OSMajorVersion, DWORD OSMinorVersion, DWORD SpMajorVer
 // resource): the version of the upstream WinSCP core, OpenSCP's names.
 // Version information of other files is not available.
 DWORD GetFileVersionInfoSize(LPCWSTR FileName, LPDWORD Handle);
+WINAPI_EXTERN_C_END
 // The core passes unsigned long, which is 32-bit on Windows only
 template <typename T, typename = std::enable_if_t<std::is_same_v<T, unsigned long>>>
 DWORD GetFileVersionInfoSize(LPCWSTR FileName, T * Handle)
@@ -127,8 +131,10 @@ DWORD GetFileVersionInfoSize(LPCWSTR FileName, T * Handle)
   *Handle = Value;
   return Result;
 }
+WINAPI_EXTERN_C_BEGIN
 BOOL GetFileVersionInfo(LPCWSTR FileName, DWORD Handle, DWORD Length, LPVOID Data);
 // Supports "\", "\VarFileInfo\Translation" and "\StringFileInfo\<lang><cp>\<name>"
 BOOL VerQueryValue(LPCVOID Block, LPCWSTR SubBlock, LPVOID * Buffer, PUINT Length);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif

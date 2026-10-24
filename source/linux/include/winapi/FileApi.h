@@ -46,6 +46,7 @@
 struct OVERLAPPED;
 typedef OVERLAPPED * LPOVERLAPPED;
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 // Opens directories too (with FILE_FLAG_BACKUP_SEMANTICS, as on Windows),
 // read-only, so that their times can be read and set. With
 // FILE_FLAG_OPEN_REPARSE_POINT, a symbolic link is opened itself (for
@@ -61,6 +62,7 @@ BOOL SetEndOfFile(HANDLE File);
 DWORD SetFilePointer(HANDLE File, LONG DistanceToMove, PLONG DistanceToMoveHigh, DWORD MoveMethod);
 BOOL SetFilePointerEx(HANDLE File, LARGE_INTEGER DistanceToMove, PLARGE_INTEGER NewFilePointer, DWORD MoveMethod);
 DWORD GetFileSize(HANDLE File, LPDWORD FileSizeHigh);
+WINAPI_EXTERN_C_END
 // The core passes unsigned long, which is 32-bit on Windows only (a template,
 // so that NULL selects the overload above)
 template <typename T, typename = std::enable_if_t<std::is_same_v<T, unsigned long>>>
@@ -71,6 +73,7 @@ DWORD GetFileSize(HANDLE File, T * FileSizeHigh)
   *FileSizeHigh = High;
   return Result;
 }
+WINAPI_EXTERN_C_BEGIN
 BOOL GetFileSizeEx(HANDLE File, PLARGE_INTEGER FileSize);
 // The creation time is the birth time where the file system records it,
 // otherwise the modification time; setting it is not supported and ignored.
@@ -88,5 +91,6 @@ BOOL SetFileAttributes(LPCWSTR FileName, DWORD FileAttributes);
 BOOL DeviceIoControl(
   HANDLE Device, DWORD IoControlCode, LPVOID InBuffer, DWORD InBufferSize, LPVOID OutBuffer, DWORD OutBufferSize,
   LPDWORD BytesReturned, LPOVERLAPPED Overlapped);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif

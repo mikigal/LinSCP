@@ -34,12 +34,14 @@ using System::IUnknown;
 #define IID_PPV_ARGS(Pointer) \
   std::remove_reference_t<decltype(**(Pointer))>::Iid, reinterpret_cast<void **>(Pointer)
 //---------------------------------------------------------------------------
+WINAPI_EXTERN_C_BEGIN
 HRESULT CoInitialize(LPVOID Reserved);
 HRESULT CoInitializeEx(LPVOID Reserved, DWORD CoInit);
 void CoUninitialize();
 LPVOID CoTaskMemAlloc(SIZE_T Size);
 void CoTaskMemFree(LPVOID Memory);
 HRESULT CoCreateInstance(REFCLSID Clsid, IUnknown * Outer, DWORD ClsContext, REFIID Riid, LPVOID * Object);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 enum SIGDN
 {
@@ -58,7 +60,9 @@ struct IShellItem : public IUnknown
   virtual HRESULT STDMETHODCALLTYPE GetDisplayName(SIGDN Name, LPWSTR * DisplayName) = 0;
 };
 // A file system item
+WINAPI_EXTERN_C_BEGIN
 HRESULT SHCreateItemFromParsingName(LPCWSTR Path, IBindCtx * BindContext, REFIID Riid, void ** Object);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 struct IFileOperationProgressSink : public IUnknown
 {

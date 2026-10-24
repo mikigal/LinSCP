@@ -23,6 +23,7 @@ struct PROCESSENTRY32
 };
 typedef PROCESSENTRY32 * LPPROCESSENTRY32;
 // TH32CS_SNAPPROCESS only
+WINAPI_EXTERN_C_BEGIN
 HANDLE CreateToolhelp32Snapshot(DWORD Flags, DWORD ProcessId);
 BOOL Process32First(HANDLE Snapshot, LPPROCESSENTRY32 Entry);
 BOOL Process32Next(HANDLE Snapshot, LPPROCESSENTRY32 Entry);
@@ -36,5 +37,6 @@ HANDLE OpenProcess(DWORD DesiredAccess, BOOL InheritHandle, DWORD ProcessId);
 BOOL EnumProcessModules(HANDLE Process, HMODULE * Modules, DWORD Size, LPDWORD Needed);
 // A NULL module is the executable
 DWORD GetModuleFileNameEx(HANDLE Process, HMODULE Module, LPWSTR FileName, DWORD Size);
+WINAPI_EXTERN_C_END
 //---------------------------------------------------------------------------
 #endif
