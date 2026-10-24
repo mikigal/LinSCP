@@ -43,4 +43,16 @@ if(OPENSCP_BUILD_HARNESS)
     ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;WLH_PROBE=$<TARGET_FILE:wlh-probe>"
     RUN_SERIAL TRUE
     TIMEOUT 180)
+
+  # L4: the GUI in the headless KWin, driven through its automation hook
+  if(OPENSCP_AUTOMATION)
+    add_test(NAME integration.gui
+      COMMAND Python3::Interpreter -m unittest -v test_gui
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(integration.gui PROPERTIES
+      LABELS "integration;gui"
+      ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;OPENSCP_GUI=$<TARGET_FILE:openscp>"
+      RUN_SERIAL TRUE
+      TIMEOUT 300)
+  endif()
 endif()

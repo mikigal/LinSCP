@@ -22,5 +22,13 @@ target_link_libraries(openscp_qt
   PRIVATE openscp::options
   PUBLIC openscp::app Qt6::Widgets)
 
+# The automation hook of the end-to-end tests (app/Automation.h)
+if(OPENSCP_AUTOMATION)
+  find_package(Qt6 6.5 REQUIRED COMPONENTS Network)
+  target_sources(openscp_qt PRIVATE app/Automation.cpp)
+  target_compile_definitions(openscp_qt PUBLIC OPENSCP_AUTOMATION)
+  target_link_libraries(openscp_qt PRIVATE Qt6::Network)
+endif()
+
 add_executable(openscp app/Main.cpp)
 target_link_libraries(openscp PRIVATE openscp_qt openscp::options)

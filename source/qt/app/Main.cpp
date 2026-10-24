@@ -7,14 +7,27 @@
 
 #include "OpenScpApplication.h"
 #include "ScpCommander.h"
+#ifdef OPENSCP_AUTOMATION
+#include "Automation.h"
+#endif
 
 #include <csignal>
 //---------------------------------------------------------------------------
 static int Execute()
 {
-  TScpCommanderForm ScpCommander;
-  ScpCommander.show();
-  return QApplication::exec();
+#ifdef OPENSCP_AUTOMATION
+  StartAutomation();
+#endif
+  int Result;
+  {
+    TScpCommanderForm ScpCommander;
+    ScpCommander.show();
+    Result = QApplication::exec();
+  }
+#ifdef OPENSCP_AUTOMATION
+  StopAutomation();
+#endif
+  return Result;
 }
 //---------------------------------------------------------------------------
 int main(int argc, char ** argv)

@@ -122,8 +122,8 @@ class Session:
             # unshare execs the daemon in place, so it is the namespace's first process;
             # everything else joins its namespaces (see _command), without capabilities
             bus_command = ["unshare", "--user", "--map-current-user", "--mount", "--keep-caps", "--", *bus_command]
-        bus = subprocess.Popen(
-            bus_command, env=env, stdout=subprocess.DEVNULL, stderr=open(self.logs / "dbus.log", "wb"), start_new_session=True)
+        with open(self.logs / "dbus.log", "wb") as log:
+            bus = subprocess.Popen(bus_command, env=env, stdout=subprocess.DEVNULL, stderr=log, start_new_session=True)
         self.state["pids"]["dbus"] = bus.pid
         if document_portal:
             self.state["namespace_pid"] = bus.pid
@@ -137,11 +137,12 @@ class Session:
         kwin_env["QT_LOGGING_RULES"] = "kwin_scripting.debug=true"
         kwin_env.pop("WAYLAND_DISPLAY")
         kwin_env.pop("QT_QPA_PLATFORM")
-        kwin = subprocess.Popen(
-            self._command(["kwin_wayland", "--virtual", "--socket", WAYLAND_SOCKET,
-                           "--width", str(width), "--height", str(height), "--scale", str(scale),
-                           "--no-lockscreen", "--no-global-shortcuts", "--no-kactivities"]),
-            env=kwin_env, stdout=subprocess.DEVNULL, stderr=open(self.logs / "kwin.log", "wb"), start_new_session=True)
+        with open(self.logs / "kwin.log", "wb") as log:
+            kwin = subprocess.Popen(
+                self._command(["kwin_wayland", "--virtual", "--socket", WAYLAND_SOCKET,
+                               "--width", str(width), "--height", str(height), "--scale", str(scale),
+                               "--no-lockscreen", "--no-global-shortcuts", "--no-kactivities"]),
+                env=kwin_env, stdout=subprocess.DEVNULL, stderr=log, start_new_session=True)
         self.state["pids"]["kwin"] = kwin.pid
         self._save()
         try:
@@ -162,9 +163,11 @@ class Session:
             "[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\nwidgetStyle=Breeze\nAnimationDurationFactor=0\n")
         applications = self.home / ".local/share/applications"
         applications.mkdir(parents=True, exist_ok=True)
-        # Lets the portal resolve the probe's app ID
-        (applications / "wlh-probe.desktop").write_text(
-            "[Desktop Entry]\nType=Application\nName=wlh-probe\nExec=wlh-probe\nNoDisplay=true\n")
+        # Lets the portal resolve the app IDs of the probe and of OpenSCP; it reads them when
+        # it starts (activated by the first application that uses it)
+        for app_id, name in (("wlh-probe", "wlh-probe"), ("openscp", "OpenSCP")):
+            (applications / f"{app_id}.desktop").write_text(
+                f"[Desktop Entry]\nType=Application\nName={name}\nExec={app_id}\nNoDisplay=true\n")
 
     def _write_bus_config(self, document_portal):
         """Session bus whose activatable services are the system ones, optionally minus the document portal."""
@@ -274,8 +277,8 @@ class Session:
         env = self.env
         env.update(extra_env or {})
         log_name = log_name or Path(command[0]).name
-        log = open(self.logs / f"{log_name}.log", "ab")
-        process = subprocess.Popen(self._command(command), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        with open(self.logs / f"{log_name}.log", "ab") as log:
+            process = subprocess.Popen(self._command(command), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         self.state["children"].append(process.pid)
         self._save()
         return process

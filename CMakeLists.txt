@@ -24,6 +24,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(OPENSCP_BUILD_TESTS "Build unit and integration tests" ON)
 option(OPENSCP_BUILD_HARNESS "Build the Wayland test harness tools" ON)
+option(OPENSCP_AUTOMATION "Build the GUI with the automation hook of the end-to-end tests" OFF)
 option(OPENSCP_SANITIZE "Build OpenSCP targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
