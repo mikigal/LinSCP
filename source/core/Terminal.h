@@ -97,7 +97,7 @@ const unsigned int folRetryOnFatal = 0x02;
 #define FILE_OPERATION_LOOP_END(MESSAGE) \
   FILE_OPERATION_LOOP_END_EX(MESSAGE, folAllowSkip)
 //---------------------------------------------------------------------------
-enum TCurrentFSProtocol { cfsUnknown, cfsSCP, cfsSFTP, cfsFTP, cfsWebDAV, cfsS3 };
+enum TCurrentFSProtocol : int { cfsUnknown, cfsSCP, cfsSFTP, cfsFTP, cfsWebDAV, cfsS3 };
 //---------------------------------------------------------------------------
 const int cpDelete = 0x01;
 const int cpTemporary = 0x04;
@@ -130,7 +130,7 @@ class TTerminal : public TObject
 {
 public:
   // TScript::SynchronizeProc relies on the order
-  enum TSynchronizeMode { smRemote, smLocal, smBoth };
+  enum TSynchronizeMode : int { smRemote, smLocal, smBoth };
   static const int spDelete = 0x01; // cannot be combined with spTimestamp
   static const int spNoConfirmation = 0x02; // has no effect for spTimestamp
   static const int spExistingOnly = 0x04; // is implicit for spTimestamp

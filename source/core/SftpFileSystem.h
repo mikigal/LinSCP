@@ -10,7 +10,7 @@ struct TSFTPSupport;
 class TSecureShell;
 class TEncryption;
 //---------------------------------------------------------------------------
-enum TSFTPOverwriteMode { omOverwrite, omAppend, omResume };
+enum TSFTPOverwriteMode : int { omOverwrite, omAppend, omResume };
 //---------------------------------------------------------------------------
 class TSFTPFileSystem : public TCustomFileSystem
 {

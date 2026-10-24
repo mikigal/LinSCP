@@ -10,38 +10,38 @@
 #include "Configuration.h"
 #include <Xml.XMLIntf.hpp>
 //---------------------------------------------------------------------------
-enum TCipher { cipWarn, cip3DES, cipBlowfish, cipAES, cipDES, cipArcfour, cipChaCha20, cipAESGCM, cipCount };
+enum TCipher : int { cipWarn, cip3DES, cipBlowfish, cipAES, cipDES, cipArcfour, cipChaCha20, cipAESGCM, cipCount };
 #define CIPHER_COUNT (cipCount)
 // explicit values to skip obsoleted fsExternalSSH, fsExternalSFTP
-enum TFSProtocol { fsSCPonly = 0, fsSFTP = 1, fsSFTPonly = 2, fsFTP = 5, fsWebDAV = 6, fsS3 = 7 };
+enum TFSProtocol : int { fsSCPonly = 0, fsSFTP = 1, fsSFTPonly = 2, fsFTP = 5, fsWebDAV = 6, fsS3 = 7 };
 #define FSPROTOCOL_COUNT (fsS3+1)
 extern const wchar_t * ProxyMethodNames;
-enum TProxyMethod { pmNone, pmSocks4, pmSocks5, pmHTTP, pmTelnet, pmCmd, pmSshTcpIp };
-enum TKex { kexWarn, kexDHGroup1, kexDHGroup14, kexDHGroup15, kexDHGroup16, kexDHGroup17, kexDHGroup18, kexDHGEx, kexRSA, kexECDH, kexNTRUHybrid, kexMLKEM25519Hybrid, kexMLKEMNISTHybrid, kexCount };
+enum TProxyMethod : int { pmNone, pmSocks4, pmSocks5, pmHTTP, pmTelnet, pmCmd, pmSshTcpIp };
+enum TKex : int { kexWarn, kexDHGroup1, kexDHGroup14, kexDHGroup15, kexDHGroup16, kexDHGroup17, kexDHGroup18, kexDHGEx, kexRSA, kexECDH, kexNTRUHybrid, kexMLKEM25519Hybrid, kexMLKEMNISTHybrid, kexCount };
 #define KEX_COUNT (kexCount)
-enum THostKey { hkWarn, hkRSA, hkDSA, hkECDSA, hkED25519, hkED448, hkCount };
+enum THostKey : int { hkWarn, hkRSA, hkDSA, hkECDSA, hkED25519, hkED448, hkCount };
 #define HOSTKEY_COUNT (hkCount)
-enum TGssLib { gssGssApi32, gssSspi, gssCustom };
+enum TGssLib : int { gssGssApi32, gssSspi, gssCustom };
 #define GSSLIB_COUNT (gssCustom+1)
 // names have to match PuTTY registry entries (see settings.c)
-enum TSshBug { sbHMAC2, sbDeriveKey2, sbRSAPad2,
+enum TSshBug : int { sbHMAC2, sbDeriveKey2, sbRSAPad2,
   sbPKSessID2, sbRekey2, sbMaxPkt2, sbIgnore2, sbOldGex2, sbWinAdj, sbChanReq };
 #define BUG_COUNT (sbChanReq+1)
-enum TSftpBug { sbSymlink, sbSignedTS };
+enum TSftpBug : int { sbSymlink, sbSignedTS };
 #define SFTP_BUG_COUNT (sbSignedTS+1)
 extern const wchar_t * PingTypeNames;
-enum TPingType { ptOff, ptNullPacket, ptDummyCommand };
+enum TPingType : int { ptOff, ptNullPacket, ptDummyCommand };
 extern const wchar_t * FtpPingTypeNames;
-enum TFtpPingType { fptOff, fptDummyCommand0, fptDummyCommand, fptDirectoryListing };
-enum TAddressFamily { afAuto, afIPv4, afIPv6 };
-enum TFtps { ftpsNone, ftpsImplicit, ftpsExplicitSsl, ftpsExplicitTls };
+enum TFtpPingType : int { fptOff, fptDummyCommand0, fptDummyCommand, fptDirectoryListing };
+enum TAddressFamily : int { afAuto, afIPv4, afIPv6 };
+enum TFtps : int { ftpsNone, ftpsImplicit, ftpsExplicitSsl, ftpsExplicitTls };
 // ssl2 and ssh3 are equivalent of tls10 now
-enum TTlsVersion { ssl2 = 2, ssl3 = 3, tls10 = 10, tls11 = 11, tls12 = 12, tls13 = 13, tlsMin = tls10, tlsDefaultMin = tls12, tlsMax = tls13 };
+enum TTlsVersion : int { ssl2 = 2, ssl3 = 3, tls10 = 10, tls11 = 11, tls12 = 12, tls13 = 13, tlsMin = tls10, tlsDefaultMin = tls12, tlsMax = tls13 };
 // has to match libs3 S3UriStyle
-enum TS3UrlStyle { s3usVirtualHost, s3usPath };
-enum TSessionSource { ssNone, ssStored, ssStoredModified };
+enum TS3UrlStyle : int { s3usVirtualHost, s3usPath };
+enum TSessionSource : int { ssNone, ssStored, ssStoredModified };
 const int SFTPMaxVersionAuto = -1;
-enum TSessionUrlFlags
+enum TSessionUrlFlags : int
 {
   sufSpecific = 0x01,
   sufUserName = 0x02,
@@ -53,14 +53,14 @@ enum TSessionUrlFlags
   sufComplete = sufSession | sufRawSettings,
   sufOpen = sufUserName | sufPassword
 };
-enum TParseUrlFlags
+enum TParseUrlFlags : int
 {
   pufAllowStoredSiteWithProtocol = 0x01,
   pufUnsafe = 0x02,
   pufPreferProtocol = 0x04,
   pufParseOnly = 0x08,
 };
-enum TParsedInfoFlags
+enum TParsedInfoFlags : int
 {
   piDefaultsOnly = 0x01,
   piProtocolDefined = 0x02,

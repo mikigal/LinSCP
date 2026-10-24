@@ -19,11 +19,11 @@ typedef UINT_PTR SOCKET;
 typedef std::set<SOCKET> TSockets;
 struct TPuttyTranslation;
 struct callback_set;
-enum TSshImplementation { sshiUnknown, sshiOpenSSH, sshiProFTPD, sshiBitvise, sshiTitan, sshiOpenVMS, sshiCerberus };
+enum TSshImplementation : int { sshiUnknown, sshiOpenSSH, sshiProFTPD, sshiBitvise, sshiTitan, sshiOpenVMS, sshiCerberus };
 struct ScpLogPolicy;
 struct LogContext;
 struct ScpSeat;
-enum TSecureShellMode { ssmNone, ssmUploading, ssmDownloading };
+enum TSecureShellMode : int { ssmNone, ssmUploading, ssmDownloading };
 //---------------------------------------------------------------------------
 class TSecureShell
 {

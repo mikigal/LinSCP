@@ -455,7 +455,7 @@ public:
     unsigned short BaseRights, bool IsDirectory, int Version, TAutoSwitch Utf,
     TChmodSessionAction * Action)
   {
-    enum TValid { valNone = 0, valRights = 0x01, valOwner = 0x02, valGroup = 0x04,
+    enum TValid : int { valNone = 0, valRights = 0x01, valOwner = 0x02, valGroup = 0x04,
       valMTime = 0x08, valATime = 0x10 } Valid = valNone;
     unsigned short RightsNum = 0;
     TRemoteToken Owner;

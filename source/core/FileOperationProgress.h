@@ -8,12 +8,12 @@
 #include <vector>
 //---------------------------------------------------------------------------
 class TFileOperationProgressType;
-enum TFileOperation { foNone, foCopy, foMove, foDelete, foSetProperties,
+enum TFileOperation : int { foNone, foCopy, foMove, foDelete, foSetProperties,
   foRename, foCustomCommand, foCalculateSize, foRemoteMove, foRemoteCopy,
   foGetProperties, foCalculateChecksum, foLock, foUnlock };
 // csCancelTransfer and csRemoteAbort are used with SCP only
-enum TCancelStatus { csContinue = 0, csCancelFile, csCancel, csCancelTransfer, csRemoteAbort };
-enum TBatchOverwrite { boNo, boAll, boNone, boOlder, boAlternateResume, boAppend, boResume };
+enum TCancelStatus : int { csContinue = 0, csCancelFile, csCancel, csCancelTransfer, csRemoteAbort };
+enum TBatchOverwrite : int { boNo, boAll, boNone, boOlder, boAlternateResume, boAppend, boResume };
 typedef TMethodPtr<void(TFileOperationProgressType & ProgressData)>
  TFileOperationProgressEvent;
 typedef TMethodPtr<void(TFileOperation Operation, TOperationSide Side, bool Temp,

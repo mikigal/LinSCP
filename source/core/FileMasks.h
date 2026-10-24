@@ -79,7 +79,7 @@ private:
 
   struct TMask
   {
-    enum TKind { Any, NoExt, Regular };
+    enum TKind : int { Any, NoExt, Regular };
 
     TKind FileNameMaskKind;
     Masks::TMask * FileNameMask;
@@ -87,7 +87,7 @@ private:
     Masks::TMask * RemoteDirectoryMask;
     Masks::TMask * LocalDirectoryMask;
 
-    enum TMaskBoundary { None, Open, Close };
+    enum TMaskBoundary : int { None, Open, Close };
 
     TMaskBoundary HighSizeMask;
     __int64 HighSize;

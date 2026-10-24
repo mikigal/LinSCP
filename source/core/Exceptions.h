@@ -16,7 +16,7 @@ UnicodeString __fastcall LastSysErrorMessage();
 TStrings * __fastcall ExceptionToMoreMessages(Exception * E);
 bool __fastcall IsInternalException(Exception * E);
 //---------------------------------------------------------------------------
-enum TOnceDoneOperation { odoIdle, odoDisconnect, odoSuspend, odoShutDown };
+enum TOnceDoneOperation : int { odoIdle, odoDisconnect, odoSuspend, odoShutDown };
 //---------------------------------------------------------------------------
 class ExtException : public Sysutils::Exception
 {

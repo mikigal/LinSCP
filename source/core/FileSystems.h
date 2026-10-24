@@ -15,7 +15,7 @@ class TFileOperationProgressType;
 class TRemoteProperties;
 struct TLocalFileHandle;
 //---------------------------------------------------------------------------
-enum TFSCommand { fsNull = 0, fsVarValue, fsLastLine, fsFirstLine,
+enum TFSCommand : int { fsNull = 0, fsVarValue, fsLastLine, fsFirstLine,
   fsCurrentDirectory, fsChangeDirectory, fsListDirectory, fsListCurrentDirectory,
   fsListFile, fsLookupUsersGroups, fsCopyToRemote, fsCopyToLocal, fsDeleteFile,
   fsRenameFile, fsCreateDirectory, fsChangeMode, fsChangeGroup, fsChangeOwner,

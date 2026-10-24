@@ -60,7 +60,7 @@ typedef TMethodPtr<void(TTerminalQueue * Queue)>
  TQueueListUpdate;
 typedef TMethodPtr<void(TTerminalQueue * Queue, TQueueItem * Item)>
  TQueueItemUpdateEvent;
-enum TQueueEvent { qeEmpty, qeEmptyButMonitored, qePendingUserAction };
+enum TQueueEvent : int { qeEmpty, qeEmptyButMonitored, qePendingUserAction };
 typedef TMethodPtr<void(TTerminalQueue * Queue, TQueueEvent Event)>
  TQueueEventEvent;
 //---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ friend class TTerminalItem;
 friend class TParallelTransferQueueItem;
 
 public:
-  enum TStatus {
+  enum TStatus : int {
     qsPending, qsConnecting, qsProcessing, qsPrompt, qsQuery, qsError,
     qsPaused, qsDone };
   struct TInfo
@@ -405,7 +405,7 @@ private:
 //---------------------------------------------------------------------------
 class TUserAction;
 class TInformationUserAction;
-enum TTerminalReopenResult { trrPending, trrSucceeded, trrFailed, trrNeedsInteraction };
+enum TTerminalReopenResult : int { trrPending, trrSucceeded, trrFailed, trrNeedsInteraction };
 class TTerminalThread : public TSignalThread
 {
 public:
@@ -504,7 +504,7 @@ private:
   void NeedsInteraction();
 };
 //---------------------------------------------------------------------------
-enum TQueueFileState { qfsQueued = 0, qfsProcessed = 1 };
+enum TQueueFileState : int { qfsQueued = 0, qfsProcessed = 1 };
 //---------------------------------------------------------------------------
 class TQueueFileList
 {

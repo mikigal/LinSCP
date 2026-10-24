@@ -1878,7 +1878,7 @@ void __fastcall TIniFileStorage::ApplyOverrides()
   }
 }
 //===========================================================================
-enum TWriteMode { wmAllow, wmFail, wmIgnore };
+enum TWriteMode : int { wmAllow, wmFail, wmIgnore };
 //---------------------------------------------------------------------------
 class TOptionsIniFile : public TCustomIniFile
 {
