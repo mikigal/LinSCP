@@ -340,4 +340,10 @@ GUI on top of a verified core.
   reads return the field and out-of-class member definitions in source files are not
   `inline`, as C++Builder does.
 - 2026-10-24: the L2 tests use unittest, as the other Python tests (pytest is not installed).
+- 2026-10-24: the FileZilla engine keeps its Windows message loop on an emulation of window
+  messages and `WSAAsyncSelect` in the platform layer (no changes of its event handling); it
+  uses upstream's reduced MFC (`libs/mfc`). The WinSock error is the thread's last error.
+- 2026-10-24: the FTP servers of the test VM are vsftpd, ProFTPD and Pure-FTPd; the S3
+  server is moto (Debian has no MinIO), with authentication enforced.
+- 2026-10-24: ASCII transfers convert to LF line endings locally.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

@@ -2,10 +2,80 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M4 — FTP/FTPS, WebDAV, S3
+## Next: M5 — GUI skeleton
 
-The FileZilla engine (MFC shim, `poll()` reactor), WebDAV and S3 L2 tests; the FTP, FTPS,
-WebDAV and S3 servers in `tools/testenv/vm/provision.sh`.
+Qt 6 application, site manager (Login), Commander window with panels, navigation, basic
+operations, progress, authentication prompts; the automation hook for the E2E tests.
+
+## M4 — FTP/FTPS, WebDAV, S3 (done, 2026-10-24)
+
+Exit criteria met: the L2 matrix of the protocols passes against the servers of the test VM
+(200 tests, under ASan/UBSan and with the release build): SFTP and SCP; FTP with vsftpd
+(LIST), ProFTPD and Pure-FTPd (MLSD), plain, explicit and implicit TLS, passive and active;
+WebDAV with Apache and nginx over HTTP and HTTPS; S3 with moto over HTTP and HTTPS.
+
+- **The FileZilla engine** (`source/filezilla`) builds with the subset of MFC that upstream
+  already reduced to `CString`, `CFile` and `CTime` on the VCL (`libs/mfc`); no MFC shim of
+  our own was needed. The engine's thread runs its Windows message loop on the platform
+  layer.
+- `source/linux`, `winapi/Messages.h`: message queues of threads (an eventfd each), message-only
+  windows, `RegisterWindowMessage`, `Post`/`Get`/`PeekMessage`, timers (`WM_TIMER` generated
+  when due, one at a time per timer). `WSAAsyncSelect` with the Windows semantics: an event is
+  posted once until the call that re-enables it (`recv`, `send` that would block or sent
+  partially, `accept`); `FD_CONNECT` when a connect completes; `FD_CLOSE` once the data before
+  the end of the connection was read (`POLLRDHUP`; the socket is then not polled for reading,
+  `recv` posts what follows). The sockets are polled by the thread of their window together
+  with its queue and timers. `WSAAsyncGetHostByName` resolves before it returns; only the reply
+  is posted.
+- WinSock: the socket functions with Windows signatures are overloads of the POSIX ones for
+  the `SOCKET` type (`recv(SOCKET, char *, int, int)`, ...); the error of a socket call is the
+  thread's last error (`WSAGetLastError` is `GetLastError`, as on Windows). WinSock error codes
+  are in `rtl/WinError.h`, mapped to errno values and back. Microsoft C runtime functions in
+  `winapi/Crt.h`.
+- `tools/testenv/vm/provision.sh`: vsftpd (port 21, implicit TLS on 990), ProFTPD (2121) and
+  Pure-FTPd (2122) — Debian's FTP servers conflict with each other, so the last two are
+  unpacked from their packages to `/opt/openscp`; Apache and nginx WebDAV; moto as the S3
+  server with authentication enforced and nginx as its TLS proxy; a self-signed certificate
+  kept across runs. moto verifies signatures against the URL with the query decoded, so it
+  runs with the URL as the client sent it (`s3-server.py`).
+- L2 tests: `tests/integration/vmtests.py` (the VM, a remote directory or S3 bucket per test,
+  the remote files as seen on the VM, the matrix every protocol passes), `test_cli_vm`,
+  `test_cli_vm_ftp`, `test_cli_vm_webdav`, `test_cli_vm_s3` (label `vm`, one at a time).
+
+Decisions:
+
+- **ASCII transfers use Linux line endings**: the core's local line ending is LF (it was
+  CRLF, so ASCII downloads over SFTP and SCP wrote CRLF). The FileZilla engine leaves ASCII
+  conversion to the server, as CRLF is the Windows line ending; on Linux it converts CRLF to
+  LF in downloads and LF to CRLF in uploads, as FileZilla 3 does. A CR before a LF of a local
+  file is content (SFTP, SCP), or a line end already (FTP, where it is not doubled).
+- **`data()` of an empty RTL string is NULL**, as in C++Builder; the core passes optional
+  values to libs3 that way (the S3 session token).
+- libs3's zero-length variable length arrays are not reported by UBSan (`vla-bound`).
+
+Manual edits in upstream directories since M3:
+
+- `filezilla/FtpControlSocket.cpp`: local paths delimited by `/` (directories created for a
+  download, the overwrite prompt), no replacement of `:` in local file names, `RAND_MAX`
+  overflows (`RAND_MAX` is `0x7FFF` on Windows), `std::transform` with `::towlower`.
+- `filezilla/AsyncSslSocketLayer.cpp`: after a partial send, the rest was buffered from the
+  wrong offset and later data was sent before it; a BIO read could overflow its stack buffer;
+  the TLS session reused for data connections leaked (upstream bugs; Windows non-blocking
+  sockets rarely send partially).
+- `filezilla/TransferSocket.cpp`, `.h`: ASCII line endings; `RAND_MAX` overflow.
+- `filezilla/AsyncProxySocketLayer.cpp`: `in_addr` has no `S_un` on Linux.
+- `libs/libs3/src/request.c`: neon's zero-length body reads (a rewind) are not passed to the
+  core's callbacks (they copied zero bytes to a NULL buffer).
+- `core/Configuration.cpp`: the local line ending.
+
+Findings for later milestones:
+
+- Proxies (the engine's proxy layer, neon's, PuTTY's) are not tested yet; the VM could run a
+  SOCKS and an HTTP proxy.
+- With the address family on auto, an FTP host name that does not resolve fails with
+  "Connection failed." only (upstream does the same); IPv4 only reports it.
+- `CTime` of `libs/mfc` uses `localtime`, which is not thread-safe (as upstream).
+- The S3 server keeps objects in memory; restarting it (provisioning) creates a new key.
 
 ## M3 — SSH and the CLI (done, 2026-10-24)
 

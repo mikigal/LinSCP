@@ -16,6 +16,7 @@ import tempfile
 import unittest
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 from openscp_cli import OpenScpCli
 from testvm import TestVm, TestVmError
@@ -205,7 +206,6 @@ class VmTestCase(unittest.TestCase):
         self.addCleanup(self.files().remove, self.remote)
 
     def credentials(self, user=None, password=True):
-        from urllib.parse import quote
         result = quote(user or self.user, safe='')
         if password:
             result += ':' + quote(password if isinstance(password, str) else self.password, safe='')
