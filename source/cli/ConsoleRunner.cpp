@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-#include <WinPCH.h>
+#include <AppPCH.h>
 #pragma hdrstop
 
 #include <Script.h>
@@ -7,14 +7,13 @@
 #include <PuttyTools.h>
 #include <Queue.h>
 #include <HierarchicalStorage.h>
-#include "Console.h"
+#include "CliInterface.h"
+#include "AppConfiguration.h"
 #include "ProgParams.h"
 #include "SynchronizeController.h"
-#include "Setup.h"
 #include "FtpFileSystem.h"
 #include "SessionInfo.h"
 //---------------------------------------------------------------------------
-#define WM_INTERUPT_IDLE (WM_WINSCP_USER + 3)
 #define BATCH_INPUT_TIMEOUT 10000
 //---------------------------------------------------------------------------
 void TrimNewLine(UnicodeString & Str)
@@ -31,993 +30,9 @@ void __fastcall TConsole::PrintLine(const UnicodeString & Str, bool Error)
   Print(Str + L"\n", false, Error);
 };
 //---------------------------------------------------------------------------
-class TOwnConsole : public TConsole
-{
-public:
-  static TOwnConsole * __fastcall Instance();
-
-  virtual void __fastcall Print(UnicodeString Str, bool FromBeginning = false, bool Error = false);
-  virtual bool __fastcall Input(UnicodeString & Str, bool Echo, unsigned int Timer);
-  virtual int __fastcall Choice(
-    UnicodeString Options, int Cancel, int Break, int Continue, int Timeouted, bool Timeouting, unsigned int Timer,
-    UnicodeString Message);
-  virtual bool __fastcall HasFlag(TConsoleFlag Flag) const;
-  virtual bool __fastcall PendingAbort();
-  virtual void __fastcall SetTitle(UnicodeString Title);
-  virtual void __fastcall WaitBeforeExit();
-  virtual void __fastcall Progress(TScriptProgress & Progress);
-  virtual void __fastcall TransferOut(const unsigned char * Data, size_t Len);
-  virtual size_t __fastcall TransferIn(unsigned char * Data, size_t Len);
-  virtual UnicodeString __fastcall FinalLogMessage();
-
-protected:
-  static TOwnConsole * FInstance;
-  friend class TConsoleInputThread;
-
-  __fastcall TOwnConsole();
-  virtual __fastcall ~TOwnConsole();
-
-  void __fastcall BreakInput();
-  void __fastcall CancelInput();
-  static BOOL WINAPI HandlerRoutine(DWORD CtrlType);
-  void __fastcall WindowStateTimer(TObject * Sender);
-  void __fastcall ProcessMessages();
-  void __fastcall TrayIconClick(TObject * Sender);
-
-private:
-  HANDLE FInput;
-  HANDLE FOutput;
-  HWND FConsoleWindow;
-  TTimer * FWindowStateTimer;
-  bool FMinimized;
-  ::TTrayIcon * FTrayIcon;
-  static std::unique_ptr<TCriticalSection> FSection;
-
-  bool FPendingAbort;
-};
-//---------------------------------------------------------------------------
-TOwnConsole * TOwnConsole::FInstance = NULL;
-std::unique_ptr<TCriticalSection> TOwnConsole::FSection(TraceInitPtr(new TCriticalSection()));
-//---------------------------------------------------------------------------
-__fastcall TOwnConsole::TOwnConsole()
-{
-  DebugAssert(FInstance == NULL);
-  FInstance = this;
-
-  AllocConsole();
-  SetConsoleCtrlHandler(HandlerRoutine, true);
-
-  FInput = GetStdHandle(STD_INPUT_HANDLE);
-  FOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-  FPendingAbort = false;
-  FConsoleWindow = NULL;
-  FWindowStateTimer = NULL;
-  FMinimized = false;
-  FTrayIcon = new ::TTrayIcon(0);
-  FTrayIcon->OnClick = ::rtl::MethodPtr(this, &TOwnConsole::TrayIconClick);
-
-  if (WinConfiguration->MinimizeToTray)
-  {
-    FConsoleWindow = GetConsoleWindow();
-    if (DebugAlwaysTrue(FConsoleWindow != NULL))
-    {
-      FWindowStateTimer = new TTimer(Application);
-      FWindowStateTimer->OnTimer = ::rtl::MethodPtr(this, &TOwnConsole::WindowStateTimer);
-      FWindowStateTimer->Interval = 250;
-      FWindowStateTimer->Enabled = true;
-    }
-  }
-}
-//---------------------------------------------------------------------------
-__fastcall TOwnConsole::~TOwnConsole()
-{
-  TGuard Guard(FSection.get());
-
-  delete FTrayIcon;
-  delete FWindowStateTimer;
-
-  // deliberately do not remove ConsoleCtrlHandler as it causes
-  // failures while exiting
-
-  FreeConsole();
-
-  DebugAssert(FInstance == this);
-  FInstance = NULL;
-}
-//---------------------------------------------------------------------------
-TOwnConsole * __fastcall TOwnConsole::Instance()
-{
-  return new TOwnConsole();
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::WindowStateTimer(TObject * /*Sender*/)
-{
-  DebugAssert(FConsoleWindow != NULL);
-  WINDOWPLACEMENT Placement;
-  memset(&Placement, 0, sizeof(Placement));
-  Placement.length = sizeof(Placement);
-  if (GetWindowPlacement(FConsoleWindow, &Placement))
-  {
-    bool Minimized = (Placement.showCmd == SW_SHOWMINIMIZED);
-    if (FMinimized != Minimized)
-    {
-      FMinimized = Minimized;
-
-      if (FMinimized && WinConfiguration->MinimizeToTray)
-      {
-        FTrayIcon->Visible = true;
-        ShowWindow(FConsoleWindow, SW_HIDE);
-      }
-      else
-      {
-        FTrayIcon->Visible = false;
-        ShowWindow(FConsoleWindow, SW_SHOW);
-      }
-    }
-  }
-  else
-  {
-    DebugFail();
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::ProcessMessages()
-{
-  // as of now, there's no point doing this unless we have icon tray
-  // (i.e. we need to monitor window state and eventually process tray icon messages)
-  if (FWindowStateTimer != NULL)
-  {
-    DebugAssert(WinConfiguration->MinimizeToTray);
-
-    Application->ProcessMessages();
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::TrayIconClick(TObject * /*Sender*/)
-{
-  DebugAssert(FConsoleWindow != NULL);
-  SetForegroundWindow(FConsoleWindow);
-  ShowWindow(FConsoleWindow, SW_RESTORE);
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::BreakInput()
-{
-  FlushConsoleInputBuffer(FInput);
-  INPUT_RECORD InputRecord;
-  memset(&InputRecord, 0, sizeof(InputRecord));
-  InputRecord.EventType = KEY_EVENT;
-  InputRecord.Event.KeyEvent.bKeyDown = true;
-  InputRecord.Event.KeyEvent.wRepeatCount = 1;
-  InputRecord.Event.KeyEvent.uChar.UnicodeChar = L'\r';
-
-  unsigned long Written;
-  // this assertion occasionally fails (when console is being exited)
-  DebugCheck(WriteConsoleInput(FInput, &InputRecord, 1, &Written));
-  DebugAssert(Written == 1);
-
-  CancelInput();
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::CancelInput()
-{
-  FPendingAbort = true;
-
-  PostMessage(Application->Handle, WM_INTERUPT_IDLE, 0, 0);
-}
-//---------------------------------------------------------------------------
-BOOL WINAPI TOwnConsole::HandlerRoutine(DWORD CtrlType)
-{
-  if ((CtrlType == CTRL_C_EVENT) || (CtrlType == CTRL_BREAK_EVENT))
-  {
-    {
-      TGuard Guard(FSection.get());
-
-      // just to be real thread-safe
-      if (FInstance != NULL)
-      {
-        FInstance->CancelInput();
-      }
-    }
-
-    return true;
-  }
-  else
-  {
-    return false;
-  }
-}
-//---------------------------------------------------------------------------
-bool __fastcall TOwnConsole::PendingAbort()
-{
-  if (FPendingAbort)
-  {
-    FPendingAbort = false;
-    return true;
-  }
-  else
-  {
-    return FPendingAbort;
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::Print(UnicodeString Str, bool FromBeginning, bool /*Error*/)
-{
-  if (FromBeginning)
-  {
-    CONSOLE_SCREEN_BUFFER_INFO BufferInfo;
-    GetConsoleScreenBufferInfo(FOutput, &BufferInfo);
-    BufferInfo.dwCursorPosition.X = 0;
-    SetConsoleCursorPosition(FOutput, BufferInfo.dwCursorPosition);
-  }
-  unsigned long Written;
-  bool Result = WriteConsole(FOutput, Str.c_str(), Str.Length(), &Written, NULL);
-  DebugAssert(Result);
-  DebugUsedParam(Result);
-  DebugAssert(Str.Length() == static_cast<long>(Written));
-  ProcessMessages();
-}
-//---------------------------------------------------------------------------
-class TConsoleInputThread : public TSimpleThread
-{
-public:
-  __fastcall TConsoleInputThread(HANDLE Input, UnicodeString & Str, bool & Result) :
-    FInput(Input),
-    FStr(Str),
-    FResult(Result)
-  {
-  }
-
-  virtual __fastcall ~TConsoleInputThread()
-  {
-    Close();
-  }
-
-protected:
-  virtual void __fastcall Execute()
-  {
-    unsigned long Read;
-    FStr.SetLength(10240);
-    FResult = ReadConsole(FInput, FStr.c_str(), FStr.Length(), &Read, NULL);
-    DebugAssert(FResult);
-    FStr.SetLength(Read);
-    TrimNewLine(FStr);
-  }
-
-  virtual void __fastcall Terminate()
-  {
-    TOwnConsole::FInstance->BreakInput();
-  }
-
-private:
-  HANDLE FInput;
-  UnicodeString & FStr;
-  bool & FResult;
-};
-//---------------------------------------------------------------------------
-bool __fastcall TOwnConsole::Input(UnicodeString & Str, bool Echo, unsigned int Timer)
-{
-  unsigned long PrevMode, NewMode;
-  GetConsoleMode(FInput, &PrevMode);
-  NewMode = PrevMode | ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT;
-  if (Echo)
-  {
-    NewMode |= ENABLE_ECHO_INPUT;
-  }
-  else
-  {
-    NewMode &= ~ENABLE_ECHO_INPUT;
-  }
-  SetConsoleMode(FInput, NewMode);
-
-  bool Result = false;
-
-  { ::rtl::TFinally Finally([&]()
-  {
-    SetConsoleMode(FInput, PrevMode);
-  }); try
-  {
-    {
-      const int FirstKey = VK_LBUTTON; // 0x01
-      const int LastKey = VK_OEM_CLEAR; // 0xFE
-
-      // reset key state
-      for (int Key = FirstKey; Key <= LastKey; Key++)
-      {
-        GetAsyncKeyState(Key);
-      }
-
-      TConsoleInputThread InputThread(FInput, Str, Result);
-
-      InputThread.Start();
-
-      double TimerD = double(Timer)/MSecsPerDay;
-      double End = Now() + TimerD;
-      while (!InputThread.IsFinished() &&
-             ((Timer == 0) || (double(Now()) < End)))
-      {
-        ProcessMessages();
-        InputThread.WaitFor(50);
-
-        for (int Key = FirstKey; Key <= LastKey; Key++)
-        {
-          if ((GetAsyncKeyState(Key) & 0x01) != 0)
-          {
-            End = Now() + TimerD;
-            // Finishing the loop nevertheless to reset state of all keys
-          }
-        }
-      }
-    }
-
-    if (FPendingAbort || !Echo)
-    {
-      Print(L"\n");
-    }
-
-    if (FPendingAbort || (Str.Length() == 0))
-    {
-      Result = false;
-      FPendingAbort = false;
-    }
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  return Result;
-}
-//---------------------------------------------------------------------------
-int __fastcall TOwnConsole::Choice(
-  UnicodeString Options, int Cancel, int Break, int /*Continue*/, int Timeouted, bool /*Timeouting*/, unsigned int Timer,
-  UnicodeString DebugUsedArg(Message))
-{
-  unsigned int ATimer = Timer;
-  int Result = 0;
-  unsigned long PrevMode, NewMode;
-  GetConsoleMode(FInput, &PrevMode);
-  NewMode = (PrevMode | ENABLE_PROCESSED_INPUT) & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-  SetConsoleMode(FInput, NewMode);
-
-  { ::rtl::TFinally Finally([&]()
-  {
-    SetConsoleMode(FInput, PrevMode);
-  }); try
-  {
-    do
-    {
-      unsigned long Read;
-      INPUT_RECORD Record;
-      if ((PeekConsoleInput(FInput, &Record, 1, &Read) != 0) &&
-          (Read == 1))
-      {
-        if ((ReadConsoleInput(FInput, &Record, 1, &Read) != 0) &&
-            (Read == 1))
-        {
-          if (PendingAbort())
-          {
-            Result = Break;
-          }
-          else if ((Record.EventType == KEY_EVENT) &&
-                   Record.Event.KeyEvent.bKeyDown)
-          {
-            wchar_t C = AnsiUpperCase(Record.Event.KeyEvent.uChar.UnicodeChar)[1];
-            if (C == 27)
-            {
-              Result = Cancel;
-            }
-            else if ((Options.Pos(C) > 0) &&
-                     FLAGCLEAR(Record.Event.KeyEvent.dwControlKeyState,
-                       LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED | LEFT_ALT_PRESSED  |
-                       RIGHT_ALT_PRESSED))
-
-            {
-              Result = Options.Pos(C);
-            }
-          }
-        }
-      }
-
-      if (Result == 0)
-      {
-        unsigned int TimerSlice = 50;
-        Sleep(TimerSlice);
-        if (Timer > 0)
-        {
-          if (ATimer > TimerSlice)
-          {
-            ATimer -= TimerSlice;
-          }
-          else
-          {
-            Result = Timeouted;
-          }
-        }
-      }
-
-      ProcessMessages();
-    }
-    while (Result == 0);
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  return Result;
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::SetTitle(UnicodeString Title)
-{
-  FTrayIcon->Hint = Title;
-  SetConsoleTitle(Title.c_str());
-}
-//---------------------------------------------------------------------------
-bool __fastcall TOwnConsole::HasFlag(TConsoleFlag Flag) const
-{
-  switch (Flag)
-  {
-    case cfLimitedOutput:
-    case cfLiveOutput:
-    case cfInteractive:
-      return true;
-
-    case cfNoInteractiveInput:
-    case cfCommandLineOnly:
-    case cfWantsProgress:
-    case cfStdOut:
-    case cfStdIn:
-      return false;
-
-    default:
-      DebugFail();
-      return false;
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::WaitBeforeExit()
-{
-  unsigned long Read;
-  INPUT_RECORD Record;
-  while (true)
-  {
-    if (PeekConsoleInput(FInput, &Record, 1, &Read) && (Read == 1) &&
-        ReadConsoleInput(FInput, &Record, 1, &Read) &&
-        (Read == 1) && (Record.EventType == KEY_EVENT) &&
-        (Record.Event.KeyEvent.uChar.UnicodeChar != 0) &&
-        Record.Event.KeyEvent.bKeyDown)
-    {
-      break;
-    }
-    Sleep(50);
-    ProcessMessages();
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::Progress(TScriptProgress & /*Progress*/)
-{
-  DebugFail();
-}
-//---------------------------------------------------------------------------
-void __fastcall TOwnConsole::TransferOut(const unsigned char * DebugUsedArg(Data), size_t DebugUsedArg(Len))
-{
-  DebugFail();
-}
-//---------------------------------------------------------------------------
-size_t __fastcall TOwnConsole::TransferIn(unsigned char * DebugUsedArg(Data), size_t DebugUsedArg(Len))
-{
-  DebugFail();
-  return 0;
-}
-//---------------------------------------------------------------------------
-UnicodeString __fastcall TOwnConsole::FinalLogMessage()
-{
-  return UnicodeString();
-}
-//---------------------------------------------------------------------------
-typedef TConsoleCommStruct::TInitEvent::STDINOUT TStdInOutMode;
-//---------------------------------------------------------------------------
-class TExternalConsole : public TConsole
-{
-public:
-  __fastcall TExternalConsole(const UnicodeString Instance, bool NoInteractiveInput, TStdInOutMode StdOut, TStdInOutMode StdIn);
-  virtual __fastcall ~TExternalConsole();
-
-  virtual void __fastcall Print(UnicodeString Str, bool FromBeginning = false, bool Error = false);
-  virtual bool __fastcall Input(UnicodeString & Str, bool Echo, unsigned int Timer);
-  virtual int __fastcall Choice(
-    UnicodeString Options, int Cancel, int Break, int Continue, int Timeouted, bool Timeouting, unsigned int Timer,
-    UnicodeString Message);
-  virtual bool __fastcall HasFlag(TConsoleFlag Flag) const;
-  virtual bool __fastcall PendingAbort();
-  virtual void __fastcall SetTitle(UnicodeString Title);
-  virtual void __fastcall WaitBeforeExit();
-  virtual void __fastcall Progress(TScriptProgress & Progress);
-  virtual void __fastcall TransferOut(const unsigned char * Data, size_t Len);
-  virtual size_t __fastcall TransferIn(unsigned char * Data, size_t Len);
-  virtual UnicodeString __fastcall FinalLogMessage();
-
-private:
-  HANDLE FRequestEvent;
-  HANDLE FResponseEvent;
-  HANDLE FCancelEvent;
-  HANDLE FFileMapping;
-  bool FLimitedOutput;
-  bool FLiveOutput;
-  bool FPipeOutput;
-  bool FNoInteractiveInput;
-  TStdInOutMode FStdOut;
-  TStdInOutMode FStdIn;
-  bool FWantsProgress;
-  bool FInteractive;
-  unsigned int FMaxSend;
-  // Particularly FTP calls TransferOut/In from other thread
-  std::unique_ptr<TCriticalSection> FSection;
-
-  inline TConsoleCommStruct * __fastcall GetCommStruct();
-  inline void __fastcall FreeCommStruct(TConsoleCommStruct * CommStruct);
-  inline void __fastcall SendEvent(int Timeout);
-  void __fastcall Init();
-  void __fastcall CheckHandle(HANDLE Handle, const UnicodeString & Desc);
-};
-//---------------------------------------------------------------------------
-__fastcall TExternalConsole::TExternalConsole(
-  const UnicodeString Instance, bool NoInteractiveInput, TStdInOutMode StdOut, TStdInOutMode StdIn)
-{
-  UnicodeString Name;
-  Name = FORMAT(L"%s%s", (CONSOLE_EVENT_REQUEST, (Instance)));
-  CheckHandle(FRequestEvent = OpenEvent(EVENT_ALL_ACCESS, false, Name.c_str()), L"Request event");
-  Name = FORMAT(L"%s%s", (CONSOLE_EVENT_RESPONSE, (Instance)));
-  CheckHandle(FResponseEvent = OpenEvent(EVENT_ALL_ACCESS, false, Name.c_str()), L"Response event");
-  Name = FORMAT(L"%s%s", (CONSOLE_EVENT_CANCEL, (Instance)));
-  CheckHandle(FCancelEvent = OpenEvent(EVENT_ALL_ACCESS, false, Name.c_str()), L"Cancel event");
-  Name = FORMAT(L"%s%s", (CONSOLE_MAPPING, (Instance)));
-  CheckHandle(FFileMapping = OpenFileMapping(FILE_MAP_ALL_ACCESS, false, Name.c_str()), L"File mapping");
-
-  HANDLE Job = OpenJobObject(JOB_OBJECT_ASSIGN_PROCESS, FALSE,
-    FORMAT(L"%s%s", (CONSOLE_JOB, Instance)).c_str());
-  if (DebugAlwaysTrue(Job != NULL))
-  {
-    AssignProcessToJobObject(Job, GetCurrentProcess());
-    // winscp.com/winscp.dll keeps the only reference to the job.
-    // once it gets closed (because winscp.com is forcefully terminated),
-    // we get terminated as well
-    CloseHandle(Job);
-  }
-
-  FSection.reset(new TCriticalSection());
-
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    if (CommStruct->Version != TConsoleCommStruct::CurrentVersion)
-    {
-      throw Exception(FMTLOAD(EXTERNAL_CONSOLE_INCOMPATIBLE, (CommStruct->Version)));
-    }
-
-    CommStruct->Version = TConsoleCommStruct::CurrentVersionConfirmed;
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  // to break application event loop regularly during "watching for changes"
-  // to allow user to abort it
-  SetTimer(Application->Handle, 1, 500, NULL);
-
-  FNoInteractiveInput = NoInteractiveInput;
-  FStdOut = StdOut;
-  FStdIn = StdIn;
-  FMaxSend = 0;
-
-  Init();
-}
-//---------------------------------------------------------------------------
-__fastcall TExternalConsole::~TExternalConsole()
-{
-  CloseHandle(FRequestEvent);
-  CloseHandle(FResponseEvent);
-  CloseHandle(FCancelEvent);
-  CloseHandle(FFileMapping);
-  KillTimer(Application->Handle, 1);
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::CheckHandle(HANDLE Handle, const UnicodeString & Desc)
-{
-  if (Handle == NULL)
-  {
-    throw ExtException(LoadStr(EXTERNAL_CONSOLE_INIT_ERROR), FORMAT(L"%s\n%s", (Desc, LastSysErrorMessage())));
-  }
-}
-//---------------------------------------------------------------------------
-TConsoleCommStruct * __fastcall TExternalConsole::GetCommStruct()
-{
-  TConsoleCommStruct * Result;
-  Result = static_cast<TConsoleCommStruct*>(MapViewOfFile(FFileMapping,
-    FILE_MAP_ALL_ACCESS, 0, 0, 0));
-  if (Result == NULL)
-  {
-    throw Exception(LoadStr(CONSOLE_COMM_ERROR));
-  }
-  return Result;
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::FreeCommStruct(TConsoleCommStruct * CommStruct)
-{
-  UnmapViewOfFile(CommStruct);
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::SendEvent(int Timeout)
-{
-  SetEvent(FRequestEvent);
-  unsigned int Start = 0; // shut up
-  if (Configuration->ActualLogProtocol >= 1)
-  {
-    Start = GetTickCount();
-  }
-  unsigned int Result = WaitForSingleObject(FResponseEvent, Timeout);
-  if (Configuration->ActualLogProtocol >= 1)
-  {
-    unsigned int End = GetTickCount();
-    unsigned int Duration = End - Start;
-    FMaxSend = std::max(Duration, FMaxSend);
-  }
-  if (Result != WAIT_OBJECT_0)
-  {
-    UnicodeString Message = LoadStr(CONSOLE_SEND_TIMEOUT);
-    if (FPipeOutput)
-    {
-      Message = FORMAT("%s %s", (Message, LoadStr(CONSOLE_SEND_PIPE)));
-    }
-    throw Exception(Message);
-  }
-}
-//---------------------------------------------------------------------------
-UnicodeString __fastcall TExternalConsole::FinalLogMessage()
-{
-  return FORMAT(L"Max roundtrip: %d", (static_cast<int>(FMaxSend)));
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::Print(UnicodeString Str, bool FromBeginning, bool Error)
-{
-  TGuard Guard(FSection.get());
-  // need to do at least one iteration, even when Str is empty (new line)
-  do
-  {
-    TConsoleCommStruct * CommStruct = GetCommStruct();
-    { ::rtl::TFinally Finally([&]()
-    {
-      FreeCommStruct(CommStruct);
-    }); try
-    {
-      int MaxLen = static_cast<int>(std::size(CommStruct->PrintEvent.Message) - 1);
-      UnicodeString Piece = Str.SubString(1, MaxLen);
-      Str.Delete(1, MaxLen);
-
-      CommStruct->Event = TConsoleCommStruct::PRINT;
-      wcscpy(CommStruct->PrintEvent.Message, Piece.c_str());
-      CommStruct->PrintEvent.FromBeginning = FromBeginning;
-      CommStruct->PrintEvent.Error = Error;
-
-      // In the next iteration we need to append never overwrite.
-      // Note that this won't work properly for disk/pipe outputs,
-      // when the next line is also FromBeginning,
-      // as !FromBeginning print effectively commits previous FromBeginning print.
-      // On the other hand, FromBeginning print is always initiated by us,
-      // and it's not likely we ever issue print over 10 KB.
-      FromBeginning = false;
-    }
-    catch (...) { Finally.Unwind(); } }
-
-    SendEvent(INFINITE);
-  }
-  while (!Str.IsEmpty());
-}
-//---------------------------------------------------------------------------
-bool __fastcall TExternalConsole::Input(UnicodeString & Str, bool Echo, unsigned int Timer)
-{
-  TGuard Guard(FSection.get());
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    CommStruct->Event = TConsoleCommStruct::INPUT;
-    CommStruct->InputEvent.Echo = Echo;
-    CommStruct->InputEvent.Result = false;
-    CommStruct->InputEvent.Str[0] = L'\0';
-    CommStruct->InputEvent.Timer = Timer;
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  SendEvent(INFINITE);
-
-  bool Result;
-  CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    Result = CommStruct->InputEvent.Result;
-    Str = CommStruct->InputEvent.Str;
-    TrimNewLine(Str);
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  return Result;
-}
-//---------------------------------------------------------------------------
-int __fastcall TExternalConsole::Choice(
-  UnicodeString Options, int Cancel, int Break, int Continue, int Timeouted, bool Timeouting, unsigned int Timer,
-  UnicodeString Message)
-{
-  TGuard Guard(FSection.get());
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    CommStruct->Event = TConsoleCommStruct::CHOICE;
-
-    DebugAssert(Options.Length() < static_cast<int>(std::size(CommStruct->ChoiceEvent.Options)));
-    wcscpy(CommStruct->ChoiceEvent.Options, Options.c_str());
-    CommStruct->ChoiceEvent.Cancel = Cancel;
-    CommStruct->ChoiceEvent.Break = Break;
-    CommStruct->ChoiceEvent.Result = Break;
-    CommStruct->ChoiceEvent.Continue = Continue;
-    CommStruct->ChoiceEvent.Timeouted = Timeouted;
-    CommStruct->ChoiceEvent.Timer = Timer;
-    CommStruct->ChoiceEvent.Timeouting = Timeouting;
-    int MaxLen = static_cast<int>(std::size(CommStruct->ChoiceEvent.Message) - 1);
-    Message = Message.SubString(1, MaxLen);
-    wcscpy(CommStruct->ChoiceEvent.Message, Message.c_str());
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  SendEvent(INFINITE);
-
-  int Result;
-  CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    Result = CommStruct->ChoiceEvent.Result;
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  return Result;
-}
-//---------------------------------------------------------------------------
-bool __fastcall TExternalConsole::PendingAbort()
-{
-  return (WaitForSingleObject(FCancelEvent, 0) == WAIT_OBJECT_0);
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::SetTitle(UnicodeString Title)
-{
-  TGuard Guard(FSection.get());
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    // Truncate to maximum allowed. Title over 10 KB won't fit to screen anyway
-    Title = Title.SubString(1, static_cast<int>(std::size(CommStruct->TitleEvent.Title) - 1));
-
-    CommStruct->Event = TConsoleCommStruct::TITLE;
-    wcscpy(CommStruct->TitleEvent.Title, Title.c_str());
-  }
-  catch (...) { Finally.Unwind(); } }
-
-  SendEvent(INFINITE);
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::Init()
-{
-  TGuard Guard(FSection.get());
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    CommStruct->Event = TConsoleCommStruct::INIT;
-    CommStruct->InitEvent.WantsProgress = false;
-    CommStruct->InitEvent.UseStdErr = (FStdOut != TConsoleCommStruct::TInitEvent::OFF);
-    CommStruct->InitEvent.OutputFormat = FStdOut;
-    CommStruct->InitEvent.InputFormat = FStdIn;
-  }
-  catch (...) { Finally.Unwind(); } }
-  SendEvent(INFINITE);
-
-  CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    FLimitedOutput = (CommStruct->InitEvent.OutputType == FILE_TYPE_CHAR);
-    FLiveOutput =
-      (CommStruct->InitEvent.OutputType != FILE_TYPE_DISK) &&
-      (CommStruct->InitEvent.OutputType != FILE_TYPE_PIPE);
-    FPipeOutput = (CommStruct->InitEvent.OutputType != FILE_TYPE_PIPE);
-    FInteractive =
-      (CommStruct->InitEvent.InputType != FILE_TYPE_DISK) &&
-      (CommStruct->InitEvent.InputType != FILE_TYPE_PIPE);
-    FWantsProgress = CommStruct->InitEvent.WantsProgress;
-  }
-  catch (...) { Finally.Unwind(); } }
-}
-//---------------------------------------------------------------------------
-bool __fastcall TExternalConsole::HasFlag(TConsoleFlag Flag) const
-{
-  switch (Flag)
-  {
-    case cfLimitedOutput:
-      return FLimitedOutput;
-
-    case cfLiveOutput:
-      return FLiveOutput;
-
-    case cfNoInteractiveInput:
-      return FNoInteractiveInput;
-
-    case cfInteractive:
-      return FInteractive;
-
-    case cfCommandLineOnly:
-      return true;
-
-    case cfWantsProgress:
-      return FWantsProgress;
-
-    case cfStdOut:
-      return (FStdOut != TConsoleCommStruct::TInitEvent::OFF);
-
-    case cfStdIn:
-      return (FStdIn != TConsoleCommStruct::TInitEvent::OFF);
-
-    default:
-      DebugFail();
-      return false;
-  }
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::WaitBeforeExit()
-{
-  // noop
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::Progress(TScriptProgress & Progress)
-{
-  TGuard Guard(FSection.get());
-  TConsoleCommStruct * CommStruct = GetCommStruct();
-
-  typedef TConsoleCommStruct::TProgressEvent TProgressEvent;
-
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    TProgressEvent & ProgressEvent = CommStruct->ProgressEvent;
-
-    CommStruct->Event = TConsoleCommStruct::PROGRESS;
-
-    if (DebugAlwaysTrue(TFileOperationProgressType::IsTransferOperation(Progress.Operation)))
-    {
-      ProgressEvent.Operation = TProgressEvent::COPY;
-    }
-
-    switch (Progress.Side)
-    {
-      case osLocal:
-        ProgressEvent.Side = TProgressEvent::LOCAL;
-        break;
-
-      case osRemote:
-        ProgressEvent.Side = TProgressEvent::REMOTE;
-        break;
-
-      default:
-        DebugFail();
-    }
-
-    wcsncpy(ProgressEvent.FileName, Progress.FileName.c_str(), std::size(ProgressEvent.FileName));
-    NULL_TERMINATE(ProgressEvent.FileName);
-
-    wcsncpy(ProgressEvent.Directory, Progress.Directory.c_str(), std::size(ProgressEvent.Directory));
-    NULL_TERMINATE(ProgressEvent.Directory);
-
-    ProgressEvent.OverallProgress = Progress.OverallProgress;
-    ProgressEvent.FileProgress = Progress.FileProgress;
-    ProgressEvent.CPS = Progress.CPS;
-    ProgressEvent.Cancel = Progress.Cancel;
-  }
-  catch (...) { Finally.Unwind(); } }
-  SendEvent(INFINITE);
-
-  CommStruct = GetCommStruct();
-  { ::rtl::TFinally Finally([&]()
-  {
-    FreeCommStruct(CommStruct);
-  }); try
-  {
-    TProgressEvent & ProgressEvent = CommStruct->ProgressEvent;
-    Progress.Cancel = ProgressEvent.Cancel;
-  }
-  catch (...) { Finally.Unwind(); } }
-}
-//---------------------------------------------------------------------------
-void __fastcall TExternalConsole::TransferOut(const unsigned char * Data, size_t Len)
-{
-  TGuard Guard(FSection.get());
-  DebugAssert((Data == NULL) == (Len == 0));
-  size_t Offset = 0;
-  do
-  {
-    TConsoleCommStruct * CommStruct = GetCommStruct();
-    { ::rtl::TFinally Finally([&]()
-    {
-      FreeCommStruct(CommStruct);
-    }); try
-    {
-      CommStruct->Event = TConsoleCommStruct::TRANSFEROUT;
-      unsigned int BlockLen = static_cast<unsigned int>(std::min(Len - Offset, sizeof(CommStruct->TransferEvent.Data)));
-      memcpy(CommStruct->TransferEvent.Data, Data + Offset, BlockLen);
-      CommStruct->TransferEvent.Len = BlockLen;
-      Offset += BlockLen;
-    }
-    catch (...) { Finally.Unwind(); } }
-    SendEvent(INFINITE);
-  }
-  while (Offset < Len);
-}
-//---------------------------------------------------------------------------
-size_t __fastcall TExternalConsole::TransferIn(unsigned char * Data, size_t Len)
-{
-  TGuard Guard(FSection.get());
-  size_t Offset = 0;
-  size_t Result = 0;
-  while ((Result == Offset) && (Offset < Len))
-  {
-    TConsoleCommStruct * CommStruct;
-    unsigned int BlockLen = SizeToUIntChecked(std::min(Len - Offset, sizeof(CommStruct->TransferEvent.Data)));
-
-    CommStruct = GetCommStruct();
-    { ::rtl::TFinally Finally([&]()
-    {
-      FreeCommStruct(CommStruct);
-    }); try
-    {
-      CommStruct->Event = TConsoleCommStruct::TRANSFERIN;
-      CommStruct->TransferEvent.Len = BlockLen;
-      CommStruct->TransferEvent.Error = false;
-    }
-    catch (...) { Finally.Unwind(); } }
-
-    SendEvent(INFINITE);
-
-    CommStruct = GetCommStruct();
-    { ::rtl::TFinally Finally([&]()
-    {
-      FreeCommStruct(CommStruct);
-    }); try
-    {
-      if (CommStruct->TransferEvent.Error)
-      {
-        throw Exception(LoadStr(STREAM_READ_ERROR));
-      }
-      DebugAssert(CommStruct->TransferEvent.Len <= BlockLen);
-      Result += CommStruct->TransferEvent.Len;
-      memcpy(Data + Offset, CommStruct->TransferEvent.Data, CommStruct->TransferEvent.Len);
-      Offset += BlockLen;
-    }
-    catch (...) { Finally.Unwind(); } }
-  }
-  return Result;
-}
+// OpenSCP: the consoles of Windows (TOwnConsole, the console window of
+// WinSCP.exe, and TExternalConsole, which talks to winscp.com) are replaced
+// by the console of a Unix terminal (UnixConsole.cpp)
 //---------------------------------------------------------------------------
 class TNullConsole : public TConsole
 {
@@ -1169,7 +184,6 @@ private:
   bool FCommandError;
   bool FBatchScript;
   bool FAborted;
-  TTimer * Timer;
   bool FExternalTimestampVar;
 
   void __fastcall ScriptPrint(TScript * Script, const UnicodeString Str, bool Error);
@@ -1199,7 +213,6 @@ private:
   void __fastcall SynchronizeControllerTooManyDirectories(TSynchronizeController * Sender,
     int & MaxDirectories);
   unsigned int InputTimeout();
-  void __fastcall TimerTimer(TObject * Sender);
   UnicodeString ExpandCommand(UnicodeString Command, TStrings * ScriptParameters);
   void __fastcall Failed(bool & AnyError);
   void __fastcall ScriptProgress(TScript * Script, TScriptProgress & Progress);
@@ -1218,12 +231,8 @@ TConsoleRunner::TConsoleRunner(TConsole * Console) :
   FScript = NULL;
   FAborted = false;
   FBatchScript = false;
-  Timer = new TTimer(Application);
-  Timer->OnTimer = ::rtl::MethodPtr(this, &TConsoleRunner::TimerTimer);
-  Timer->Interval = MSecsPerSec;
-  Timer->Enabled = true;
-  DebugAssert(WinConfiguration->OnMasterPasswordPrompt == NULL);
-  WinConfiguration->OnMasterPasswordPrompt = ::rtl::MethodPtr(this, &TConsoleRunner::MasterPasswordPrompt);
+  DebugAssert(AppConfiguration->OnMasterPasswordPrompt == NULL);
+  AppConfiguration->OnMasterPasswordPrompt = ::rtl::MethodPtr(this, &TConsoleRunner::MasterPasswordPrompt);
   DebugAssert(Configuration->OnChange == NULL);
   FExternalTimestampVar = !GetEnvironmentVariable(TimestampVarName).IsEmpty();
   Configuration->OnChange = ::rtl::MethodPtr(this, &TConsoleRunner::ConfigurationChange);
@@ -1232,17 +241,10 @@ TConsoleRunner::TConsoleRunner(TConsole * Console) :
 //---------------------------------------------------------------------------
 TConsoleRunner::~TConsoleRunner()
 {
-  DebugAssert(WinConfiguration->OnMasterPasswordPrompt == MasterPasswordPrompt);
-  WinConfiguration->OnMasterPasswordPrompt = NULL;
+  DebugAssert(AppConfiguration->OnMasterPasswordPrompt == MasterPasswordPrompt);
+  AppConfiguration->OnMasterPasswordPrompt = NULL;
   DebugAssert(Configuration->OnChange == ConfigurationChange);
   Configuration->OnChange = NULL;
-  delete Timer;
-}
-//---------------------------------------------------------------------------
-void __fastcall TConsoleRunner::TimerTimer(TObject * /*Sender*/)
-{
-  // sole presence of timer causes message to be dispatched,
-  // hence breaks the loops
 }
 //---------------------------------------------------------------------------
 unsigned int TConsoleRunner::InputTimeout()
@@ -1383,7 +385,7 @@ void __fastcall TConsoleRunner::ScriptTerminalPromptUser(TTerminal * /*Terminal*
     Print(Prompt);
 
     UnicodeString AResult = Results->Strings[Index]; // useless
-    bool Echo = FLAGSET(int(Prompts->Objects[Index]), pupEcho);
+    bool Echo = FLAGSET(int(reinterpret_cast<intptr_t>(Prompts->Objects[Index])), pupEcho);
     Result = DoInput(AResult, Echo, InputTimeout(), true);
     Results->Strings[Index] = AResult;
   }
@@ -1820,13 +822,13 @@ void __fastcall TConsoleRunner::ScriptSynchronizeStartStop(TScript * /*Script*/,
   Params.Params = SynchronizeParams;
   Params.Options = soRecurse;
 
-  FSynchronizeController.StartStop(Application, true, Params,
+  FSynchronizeController.StartStop(NULL, true, Params,
     CopyParam, NULL, ::rtl::MethodPtr(this, &TConsoleRunner::SynchronizeControllerAbort), NULL,
     ::rtl::MethodPtr(this, &TConsoleRunner::SynchronizeControllerLog));
 
   { ::rtl::TFinally Finally([&]()
   {
-    FSynchronizeController.StartStop(Application, false, Params,
+    FSynchronizeController.StartStop(NULL, false, Params,
       CopyParam, NULL, ::rtl::MethodPtr(this, &TConsoleRunner::SynchronizeControllerAbort), NULL,
       ::rtl::MethodPtr(this, &TConsoleRunner::SynchronizeControllerLog));
   }); try
@@ -1835,7 +837,8 @@ void __fastcall TConsoleRunner::ScriptSynchronizeStartStop(TScript * /*Script*/,
 
     while (!FSynchronizeAborted && !Aborted(false))
     {
-      Application->HandleMessage();
+      // OpenSCP: the changes are reported through TThread::Synchronize
+      CheckSynchronize(MSecsPerSec);
       FScript->Terminal->Idle();
     }
   }
@@ -1996,14 +999,14 @@ void __fastcall TConsoleRunner::MasterPasswordPrompt()
   {
     UnicodeString Password;
     Input(LoadStr(CONSOLE_MASTER_PASSWORD_PROMPT), Password, false, true);
-    Retry = !WinConfiguration->ValidateMasterPassword(Password);
+    Retry = !AppConfiguration->ValidateMasterPassword(Password);
     if (Retry)
     {
       FConsole->PrintLine(LoadStr(MASTER_PASSWORD_INCORRECT));
     }
     else
     {
-      WinConfiguration->SetMasterPassword(Password);
+      AppConfiguration->SetMasterPassword(Password);
     }
   }
   while (Retry);
@@ -2246,7 +1249,7 @@ void __fastcall TConsoleRunner::ConfigurationChange(TObject * /*Sender*/)
 //---------------------------------------------------------------------------
 static UnicodeString __fastcall GetExeBaseName()
 {
-  return ExtractFileBaseName(Application->ExeName);
+  return ExtractFileBaseName(ParamStr(0));
 }
 //---------------------------------------------------------------------------
 static void __fastcall PrintUsageSyntax(TConsole * Console, const UnicodeString & Str)
@@ -2272,7 +1275,7 @@ static void __fastcall RegisterSwitch(
 //---------------------------------------------------------------------------
 void __fastcall Usage(TConsole * Console)
 {
-  Console->PrintLine(FORMAT(L"WinSCP, %s", (Configuration->VersionStr)));
+  Console->PrintLine(FORMAT(L"%s, %s", (AppName, Configuration->VersionStr)));
   UnicodeString Copyright =
     ReplaceText(LoadStr(WINSCP_COPYRIGHT), L"©", L"(c)");
   Console->PrintLine(Copyright);
@@ -2764,51 +1767,7 @@ int __fastcall FingerprintScan(TConsole * Console, TProgramParams * Params)
   return Result;
 }
 //---------------------------------------------------------------------------
-int __fastcall DumpCallstack(TConsole * Console, TProgramParams * Params)
-{
-  int Result = RESULT_SUCCESS;
-  try
-  {
-    int ProcessId = StrToInt(Params->SwitchValue(DUMPCALLSTACK_SWITCH));
-    UnicodeString EventName = DumpCallstackEventName(ProcessId);
-    UnicodeString FileName = DumpCallstackFileName(ProcessId);
-    if (FileExists(FileName))
-    {
-      DeleteFileChecked(FileName);
-    }
-
-    HANDLE Event = OpenEvent(EVENT_ALL_ACCESS, false, EventName.c_str());
-    if (Event == NULL)
-    {
-      throw ExtException(FORMAT(L"Error communicating with process %d.", (ProcessId)), LastSysErrorMessage());
-    }
-
-    SetEvent(Event);
-    CloseHandle(Event);
-
-    Console->PrintLine(FORMAT(L"Requested callstack dump for process %d...", (ProcessId)));
-
-    int Timeout = 30;
-    while (!FileExists(FileName))
-    {
-      Sleep(1000);
-      Timeout--;
-      if (Timeout == 0)
-      {
-        throw Exception(L"Timeout");
-      }
-    }
-
-    Console->PrintLine(FORMAT(L"Callstack dumped to file \"%s\".", (FileName)));
-  }
-  catch (Exception & E)
-  {
-    Result = HandleException(Console, E);
-  }
-
-  Console->WaitBeforeExit();
-  return Result;
-}
+// OpenSCP: no DumpCallstack (the callstack dumps of WinSCP.exe on Windows)
 //---------------------------------------------------------------------------
 void static PrintList(TConsole * Console, const UnicodeString & Caption, TStrings * List)
 {
@@ -2896,26 +1855,12 @@ int __fastcall Console(TConsoleMode Mode)
     delete ScriptParameters;
   }); try
   {
-    UnicodeString ConsoleInstance;
-    // First check for /consoleinstance as /console is always used by winscp.com
-    if (Params->FindSwitch(L"consoleinstance", ConsoleInstance))
-    {
-      Configuration->Usage->Inc(L"ConsoleExternal");
-      TStdInOutMode StdOut = ParseStdInOutMode(Params, STDOUT_SWITCH, true);
-      TStdInOutMode StdIn = ParseStdInOutMode(Params, STDIN_SWITCH, false);
-      bool NoInteractiveInput = Params->FindSwitch(NOINTERACTIVEINPUT_SWITCH) || (StdIn != TConsoleCommStruct::TInitEvent::OFF);
-      Console = new TExternalConsole(ConsoleInstance, NoInteractiveInput, StdOut, StdIn);
-    }
-    else if (Params->FindSwitch(L"Console") || (Mode != cmScripting))
-    {
-      Configuration->Usage->Inc(L"ConsoleOwn");
-      Console = TOwnConsole::Instance();
-    }
-    else
-    {
-      Configuration->Usage->Inc(L"ConsoleNull");
-      Console = new TNullConsole();
-    }
+    // OpenSCP: the console of the terminal, which works as winscp.com
+    Configuration->Usage->Inc(L"ConsoleExternal");
+    TStdInOutMode StdOut = ParseStdInOutMode(Params, STDOUT_SWITCH, true);
+    TStdInOutMode StdIn = ParseStdInOutMode(Params, STDIN_SWITCH, false);
+    bool NoInteractiveInput = Params->FindSwitch(NOINTERACTIVEINPUT_SWITCH) || (StdIn != TConsoleCommStruct::TInitEvent::OFF);
+    Console = CreateUnixConsole(NoInteractiveInput, StdOut, StdIn);
 
     SetNoGUI();
 
@@ -2948,20 +1893,9 @@ int __fastcall Console(TConsoleMode Mode)
         Result = FingerprintScan(Console, Params);
       }
     }
-    else if (Mode == cmDumpCallstack)
-    {
-      Result = DumpCallstack(Console, Params);
-    }
     else if (Mode == cmInfo)
     {
       Result = Info(Console);
-    }
-    else if (Mode == cmComRegistration)
-    {
-      if (CheckSafe(Params))
-      {
-        Result = ComRegistration(Console);
-      }
     }
     else
     {

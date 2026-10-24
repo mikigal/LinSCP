@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-#include <WinPCH.h>
+#include <AppPCH.h>
 #pragma hdrstop
 
 #include "ProgParams.h"
@@ -17,7 +17,12 @@ TProgramParams * __fastcall TProgramParams::Instance()
 //---------------------------------------------------------------------------
 __fastcall TProgramParams::TProgramParams()
 {
-  Init(CmdLine);
+  // The process's arguments as they are; the command line string (CmdLine)
+  // quotes them as on Windows, which CutToken does not undo
+  for (int Index = 1; Index <= System::ParamCount(); Index++)
+  {
+    Add(System::ParamStr(Index));
+  }
 }
 //---------------------------------------------------------------------------
 __fastcall TProgramParams::TProgramParams(const UnicodeString & CmdLine)

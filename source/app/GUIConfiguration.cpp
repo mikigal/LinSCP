@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------
-#include <WinPCH.h>
+#include <AppPCH.h>
 #pragma hdrstop
 
 #include "GUIConfiguration.h"
@@ -16,7 +16,6 @@ const int ccShowResultsInMsgBox = ccUser << 4;
 const int ccSet = 0x80000000;
 const int SessionReopenAutoIdleDefault = 9000;
 //---------------------------------------------------------------------------
-static const unsigned int AdditionalLanguageMask = 0xFFFFFF00;
 static const UnicodeString AdditionalLanguagePrefix(L"XX");
 static const UnicodeString TranslationsSubFolder(L"Translations");
 //---------------------------------------------------------------------------
@@ -556,10 +555,9 @@ void __fastcall TGUIConfiguration::Default()
   FQueueKeepDoneItemsFor = 15;
   FQueueAutoPopup = true;
   FSessionRememberPassword = true;
-  UnicodeString ProgramsFolder;
-  KnownFolderPath(FOLDERID_ProgramFiles, ProgramsFolder);
-  FDefaultPuttyPathOnly = IncludeTrailingBackslash(ProgramsFolder) + L"PuTTY\\" + OriginalPuttyExecutable;
-  FDefaultPuttyPath = L"%ProgramFiles%\\PuTTY\\" + OriginalPuttyExecutable;
+  // OpenSCP: PuTTY from the PATH
+  FDefaultPuttyPathOnly = L"putty";
+  FDefaultPuttyPath = FDefaultPuttyPathOnly;
   FPuttyPath = FormatCommand(FDefaultPuttyPath, L"");
   FUsePuttyPwFile = asAuto;
   FPuttyPassword = false;
@@ -815,100 +813,26 @@ UnicodeString __fastcall TGUIConfiguration::GetTranslationModule(const UnicodeSt
   return Result;
 }
 //---------------------------------------------------------------------------
+// OpenSCP: there are no resource modules (translation libraries) on Linux,
+// only the internal locale (US English, the language of the string tables)
+const LCID PrimaryLanguageMask = 0x3FF;
+//---------------------------------------------------------------------------
 HMODULE TGUIConfiguration::LoadNewResourceModule(LCID ALocale, UnicodeString & FileName)
 {
-  UnicodeString LibraryFileName;
-  HMODULE NewInstance = 0;
-  LCID AInternalLocale = InternalLocale();
-  bool Internal = (ALocale == AInternalLocale);
-  DWORD PrimaryLang = PRIMARYLANGID(ALocale);
-  if (!Internal)
-  {
-    UnicodeString Module;
-    UnicodeString LocaleName;
-
-    Module = ModuleFileName();
-    if ((ALocale & AdditionalLanguageMask) != AdditionalLanguageMask)
-    {
-      wchar_t LocaleStr[4];
-      GetLocaleInfo(ALocale, LOCALE_SABBREVLANGNAME, LocaleStr, std::size(LocaleStr));
-      LocaleName = LocaleStr;
-      DebugAssert(!LocaleName.IsEmpty());
-    }
-    else
-    {
-      LocaleName = AdditionalLanguagePrefix +
-        char(ALocale & ~AdditionalLanguageMask);
-    }
-
-    Module = ChangeFileExt(Module, UnicodeString(L".") + LocaleName);
-    // Look for a potential language/country translation
-    UnicodeString ModulePath = GetTranslationModule(Module);
-    NewInstance = LoadLibraryEx(ModulePath.c_str(), 0, LOAD_LIBRARY_AS_DATAFILE);
-    if (NewInstance)
-    {
-      LibraryFileName = ModulePath;
-    }
-    else
-    {
-      DWORD SubLang = SUBLANGID(ALocale);
-      DebugAssert(SUBLANG_DEFAULT == SUBLANG_CHINESE_TRADITIONAL);
-      // Finally look for a language-only translation.
-      // But for Chinese, never use "traditional" (what is the "default" Chinese), if we want "Simplified"
-      // (the same what Inno Setup does)
-      if ((PrimaryLang != LANG_CHINESE) ||
-          (SubLang == SUBLANG_CHINESE_TRADITIONAL))
-      {
-        Module.SetLength(Module.Length() - 1);
-        ModulePath = GetTranslationModule(Module);
-        NewInstance = LoadLibraryEx(ModulePath.c_str(), 0, LOAD_LIBRARY_AS_DATAFILE);
-        if (NewInstance)
-        {
-          LibraryFileName = ModulePath;
-        }
-      }
-    }
-  }
-
-  // If the locale is non-US English and we do not have that translation (and it's unlikely we ever have),
-  // treat it as if it were US English.
-  if (!NewInstance && !Internal && (PrimaryLang == static_cast<DWORD>(PRIMARYLANGID(AInternalLocale))))
-  {
-    Internal = true;
-  }
-
-  if (!NewInstance && !Internal)
+  // Any variant of the internal locale's language is treated as the internal locale
+  if ((ALocale & PrimaryLanguageMask) != (InternalLocale() & PrimaryLanguageMask))
   {
     throw Exception(FMTLOAD(LOCALE_LOAD_ERROR, (int(ALocale))));
   }
-  else
-  {
-    if (Internal)
-    {
-      NewInstance = HInstance;
-    }
-  }
 
-  FileName = LibraryFileName;
+  FileName = UnicodeString();
 
-  return NewInstance;
+  return HInstance;
 }
 //---------------------------------------------------------------------------
 LCID __fastcall TGUIConfiguration::InternalLocale()
 {
-  LCID Result;
-  if (GetTranslationCount(ApplicationInfo) > 0)
-  {
-    TTranslation Translation;
-    Translation = GetTranslation(ApplicationInfo, 0);
-    Result = MAKELANGID(PRIMARYLANGID(Translation.Language), SUBLANG_DEFAULT);
-  }
-  else
-  {
-    DebugFail();
-    Result = 0;
-  }
-  return Result;
+  return 0x0409;
 }
 //---------------------------------------------------------------------------
 LCID __fastcall TGUIConfiguration::GetLocale()
@@ -992,16 +916,14 @@ void __fastcall TGUIConfiguration::SetLocaleInternal(LCID value, bool Safe, bool
     {
       SetAppliedLocale(L, FileName);
       SetResourceModule(Module);
-      ResStringCleanupCache();
     }
   }
 }
 //---------------------------------------------------------------------------
 bool __fastcall TGUIConfiguration::GetCanApplyLocaleImmediately()
 {
-  return
-    (Screen->FormCount == 0) &&
-    (Screen->DataModuleCount == 0);
+  // OpenSCP: with the internal locale only, nothing is to be reloaded
+  return true;
 }
 //---------------------------------------------------------------------------
 bool __fastcall TGUIConfiguration::UsingInternalTranslation()
@@ -1044,14 +966,10 @@ void __fastcall TGUIConfiguration::SetAppliedLocale(LCID AppliedLocale, const Un
   FLocaleModuleName = LocaleModuleName;
 }
 //---------------------------------------------------------------------------
-void TGUIConfiguration::FreeResourceModule(HMODULE Instance)
+void TGUIConfiguration::FreeResourceModule(HMODULE DebugUsedArg(Instance))
 {
-  TLibModule * MainModule = FindModule(HInstance);
-  DebugAssert(sizeof(Instance) == sizeof(MainModule->Instance));
-  if (Instance != reinterpret_cast<HMODULE>(MainModule->Instance))
-  {
-    FreeLibrary(Instance);
-  }
+  // OpenSCP: the only resource module is the application
+  DebugAssert(Instance == HInstance);
 }
 //---------------------------------------------------------------------------
 HMODULE TGUIConfiguration::ChangeToDefaultResourceModule()
@@ -1059,16 +977,11 @@ HMODULE TGUIConfiguration::ChangeToDefaultResourceModule()
   return ChangeResourceModule(NULL);
 }
 //---------------------------------------------------------------------------
-HINSTANCE TGUIConfiguration::ChangeResourceModule(HMODULE Instance)
+HINSTANCE TGUIConfiguration::ChangeResourceModule(HMODULE DebugUsedArg(Instance))
 {
-  if (Instance == NULL)
-  {
-    Instance = HInstance;
-  }
-  TLibModule * MainModule = FindModule(HInstance);
-  HMODULE Result = reinterpret_cast<HMODULE>(MainModule->ResInstance);
-  MainModule->ResInstance = reinterpret_cast<HINST>(Instance);
-  return Result;
+  // OpenSCP: the only resource module is the application
+  DebugAssert((Instance == NULL) || (Instance == HInstance));
+  return HInstance;
 }
 //---------------------------------------------------------------------------
 void TGUIConfiguration::SetResourceModule(HMODULE Instance)
@@ -1110,12 +1023,9 @@ void __fastcall TGUIConfiguration::AddLocale(LCID Locale, const UnicodeString & 
 
   if (Name.IsEmpty())
   {
-    wchar_t LocaleStr[255];
-    GetLocaleInfo(Locale, LOCALE_SENGLANGUAGE, LocaleStr, std::size(LocaleStr));
-    Name = UnicodeString(LocaleStr) + TitleSeparator;
-    // LOCALE_SNATIVELANGNAME
-    GetLocaleInfo(Locale, LOCALE_SLANGUAGE, LocaleStr, std::size(LocaleStr));
-    Name += LocaleStr;
+    // OpenSCP: the internal locale only
+    DebugAssert(Locale == InternalLocale());
+    Name = UnicodeString(L"English") + TitleSeparator + L"English (United States)";
   }
 
   std::unique_ptr<TLocaleInfo> LocaleInfo(new TLocaleInfo());
@@ -1167,86 +1077,7 @@ TObjectList * __fastcall TGUIConfiguration::GetLocales()
 
     AddLocale(InternalLocale(), EmptyStr);
 
-    TLanguages * Langs = Languages();
-    int Count = Langs->Count;
-
-    typedef std::map<UnicodeString, std::pair<int, DWORD> > TConflicts;
-    TConflicts DefaultLangConflicts;
-    LCID InvalidLocale = static_cast<LCID>(-1);
-
-    // The two-leter Windows code is not actually unique among languages.
-    // So find any duplicities and resolve them to the language, where ISO code also match.
-    // Notably:
-    // Georgian KAT ka-GE - Kalaallisut KAL kl-GL
-    // Tamil TAI ta-IN - Tajik TAJ tj-TJ
-    for (int Index = 0; Index < Count; Index++)
-    {
-      LCID Locale = Langs->LocaleID[Index];
-      DWORD SubLang = SUBLANGID(Locale);
-      if (SubLang == SUBLANG_DEFAULT)
-      {
-        UnicodeString LangExt2 = LeftStr(Langs->Ext[Index].UpperCase(), 2);
-        TConflicts::iterator Conflict = DefaultLangConflicts.find(LangExt2);
-        if (Conflict == DefaultLangConflicts.end())
-        {
-          Conflict = DefaultLangConflicts.insert(std::make_pair(LangExt2, std::make_pair(1, InvalidLocale))).first;
-        }
-        else
-        {
-          Conflict->second.first++;
-        }
-
-        UnicodeString LangName = CopyToChar(Langs->LocaleName[Index], L'-', false);
-        bool Matches = SameText(LangName, LangExt2);
-        if (Matches)
-        {
-          Conflict->second.second = Locale;
-        }
-      }
-    }
-
-    for (int Index = 0; Index < Count; Index++)
-    {
-      LCID Locale = Langs->LocaleID[Index];
-      DWORD SubLang = SUBLANGID(Locale);
-      UnicodeString LangExt3 = Langs->Ext[Index].UpperCase();
-      int Ext = Exts->IndexOf(LangExt3);
-      if ((Ext < 0) && (SubLang == SUBLANG_DEFAULT))
-      {
-        UnicodeString LangExt2 = LeftStr(LangExt3, 2);
-        TConflicts::const_iterator DefaultLangConflict = DefaultLangConflicts.find(LangExt2);
-        // Unless it is a conflicting extension with no resolution or resolved to another locale
-        if ((DefaultLangConflict == DefaultLangConflicts.end()) ||
-            (DefaultLangConflict->second.first == 1) ||
-            ((DefaultLangConflict->second.second != InvalidLocale) &&
-             (DefaultLangConflict->second.second == Locale)))
-        {
-          Ext = Exts->IndexOf(LangExt2);
-        }
-      }
-
-      if ((Ext >= 0) && DebugAlwaysTrue(Exts->Objects[Ext] == NULL))
-      {
-        Exts->Objects[Ext] = reinterpret_cast<TObject*>(Locale);
-        AddLocale(Locale, EmptyStr);
-      }
-    }
-
-    for (int Index = 0; Index < Exts->Count; Index++)
-    {
-      if ((Exts->Objects[Index] == NULL) &&
-          (Exts->Strings[Index].Length() == 3) &&
-          SameText(Exts->Strings[Index].SubString(1, 2), AdditionalLanguagePrefix))
-      {
-        UnicodeString ModulePath = ChangeFileExt(ModuleFileName(), UnicodeString(L".") + Exts->Strings[Index]);
-        ModulePath = GetTranslationModule(ModulePath);
-        UnicodeString LangName = GetFileFileInfoString(L"LangName", ModulePath);
-        if (!LangName.IsEmpty())
-        {
-          AddLocale(AdditionalLanguageMask + Exts->Strings[Index][3], LangName);
-        }
-      }
-    }
+    // OpenSCP: translations are not available yet, see LoadNewResourceModule
 
     FLocales->Sort(LocalesCompare);
   }

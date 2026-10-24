@@ -41,6 +41,8 @@ add_subdirectory(source/libneon)
 add_subdirectory(source/libs3)
 add_subdirectory(source/libfilezilla)
 add_subdirectory(source/libcore)
+add_subdirectory(source/app)
+add_subdirectory(source/cli)
 
 if(OPENSCP_BUILD_TESTS)
   enable_testing()
