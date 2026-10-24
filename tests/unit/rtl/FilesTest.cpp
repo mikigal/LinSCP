@@ -255,6 +255,6 @@ TEST_F(FilesTest, CurrentDirectory)
 TEST(Environment, GetEnvironmentVariable)
 {
   setenv("OPENSCP_RTL_TEST", "za\xC5\xBC", 1);
-  EXPECT_EQ(GetEnvironmentVariable(L"OPENSCP_RTL_TEST"), L"zaż");
+  EXPECT_EQ(GetEnvironmentVariable(L"OPENSCP_RTL_TEST"), L"za\u017C");
   EXPECT_EQ(GetEnvironmentVariable(L"OPENSCP_RTL_TEST_MISSING"), L"");
 }

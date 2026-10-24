@@ -232,7 +232,7 @@ TFormatSettings TFormatSettings::Invariant()
   Result.DateSeparator = L'/';
   Result.TimeSeparator = L':';
   Result.ListSeparator = L',';
-  Result.CurrencyString = L"¤";
+  Result.CurrencyString = L"\u00A4";
   Result.ShortDateFormat = L"MM/dd/yyyy";
   Result.LongDateFormat = L"dddd, dd MMMMM yyyy HH:mm:ss";
   Result.TimeAMString = L"AM";

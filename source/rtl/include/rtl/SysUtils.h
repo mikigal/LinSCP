@@ -388,6 +388,8 @@ THandle FileCreate(const UnicodeString FileName, unsigned int Mode, int Rights);
 void FileClose(THandle Handle);
 int FileRead(THandle Handle, void * Buffer, unsigned int Count);
 int FileWrite(THandle Handle, const void * Buffer, unsigned int Count);
+int FileRead(THandle Handle, TBytes & Buffer, unsigned int Offset, unsigned int Count);
+int FileWrite(THandle Handle, const TBytes Buffer, unsigned int Offset, unsigned int Count);
 int FileSeek(THandle Handle, int Offset, int Origin);
 __int64 FileSeek(THandle Handle, const __int64 Offset, int Origin);
 //---------------------------------------------------------------------------
@@ -496,6 +498,8 @@ System::UnicodeString BytesToFileName(const char * Bytes);
 // The system time zone, see DateUtils for conversions
 System::TDateTime DateTimeFromUnixTime(long long Seconds, long Nanoseconds, bool Local);
 } // namespace rtl
+//---------------------------------------------------------------------------
+#include <rtl/Encoding.h>
 //---------------------------------------------------------------------------
 using namespace System::Sysutils;
 //---------------------------------------------------------------------------

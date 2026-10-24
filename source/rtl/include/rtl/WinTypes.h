@@ -191,6 +191,7 @@ typedef WIN32_FIND_DATAW * LPWIN32_FIND_DATAW;
 #define FALSE 0
 #endif
 #define INVALID_HANDLE_VALUE (reinterpret_cast<HANDLE>(static_cast<LONG_PTR>(-1)))
+#define INFINITE 0xFFFFFFFF
 //---------------------------------------------------------------------------
 #define S_OK (static_cast<HRESULT>(0))
 #define S_FALSE (static_cast<HRESULT>(1))

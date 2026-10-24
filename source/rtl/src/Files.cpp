@@ -804,6 +804,24 @@ int FileWrite(THandle Handle, const void * Buffer, unsigned int Count)
   return static_cast<int>(Done);
 }
 //---------------------------------------------------------------------------
+int FileRead(THandle Handle, TBytes & Buffer, unsigned int Offset, unsigned int Count)
+{
+  if (static_cast<unsigned long long>(Offset) + Count > static_cast<unsigned long long>(Buffer.Length))
+  {
+    rtl::ThrowRangeError(static_cast<int>(Offset + Count), Buffer.Length);
+  }
+  return FileRead(Handle, Buffer.data() + Offset, Count);
+}
+//---------------------------------------------------------------------------
+int FileWrite(THandle Handle, const TBytes Buffer, unsigned int Offset, unsigned int Count)
+{
+  if (static_cast<unsigned long long>(Offset) + Count > static_cast<unsigned long long>(Buffer.Length))
+  {
+    rtl::ThrowRangeError(static_cast<int>(Offset + Count), Buffer.Length);
+  }
+  return FileWrite(Handle, Buffer.data() + Offset, Count);
+}
+//---------------------------------------------------------------------------
 __int64 FileSeek(THandle Handle, const __int64 Offset, int Origin)
 {
   int Whence = (Origin == 1) ? SEEK_CUR : ((Origin == 2) ? SEEK_END : SEEK_SET);

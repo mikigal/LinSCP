@@ -339,9 +339,9 @@ TEST(System, CommandLine)
 //---------------------------------------------------------------------------
 TEST(System, StringRoutines)
 {
-  EXPECT_EQ(UTF8ToString(RawByteString("za\xC5\xBC")), L"zaż");
-  EXPECT_EQ(UTF8ToString("\xC5\xBC"), L"ż");
-  EXPECT_EQ(UTF8Encode(L"ż").Std(), "\xC5\xBC");
+  EXPECT_EQ(UTF8ToString(RawByteString("za\xC5\xBC")), L"za\u017C");
+  EXPECT_EQ(UTF8ToString("\xC5\xBC"), L"\u017C");
+  EXPECT_EQ(UTF8Encode(L"\u017C").Std(), "\xC5\xBC");
   EXPECT_EQ(StringOfChar(L'x', 2), L"xx");
   char Buffer[4] = { 'a', 'b', 'c', 'd' };
   Move(Buffer, Buffer + 1, 2);

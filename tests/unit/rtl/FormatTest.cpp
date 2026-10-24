@@ -52,9 +52,9 @@ TEST_F(FormatTest, Strings)
 {
   UnicodeString U = L"uni";
   AnsiString A = "ansi";
-  UTF8String Utf8 = UnicodeString(L"ż");
+  UTF8String Utf8 = UnicodeString(L"\u017C");
   EXPECT_EQ(F(L"%s %s %s %s %s %s", (U, L"wide", "narrow", A, L'w', 'c')), L"uni wide narrow ansi w c");
-  EXPECT_EQ(F(L"%s", (Utf8)), L"ż");
+  EXPECT_EQ(F(L"%s", (Utf8)), L"\u017C");
   EXPECT_EQ(F(L"[%5s][%-5s][%.2s][%3.1s]", (L"ab", L"ab", L"abcdef", L"xyz")), L"[   ab][ab   ][ab][  x]");
   EXPECT_EQ(F(L"%s", (UnicodeString())), L"");
   EXPECT_EQ(F(L"100%%", ()), L"100%");
@@ -89,7 +89,7 @@ TEST_F(FormatTest, Floats)
   EXPECT_EQ(F(L"%n", (1234567.891)), L"1,234,567.89");
   EXPECT_EQ(F(L"%14.0n", (1234567.0)), L"     1,234,567");
   EXPECT_EQ(F(L"%.1n", (-999.95)), L"-1,000.0");
-  EXPECT_EQ(F(L"%m", (1.5)), L"¤1.50");
+  EXPECT_EQ(F(L"%m", (1.5)), L"\u00A41.50");
   EXPECT_EQ(F(L"%f", (static_cast<float>(0.5))), L"0.50");
 }
 //---------------------------------------------------------------------------

@@ -81,10 +81,10 @@ TEST(SysUtils, Booleans)
 //---------------------------------------------------------------------------
 TEST(SysUtils, CaseAndComparison)
 {
-  EXPECT_EQ(UpperCase(L"aäb"), L"AäB");
-  EXPECT_EQ(LowerCase(L"AÄB"), L"aÄb");
-  EXPECT_EQ(AnsiUpperCase(L"aäb"), L"AÄB");
-  EXPECT_EQ(AnsiLowerCase(L"AÄB"), L"aäb");
+  EXPECT_EQ(UpperCase(L"a\u00E4b"), L"A\u00E4B");
+  EXPECT_EQ(LowerCase(L"A\u00C4B"), L"a\u00C4b");
+  EXPECT_EQ(AnsiUpperCase(L"a\u00E4b"), L"A\u00C4B");
+  EXPECT_EQ(AnsiLowerCase(L"A\u00C4B"), L"a\u00E4b");
 
   EXPECT_LT(CompareStr(L"a", L"b"), 0);
   EXPECT_GT(CompareStr(L"a", L"B"), 0);
@@ -93,15 +93,15 @@ TEST(SysUtils, CaseAndComparison)
   EXPECT_LT(CompareText(L"a", L"B"), 0);
   EXPECT_EQ(CompareText(L"ABC", L"abc"), 0);
   EXPECT_TRUE(SameText(L"ABC", L"abc"));
-  EXPECT_FALSE(SameText(L"ä", L"Ä"));
-  EXPECT_TRUE(AnsiSameText(L"ä", L"Ä"));
+  EXPECT_FALSE(SameText(L"\u00E4", L"\u00C4"));
+  EXPECT_TRUE(AnsiSameText(L"\u00E4", L"\u00C4"));
   EXPECT_FALSE(SameStr(L"a", L"A"));
   EXPECT_LT(AnsiCompareStr(L"a", L"A"), 0);
   EXPECT_LT(AnsiCompareStr(L"a", L"B"), 0);
   EXPECT_LT(AnsiCompareStr(L"A", L"b"), 0);
   EXPECT_EQ(AnsiCompareStr(L"a", L"a"), 0);
   EXPECT_LT(AnsiCompareText(L"abc", L"ABD"), 0);
-  EXPECT_EQ(AnsiCompareText(L"ż", L"Ż"), 0);
+  EXPECT_EQ(AnsiCompareText(L"\u017C", L"\u017B"), 0);
   // File names are case-sensitive
   EXPECT_FALSE(SameFileName(L"a.txt", L"A.TXT"));
   EXPECT_NE(AnsiCompareFileName(L"a", L"A"), 0);

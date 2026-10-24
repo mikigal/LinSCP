@@ -14,7 +14,7 @@ TEST(StrUtils, ContainsStartsEnds)
   EXPECT_FALSE(ContainsStr(L"Hello", L"ELL"));
   EXPECT_FALSE(ContainsStr(L"Hello", L""));
   EXPECT_TRUE(ContainsText(L"Hello", L"ELL"));
-  EXPECT_TRUE(ContainsText(L"Zażółć", L"ŻÓ"));
+  EXPECT_TRUE(ContainsText(L"Za\u017C\u00F3\u0142\u0107", L"\u017B\u00D3"));
   EXPECT_TRUE(StartsStr(L"He", L"Hello"));
   EXPECT_FALSE(StartsStr(L"he", L"Hello"));
   EXPECT_TRUE(StartsStr(L"", L"Hello"));

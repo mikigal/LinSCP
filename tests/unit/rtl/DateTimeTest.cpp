@@ -309,6 +309,6 @@ TEST(FormatSettings, Locales)
     EXPECT_EQ(Polish.DateSeparator, L'.');
     EXPECT_EQ(Polish.ShortDateFormat, L"dd/mm/yyyy");
     EXPECT_EQ(FormatDateTime(L"ddddd", EncodeDate(2026, 10, 24), Polish), L"24.10.2026");
-    EXPECT_EQ(Polish.LongMonthNames[0], L"styczeń");
+    EXPECT_EQ(Polish.LongMonthNames[0], L"stycze\u0144");
   }
 }

@@ -5,13 +5,17 @@
 # they include the implementation headers from include/rtl/.
 
 add_library(openscp_rtl STATIC
+  src/Classes.cpp
+  src/Contnrs.cpp
   src/Conversion.cpp
   src/DateTime.cpp
   src/DateUtils.cpp
+  src/Encoding.cpp
   src/Files.cpp
   src/Format.cpp
   src/FormatSettings.cpp
   src/Printf.cpp
+  src/Streams.cpp
   src/StrUtils.cpp
   src/Strings.cpp
   src/SysUtils.cpp

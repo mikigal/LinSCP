@@ -104,9 +104,9 @@ TEST(UnicodeString, TrimAndCase)
   EXPECT_EQ(UnicodeString(L"  a ").TrimLeft(), L"a ");
   EXPECT_EQ(UnicodeString(L"  a ").TrimRight(), L"  a");
   // Only characters up to ' ' are blanks
-  EXPECT_EQ(UnicodeString(L" a").Trim(), L" a");
-  EXPECT_EQ(UnicodeString(L"zażółć").UpperCase(), L"ZAŻÓŁĆ");
-  EXPECT_EQ(UnicodeString(L"ZAŻÓŁĆ").LowerCase(), L"zażółć");
+  EXPECT_EQ(UnicodeString(L"\u00A0a").Trim(), L"\u00A0a");
+  EXPECT_EQ(UnicodeString(L"za\u017C\u00F3\u0142\u0107").UpperCase(), L"ZA\u017B\u00D3\u0141\u0106");
+  EXPECT_EQ(UnicodeString(L"ZA\u017B\u00D3\u0141\u0106").LowerCase(), L"za\u017C\u00F3\u0142\u0107");
 }
 //---------------------------------------------------------------------------
 TEST(UnicodeString, Delimiters)
@@ -163,12 +163,12 @@ TEST(UnicodeString, Printf)
   EXPECT_EQ(S.sprintf(L"%Ld %I64u %lld", 1LL << 40, 1ULL << 63, -1LL),
     L"1099511627776 9223372036854775808 -1");
   EXPECT_EQ(S.sprintf(L"%x %X %08x %o", 255, 255, 255, 8), L"ff FF 000000ff 10");
-  EXPECT_EQ(S.sprintf(L"%c%c%%", L'ł', L'b'), L"łb%");
+  EXPECT_EQ(S.sprintf(L"%c%c%%", L'\u0142', L'b'), L"\u0142b%");
   EXPECT_EQ(S.sprintf(L"%.2s|%*d", L"abcdef", 4, 7), L"ab|   7");
   EXPECT_EQ(S.sprintf(L"%s", static_cast<const wchar_t *>(nullptr)), L"(null)");
-  EXPECT_EQ(S.sprintf(L"%hs", "za\xC5\xBC"), L"zaż");
+  EXPECT_EQ(S.sprintf(L"%hs", "za\xC5\xBC"), L"za\u017C");
   S.cat_sprintf(L"-%d", 1);
-  EXPECT_EQ(S, L"zaż-1");
+  EXPECT_EQ(S, L"za\u017C-1");
 }
 //---------------------------------------------------------------------------
 TEST(UnicodeString, Misc)
@@ -194,7 +194,7 @@ TEST(UnicodeString, Misc)
 //---------------------------------------------------------------------------
 TEST(AnsiString, Utf8ByDefault)
 {
-  UnicodeString Wide = L"zażółć";
+  UnicodeString Wide = L"za\u017C\u00F3\u0142\u0107";
   AnsiString Ansi = Wide;
   EXPECT_EQ(Ansi.Length(), 10);
   EXPECT_EQ(UnicodeString(Ansi), Wide);
@@ -222,16 +222,16 @@ TEST(AnsiString, BinaryData)
 //---------------------------------------------------------------------------
 TEST(AnsiString, OtherCodePages)
 {
-  AnsiStringT<1250> Cp1250 = UnicodeString(L"ąę");
+  AnsiStringT<1250> Cp1250 = UnicodeString(L"\u0105\u0119");
   ASSERT_EQ(Cp1250.Length(), 2);
   EXPECT_EQ(static_cast<unsigned char>(Cp1250[1]), 0xB9);
   EXPECT_EQ(static_cast<unsigned char>(Cp1250[2]), 0xEA);
-  EXPECT_EQ(UnicodeString(Cp1250), L"ąę");
+  EXPECT_EQ(UnicodeString(Cp1250), L"\u0105\u0119");
   // Converting between code pages goes through Unicode
   UTF8String Utf8 = Cp1250;
   EXPECT_EQ(Utf8.Std(), "\xC4\x85\xC4\x99");
   // Not representable
-  AnsiStringT<1250> Unknown = UnicodeString(L"中");
+  AnsiStringT<1250> Unknown = UnicodeString(L"\u4E2D");
   EXPECT_EQ(Unknown.Std(), "?");
 }
 //---------------------------------------------------------------------------
@@ -253,7 +253,7 @@ TEST(AnsiString, Methods)
   EXPECT_THROW(AnsiString("ab")[3], ERangeError);
 
   AnsiString P;
-  P.sprintf("%s-%d-%ls", "a", 1, L"ż");
+  P.sprintf("%s-%d-%ls", "a", 1, L"\u017C");
   EXPECT_EQ(P, "a-1-\xC5\xBC");
   EXPECT_EQ(RawByteString::Format("<%d>%s", ARRAYOFCONST((5, RawByteString("x")))), "<5>x");
 }
@@ -261,7 +261,7 @@ TEST(AnsiString, Methods)
 TEST(Conversion, Utf8DecodingIsLossless)
 {
   auto Decode = [](const char * S, size_t Len) { return rtl::DecodeUtf8(S, Len); };
-  EXPECT_EQ(Decode("\xC5\xBC", 2), L"ż");
+  EXPECT_EQ(Decode("\xC5\xBC", 2), L"\u017C");
   EXPECT_EQ(Decode("\xF0\x9F\x98\x80", 4), L"\U0001F600");
   // Invalid lead byte, truncated sequence, overlong form, encoded surrogate, beyond U+10FFFF
   EXPECT_EQ(Decode("\xFF", 1), std::wstring(1, static_cast<wchar_t>(0xDCFF)));
@@ -289,7 +289,7 @@ TEST(Conversion, Utf8Encoding)
 //---------------------------------------------------------------------------
 TEST(Conversion, Utf16)
 {
-  std::wstring Wide = L"a\U0001F600ż";
+  std::wstring Wide = L"a\U0001F600\u017C";
   std::u16string Utf16 = rtl::EncodeUtf16(Wide.data(), Wide.size());
   EXPECT_EQ(Utf16.size(), 4u);
   EXPECT_EQ(rtl::DecodeUtf16(Utf16.data(), Utf16.size()), Wide);
@@ -297,9 +297,9 @@ TEST(Conversion, Utf16)
 //---------------------------------------------------------------------------
 TEST(Conversion, CodePages)
 {
-  EXPECT_EQ(rtl::DecodeCodePage(1252, "\x80", 1), L"€");
-  EXPECT_EQ(rtl::EncodeCodePage(1252, L"€", 1), "\x80");
-  EXPECT_EQ(rtl::DecodeCodePage(28592, "\xB1", 1), L"ą");
+  EXPECT_EQ(rtl::DecodeCodePage(1252, "\x80", 1), L"\u20AC");
+  EXPECT_EQ(rtl::EncodeCodePage(1252, L"\u20AC", 1), "\x80");
+  EXPECT_EQ(rtl::DecodeCodePage(28592, "\xB1", 1), L"\u0105");
   EXPECT_EQ(rtl::CodePageName(1250), "CP1250");
   EXPECT_EQ(rtl::CodePageName(28592), "ISO-8859-2");
   EXPECT_EQ(rtl::CodePageName(0), "UTF-8");
@@ -311,8 +311,8 @@ TEST(Conversion, CodePages)
 TEST(Conversion, CaseMapping)
 {
   EXPECT_EQ(rtl::UpperChar(L'a'), L'A');
-  EXPECT_EQ(rtl::UpperChar(L'ä'), L'Ä');
-  EXPECT_EQ(rtl::UpperChar(L'α'), L'Α');
-  EXPECT_EQ(rtl::LowerChar(L'Ł'), L'ł');
+  EXPECT_EQ(rtl::UpperChar(L'\u00E4'), L'\u00C4');
+  EXPECT_EQ(rtl::UpperChar(L'\u03B1'), L'\u0391');
+  EXPECT_EQ(rtl::LowerChar(L'\u0141'), L'\u0142');
   EXPECT_EQ(rtl::UpperChar(L'1'), L'1');
 }

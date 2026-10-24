@@ -7,6 +7,7 @@ gtest_discover_tests(openscp_toolchain_tests
   PROPERTIES LABELS unit)
 
 add_executable(openscp_rtl_tests
+  rtl/ClassesTest.cpp
   rtl/DateTimeTest.cpp
   rtl/FilesTest.cpp
   rtl/FormatTest.cpp
