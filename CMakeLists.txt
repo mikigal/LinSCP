@@ -13,7 +13,10 @@ if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR NOT CMAKE_C_COMPILER_ID MATCHES 
     "Use one of the presets: cmake --preset dev")
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+# C++17, the dialect the upstream core is written for (C++Builder's Clang-based
+# compilers). C++20 would change overload resolution of the core's mixed-type
+# comparisons (rewritten operator== candidates), see docs/port/PROGRESS.md.
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
@@ -25,6 +28,10 @@ option(OPENSCP_SANITIZE "Build OpenSCP targets with AddressSanitizer and Undefin
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(OpenSCPOptions)
+
+find_package(EXPAT 2.5 REQUIRED)
+
+add_subdirectory(source/rtl)
 
 if(OPENSCP_BUILD_TESTS)
   enable_testing()
