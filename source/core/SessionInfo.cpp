@@ -365,7 +365,7 @@ public:
 
 
 protected:
-  enum TState { Opened, Committed, RolledBack, Cancelled };
+  enum TState : int { Opened, Committed, RolledBack, Cancelled };
 
   inline void __fastcall Close(TState State)
   {

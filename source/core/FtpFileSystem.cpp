@@ -4614,7 +4614,7 @@ bool __fastcall TFTPFileSystem::CheckError(int ReturnCode, const wchar_t * Conte
 //---------------------------------------------------------------------------
 bool __fastcall TFTPFileSystem::Unquote(UnicodeString & Str)
 {
-  enum
+  enum : int
   {
     INIT,
     QUOTE,

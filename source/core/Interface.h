@@ -32,7 +32,7 @@
 extern const wchar_t * TransferModeNames[];
 extern const int TransferModeNamesCount;
 extern const wchar_t * ToggleNames[];
-enum TToggle { ToggleOff, ToggleOn };
+enum TToggle : int { ToggleOff, ToggleOn };
 //---------------------------------------------------------------------------
 TConfiguration * __fastcall CreateConfiguration();
 class TOptions;
@@ -109,7 +109,7 @@ struct TQueryButtonAlias
 };
 
 typedef TMethodPtr<void(unsigned int & Result)> TQueryParamsTimerEvent;
-enum TQueryType { qtConfirmation, qtWarning, qtError, qtInformation };
+enum TQueryType : int { qtConfirmation, qtWarning, qtError, qtInformation };
 
 struct TQueryParams
 {
@@ -135,7 +135,7 @@ struct TQueryParams
   UnicodeString HelpKeyword;
 };
 
-enum TPromptKind
+enum TPromptKind : int
 {
   pkPrompt,
   pkFileName,
@@ -149,7 +149,7 @@ enum TPromptKind
   pkProxyAuth
 };
 
-enum TPromptUserParam { pupEcho = 0x01, pupRemember = 0x02 };
+enum TPromptUserParam : int { pupEcho = 0x01, pupRemember = 0x02 };
 
 bool __fastcall IsAuthenticationPrompt(TPromptKind Kind);
 bool __fastcall IsPasswordOrPassphrasePrompt(TPromptKind Kind, TStrings * Prompts);

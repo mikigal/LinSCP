@@ -6,8 +6,8 @@
 #include <memory>
 #include <map>
 //---------------------------------------------------------------------------
-enum TStorage { stDetect, stRegistry, stIniFile, stNul };
-enum TStorageAccessMode { smRead, smReadWrite };
+enum TStorage : int { stDetect, stRegistry, stIniFile, stNul };
+enum TStorageAccessMode : int { smRead, smReadWrite };
 typedef std::map<UnicodeString, int> TIntMapping;
 //---------------------------------------------------------------------------
 class THierarchicalStorage
@@ -77,7 +77,7 @@ public:
   UnicodeString __property_get_UnmungedRoot() const { return FUnmungedRoot; } void __property_set_UnmungedRoot(UnicodeString Value) { FUnmungedRoot = Value; } __declspec(property(get = __property_get_UnmungedRoot, put = __property_set_UnmungedRoot)) UnicodeString UnmungedRoot;
 
 protected:
-  enum THierarchicalStorageAccess { hsaRead = 0x01, hsaWrite = 0x02 };
+  enum THierarchicalStorageAccess : int { hsaRead = 0x01, hsaWrite = 0x02 };
   struct TKeyEntry
   {
     UnicodeString Key;

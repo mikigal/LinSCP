@@ -431,7 +431,7 @@ ScpSeat::ScpSeat(TSecureShell * ASecureShell)
 //---------------------------------------------------------------------------
 std::unique_ptr<TCriticalSection> PuttyStorageSection(TraceInitPtr(new TCriticalSection()));
 THierarchicalStorage * PuttyStorage = NULL;
-enum TPuttyRegistryMode { prmPass, prmRedirect, prmCollect, prmFail };
+enum TPuttyRegistryMode : int { prmPass, prmRedirect, prmCollect, prmFail };
 static TPuttyRegistryMode PuttyRegistryMode = prmRedirect;
 typedef std::map<UnicodeString, unsigned long> TPuttyRegistryTypes;
 static TPuttyRegistryTypes PuttyRegistryTypes;

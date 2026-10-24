@@ -174,7 +174,7 @@ private:
   UnicodeString FTlsVersionStr;
   unsigned int FCapabilities;
   TSessionContext * FSessionContext;
-  enum TIgnoreAuthenticationFailure { iafNo, iafWaiting, iafPasswordFailed } FIgnoreAuthenticationFailure;
+  enum TIgnoreAuthenticationFailure : int { iafNo, iafWaiting, iafPasswordFailed } FIgnoreAuthenticationFailure;
   UnicodeString FAuthorizationProtocol;
   UnicodeString FLastAuthorizationProtocol;
   bool FAuthenticationRetry;

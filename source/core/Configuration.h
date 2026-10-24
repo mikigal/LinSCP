@@ -16,7 +16,7 @@
 //---------------------------------------------------------------------------
 extern const wchar_t * AutoSwitchNames;
 extern const wchar_t * NotAutoSwitchNames;
-enum TAutoSwitch { asOn, asOff, asAuto }; // Has to match PuTTY FORCE_ON, FORCE_OFF, AUTO
+enum TAutoSwitch : int { asOn, asOff, asAuto }; // Has to match PuTTY FORCE_ON, FORCE_OFF, AUTO
 //---------------------------------------------------------------------------
 class TStoredSessionList;
 class TCopyParamType;

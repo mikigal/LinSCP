@@ -4,7 +4,7 @@
 
 #include <vector>
 //---------------------------------------------------------------------------
-enum TOptionType { otParam, otSwitch };
+enum TOptionType : int { otParam, otSwitch };
 //---------------------------------------------------------------------------
 typedef TMethodPtr<void(const UnicodeString & LogStr)> TLogOptionEvent;
 //---------------------------------------------------------------------------

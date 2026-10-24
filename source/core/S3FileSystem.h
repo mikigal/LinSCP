@@ -31,9 +31,9 @@ struct S3ErrorDetails;
 struct S3ListBucketContent;
 struct S3ResponseHandler;
 struct S3AclGrant;
-enum S3Status { };
-enum _S3Protocol { };
-enum S3Permission { };
+enum S3Status : int { };
+enum _S3Protocol : int { };
+enum S3Permission : int { };
 #endif
 //------------------------------------------------------------------------------
 class TS3FileSystem : public TCustomFileSystem

@@ -48,7 +48,7 @@ private:
 class TScript
 {
 public:
-  enum TBatchMode { BatchOff, BatchOn, BatchAbort, BatchContinue };
+  enum TBatchMode : int { BatchOff, BatchOn, BatchAbort, BatchContinue };
 
   __fastcall TScript(bool LimitedOutput);
   virtual __fastcall ~TScript();
@@ -122,7 +122,7 @@ protected:
   void __fastcall CheckParams(TScriptProcParams * Parameters);
   void __fastcall CopyParamParams(TCopyParamType & CopyParam, TScriptProcParams * Parameters);
   void __fastcall TransferParamParams(int & Params, TScriptProcParams * Parameters);
-  enum TFileListType
+  enum TFileListType : int
   {
     fltDefault =     0x00,
     fltDirectories = 0x01,

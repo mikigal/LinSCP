@@ -232,7 +232,7 @@ int THttp::NeonServerSSLCallback(void * UserData, int Failures, const ne_ssl_cer
   return Http->NeonServerSSLCallbackImpl(Failures, Certificate);
 }
 //---------------------------------------------------------------------------
-enum { hcvNoWindows = 0x01, hcvNoKnown = 0x02 };
+enum : int { hcvNoWindows = 0x01, hcvNoKnown = 0x02 };
 //---------------------------------------------------------------------------
 int THttp::NeonServerSSLCallbackImpl(int Failures, const ne_ssl_certificate * ACertificate)
 {

@@ -5,7 +5,7 @@
 #include <vector>
 #include <map>
 //---------------------------------------------------------------------------
-enum TModificationFmt { mfNone, mfMDHM, mfYMDHM, mfMDY, mfFull };
+enum TModificationFmt : int { mfNone, mfMDHM, mfYMDHM, mfMDY, mfFull };
 //---------------------------------------------------------------------------
 #define SYMLINKSTR L" -> "
 #define ROOTDIRECTORY L"/"
@@ -321,24 +321,24 @@ public:
   static const wchar_t CombinedSymbols[];
   static const wchar_t ExtendedSymbols[];
   static const wchar_t ModeGroups[];
-  enum TRightLevel {
+  enum TRightLevel : int {
     rlNone = -1,
     rlRead, rlWrite, rlExec, rlSpecial,
     rlFirst = rlRead, rlLastNormal = rlExec, rlLastWithSpecial = rlSpecial,
     rlS3Read = rlRead, rlS3Write = rlWrite, rlS3ReadACP = rlExec, rlS3WriteACP = rlSpecial, rlLastAcl = rlLastWithSpecial,
   };
-  enum TRightGroup {
+  enum TRightGroup : int {
     rgUser, rgGroup, rgOther,
     rgFirst = rgUser, rgLast = rgOther,
     rgS3AllAwsUsers = rgGroup, rgS3AllUsers = rgOther,
   };
-  enum TRight {
+  enum TRight : int {
     rrUserIDExec, rrGroupIDExec, rrStickyBit,
     rrUserRead, rrUserWrite, rrUserExec,
     rrGroupRead, rrGroupWrite, rrGroupExec,
     rrOtherRead, rrOtherWrite, rrOtherExec,
     rrFirst = rrUserIDExec, rrLast = rrOtherExec };
-  enum TFlag {
+  enum TFlag : int {
     rfSetUID =    04000, rfSetGID =      02000, rfStickyBit = 01000,
     rfUserRead =  00400, rfUserWrite =   00200, rfUserExec =  00100,
     rfGroupRead = 00040, rfGroupWrite =  00020, rfGroupExec = 00010,
@@ -348,9 +348,9 @@ public:
     rfSpecials =  07000, rfAllSpecials = 07777,
     rfS3Read = rfOtherRead, rfS3Write = rfOtherWrite, rfS3ReadACP = rfOtherExec, rfS3WriteACP = rfStickyBit,
      };
-  enum TUnsupportedFlag {
+  enum TUnsupportedFlag : int {
     rfDirectory  = 040000 };
-  enum TState { rsNo, rsYes, rsUndef };
+  enum TState : int { rsNo, rsYes, rsUndef };
 
 public:
   static TFlag __fastcall RightToFlag(TRight Right);
@@ -427,7 +427,7 @@ private:
   void __fastcall SetRightUndef(TRight Right, TState value);
 };
 //---------------------------------------------------------------------------
-enum TValidProperty { vpRights, vpGroup, vpOwner, vpModification, vpLastAccess, vpEncrypt, vpTags };
+enum TValidProperty : int { vpRights, vpGroup, vpOwner, vpModification, vpLastAccess, vpEncrypt, vpTags };
 typedef Set<TValidProperty, vpRights, vpTags> TValidProperties;
 class TRemoteProperties
 {
@@ -462,7 +462,7 @@ class TSynchronizeChecklist
 friend class TTerminal;
 
 public:
-  enum TAction {
+  enum TAction : int {
     saNone, saUploadNew, saDownloadNew, saUploadUpdate, saDownloadUpdate, saDeleteRemote, saDeleteLocal };
   static const int ActionCount = saDeleteLocal;
 

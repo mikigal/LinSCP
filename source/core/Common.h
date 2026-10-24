@@ -273,7 +273,7 @@ bool FileGetSymLinkTargetSafe(const UnicodeString & FileName, UnicodeString & Ta
 int __fastcall FileGetAttrFix(const UnicodeString & FileName);
 //---------------------------------------------------------------------------
 extern const wchar_t * DSTModeNames;
-enum TDSTMode
+enum TDSTMode : int
 {
   dstmWin =  0, //
   dstmUnix = 1, // adjust UTC time to Windows "bug"
@@ -317,7 +317,7 @@ MethodT __fastcall MakeMethod(void * Data, FuncT Code)
   return *reinterpret_cast<MethodT*>(&Method);
 }
 //---------------------------------------------------------------------------
-enum TAssemblyLanguage { alCSharp, alVBNET, alPowerShell };
+enum TAssemblyLanguage : int { alCSharp, alVBNET, alPowerShell };
 extern const UnicodeString RtfPara;
 extern const UnicodeString AssemblyNamespace;
 extern const UnicodeString SessionClassName;

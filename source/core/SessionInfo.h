@@ -5,7 +5,7 @@
 #include "SessionData.h"
 #include "Interface.h"
 //---------------------------------------------------------------------------
-enum TSessionStatus { ssClosed, ssOpening, ssOpened };
+enum TSessionStatus : int { ssClosed, ssOpening, ssOpened };
 //---------------------------------------------------------------------------
 struct TSessionInfo
 {
@@ -32,7 +32,7 @@ struct TSessionInfo
   bool CertificateVerifiedManually;
 };
 //---------------------------------------------------------------------------
-enum TFSCapability { fcUserGroupListing, fcModeChanging, fcAclChangingFiles, fcGroupChanging,
+enum TFSCapability : int { fcUserGroupListing, fcModeChanging, fcAclChangingFiles, fcGroupChanging,
   fcOwnerChanging, fcGroupOwnerChangingByID, fcAnyCommand, fcHardLink,
   fcSymbolicLink,
   // With WebDAV this is always true, to avoid double-click on
@@ -85,14 +85,14 @@ public:
   virtual void __fastcall ProcessGUI() = 0;
 };
 //---------------------------------------------------------------------------
-enum TLogLineType { llOutput, llInput, llStdError, llMessage, llException };
-enum TLogAction
+enum TLogLineType : int { llOutput, llInput, llStdError, llMessage, llException };
+enum TLogAction : int
 {
   laUpload, laDownload, laTouch, laChmod, laMkdir, laRm, laMv, laCp, laCall, laLs,
   laStat, laChecksum, laCwd, laDifference
 };
 //---------------------------------------------------------------------------
-enum TCaptureOutputType { cotOutput, cotError, cotExitCode };
+enum TCaptureOutputType : int { cotOutput, cotError, cotExitCode };
 typedef TMethodPtr<void(
   const UnicodeString & Str, TCaptureOutputType OutputType)> TCaptureOutputEvent;
 typedef TMethodPtr<void(

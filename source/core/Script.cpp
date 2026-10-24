@@ -1602,7 +1602,7 @@ TTransferMode __fastcall TScript::ParseTransferModeName(UnicodeString Name)
 //---------------------------------------------------------------------------
 void __fastcall TScript::OptionImpl(UnicodeString OptionName, UnicodeString ValueName)
 {
-  enum { Echo, Batch, Confirm, Transfer, SynchDelete, Exclude, Include, ReconnectTime, FailOnNoMatch };
+  enum : int { Echo, Batch, Confirm, Transfer, SynchDelete, Exclude, Include, ReconnectTime, FailOnNoMatch };
   static const wchar_t * Names[] = { L"echo", L"batch", L"confirm", L"transfer",
     L"synchdelete", L"exclude", L"include", L"reconnecttime", L"failonnomatch" };
 
@@ -1983,7 +1983,7 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
     }
     if (Parameters->FindSwitch(L"criteria", Value))
     {
-      enum { None, Either, EitherBoth };
+      enum : int { None, Either, EitherBoth };
       static const wchar_t * CriteriaNames[] = { L"none", L"either", L"both" };
       int Criteria = TScriptCommands::FindCommand(CriteriaNames, std::size(CriteriaNames), Value);
       if (Criteria >= 0)
@@ -2008,7 +2008,7 @@ void __fastcall TScript::SynchronizeProc(TScriptProcParams * Parameters)
         while ((Params >= 0) && !Value.IsEmpty())
         {
           UnicodeString Token = CutToChar(Value, L',', true);
-          enum { Time, Size, Checksum };
+          enum : int { Time, Size, Checksum };
           static const wchar_t * CriteriaNames[] = { L"time", L"size", L"checksum" };
           int Criteria = TScriptCommands::FindCommand(CriteriaNames, std::size(CriteriaNames), Token);
           switch (Criteria)

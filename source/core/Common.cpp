@@ -1059,7 +1059,7 @@ bool __fastcall IsReservedName(UnicodeString FileName)
 // https://stackoverflow.com/q/18580945/850848
 // This can be reimplemented using PathCchCanonicalizeEx on Windows 8 and later
 // There's also TPath.GetPosAfterExtendedPrefix.
-enum PATH_PREFIX_TYPE
+enum PATH_PREFIX_TYPE : int
 {
   PPT_UNKNOWN,
   PPT_ABSOLUTE,           //Found absolute path that is none of the other types

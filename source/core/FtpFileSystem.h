@@ -99,14 +99,14 @@ public:
   virtual void __fastcall ClearCaches();
 
 protected:
-  enum TOverwriteMode { omOverwrite, omResume, omComplete };
+  enum TOverwriteMode : int { omOverwrite, omResume, omComplete };
 
   virtual UnicodeString __fastcall GetCurrentDirectory();
 
   const wchar_t * __fastcall GetOption(int OptionID) const;
   int __fastcall GetOptionVal(int OptionID) const;
 
-  enum
+  enum : int
   {
     REPLY_CONNECT =      0x01,
     REPLY_2XX_CODE =     0x02,
@@ -215,7 +215,7 @@ protected:
   static bool __fastcall Unquote(UnicodeString & Str);
 
 private:
-  enum TCommand
+  enum TCommand : int
   {
     CMD_UNKNOWN,
     PASS,
@@ -258,7 +258,7 @@ private:
   UnicodeString FWelcomeMessage;
   bool FActive;
   bool FWaitingForReply;
-  enum { ftaNone, ftaSkip, ftaCancel } FFileTransferAbort;
+  enum : int { ftaNone, ftaSkip, ftaCancel } FFileTransferAbort;
   bool FIgnoreFileList;
   bool FFileTransferCancelled;
   __int64 FFileTransferResumed;
