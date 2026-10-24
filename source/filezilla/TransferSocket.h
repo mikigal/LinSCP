@@ -84,6 +84,13 @@ protected:
   LARGE_INTEGER m_LastUpdateTime;
   unsigned int m_LastSendBufferUpdate;
   DWORD m_SendBuf;
+
+  // OpenSCP: ASCII transfers have CRLF line endings, local files LF: the
+  // converted data that did not fit the buffer of an upload, whether the
+  // last character read was CR, and a downloaded CR not written yet
+  std::string m_AsciiReadBuffer;
+  bool m_bAsciiLastReadCR;
+  bool m_bAsciiPendingCR;
 };
 //---------------------------------------------------------------------------
 #endif // TransferSocketH

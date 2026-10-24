@@ -39,6 +39,8 @@ CTransferSocket::CTransferSocket(CFtpControlSocket *pOwner, int nMode)
   m_nNotifyWaiting = 0;
   m_bActivationPending = false;
   m_LastSendBufferUpdate = 0;
+  m_bAsciiLastReadCR = false;
+  m_bAsciiPendingCR = false;
 
   UpdateStatusBar(true);
 
@@ -849,6 +851,29 @@ void CTransferSocket::UseGSS(CAsyncGssSocketLayer *pGssLayer)
 
 void CTransferSocket::WriteData(const char * buffer, int len)
 {
+  // OpenSCP: CRLF to LF in ASCII downloads; no buffer writes the last CR
+  // that no LF followed
+  std::string converted;
+  if (m_transferdata.bType)
+  {
+    for (int i = 0; i < len; i++)
+    {
+      if (m_bAsciiPendingCR && (buffer[i] != '\n'))
+        converted += '\r';
+      m_bAsciiPendingCR = (buffer[i] == '\r');
+      if (!m_bAsciiPendingCR)
+        converted += buffer[i];
+    }
+    if ((buffer == NULL) && m_bAsciiPendingCR)
+    {
+      converted += '\r';
+      m_bAsciiPendingCR = false;
+    }
+    buffer = converted.data();
+    len = static_cast<int>(converted.size());
+    if (!len)
+      return;
+  }
   if (m_OnTransferOut != NULL)
   {
     m_OnTransferOut(NULL, reinterpret_cast<const unsigned char *>(buffer), len);
@@ -862,15 +887,44 @@ void CTransferSocket::WriteData(const char * buffer, int len)
 int CTransferSocket::ReadData(char * buffer, int len)
 {
   int result;
-  if (m_OnTransferIn != NULL)
+  // OpenSCP: LF to CRLF in ASCII uploads, through the buffer of what did
+  // not fit
+  char * source = buffer;
+  int wanted = len;
+  std::vector<char> raw;
+  if (m_transferdata.bType)
   {
-    result = SizeToIntChecked(m_OnTransferIn(NULL, reinterpret_cast<unsigned char *>(buffer), len));
+    // (Less than wanted means the end of the file to the callers)
+    len = std::max(wanted - static_cast<int>(m_AsciiReadBuffer.size()), 0);
+    raw.resize(std::max(len, 1));
+    source = &raw[0];
+  }
+  if (m_transferdata.bType && !len)
+  {
+    result = 0;
+  }
+  else if (m_OnTransferIn != NULL)
+  {
+    result = SizeToIntChecked(m_OnTransferIn(NULL, reinterpret_cast<unsigned char *>(source), len));
   }
   else
   {
-    result = m_pFile->Read(buffer, len);
+    result = m_pFile->Read(source, len);
   }
   LogMessage(FZ_LOG_INFO, L"Read %d bytes from file", result);
+  if (m_transferdata.bType)
+  {
+    for (int i = 0; i < result; i++)
+    {
+      if ((source[i] == '\n') && !m_bAsciiLastReadCR)
+        m_AsciiReadBuffer += '\r';
+      m_AsciiReadBuffer += source[i];
+      m_bAsciiLastReadCR = (source[i] == '\r');
+    }
+    result = std::min(wanted, static_cast<int>(m_AsciiReadBuffer.size()));
+    memcpy(buffer, m_AsciiReadBuffer.data(), result);
+    m_AsciiReadBuffer.erase(0, result);
+  }
   return result;
 }
 
@@ -918,6 +972,19 @@ void CTransferSocket::EnsureSendClose(int Mode)
 {
   if (!m_bSentClose)
   {
+    // OpenSCP: the last CR of an ASCII download
+    if ((Mode == 0) && m_bAsciiPendingCR)
+    {
+      try
+      {
+        WriteData(NULL, 0);
+      }
+      catch (EOSError & E)
+      {
+        m_pOwner->ShowStatus(CString(E.Message), FZ_LOG_ERROR);
+        Mode = CSMODE_TRANSFERERROR;
+      }
+    }
     if (Mode != 0)
     {
       m_pOwner->ShowStatus(L"Data connection failed", FZ_LOG_INFO);

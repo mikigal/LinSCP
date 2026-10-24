@@ -150,6 +150,17 @@ class CommonTests:
         self.assertEqual(int((self.remote / 'data.bin').stat().st_mtime), mtime)
         self.assertEqual(int((self.local / 'copy.bin').stat().st_mtime), mtime)
 
+    def test_ascii_mode(self):
+        # Linux line endings on both sides, so nothing changes (a CR before
+        # a line end is a character of the line)
+        text = b''.join(b'x' * (index % 97) + b'\n' for index in range(20000)) + b'cr\r\nlast\n'
+        source = self.write_local('text.txt', text)
+        self.session(
+            'put -transfer=ascii "%s" "%s/"' % (source, self.remote),
+            'get -transfer=ascii "%s/text.txt" "%s/back.txt"' % (self.remote, self.local))
+        self.assertEqual((self.remote / 'text.txt').read_bytes(), text)
+        self.assertEqual((self.local / 'back.txt').read_bytes(), text)
+
     def test_directories(self):
         self.write_local('dir/a.txt', 'a')
         self.write_local('dir/sub/b.txt', 'b')
