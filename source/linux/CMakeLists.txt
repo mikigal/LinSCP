@@ -26,7 +26,8 @@ add_library(openscp_linux STATIC
   src/Registry.cpp
   src/Shell.cpp
   src/System.cpp
-  src/TimeApi.cpp)
+  src/TimeApi.cpp
+  src/WinSock.cpp)
 add_library(openscp::linux ALIAS openscp_linux)
 
 target_include_directories(openscp_linux PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

@@ -97,7 +97,7 @@ bool __fastcall IsAuthenticationPrompt(TPromptKind Kind)
 bool __fastcall IsPasswordOrPassphrasePrompt(TPromptKind Kind, TStrings * Prompts)
 {
   return
-    (Prompts->Count == 1) && FLAGCLEAR(int(Prompts->Objects[0]), pupEcho) &&
+    (Prompts->Count == 1) && FLAGCLEAR(int(reinterpret_cast<intptr_t>(Prompts->Objects[0])), pupEcho) &&
     ((Kind == pkPassword) || (Kind == pkPassphrase) || (Kind == pkKeybInteractive) ||
      (Kind == pkTIS) || (Kind == pkCryptoCard));
 }

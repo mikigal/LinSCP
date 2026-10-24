@@ -147,3 +147,8 @@ void select_result(int fd, int event)
     if (callback)
         callback(fd, event);
 }
+
+/* WinSCP's core frees the handle waits of a session; there are none here */
+void delete_handle_wait(struct callback_set *callback_set, HandleWait *hw)
+{
+}

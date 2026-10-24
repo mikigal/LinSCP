@@ -4,7 +4,8 @@
  *
  * WinSCP (OpenSCP): PuTTY 0.85's unix/fd-socket.c. Descriptors and
  * callbacks belong to the callback set of the socket's session; the shared
- * trees are guarded by putty_section.
+ * trees are guarded by putty_section; do_select tells the session when the
+ * connection comes up and goes down, as WinSCP's windows/handle-socket.c.
  */
 
 #include <stdio.h>
@@ -144,6 +145,11 @@ static Plug *fdsocket_plug(Socket *s, Plug *p)
 static void fdsocket_close(Socket *s)
 {
     FdSocket *fds = container_of(s, FdSocket, sock);
+
+#ifdef MPEXT
+    // WinSCP core uses do_select as signalization of connection up/down
+    do_select(fds->plug, WINSCP_NO_SOCKET, 0);
+#endif
 
     if (fds->opener)
         deferred_socket_opener_free(fds->opener);
@@ -392,6 +398,11 @@ void setup_fd_socket(Socket *s, int infd, int outfd, int inerrfd)
     }
 
     queue_toplevel_callback(get_callback_set(fds->plug), fdsocket_connect_success_callback, fds);
+
+#ifdef MPEXT
+    // WinSCP core uses do_select as signalization of connection up/down
+    do_select(fds->plug, WINSCP_NO_SOCKET, 1);
+#endif
 }
 
 void fd_socket_set_psb_prefix(Socket *s, const char *prefix)

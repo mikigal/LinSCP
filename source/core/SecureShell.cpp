@@ -896,7 +896,7 @@ bool __fastcall TSecureShell::PromptUser(bool /*ToServer*/,
   {
     if (FSessionData->AuthKIPassword && !FSessionData->Password.IsEmpty() &&
         !FStoredPasswordTriedForKI && (Prompts->Count == 1) &&
-        FLAGCLEAR(int(Prompts->Objects[0]), pupEcho))
+        FLAGCLEAR(int(reinterpret_cast<intptr_t>(Prompts->Objects[0])), pupEcho))
     {
       LogEvent(L"Using stored password.");
       FUI->Information(LoadStr(AUTH_PASSWORD));
@@ -964,7 +964,7 @@ bool __fastcall TSecureShell::PromptUser(bool /*ToServer*/,
     else
     {
       if ((Prompts->Count >= 1) &&
-          (FLAGSET(int(Prompts->Objects[0]), pupEcho) || Configuration->LogSensitive))
+          (FLAGSET(int(reinterpret_cast<intptr_t>(Prompts->Objects[0])), pupEcho) || Configuration->LogSensitive))
       {
         LogEvent(FORMAT(L"Response: \"%s\"", (Results->Strings[0])));
       }
@@ -2052,19 +2052,13 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
       LogEvent(L"Looking for network events");
     }
     unsigned int TicksBefore = GetTickCount();
-    HandleWaitList * WaitList = NULL;
-
-    { ::rtl::TFinally Finally([&]()
-    {
-      if (WaitList != NULL)
-      {
-        handle_wait_list_free(WaitList);
-      }
-    }); try
+    // OpenSCP: waits for the descriptors of the session (PuTTY's uxsel, see
+    // putty/unix/uxsel.c), instead of WinSock events and handle waits
+    std::vector<pollfd> Fds;
     {
       unsigned int Timeout = MSec;
 
-      unsigned int WaitResult;
+      int Ready;
       do
       {
         CheckConnection();
@@ -2074,15 +2068,22 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
           TimeoutStep = 0;
         }
         Timeout -= TimeoutStep;
-        if (WaitList != NULL)
+        // The set can change with every call to run_toplevel_callbacks.
+        Fds.clear();
+        int State;
+        int Rwx;
+        for (int Fd = first_fd(FCallbackSet, &State, &Rwx); Fd >= 0; Fd = next_fd(FCallbackSet, &State, &Rwx))
         {
-          handle_wait_list_free(WaitList);
+          short PollEvents =
+            FLAGMASK(FLAGSET(Rwx, SELECT_R), POLLIN) | FLAGMASK(FLAGSET(Rwx, SELECT_W), POLLOUT) |
+            FLAGMASK(FLAGSET(Rwx, SELECT_X), POLLPRI);
+          Fds.push_back({ Fd, PollEvents, 0 });
         }
-        // It returns only busy handles, so the set can change with every call to run_toplevel_callbacks.
-        WaitList = get_handle_wait_list(FCallbackSet);
-        DebugAssert(WaitList->nhandles < MAXIMUM_WAIT_OBJECTS);
-        WaitList->handles[WaitList->nhandles] = FSocketEvent;
-        WaitResult = WaitForMultipleObjects(WaitList->nhandles + 1, WaitList->handles, FALSE, TimeoutStep);
+        Ready = poll(Fds.data(), Fds.size(), static_cast<int>(TimeoutStep));
+        if ((Ready < 0) && (errno == EINTR))
+        {
+          Ready = 0;
+        }
         FUI->ProcessGUI();
         // run_toplevel_callbacks can cause processing of pending raw data, so:
         // 1) Check for changes in our pending buffer - wait criteria in Receive()
@@ -2096,48 +2097,55 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
           // Note that we still may process new network event now
           Result = true;
         }
-      } while ((WaitResult == WAIT_TIMEOUT) && (Timeout > 0) && !Result);
+      } while ((Ready == 0) && (Timeout > 0) && !Result);
 
-      if (WaitResult < WAIT_OBJECT_0 + WaitList->nhandles)
-      {
-        if (handle_wait_activate(FCallbackSet, WaitList, WaitResult - WAIT_OBJECT_0))
-        {
-          Result = true;
-        }
-      }
-      else if (WaitResult == WAIT_OBJECT_0 + WaitList->nhandles)
+      if (Ready > 0)
       {
         if (Configuration->ActualLogProtocol >= 1)
         {
           LogEvent(L"Detected network event");
         }
 
-        DebugAssert(FSocket != INVALID_SOCKET);
-        if (Events == NULL)
+        for (const pollfd & Poll : Fds)
         {
-          if (ProcessNetworkEvents(FSocket))
+          if (Poll.revents == 0)
+          {
+            continue;
+          }
+          // As uxsel events: FD_READ, FD_WRITE and FD_OOB have the values of SELECT_R, SELECT_W and SELECT_X.
+          // Errors and hang-ups are found by reading or writing.
+          WSANETWORKEVENTS PollEvents;
+          memset(&PollEvents, 0, sizeof(PollEvents));
+          if (FLAGSET(Poll.events, POLLIN) && ((Poll.revents & (POLLIN | POLLHUP | POLLERR)) != 0))
+          {
+            PollEvents.lNetworkEvents |= FD_READ;
+          }
+          if (FLAGSET(Poll.events, POLLOUT) && ((Poll.revents & (POLLOUT | POLLHUP | POLLERR)) != 0))
+          {
+            PollEvents.lNetworkEvents |= FD_WRITE;
+          }
+          if (FLAGSET(Poll.revents, POLLPRI))
+          {
+            PollEvents.lNetworkEvents |= FD_OOB;
+          }
+          SOCKET Socket = static_cast<SOCKET>(Poll.fd);
+          bool MainSocket = (Socket == FSocket);
+          // Data for the session (not of forwarded ports): the main socket, local proxy, agent
+          if (FLAGSET(PollEvents.lNetworkEvents, FD_READ) && (FPortFwdSockets.count(Socket) == 0))
           {
             Result = true;
           }
-        }
-        else
-        {
-          if (EnumNetworkEvents(FSocket, *Events))
+          if (MainSocket && (Events != NULL))
           {
-            Result = true;
+            Events->lNetworkEvents |= PollEvents.lNetworkEvents;
           }
-        }
-
-        {
-          TSockets::iterator i = FPortFwdSockets.begin();
-          while (i != FPortFwdSockets.end())
+          else
           {
-            ProcessNetworkEvents(*i);
-            i++;
+            HandleNetworkEvents(Socket, PollEvents);
           }
         }
       }
-      else if (WaitResult == WAIT_TIMEOUT)
+      else if (Ready == 0)
       {
         if (Configuration->ActualLogProtocol >= 2)
         {
@@ -2150,13 +2158,12 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
       {
         if (Configuration->ActualLogProtocol >= 2)
         {
-          LogEvent(FORMAT(L"Unknown waiting result %d", (int(WaitResult))));
+          LogEvent(FORMAT(L"Error waiting for network events: %d", (errno)));
         }
 
         MSec = 0;
       }
     }
-    catch (...) { Finally.Unwind(); } }
 
 
     unsigned int TicksAfter = GetTickCount();

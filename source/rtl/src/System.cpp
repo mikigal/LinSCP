@@ -310,6 +310,12 @@ UnicodeString UTF8ToString(const char * Str)
   return (Str != nullptr) ? UnicodeString(rtl::DecodeUtf8(Str, strlen(Str))) : UnicodeString();
 }
 //---------------------------------------------------------------------------
+UnicodeString UTF8ArrayToString(const char * A, int A_High)
+{
+  size_t Length = (A_High >= 0) ? strnlen(A, static_cast<size_t>(A_High) + 1) : 0;
+  return UnicodeString(rtl::DecodeUtf8(A, Length));
+}
+//---------------------------------------------------------------------------
 UnicodeString UTF8ToUnicodeString(const RawByteString & Str)
 {
   return UTF8ToString(Str);

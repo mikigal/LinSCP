@@ -17,11 +17,6 @@ static char appname_[50];
 const char *const appname = appname_;
 extern const bool share_can_be_downstream = false;
 extern const bool share_can_be_upstream = false;
-//---------------------------------------------------------------------------
-extern "C"
-{
-#include <windows/platform.h>
-}
 const UnicodeString OriginalPuttyRegistryStorageKey(_T(PUTTY_REG_POS));
 const UnicodeString KittyRegistryStorageKey(L"Software\\9bis.com\\KiTTY");
 const UnicodeString OriginalPuttyExecutable("putty.exe");

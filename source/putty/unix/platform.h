@@ -136,6 +136,18 @@ int first_fd(struct callback_set *set, int *state, int *rwx); // WINSCP
 int next_fd(struct callback_set *set, int *state, int *rwx); // WINSCP
 
 /*
+ * WinSCP's core takes do_select as the signal that a connection of a
+ * session is up (enable) or down; a local proxy connection, which has no
+ * socket, passes WINSCP_NO_SOCKET (INVALID_SOCKET of the core).
+ */
+#define WINSCP_NO_SOCKET (~(uintptr_t)0)
+const char *do_select(Plug *plug, uintptr_t skt, bool enable); // WINSCP
+
+/* Windows' handle waits, which the core still frees (there are none) */
+typedef struct HandleWait HandleWait;
+void delete_handle_wait(struct callback_set *callback_set, HandleWait *hw);
+
+/*
  * Spare functions exported directly from network.c.
  */
 void *sk_getxdmdata(Socket *sock, int *lenp);

@@ -91,6 +91,9 @@ double Random();
 //---------------------------------------------------------------------------
 UnicodeString UTF8ToString(const RawByteString & Str);
 UnicodeString UTF8ToString(const char * Str);
+// An open array of UTF-8 characters (A_High is the index of the last one),
+// up to the first NUL
+UnicodeString UTF8ArrayToString(const char * A, int A_High);
 UnicodeString UTF8ToUnicodeString(const RawByteString & Str);
 UTF8String UTF8Encode(const UnicodeString & Str);
 UnicodeString UTF8Decode(const RawByteString & Str);

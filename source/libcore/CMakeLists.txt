@@ -29,10 +29,12 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/HierarchicalStorage.cpp
   ${OPENSCP_CORE_DIR}/NamedObjs.cpp
   ${OPENSCP_CORE_DIR}/Option.cpp
+  ${OPENSCP_CORE_DIR}/PuttyIntf.cpp
   ${OPENSCP_CORE_DIR}/Queue.cpp
   ${OPENSCP_CORE_DIR}/RemoteFiles.cpp
   ${OPENSCP_CORE_DIR}/ScpFileSystem.cpp
   ${OPENSCP_CORE_DIR}/Script.cpp
+  ${OPENSCP_CORE_DIR}/SecureShell.cpp
   ${OPENSCP_CORE_DIR}/Security.cpp
   ${OPENSCP_CORE_DIR}/SessionData.cpp
   ${OPENSCP_CORE_DIR}/SessionInfo.cpp
@@ -46,7 +48,8 @@ target_sources(openscp_core INTERFACE $<TARGET_OBJECTS:openscp_core_strings>)
 # Upstream code: C++Builder pragmas, and warnings we do not fix in upstream
 # sources (designated initializers out of order in MakeMethod, unhandled
 # enumerators, signedness, casts of GetProcAddress results, memset/memcpy
-# of C++ objects, NULL for reserved DWORD arguments). An interface library
+# of C++ objects, NULL for reserved DWORD arguments and compared with bools,
+# variable length arrays). An interface library
 # linked after openscp::options, so that the flags follow -Wall.
 add_library(openscp_upstream_warnings INTERFACE)
 target_compile_options(openscp_upstream_warnings INTERFACE
@@ -56,7 +59,9 @@ target_compile_options(openscp_upstream_warnings INTERFACE
   -Wno-sign-compare
   -Wno-cast-function-type-mismatch
   -Wno-nontrivial-memcall
-  -Wno-null-conversion)
+  -Wno-null-conversion
+  -Wno-null-arithmetic
+  -Wno-vla-cxx-extension)
 
 target_link_libraries(openscp_core
   PRIVATE openscp::options openscp_upstream_warnings

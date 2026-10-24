@@ -4,8 +4,10 @@
  * WinSCP (OpenSCP): PuTTY 0.85's unix/network.c with WinSCP's changes of
  * windows/network.c (MPEXT): sk_new takes a connection timeout, a send
  * buffer size and a source address; sockets are selected in the callback
- * set of their session (see uxsel.c), and so are callbacks; the shared
- * socket tree is guarded by putty_section.
+ * set of their session (see uxsel.c), and so are callbacks; do_select
+ * still tells the session when a socket comes up and goes down (where
+ * WinSCP's windows/network.c calls it); the shared socket tree is guarded
+ * by putty_section.
  */
 
 #include <stdio.h>
@@ -548,6 +550,9 @@ static Socket *sk_net_accept(accept_ctx_t ctx, Plug *plug)
 
     s->oobinline = false;
 
+#ifdef MPEXT
+    do_select(plug, s->s, true);
+#endif
     uxsel_tell(s);
     WINSCP_PUTTY_SECTION_ENTER;
     add234(sktree, s);
@@ -579,8 +584,13 @@ static int try_connect(NetSocket *sock
     del234(sktree, sock);
     WINSCP_PUTTY_SECTION_LEAVE;
 
-    if (sock->s >= 0)
+    if (sock->s >= 0) {
+#ifdef MPEXT
+        do_select(sock->plug, sock->s, false);
+        uxsel_del(sock->s);
+#endif
         close(sock->s);
+    }
 
     {
         SockAddr thisaddr = sk_extractaddr_tmp(
@@ -784,6 +794,8 @@ static int try_connect(NetSocket *sock
             err = connect_err;
             goto ret;
         }
+        // WinSCP: the socket is up for the session
+        do_select(sock->plug, s, true);
         if (connect_err == 0) {
             /*
              * The connect has completed: set the socket as connected
@@ -1089,6 +1101,9 @@ Socket *sk_newlistener(const char *srcaddr, int port, Plug *plug,
 
     s->s = fd;
 
+#ifdef MPEXT
+    do_select(plug, s->s, true);
+#endif
     uxsel_tell(s);
     WINSCP_PUTTY_SECTION_ENTER;
     add234(sktree, s);
@@ -1110,6 +1125,9 @@ static void sk_net_close(Socket *sock)
     del234(sktree, s);
     WINSCP_PUTTY_SECTION_LEAVE;
     if (s->s >= 0) {
+#ifdef MPEXT
+        do_select(s->plug, s->s, false);
+#endif
         uxsel_del(s->s);
         close(s->s);
     }
@@ -1864,6 +1882,9 @@ Socket *new_unix_listener(SockAddr *listenaddr, Plug *plug)
 
     s->s = fd;
 
+#ifdef MPEXT
+    do_select(plug, s->s, true);
+#endif
     uxsel_tell(s);
     WINSCP_PUTTY_SECTION_ENTER;
     add234(sktree, s);

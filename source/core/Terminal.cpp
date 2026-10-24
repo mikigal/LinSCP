@@ -2035,7 +2035,7 @@ bool __fastcall TTerminal::DoPromptUser(TSessionData * /*Data*/, TPromptKind Kin
   {
     if (PasswordOrPassphrasePrompt && !Configuration->RememberPassword)
     {
-      Prompts->Objects[0] = reinterpret_cast<TObject*>(reinterpret_cast<int>(Prompts->Objects[0]) | pupRemember);
+      Prompts->Objects[0] = reinterpret_cast<TObject*>(reinterpret_cast<intptr_t>(Prompts->Objects[0]) | pupRemember);
     }
 
     if (OnPromptUser != NULL)
@@ -2056,7 +2056,7 @@ bool __fastcall TTerminal::DoPromptUser(TSessionData * /*Data*/, TPromptKind Kin
     }
 
     if (AResult && PasswordOrPassphrasePrompt &&
-        (Configuration->RememberPassword || FLAGSET(int(Prompts->Objects[0]), pupRemember)))
+        (Configuration->RememberPassword || FLAGSET(int(reinterpret_cast<intptr_t>(Prompts->Objects[0])), pupRemember)))
     {
       UnicodeString Password = DenormalizeString(Results->Strings[0]);
       RawByteString EncryptedPassword = EncryptPassword(Password);

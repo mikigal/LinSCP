@@ -2,7 +2,8 @@
 //
 // All waitable objects share one mutex and one condition variable; this keeps
 // WaitForMultipleObjects simple, and the core waits on a handful of objects
-// only.
+// only. Waits for events with sockets selected into them (WSAEventSelect)
+// poll the sockets, in short slices, so that SetEvent is noticed as well.
 //---------------------------------------------------------------------------
 #include <winapi/Handles.h>
 
@@ -15,6 +16,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
@@ -78,6 +80,12 @@ public:
     {
       WaitCondition().notify_all();
     }
+  }
+
+  // With WaitMutex locked
+  void SetLocked(bool Signaled)
+  {
+    FSignaled = Signaled;
   }
 
   bool IsSignaled() const override { return FSignaled; }
@@ -161,6 +169,39 @@ private:
   DWORD FExitCode = 0;
 };
 //---------------------------------------------------------------------------
+// Sockets selected into events: descriptor -> (event, network events)
+struct TSocketSelection
+{
+  std::weak_ptr<TEvent> Event;
+  long NetworkEvents;
+};
+std::unordered_map<int, TSocketSelection> & SocketSelections()
+{
+  static std::unordered_map<int, TSocketSelection> Selections;
+  return Selections;
+}
+//---------------------------------------------------------------------------
+short PollEvents(long NetworkEvents)
+{
+  short Result = 0;
+  // FD_READ, FD_ACCEPT, FD_CLOSE
+  if ((NetworkEvents & (0x01 | 0x08 | 0x20)) != 0)
+  {
+    Result |= POLLIN;
+  }
+  // FD_WRITE, FD_CONNECT
+  if ((NetworkEvents & (0x02 | 0x10)) != 0)
+  {
+    Result |= POLLOUT;
+  }
+  // FD_OOB
+  if ((NetworkEvents & 0x04) != 0)
+  {
+    Result |= POLLPRI;
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
 std::vector<std::shared_ptr<TWaitable>> FindWaitables(DWORD Count, const HANDLE * Handles)
 {
   std::vector<std::shared_ptr<TWaitable>> Result;
@@ -234,6 +275,27 @@ int HandleToFd(HANDLE Handle)
     return -1;
   }
   return static_cast<int>(Value);
+}
+//---------------------------------------------------------------------------
+bool SelectSocket(int Fd, HANDLE Event, long NetworkEvents)
+{
+  std::shared_ptr<TEvent> Object;
+  if (NetworkEvents != 0)
+  {
+    Object = FindObject<TEvent>(Event);
+    if (!Object)
+    {
+      return false;
+    }
+  }
+  std::lock_guard<std::mutex> Lock(WaitMutex());
+  // A socket is selected into one event at a time
+  SocketSelections().erase(Fd);
+  if (NetworkEvents != 0)
+  {
+    SocketSelections()[Fd] = { Object, NetworkEvents };
+  }
+  return true;
 }
 //---------------------------------------------------------------------------
 HANDLE FdToHandle(int Fd)
@@ -345,7 +407,46 @@ DWORD WaitForMultipleObjects(DWORD Count, const HANDLE * Handles, BOOL WaitAll, 
     {
       return Result;
     }
-    if (Milliseconds == INFINITE)
+    // The sockets selected into the events being waited for
+    std::vector<pollfd> Fds;
+    std::vector<std::shared_ptr<TEvent>> FdEvents;
+    for (auto & Selection : SocketSelections())
+    {
+      std::shared_ptr<TEvent> Event = Selection.second.Event.lock();
+      for (auto & Waitable : Waitables)
+      {
+        if (Event && (Event == Waitable))
+        {
+          Fds.push_back({ Selection.first, PollEvents(Selection.second.NetworkEvents), 0 });
+          FdEvents.push_back(Event);
+        }
+      }
+    }
+    if (!Fds.empty())
+    {
+      int Slice = 10;
+      if (Milliseconds != INFINITE)
+      {
+        auto Left = std::chrono::duration_cast<std::chrono::milliseconds>(Deadline - std::chrono::steady_clock::now());
+        Slice = std::max(0, std::min(Slice, static_cast<int>(Left.count())));
+      }
+      Lock.unlock();
+      int Ready = poll(Fds.data(), Fds.size(), Slice);
+      Lock.lock();
+      for (size_t Index = 0; (Ready > 0) && (Index < Fds.size()); Index++)
+      {
+        if (Fds[Index].revents != 0)
+        {
+          // Signaled as with WSAEventSelect; a wait acquires it
+          FdEvents[Index]->SetLocked(true);
+        }
+      }
+      if ((Ready <= 0) && (Milliseconds != INFINITE) && (std::chrono::steady_clock::now() >= Deadline))
+      {
+        return TryAcquire(Waitables, WaitAll);
+      }
+    }
+    else if (Milliseconds == INFINITE)
     {
       WaitCondition().wait(Lock);
     }

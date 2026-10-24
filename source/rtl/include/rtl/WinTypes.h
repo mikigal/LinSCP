@@ -270,5 +270,8 @@ typedef VS_FIXEDFILEINFO * PVSFixedFileInfo;
 //---------------------------------------------------------------------------
 #define __TEXT(quote) L##quote
 #define TEXT(quote) __TEXT(quote)
+// tchar.h, for UNICODE
+#define _T(quote) __TEXT(quote)
+#define _TEXT(quote) __TEXT(quote)
 //---------------------------------------------------------------------------
 #endif

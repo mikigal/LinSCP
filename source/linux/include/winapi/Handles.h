@@ -117,6 +117,9 @@ std::shared_ptr<T> FindObject(HANDLE Handle)
 }
 // The file descriptor of a file handle, -1 for other handles
 int HandleToFd(HANDLE Handle);
+// Waits for the event poll the socket for the network events (FD_*) too,
+// see WSAEventSelect; no network events end the selection
+bool SelectSocket(int Fd, HANDLE Event, long NetworkEvents);
 // A file handle of a descriptor; descriptors 0 to 2 are moved, so that a
 // file handle is never NULL (fails with INVALID_HANDLE_VALUE)
 HANDLE FdToHandle(int Fd);
