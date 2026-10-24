@@ -855,15 +855,15 @@ public:
   {
     TStringList * DumpLines = new TStringList();
     RawByteString Dump;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete DumpLines;
+    }); try
     {
       DumpLines->LoadFromFile(FileName);
       Dump = RawByteString(AnsiString(DumpLines->Text));
     }
-    __finally
-    {
-      delete DumpLines;
-    }
+    catch (...) { Finally.Unwind(); } }
 
     Capacity = 20480;
     unsigned char Byte[3];
@@ -916,17 +916,17 @@ public:
     return *this;
   }
 
-  __property unsigned int Length = { read = FLength };
-  __property unsigned int RemainingLength = { read = GetRemainingLength };
-  __property unsigned char * Data = { read = FData };
-  __property unsigned char * SendData = { read = GetSendData };
-  __property unsigned int SendLength = { read = GetSendLength };
-  __property unsigned int Capacity = { read = FCapacity, write = SetCapacity };
-  __property unsigned char Type = { read = FType };
-  __property unsigned char RequestType = { read = GetRequestType };
-  __property unsigned int MessageNumber = { read = FMessageNumber, write = FMessageNumber };
-  __property TSFTPFileSystem * ReservedBy = { read = FReservedBy, write = FReservedBy };
-  __property UnicodeString TypeName = { read = GetTypeName };
+  unsigned int __property_get_Length() const { return FLength; } __declspec(property(get = __property_get_Length)) unsigned int Length;
+  unsigned int __property_get_RemainingLength() const { return ::rtl::Mutable(this)->GetRemainingLength(); } __declspec(property(get = __property_get_RemainingLength)) unsigned int RemainingLength;
+  unsigned char * __property_get_Data() const { return FData; } __declspec(property(get = __property_get_Data)) unsigned char * Data;
+  unsigned char * __property_get_SendData() const { return ::rtl::Mutable(this)->GetSendData(); } __declspec(property(get = __property_get_SendData)) unsigned char * SendData;
+  unsigned int __property_get_SendLength() const { return ::rtl::Mutable(this)->GetSendLength(); } __declspec(property(get = __property_get_SendLength)) unsigned int SendLength;
+  unsigned int __property_get_Capacity() const { return FCapacity; } void __property_set_Capacity(unsigned int Value) { SetCapacity(Value); } __declspec(property(get = __property_get_Capacity, put = __property_set_Capacity)) unsigned int Capacity;
+  unsigned char __property_get_Type() const { return FType; } __declspec(property(get = __property_get_Type)) unsigned char Type;
+  unsigned char __property_get_RequestType() const { return ::rtl::Mutable(this)->GetRequestType(); } __declspec(property(get = __property_get_RequestType)) unsigned char RequestType;
+  unsigned int __property_get_MessageNumber() const { return FMessageNumber; } void __property_set_MessageNumber(unsigned int Value) { FMessageNumber = Value; } __declspec(property(get = __property_get_MessageNumber, put = __property_set_MessageNumber)) unsigned int MessageNumber;
+  TSFTPFileSystem * __property_get_ReservedBy() const { return FReservedBy; } void __property_set_ReservedBy(TSFTPFileSystem * Value) { FReservedBy = Value; } __declspec(property(get = __property_get_ReservedBy, put = __property_set_ReservedBy)) TSFTPFileSystem * ReservedBy;
+  UnicodeString __property_get_TypeName() const { return ::rtl::Mutable(this)->GetTypeName(); } __declspec(property(get = __property_get_TypeName)) UnicodeString TypeName;
 
 private:
   unsigned char * FData;
@@ -1204,7 +1204,11 @@ public:
     bool Result;
     TSFTPQueuePacket * Request = NULL;
     TSFTPPacket * Response = NULL;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Request;
+      delete Response;
+    }); try
     {
       Request = static_cast<TSFTPQueuePacket*>(FRequests->Items[0]);
       FRequests->Delete(0);
@@ -1242,11 +1246,7 @@ public:
         }
       }
     }
-    __finally
-    {
-      delete Request;
-      delete Response;
-    }
+    catch (...) { Finally.Unwind(); } }
 
     return Result;
   }
@@ -1416,14 +1416,14 @@ protected:
     if (Result)
     {
       FReceiveHandlerRegistered = false;
-      FFileSystem->FSecureShell->UnregisterReceiveHandler(ReceiveHandler);
+      FFileSystem->FSecureShell->UnregisterReceiveHandler(::rtl::MethodPtr(this, &TSFTPAsynchronousQueue::ReceiveHandler));
     }
     return Result;
   }
 
   void __fastcall RegisterReceiveHandler()
   {
-    FFileSystem->FSecureShell->RegisterReceiveHandler(ReceiveHandler);
+    FFileSystem->FSecureShell->RegisterReceiveHandler(::rtl::MethodPtr(this, &TSFTPAsynchronousQueue::ReceiveHandler));
     FReceiveHandlerRegistered = true;
   }
 
@@ -1678,14 +1678,14 @@ protected:
     {
       FFileSystem->FTerminal->LogEvent(1, L"Too many outstanding requests, waiting for responses...");
       DebugCheck(UnregisterReceiveHandler());
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        RegisterReceiveHandler();
+      }); try
       {
         DisposeUntil(FQueueMaxLen - 1, SSH_FXP_STATUS);
       }
-      __finally
-      {
-        RegisterReceiveHandler();
-      }
+      catch (...) { Finally.Unwind(); } }
     }
     return Result;
   }
@@ -1807,14 +1807,14 @@ public:
   {
     void * Token;
     bool Result;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      File = static_cast<TRemoteFile *>(Token);
+    }); try
     {
       Result = TSFTPFixedLenQueue::ReceivePacket(Packet, SSH_FXP_EXTENDED_REPLY, asNo, &Token);
     }
-    __finally
-    {
-      File = static_cast<TRemoteFile *>(Token);
-    }
+    catch (...) { Finally.Unwind(); } }
     return Result;
   }
 
@@ -2366,7 +2366,10 @@ void __fastcall TSFTPFileSystem::SendPacket(const TSFTPPacket * Packet)
   }
 
   BusyStart();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    BusyEnd();
+  }); try
   {
     if (FTerminal->Log->Logging && (FTerminal->Configuration->ActualLogProtocol >= 0))
     {
@@ -2393,10 +2396,7 @@ void __fastcall TSFTPFileSystem::SendPacket(const TSFTPPacket * Packet)
     }
     FSecureShell->Send(Packet->SendData, Packet->SendLength);
   }
-  __finally
-  {
-    BusyEnd();
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 unsigned long __fastcall TSFTPFileSystem::GotStatusPacket(
@@ -2752,7 +2752,13 @@ int __fastcall TSFTPFileSystem::ReceiveResponse(
   int Result;
   unsigned int MessageNumber = Packet->MessageNumber;
   TSFTPPacket * AResponse = (Response ? Response : new TSFTPPacket());
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (!Response)
+    {
+      delete AResponse;
+    }
+  }); try
   {
     Result = ReceivePacket(AResponse, ExpectedType, AllowStatus, TryOnly);
     if (MessageNumber != AResponse->MessageNumber)
@@ -2761,13 +2767,7 @@ int __fastcall TSFTPFileSystem::ReceiveResponse(
         (static_cast<int>(AResponse->MessageNumber), static_cast<int>(MessageNumber))));
     }
   }
-  __finally
-  {
-    if (!Response)
-    {
-      delete AResponse;
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -3560,7 +3560,17 @@ void __fastcall TSFTPFileSystem::ReadDirectory(TRemoteFileList * FileList)
   }
 
   TSFTPPacket Response;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (FTerminal->Active)
+    {
+      Packet.ChangeType(SSH_FXP_CLOSE);
+      Packet.AddString(Handle);
+      SendPacket(&Packet);
+      // we are not interested in the response, do not wait for it
+      ReserveResponse(&Packet, NULL);
+    }
+  }); try
   {
     bool isEOF = false;
     int Total = 0;
@@ -3674,14 +3684,14 @@ void __fastcall TSFTPFileSystem::ReadDirectory(TRemoteFileList * FileList)
         try
         {
           FTerminal->ExceptionOnFail = true;
-          try
+          { ::rtl::TFinally Finally([&]()
+          {
+            FTerminal->ExceptionOnFail = false;
+          }); try
           {
             File = FTerminal->ReadFile(UnixCombinePaths(FileList->Directory, PARENTDIRECTORY));
           }
-          __finally
-          {
-            FTerminal->ExceptionOnFail = false;
-          }
+          catch (...) { Finally.Unwind(); } }
         }
         catch(Exception &E)
         {
@@ -3721,17 +3731,7 @@ void __fastcall TSFTPFileSystem::ReadDirectory(TRemoteFileList * FileList)
       }
     }
   }
-  __finally
-  {
-    if (FTerminal->Active)
-    {
-      Packet.ChangeType(SSH_FXP_CLOSE);
-      Packet.AddString(Handle);
-      SendPacket(&Packet);
-      // we are not interested in the response, do not wait for it
-      ReserveResponse(&Packet, NULL);
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TSFTPFileSystem::ReadSymlink(TRemoteFile * SymlinkFile,
@@ -3941,7 +3941,14 @@ void __fastcall TSFTPFileSystem::CopyFile(
 
     __int64 Size = DebugAlwaysTrue(File != NULL) ? File->Size : -1;
     RawByteString SourceRemoteHandle, DestRemoteHandle;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      if (FTerminal->Active)
+      {
+        DoCloseRemoteIfOpened(SourceRemoteHandle);
+        DoCloseRemoteIfOpened(DestRemoteHandle);
+      }
+    }); try
     {
       SourceRemoteHandle = SFTPOpenRemoteFile(FileNameCanonical, SSH_FXF_READ, Encrypted, Size);
       // SFTP_EXT_COPY_FILE does not allow overwriting existing files
@@ -3970,14 +3977,7 @@ void __fastcall TSFTPFileSystem::CopyFile(
         SendPacketAndReceiveResponse(&PropertiesRequest, &Packet, SSH_FXP_STATUS);
       }
     }
-    __finally
-    {
-      if (FTerminal->Active)
-      {
-        DoCloseRemoteIfOpened(SourceRemoteHandle);
-        DoCloseRemoteIfOpened(DestRemoteHandle);
-      }
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -4103,7 +4103,10 @@ void __fastcall TSFTPFileSystem::ChangeFileProperties(const UnicodeString FileNa
   UnicodeString RealFileName = LocalCanonify(FileName);
   ReadFile(RealFileName, File);
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete File;
+  }); try
   {
     DebugAssert(File);
 
@@ -4111,7 +4114,7 @@ void __fastcall TSFTPFileSystem::ChangeFileProperties(const UnicodeString FileNa
     {
       try
       {
-        FTerminal->ProcessDirectory(FileName, FTerminal->ChangeFileProperties,
+        FTerminal->ProcessDirectory(FileName, ::rtl::MethodPtr(FTerminal, &TTerminal::ChangeFileProperties),
           const_cast<TRemoteProperties *>(AProperties));
       }
       catch(...)
@@ -4143,10 +4146,7 @@ void __fastcall TSFTPFileSystem::ChangeFileProperties(const UnicodeString FileNa
     Packet.AddProperties(&Properties, *File->Rights, File->IsDirectory, FVersion, FUtfStrings, &Action);
     SendPacketAndReceiveResponse(&Packet, &Packet, SSH_FXP_STATUS);
   }
-  __finally
-  {
-    delete File;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 bool __fastcall TSFTPFileSystem::LoadFilesProperties(TStrings * FileList)
@@ -4155,12 +4155,16 @@ bool __fastcall TSFTPFileSystem::LoadFilesProperties(TStrings * FileList)
   // without knowledge of server's capabilities, this all make no sense
   if (FSupport->Loaded || (FSecureShell->SshImplementation == sshiBitvise))
   {
-    TFileOperationProgressType Progress(&FTerminal->DoProgress, &FTerminal->DoFinished);
+    TFileOperationProgressType Progress(::rtl::MethodPtr(FTerminal, &TTerminal::DoProgress), ::rtl::MethodPtr(FTerminal, &TTerminal::DoFinished));
     FTerminal->OperationStart(Progress, foGetProperties, osRemote, FileList->Count);
 
     static int LoadFilesPropertiesQueueLen = 5;
     TSFTPLoadFilesPropertiesQueue Queue(this);
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      Queue.DisposeSafe();
+      FTerminal->OperationStop(Progress);
+    }); try
     {
       if (Queue.Init(LoadFilesPropertiesQueueLen, FileList))
       {
@@ -4189,11 +4193,7 @@ bool __fastcall TSFTPFileSystem::LoadFilesProperties(TStrings * FileList)
         while (Next);
       }
     }
-    __finally
-    {
-      Queue.DisposeSafe();
-      FTerminal->OperationStop(Progress);
-    }
+    catch (...) { Finally.Unwind(); } }
     // queue is discarded here
   }
 
@@ -4209,7 +4209,10 @@ void __fastcall TSFTPFileSystem::CalculateFilesChecksum(
   static int CalculateFilesChecksumQueueLen = 5;
   TSFTPCalculateFilesChecksumQueue Queue(this);
   TOnceDoneOperation OnceDoneOperation; // not used
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    Queue.DisposeSafe();
+  }); try
   {
     UnicodeString SftpAlg;
     int Index = FChecksumAlgs->IndexOf(Alg);
@@ -4232,7 +4235,13 @@ void __fastcall TSFTPFileSystem::CalculateFilesChecksum(
         bool Success = false;
         TRemoteFile * File = NULL;
 
-        try
+        { ::rtl::TFinally Finally([&]()
+        {
+          if (FirstLevel)
+          {
+            OperationProgress->Finish(File->FileName, Success, OnceDoneOperation);
+          }
+        }); try
         {
           TChecksumSessionAction Action(FTerminal->ActionLog);
           try
@@ -4267,13 +4276,7 @@ void __fastcall TSFTPFileSystem::CalculateFilesChecksum(
             Next = false;
           }
         }
-        __finally
-        {
-          if (FirstLevel)
-          {
-            OperationProgress->Finish(File->FileName, Success, OnceDoneOperation);
-          }
-        }
+        catch (...) { Finally.Unwind(); } }
 
         if (OperationProgress->Cancel != csContinue)
         {
@@ -4283,10 +4286,7 @@ void __fastcall TSFTPFileSystem::CalculateFilesChecksum(
       while (Next);
     }
   }
-  __finally
-  {
-    Queue.DisposeSafe();
-  }
+  catch (...) { Finally.Unwind(); } }
   // queue is discarded here
 }
 //---------------------------------------------------------------------------
@@ -4461,7 +4461,10 @@ void __fastcall TSFTPFileSystem::SFTPConfirmOverwrite(
       ((Answer == qaRetry) || (Answer == qaSkip)))
   {
     OperationProgress->LockUserSelections();
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      OperationProgress->UnlockUserSelections();
+    }); try
     {
       // duplicated in TTerminal::ConfirmFileOverwrite
       bool CanAlternateResume =
@@ -4516,10 +4519,7 @@ void __fastcall TSFTPFileSystem::SFTPConfirmOverwrite(
         }
       }
     }
-    __finally
-    {
-      OperationProgress->UnlockUserSelections();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   else if (Answer == qaIgnore)
   {
@@ -4776,7 +4776,7 @@ void __fastcall TSFTPFileSystem::Source(
   OpenParams.Recycled = false;
 
   FTerminal->LogEvent(0, L"Opening remote file.");
-  FTerminal->FileOperationLoop(SFTPOpenRemote, OperationProgress, folAllowSkip,
+  FTerminal->FileOperationLoop(::rtl::MethodPtr(this, &TSFTPFileSystem::SFTPOpenRemote), OperationProgress, folAllowSkip,
     FMTLOAD(SFTP_CREATE_FILE_ERROR, (OpenParams.RemoteFileName)),
     &OpenParams);
   OperationProgress->Progress();
@@ -4838,7 +4838,29 @@ void __fastcall TSFTPFileSystem::Source(
       NULL, NULL, false, FVersion, FUtfStrings);
   }
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (FTerminal->Active)
+    {
+      // if file transfer was finished, the close request was already sent
+      if (!OpenParams.RemoteFileHandle.IsEmpty())
+      {
+        SFTPCloseRemote(OpenParams.RemoteFileHandle, DestFileName,
+          OperationProgress, TransferFinished, true, &CloseRequest);
+      }
+      // wait for the response
+      SFTPCloseRemote(OpenParams.RemoteFileHandle, DestFileName,
+        OperationProgress, TransferFinished, false, &CloseRequest);
+
+      // delete file if transfer was not completed, resuming was not allowed and
+      // we were not appending (incl. alternate resume),
+      // shortly after plain transfer completes (eq. !ResumeAllowed)
+      if (!TransferFinished && !DoResume && (OpenParams.OverwriteMode == omOverwrite))
+      {
+        DoDeleteFile(OpenParams.RemoteFileName, SSH_FXP_REMOVE);
+      }
+    }
+  }); try
   {
     if (OpenParams.OverwriteMode == omAppend)
     {
@@ -4860,7 +4882,12 @@ void __fastcall TSFTPFileSystem::Source(
     bool Encrypt = FTerminal->IsFileEncrypted(DestFullName, CopyParam->EncryptNewFiles);
     TValueRestorer<TSecureShellMode> SecureShellModeRestorer(FSecureShell->Mode, ssmUploading);
     TSFTPUploadQueue Queue(this, (Encrypt ? &Encryption : NULL), FTerminal->SessionData->SFTPUploadQueue);
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      // Either queue is empty now (noop call then),
+      // or some error occurred (in that case, process remaining responses, ignoring other errors)
+      Queue.DisposeSafe();
+    }); try
     {
       int ConvertParams =
         FLAGMASK(CopyParam->RemoveCtrlZ, cpRemoveCtrlZ) |
@@ -4900,39 +4927,12 @@ void __fastcall TSFTPFileSystem::Source(
       // No error so far, processes pending responses and throw on first error
       Queue.DisposeSafeWithErrorHandling();
     }
-    __finally
-    {
-      // Either queue is empty now (noop call then),
-      // or some error occurred (in that case, process remaining responses, ignoring other errors)
-      Queue.DisposeSafe();
-    }
+    catch (...) { Finally.Unwind(); } }
 
     TransferFinished = true;
     // queue is discarded here
   }
-  __finally
-  {
-    if (FTerminal->Active)
-    {
-      // if file transfer was finished, the close request was already sent
-      if (!OpenParams.RemoteFileHandle.IsEmpty())
-      {
-        SFTPCloseRemote(OpenParams.RemoteFileHandle, DestFileName,
-          OperationProgress, TransferFinished, true, &CloseRequest);
-      }
-      // wait for the response
-      SFTPCloseRemote(OpenParams.RemoteFileHandle, DestFileName,
-        OperationProgress, TransferFinished, false, &CloseRequest);
-
-      // delete file if transfer was not completed, resuming was not allowed and
-      // we were not appending (incl. alternate resume),
-      // shortly after plain transfer completes (eq. !ResumeAllowed)
-      if (!TransferFinished && !DoResume && (OpenParams.OverwriteMode == omOverwrite))
-      {
-        DoDeleteFile(OpenParams.RemoteFileName, SSH_FXP_REMOVE);
-      }
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 
   OperationProgress->Progress();
 
@@ -5440,7 +5440,32 @@ void __fastcall TSFTPFileSystem::Sink(
   UnicodeString LocalFileName = DestFullName;
   TSFTPOverwriteMode OverwriteMode = omOverwrite;
 
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    if (LocalHandle)
+    {
+      CloseHandle(LocalHandle);
+    }
+
+    if (FileStream != NULL)
+    {
+      delete FileStream;
+    }
+
+    if (DeleteLocalFile && (!ResumeAllowed || OperationProgress->LocallyUsed == 0) &&
+        (OverwriteMode == omOverwrite))
+    {
+      FTerminal->DoDeleteLocalFile(LocalFileName);
+    }
+
+    // if the transfer was finished, the file is usually closed already
+    // (except for special cases like SFTPv6 EOF indication or partial file download)
+    if (FTerminal->Active && !RemoteHandle.IsEmpty())
+    {
+      // do not wait for response
+      SFTPCloseRemote(RemoteHandle, DestFileName, OperationProgress, true, true, NULL);
+    }
+  }); try
   {
     bool ResumeTransfer = false;
     UnicodeString DestPartialFullName;
@@ -5615,7 +5640,10 @@ void __fastcall TSFTPFileSystem::Sink(
     {
       TValueRestorer<TSecureShellMode> SecureShellModeRestorer(FSecureShell->Mode, ssmDownloading);
       TSFTPDownloadQueue Queue(this);
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        Queue.DisposeSafe();
+      }); try
       {
         TSFTPPacket DataPacket;
 
@@ -5771,10 +5799,7 @@ void __fastcall TSFTPFileSystem::Sink(
           }
         }
       }
-      __finally
-      {
-        Queue.DisposeSafe();
-      }
+      catch (...) { Finally.Unwind(); } }
       // queue is discarded here
     }
 
@@ -5809,32 +5834,7 @@ void __fastcall TSFTPFileSystem::Sink(
     }
 
   }
-  __finally
-  {
-    if (LocalHandle)
-    {
-      CloseHandle(LocalHandle);
-    }
-
-    if (FileStream != NULL)
-    {
-      delete FileStream;
-    }
-
-    if (DeleteLocalFile && (!ResumeAllowed || OperationProgress->LocallyUsed == 0) &&
-        (OverwriteMode == omOverwrite))
-    {
-      FTerminal->DoDeleteLocalFile(LocalFileName);
-    }
-
-    // if the transfer was finished, the file is usually closed already
-    // (except for special cases like SFTPv6 EOF indication or partial file download)
-    if (FTerminal->Active && !RemoteHandle.IsEmpty())
-    {
-      // do not wait for response
-      SFTPCloseRemote(RemoteHandle, DestFileName, OperationProgress, true, true, NULL);
-    }
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------------
 void __fastcall TSFTPFileSystem::RegisterChecksumAlg(const UnicodeString & Alg, const UnicodeString & SftpAlg)

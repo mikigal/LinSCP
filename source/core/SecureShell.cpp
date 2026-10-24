@@ -422,7 +422,10 @@ void __fastcall TSecureShell::Open()
     FLogPolicy->vt = &ScpLogPolicyVTable;
     FLogPolicy->SecureShell = this;
     FLogPolicy->Seat = FSeat;
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      conf_free(conf);
+    }); try
     {
       FLogCtx = log_init(FLogPolicy, conf);
       InitError = backend_init(&ssh_backend, FSeat, &FBackendHandle, FLogCtx, conf,
@@ -430,10 +433,7 @@ void __fastcall TSecureShell::Open()
         (FSessionData->TcpNoDelay ? 1 : 0),
         conf_get_bool(conf, CONF_tcp_keepalives));
     }
-    __finally
-    {
-      conf_free(conf);
-    }
+    catch (...) { Finally.Unwind(); } }
     sfree(RealHost);
     if (InitError)
     {
@@ -1082,7 +1082,10 @@ void __fastcall TSecureShell::FromBackend(const unsigned char * Data, size_t Len
     if (!FFrozen)
     {
       FFrozen = true;
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        FFrozen = false;
+      }); try
       {
         do
         {
@@ -1091,10 +1094,7 @@ void __fastcall TSecureShell::FromBackend(const unsigned char * Data, size_t Len
         }
         while (FDataWhileFrozen);
       }
-      __finally
-      {
-        FFrozen = false;
-      }
+      catch (...) { Finally.Unwind(); } }
     }
     else
     {
@@ -1126,7 +1126,10 @@ Integer __fastcall TSecureShell::Receive(unsigned char * Buf, Integer Len)
     OutPtr = Buf;
     OutLen = Len;
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      OutPtr = NULL;
+    }); try
     {
       /*
        * See if the pending-input block contains some of what we
@@ -1164,10 +1167,7 @@ Integer __fastcall TSecureShell::Receive(unsigned char * Buf, Integer Len)
       // This seems ambiguous
       if (Len <= 0) FatalError(LoadStr(LOST_CONNECTION));
     }
-    __finally
-    {
-      OutPtr = NULL;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   if (Configuration->ActualLogProtocol >= 1)
   {
@@ -1252,7 +1252,10 @@ unsigned int __fastcall TSecureShell::TimeoutPrompt(TQueryParamsTimerEvent PoolE
   FWaiting++;
 
   unsigned int Answer;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    FWaiting--;
+  }); try
   {
     TQueryParams Params(qpFatalAbort | qpAllowContinueOnError | qpIgnoreAbort);
     Params.HelpKeyword = HELP_MESSAGE_HOST_IS_NOT_COMMUNICATING;
@@ -1270,10 +1273,7 @@ unsigned int __fastcall TSecureShell::TimeoutPrompt(TQueryParamsTimerEvent PoolE
     Answer = FUI->QueryUser(MainInstructions(FMTLOAD(CONFIRM_PROLONG_TIMEOUT3, (FSessionData->Timeout))),
       NULL, qaRetry | qaAbort, &Params);
   }
-  __finally
-  {
-    FWaiting--;
-  }
+  catch (...) { Finally.Unwind(); } }
   return Answer;
 }
 //---------------------------------------------------------------------------
@@ -1341,7 +1341,7 @@ void __fastcall TSecureShell::DispatchSendBuffer(int BufSize)
     if (Now() - Start > FSessionData->TimeoutDT)
     {
       LogEvent(L"Waiting for dispatching send buffer timed out, asking user what to do.");
-      unsigned int Answer = TimeoutPrompt(SendBuffer);
+      unsigned int Answer = TimeoutPrompt(::rtl::MethodPtr(this, &TSecureShell::SendBuffer));
       switch (Answer)
       {
         case qaRetry:
@@ -1921,7 +1921,7 @@ void __fastcall TSecureShell::WaitForData()
       TPoolForDataEvent Event(this, Events);
 
       LogEvent(L"Waiting for data timed out, asking user what to do.");
-      unsigned int Answer = TimeoutPrompt(Event.PoolForData);
+      unsigned int Answer = TimeoutPrompt(::rtl::MethodPtr(&Event, &TPoolForDataEvent::PoolForData));
       switch (Answer)
       {
         case qaRetry:
@@ -2054,7 +2054,13 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
     unsigned int TicksBefore = GetTickCount();
     HandleWaitList * WaitList = NULL;
 
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      if (WaitList != NULL)
+      {
+        handle_wait_list_free(WaitList);
+      }
+    }); try
     {
       unsigned int Timeout = MSec;
 
@@ -2150,13 +2156,7 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
         MSec = 0;
       }
     }
-    __finally
-    {
-      if (WaitList != NULL)
-      {
-        handle_wait_list_free(WaitList);
-      }
-    }
+    catch (...) { Finally.Unwind(); } }
 
 
     unsigned int TicksAfter = GetTickCount();
@@ -2629,13 +2629,13 @@ void __fastcall TSecureShell::VerifyHostKey(
         CopyAlias.Button = qaRetry;
         CopyAlias.Alias = LoadStr(COPY_KEY_BUTTON);
         CopyAlias.ActionAlias = LoadStr(COPY_KEY_ACTION);
-        CopyAlias.OnSubmit = &ClipboardHandler.Copy;
+        CopyAlias.OnSubmit = ::rtl::MethodPtr(&ClipboardHandler, &TClipboardHandler::Copy);
         Aliases.push_back(CopyAlias);
 
         TQueryButtonAlias PasteAlias;
         PasteAlias.Button = qaIgnore;
         PasteAlias.Alias = LoadStr(PASTE_KEY_BUTTON);
-        PasteAlias.OnSubmit = &PasteKeyHandler.Paste;
+        PasteAlias.OnSubmit = ::rtl::MethodPtr(&PasteKeyHandler, &TPasteKeyHandler::Paste);
         PasteAlias.GroupWith = qaYes;
         Aliases.push_back(PasteAlias);
 
@@ -2797,14 +2797,14 @@ void __fastcall TSecureShell::VerifyHostKey(
         }
 
         Exception * E = new Exception(MainInstructions(Message));
-        try
+        { ::rtl::TFinally Finally([&]()
+        {
+          delete E;
+        }); try
         {
           FUI->FatalError(E, FMTLOAD(HOSTKEY, (FingerprintSHA256)));
         }
-        __finally
-        {
-          delete E;
-        }
+        catch (...) { Finally.Unwind(); } }
       }
     }
   }

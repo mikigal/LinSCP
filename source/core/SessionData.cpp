@@ -2014,16 +2014,16 @@ void __fastcall TSessionData::SaveRecryptedPasswords(THierarchicalStorage * Stor
 {
   if (Storage->OpenSubKey(InternalStorageKey, true))
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      Storage->CloseSubKey();
+    }); try
     {
       RecryptPasswords();
 
       SavePasswords(Storage, false, false, false);
     }
-    __finally
-    {
-      Storage->CloseSubKey();
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------
@@ -2036,7 +2036,10 @@ void __fastcall TSessionData::Remove()
 {
   bool SessionList = true;
   THierarchicalStorage * Storage = Configuration->CreateScpStorage(SessionList);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     Storage->Explicit = true;
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, false))
@@ -2044,10 +2047,7 @@ void __fastcall TSessionData::Remove()
       Remove(Storage, InternalStorageKey);
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------
 void __fastcall TSessionData::CacheHostKeyIfNotCached()
@@ -4837,7 +4837,13 @@ void __fastcall TStoredSessionList::Load(THierarchicalStorage * Storage,
 {
   TStringList *SubKeys = new TStringList();
   TList * Loaded = new TList;
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    AutoSort = true;
+    AlphaSort();
+    delete SubKeys;
+    delete Loaded;
+  }); try
   {
     DebugAssert(AutoSort);
     AutoSort = false;
@@ -4915,13 +4921,7 @@ void __fastcall TStoredSessionList::Load(THierarchicalStorage * Storage,
       }
     }
   }
-  __finally
-  {
-    AutoSort = true;
-    AlphaSort();
-    delete SubKeys;
-    delete Loaded;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------
 void __fastcall TStoredSessionList::Reload()
@@ -4958,7 +4958,10 @@ void __fastcall TStoredSessionList::DoSave(THierarchicalStorage * Storage,
   bool All, bool RecryptPasswordOnly, TStrings * RecryptPasswordErrors)
 {
   TSessionData * FactoryDefaults = new TSessionData(L"");
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete FactoryDefaults;
+  }); try
   {
     while (FPendingRemovals->Count > 0)
     {
@@ -4989,10 +4992,7 @@ void __fastcall TStoredSessionList::DoSave(THierarchicalStorage * Storage,
       }
     }
   }
-  __finally
-  {
-    delete FactoryDefaults;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------
 void __fastcall TStoredSessionList::Save(THierarchicalStorage * Storage, bool All)
@@ -5005,7 +5005,10 @@ void __fastcall TStoredSessionList::DoSave(bool All, bool Explicit,
 {
   bool SessionList = true;
   THierarchicalStorage * Storage = Configuration->CreateScpStorage(SessionList);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     Storage->AccessMode = smReadWrite;
     Storage->Explicit = Explicit;
@@ -5014,10 +5017,7 @@ void __fastcall TStoredSessionList::DoSave(bool All, bool Explicit,
       DoSave(Storage, All, RecryptPasswordOnly, RecryptPasswordErrors);
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   Saved();
 }
@@ -5253,7 +5253,10 @@ void TStoredSessionList::ImportFromOpenssh(TStrings * Lines)
 void __fastcall TStoredSessionList::Export(const UnicodeString FileName)
 {
   THierarchicalStorage * Storage = TIniFileStorage::CreateFromPath(FileName);
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     Storage->AccessMode = smReadWrite;
     if (Storage->OpenSubKey(Configuration->StoredSessionsSubKey, true))
@@ -5261,10 +5264,7 @@ void __fastcall TStoredSessionList::Export(const UnicodeString FileName)
       Save(Storage, true);
     }
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 }
 //---------------------------------------------------------------------
 void __fastcall TStoredSessionList::SelectAll(bool Select)
@@ -5315,16 +5315,16 @@ void __fastcall TStoredSessionList::Cleanup()
   {
     if (Configuration->Storage == stRegistry) Clear();
     TRegistryStorage * Storage = new TRegistryStorage(Configuration->RegistryStorageKey);
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Storage;
+    }); try
     {
       Storage->AccessMode = smReadWrite;
       if (Storage->OpenRootKey(False))
         Storage->RecursiveDeleteSubKey(Configuration->StoredSessionsSubKey);
     }
-    __finally
-    {
-      delete Storage;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   catch (Exception &E)
   {

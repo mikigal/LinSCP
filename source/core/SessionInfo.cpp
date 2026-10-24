@@ -903,7 +903,7 @@ void __fastcall TSessionLog::CheckSize(__int64 Addition)
 }
 //---------------------------------------------------------------------------
 void __fastcall TSessionLog::DoAdd(TLogLineType Type, UnicodeString Line,
-  void __fastcall (__closure *f)(TLogLineType Type, const UnicodeString & Line))
+  TMethodPtr<void(TLogLineType Type, const UnicodeString & Line)> f)
 {
   UnicodeString Prefix;
 
@@ -927,13 +927,13 @@ void __fastcall TSessionLog::Add(TLogLineType Type, const UnicodeString & Line)
     {
       if (FParent != NULL)
       {
-        DoAdd(Type, Line, DoAddToParent);
+        DoAdd(Type, Line, ::rtl::MethodPtr(this, &TSessionLog::DoAddToParent));
       }
       else
       {
         TGuard Guard(FCriticalSection);
 
-        DoAdd(Type, Line, DoAddToSelf);
+        DoAdd(Type, Line, ::rtl::MethodPtr(this, &TSessionLog::DoAddToSelf));
       }
     }
     catch (Exception &E)
@@ -1121,14 +1121,14 @@ void __fastcall TSessionLog::DoAddStartupInfo(TAddLogEntryEvent AddLogEntry, TCo
 {
   ADSTR(GetEnvironmentInfo());
   THierarchicalStorage * Storage = AConfiguration->CreateConfigStorage();
-  try
+  { ::rtl::TFinally Finally([&]()
+  {
+    delete Storage;
+  }); try
   {
     ADF(L"Configuration: %s", (Storage->Source));
   }
-  __finally
-  {
-    delete Storage;
-  }
+  catch (...) { Finally.Unwind(); } }
 
   wchar_t UserName[UNLEN + 1];
   unsigned long UserNameSize = std::size(UserName);
@@ -1194,7 +1194,7 @@ void __fastcall TSessionLog::DoAddStartupInfo(TAddLogEntryEvent AddLogEntry, TCo
 }
 //---------------------------------------------------------------------------
 #undef ADSTR
-#define ADSTR(S) DoAdd(llMessage, S, DoAddToSelf);
+#define ADSTR(S) DoAdd(llMessage, S, ::rtl::MethodPtr(this, &TSessionLog::DoAddToSelf));
 //---------------------------------------------------------------------------
 void __fastcall TSessionLog::DoAddStartupInfoEntry(const UnicodeString & S)
 {
@@ -1206,7 +1206,7 @@ void __fastcall TSessionLog::DoAddStartupInfo(TSessionData * Data)
   if (Data == NULL)
   {
     AddSeparator();
-    DoAddStartupInfo(DoAddStartupInfoEntry, FConfiguration, false);
+    DoAddStartupInfo(::rtl::MethodPtr(this, &TSessionLog::DoAddStartupInfoEntry), FConfiguration, false);
     ADF(L"Login time: %s", (FormatDateTime(L"dddddd tt", Now())));
     AddSeparator();
   }
@@ -1627,14 +1627,14 @@ void __fastcall TActionLog::AddFailure(Exception * E)
   TStrings * Messages = ExceptionToMoreMessages(E);
   if (Messages != NULL)
   {
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      delete Messages;
+    }); try
     {
       AddFailure(Messages);
     }
-    __finally
-    {
-      delete Messages;
-    }
+    catch (...) { Finally.Unwind(); } }
   }
 }
 //---------------------------------------------------------------------------
@@ -1808,7 +1808,7 @@ void TApplicationLog::AddStartupInfo()
 {
   if (Logging)
   {
-    TSessionLog::DoAddStartupInfo(Log, Configuration, true);
+    TSessionLog::DoAddStartupInfo(::rtl::MethodPtr(this, &TApplicationLog::Log), Configuration, true);
   }
 }
 //---------------------------------------------------------------------------

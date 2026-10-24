@@ -93,10 +93,10 @@ enum TLogAction
 };
 //---------------------------------------------------------------------------
 enum TCaptureOutputType { cotOutput, cotError, cotExitCode };
-typedef void __fastcall (__closure *TCaptureOutputEvent)(
-  const UnicodeString & Str, TCaptureOutputType OutputType);
-typedef void __fastcall (__closure *TCalculatedChecksumEvent)(
-  const UnicodeString & FileName, const UnicodeString & Alg, const UnicodeString & Hash);
+typedef TMethodPtr<void(
+  const UnicodeString & Str, TCaptureOutputType OutputType)> TCaptureOutputEvent;
+typedef TMethodPtr<void(
+  const UnicodeString & FileName, const UnicodeString & Alg, const UnicodeString & Hash)> TCalculatedChecksumEvent;
 //---------------------------------------------------------------------------
 class TSessionActionRecord;
 class TActionLog;
@@ -251,7 +251,7 @@ public:
   __fastcall TDifferenceSessionAction(TActionLog * Log, const TSynchronizeChecklist::TItem * Item);
 };
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure *TAddLogEntryEvent)(const UnicodeString & S);
+typedef TMethodPtr<void(const UnicodeString & S)> TAddLogEntryEvent;
 //---------------------------------------------------------------------------
 class TSessionLog
 {
@@ -273,8 +273,8 @@ public:
 
   void __fastcall ReflectSettings();
 
-  __property bool Logging = { read = FLogging };
-  __property UnicodeString Name = { read = FName };
+  bool __property_get_Logging() const { return FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
+  UnicodeString __property_get_Name() const { return FName; } __declspec(property(get = __property_get_Name)) UnicodeString Name;
 
 protected:
   void __fastcall CloseLogFile();
@@ -299,7 +299,7 @@ private:
   void __fastcall OpenLogFile();
   UnicodeString __fastcall GetLogFileName();
   void __fastcall DoAdd(TLogLineType Type, UnicodeString Line,
-    void __fastcall (__closure *f)(TLogLineType Type, const UnicodeString & Line));
+    TMethodPtr<void(TLogLineType Type, const UnicodeString & Line)> f);
   void __fastcall DoAddToParent(TLogLineType aType, const UnicodeString & aLine);
   void __fastcall DoAddToSelf(TLogLineType aType, const UnicodeString & aLine);
   void __fastcall AddStartupInfo(bool System);
@@ -328,8 +328,8 @@ public:
   void __fastcall BeginGroup(UnicodeString Name);
   void __fastcall EndGroup();
 
-  __property UnicodeString CurrentFileName = { read = FCurrentFileName };
-  __property bool Enabled = { read = FEnabled, write = SetEnabled };
+  UnicodeString __property_get_CurrentFileName() const { return FCurrentFileName; } __declspec(property(get = __property_get_CurrentFileName)) UnicodeString CurrentFileName;
+  bool __property_get_Enabled() const { return FEnabled; } void __property_set_Enabled(bool Value) { SetEnabled(Value); } __declspec(property(get = __property_get_Enabled, put = __property_set_Enabled)) bool Enabled;
 
 protected:
   void __fastcall CloseLogFile();
@@ -371,8 +371,8 @@ public:
   void Enable(const UnicodeString & Path);
   void AddStartupInfo();
   void __fastcall Log(const UnicodeString & S);
-  __property bool Logging = { read = FLogging };
-  __property UnicodeString Path = { read = FPath };
+  bool __property_get_Logging() const { return FLogging; } __declspec(property(get = __property_get_Logging)) bool Logging;
+  UnicodeString __property_get_Path() const { return FPath; } __declspec(property(get = __property_get_Path)) UnicodeString Path;
 
 private:
   UnicodeString FPath;

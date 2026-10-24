@@ -9,9 +9,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-id-macro"
 #pragma clang diagnostic ignored "-Wold-style-cast"
-#include <openssl\rand.h>
-#include <openssl\err.h>
-#include <openssl\ssl.h>
+#include <openssl/rand.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #pragma clang diagnostic pop
 #include <process.h>
 #include <Soap.EncdDecd.hpp>

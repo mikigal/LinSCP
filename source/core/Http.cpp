@@ -70,7 +70,10 @@ void THttp::SendRequest(const char * Method, const UnicodeString & Request)
     FException.reset(NULL);
 
     ne_session_s * NeonSession = CreateNeonSession(Uri);
-    try
+    { ::rtl::TFinally Finally([&]()
+    {
+      DestroyNeonSession(NeonSession);
+    }); try
     {
       TProxyMethod ProxyMethod = ProxyHost.IsEmpty() ? ::pmNone : pmHTTP;
       InitNeonSession(NeonSession, ProxyMethod, ProxyHost, ProxyPort, UnicodeString(), UnicodeString(), NULL);
@@ -78,11 +81,14 @@ void THttp::SendRequest(const char * Method, const UnicodeString & Request)
 
       if (IsTls)
       {
-        InitNeonTls(NeonSession, InitSslSession, NeonServerSSLCallback, this, NULL);
+        InitNeonTls(NeonSession, ::rtl::MethodPtr(this, &THttp::InitSslSession), NeonServerSSLCallback, this, NULL);
       }
 
       ne_request_s * NeonRequest = ne_request_create(NeonSession, Method, StrToNeon(UriPath));
-      try
+      { ::rtl::TFinally Finally([&]()
+      {
+        ne_request_destroy(NeonRequest);
+      }); try
       {
         if (FRequestHeaders != NULL)
         {
@@ -143,15 +149,9 @@ void THttp::SendRequest(const char * Method, const UnicodeString & Request)
           }
         }
       }
-      __finally
-      {
-        ne_request_destroy(NeonRequest);
-      }
+      catch (...) { Finally.Unwind(); } }
     }
-    __finally
-    {
-      DestroyNeonSession(NeonSession);
-    }
+    catch (...) { Finally.Unwind(); } }
   }
   while (Retry);
 }

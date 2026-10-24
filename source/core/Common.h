@@ -246,8 +246,8 @@ private:
   mutable TDateTime FLastWriteTime;
 };
 //---------------------------------------------------------------------------
-typedef void __fastcall (__closure* TProcessLocalFileEvent)
-  (const UnicodeString & FileName, const TSearchRecSmart & Rec, void * Param);
+typedef TMethodPtr<void(const UnicodeString & FileName, const TSearchRecSmart & Rec, void * Param)>
+ TProcessLocalFileEvent;
 bool __fastcall FileSearchRec(const UnicodeString FileName, TSearchRec & Rec);
 void CopySearchRec(const TSearchRec & Source, TSearchRec & Dest);
 struct TSearchRecChecked : public TSearchRecSmart
