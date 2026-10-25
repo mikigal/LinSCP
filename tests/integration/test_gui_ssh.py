@@ -1772,6 +1772,29 @@ class GuiSshTest(GuiSshTestCase):
         gui.click(F + 'CloseButton')
         gui.wait_no_window('FileSystemInfoDialog')
 
+        # The URL of the session and of a file
+        G = 'GenerateUrlDialog/'
+        gui.trigger(W + 'SessionGenerateUrlAction2')
+        gui.wait_window('GenerateUrlDialog')
+        gui.set(G + 'OptionsPageControl', 0)
+        url = 'sftp://%s@127.0.0.1:%d%s/' % (SSHD.user, SSHD.port, remote)
+        self.assertEqual(gui.get(G + 'ResultMemo')['text'], url)
+        gui.set(G + 'OptionsPageControl', 1)
+        gui.set(G + 'ScriptFormatCombo', 'Shell script')
+        script = gui.get(G + 'ResultMemo')['text']
+        self.assertTrue(script.startswith('#!/bin/sh'), script)
+        self.assertIn('-hostkey=\\"ssh-ed25519 255 ', script)
+        self.screenshot('generate_url')
+        gui.click(G + 'CancelBtn')
+        gui.wait_no_window('GenerateUrlDialog')
+        self.select(gui, 'Remote', 'sub')
+        gui.trigger(W + 'FileGenerateUrlAction2')
+        gui.wait_window('GenerateUrlDialog')
+        # A directory with the trailing slash
+        self.assertEqual(gui.get(G + 'ResultMemo')['text'], url + 'sub/\n')
+        gui.click(G + 'CancelBtn')
+        gui.wait_no_window('GenerateUrlDialog')
+
         # The caches are cleared
         gui.activate(W + 'RemoteDirView', 'sub')
         gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'sub'), what='the subdirectory')

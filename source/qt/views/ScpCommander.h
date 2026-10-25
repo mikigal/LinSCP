@@ -256,6 +256,8 @@ private:
   QAction * SaveCurrentSessionAction2;
   QAction * ColorMenuAction2;
   QAction * FileSystemInfoAction;
+  QAction * SessionGenerateUrlAction2;
+  QAction * FileGenerateUrlAction2;
   QAction * ChangePasswordAction;
   QAction * PrivateKeyUploadAction;
   QAction * ClearCachesAction;
@@ -458,6 +460,11 @@ private:
   // The color of the current tab (upstream's SessionColor)
   void ColorMenuActionExecute();
   void FileSystemInfoActionExecute();
+  // The URL and the code of the session, the URLs of the selected remote
+  // files (upstream's SessionGenerateUrl and FileGenerateUrl)
+  void SessionGenerateUrlActionExecute();
+  void FileGenerateUrlActionExecute();
+  void GenerateUrl(TStrings * Paths);
   bool CanChangePassword();
   void ChangePasswordActionExecute();
   bool CanPrivateKeyUpload();

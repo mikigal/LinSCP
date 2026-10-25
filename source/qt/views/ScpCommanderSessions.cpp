@@ -105,6 +105,7 @@ void TScpCommanderForm::CreateSessionsPageControl()
           Menu.addAction(SaveCurrentSessionAction2);
           Menu.addSeparator();
           Menu.addAction(FileSystemInfoAction);
+          Menu.addAction(SessionGenerateUrlAction2);
           Menu.addSeparator();
           Menu.addAction(NewSessionAction);
           Menu.exec(SessionsPageControl->mapToGlobal(Pos));
@@ -762,6 +763,37 @@ void TScpCommanderForm::FileSystemInfoActionExecute()
       };
     }
     DoFileSystemInfoDialog(SessionInfo, FileSystemInfo, Terminal->CurrentDirectory, OnGetSpaceAvailable);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::GenerateUrl(TStrings * Paths)
+{
+  std::unique_ptr<TSessionData> Data(CloneCurrentSessionData());
+  TTerminal * Terminal = GetTerminal();
+  if (Terminal->Active)
+  {
+    Terminal->FillSessionDataForCode(Data.get());
+  }
+  DoGenerateUrlDialog(Data.get(), Paths);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SessionGenerateUrlActionExecute()
+{
+  if (!IsBusy() && (FManagedSession != NULL))
+  {
+    GenerateUrl(NULL);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::FileGenerateUrlActionExecute()
+{
+  if (!IsBusy() && (FCurrentPanel == FRemotePanel) && FRemotePanel->IsReady())
+  {
+    std::unique_ptr<TStrings> Paths(CreateFileList(FRemotePanel));
+    if (Paths->Count > 0)
+    {
+      GenerateUrl(Paths.get());
+    }
   }
 }
 //---------------------------------------------------------------------------

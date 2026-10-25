@@ -149,6 +149,10 @@ void __fastcall TAppConfiguration::Default()
   FPanelFont = TFontConfiguration();
   FEditorCheckNotModified = false;
   FSelectDirectories = false;
+  FGenerateUrlComponents = -1;
+  FGenerateUrlCodeTarget = guctUrl;
+  FGenerateUrlScriptFormat = sfScriptFile;
+  FHttpForWebDAV = false;
   FFileColors = L"";
   FSessionColors = L"";
   FFontColors = L"";
@@ -377,6 +381,10 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FEditorCheckNotModified); \
     KEY(Enum,    FInterface); \
     KEY(Bool,    FSelectDirectories); \
+    KEY(Integer, FGenerateUrlComponents); \
+    KEY(Enum,    FGenerateUrlCodeTarget); \
+    KEY(Enum,    FGenerateUrlScriptFormat); \
+    KEY(Bool,    FHttpForWebDAV); \
     KEY(String,  FFileColors); \
     KEY(String,  FSessionColors); \
     KEY(String,  FFontColors); \

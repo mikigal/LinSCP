@@ -180,6 +180,12 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FileSystemInfoAction = CreateAction("FileSystemInfoAction", tr("Server/Protocol &Information"),
     QStringLiteral("documentinfo"), {}, &TScpCommanderForm::FileSystemInfoActionExecute);
   FileSystemInfoAction->setToolTip(tr("Display server/protocol information"));
+  SessionGenerateUrlAction2 = CreateAction("SessionGenerateUrlAction2", tr("Generate Session &URL/Code..."), QString(),
+    {}, &TScpCommanderForm::SessionGenerateUrlActionExecute);
+  SessionGenerateUrlAction2->setToolTip(tr("Generate URL or code for current session"));
+  FileGenerateUrlAction2 = CreateAction("FileGenerateUrlAction2", tr("Generate File &URL..."), QString(),
+    {}, &TScpCommanderForm::FileGenerateUrlActionExecute);
+  FileGenerateUrlAction2->setToolTip(tr("Generate URL's of selected file(s)"));
   ChangePasswordAction = CreateAction("ChangePasswordAction", tr("&Change Password..."), QString(),
     {}, &TScpCommanderForm::ChangePasswordActionExecute);
   ChangePasswordAction->setToolTip(tr("Change account password"));
@@ -431,6 +437,7 @@ void TScpCommanderForm::CreateMenus()
   QMenu * FileNamesMenu = NewMenu(tr("&File Names"), "FileNamesMenu");
   FileNamesMenu->addAction(FileListToClipboardAction);
   FileNamesMenu->addAction(FullFileListToClipboardAction);
+  FileNamesMenu->addAction(FileGenerateUrlAction2);
   QMenu * CustomCommandsMenu = NewMenu(tr("&Custom Commands"), "CustomCommandsMenu");
   connect(CustomCommandsMenu, &QMenu::aboutToShow, this, [this, CustomCommandsMenu]()
   {
@@ -495,6 +502,7 @@ void TScpCommanderForm::CreateMenus()
   FTabsMenu->addAction(SaveCurrentSessionAction2);
   FTabsMenu->addSeparator();
   FTabsMenu->addAction(FileSystemInfoAction);
+  FTabsMenu->addAction(SessionGenerateUrlAction2);
   FTabsMenu->addAction(ChangePasswordAction);
   FTabsMenu->addAction(PrivateKeyUploadAction);
   FTabsMenu->addSeparator();
@@ -774,6 +782,8 @@ void TScpCommanderForm::UpdateActions()
   SaveCurrentSessionAction2->setEnabled(!Busy && HasSession);
   ColorMenuAction2->setEnabled(!Busy && HasSession);
   FileSystemInfoAction->setEnabled(!Busy && Connected);
+  SessionGenerateUrlAction2->setEnabled(!Busy && HasSession);
+  FileGenerateUrlAction2->setEnabled(!Busy && HasSelection && Connected && (FCurrentPanel == FRemotePanel));
   ChangePasswordAction->setEnabled(!Busy && CanChangePassword());
   PrivateKeyUploadAction->setEnabled(!Busy && CanPrivateKeyUpload());
   ClearCachesAction->setEnabled(!Busy && Connected && !Terminal->AreCachesEmpty);

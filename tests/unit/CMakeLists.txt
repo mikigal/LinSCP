@@ -84,6 +84,7 @@ add_executable(openscp_qt_tests
   qt/DirPanelTest.cpp
   qt/EditorTest.cpp
   qt/FileSystemInfoDialogTest.cpp
+  qt/GenerateUrlDialogTest.cpp
   qt/ImportSessionsTest.cpp
   qt/MessageDialogTest.cpp
   qt/PreferencesDialogTest.cpp

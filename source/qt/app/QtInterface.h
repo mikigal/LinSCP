@@ -181,6 +181,10 @@ typedef std::function<void(const UnicodeString & Path, TSpaceAvailable & ASpaceA
 void DoFileSystemInfoDialog(const TSessionInfo & SessionInfo, const TFileSystemInfo & FileSystemInfo,
   const UnicodeString & SpaceAvailablePath, TGetSpaceAvailableEvent OnGetSpaceAvailable);
 
+// dialogs/GenerateUrlDialog.cpp: the URL of the session, or of the files
+// (full paths) when given, and the scripts opening the session
+void DoGenerateUrlDialog(TSessionData * Data, TStrings * Paths);
+
 // dialogs/SymlinkDialog.cpp: the link to add (its name, its target and
 // whether it is symbolic) or to edit (its target only)
 bool DoSymlinkDialog(UnicodeString & FileName, UnicodeString & PointTo,
@@ -247,6 +251,11 @@ void HandleApplicationException(Exception & E);
 // Runs a handler of an event (an action, a button), its exception goes to
 // HandleApplicationException
 void ExecuteHandler(const std::function<void()> & Handler);
+
+// app/QtInterface.cpp: the URL opened in the browser; the page of the
+// documentation of the keyword (upstream's help, WinSCP's documentation)
+void OpenBrowser(const UnicodeString & Url);
+void ShowHelp(const UnicodeString & HelpKeyword);
 
 // app/QtInterface.cpp: minimizing the whole application (upstream's
 // ApplicationMinimize and ApplicationRestore), to the system tray when

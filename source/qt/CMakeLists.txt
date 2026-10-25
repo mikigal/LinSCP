@@ -17,6 +17,7 @@ add_library(openscp_qt STATIC
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
+  app/RtfText.cpp
   app/ShortCuts.cpp
   app/SingleInstance.cpp
   app/TaskbarProgress.cpp
@@ -36,6 +37,7 @@ add_library(openscp_qt STATIC
   dialogs/FullSynchronizeDialog.cpp
   dialogs/HistoryComboBox.cpp
   dialogs/FileSystemInfoDialog.cpp
+  dialogs/GenerateUrlDialog.cpp
   dialogs/ImportSessionsDialog.cpp
   dialogs/LocationProfilesDialog.cpp
   dialogs/LoginDialog.cpp

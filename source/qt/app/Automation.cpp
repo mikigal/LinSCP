@@ -25,6 +25,7 @@
 #include <QSpinBox>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTextEdit>
 #include <QTimer>
 #include <QTreeView>
 
@@ -303,6 +304,10 @@ QJsonObject Describe(QObject * Object, bool Children)
   else if (QPlainTextEdit * Memo = qobject_cast<QPlainTextEdit *>(Object))
   {
     Result[QStringLiteral("text")] = Memo->toPlainText();
+  }
+  else if (QTextEdit * RichMemo = qobject_cast<QTextEdit *>(Object))
+  {
+    Result[QStringLiteral("text")] = RichMemo->toPlainText();
   }
   else if (QSpinBox * Spin = qobject_cast<QSpinBox *>(Object))
   {

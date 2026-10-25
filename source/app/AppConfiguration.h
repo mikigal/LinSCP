@@ -34,6 +34,10 @@ enum TIncrementalSearch : int { isOff = -1, isNameStartOnly, isName, isAll };
 // its "Explorer-style selection"): the keyboard (nlKeyboard) or also the
 // mouse (nlOn) only focus files, Insert and Space select them
 enum TNortonLikeMode : int { nlOn, nlOff, nlKeyboard };
+// The page of the dialog of the generated URL and code, the format of the
+// script (sfBatchFile is a shell script on Linux)
+enum TGenerateUrlCodeTarget : int { guctUrl, guctScript, guctAssembly };
+enum TScriptFormat : int { sfScriptFile, sfBatchFile, sfCommandLine, sfPowerShell };
 // The style bits of fonts (VCL's TFontStyles)
 const int fsBold = 0x01;
 const int fsItalic = 0x02;
@@ -366,6 +370,13 @@ public:
   APP_CONFIG_PROPERTY(bool, EditorCheckNotModified)
   // Selecting by a mask selects the matching directories too
   APP_CONFIG_PROPERTY(bool, SelectDirectories)
+  // The dialog of the generated URL and code: the components of the URL
+  // (-1 for the default ones), the page, the format of the script; WebDAV
+  // URLs with http(s)://
+  APP_CONFIG_PROPERTY(int, GenerateUrlComponents)
+  APP_CONFIG_PROPERTY(TGenerateUrlCodeTarget, GenerateUrlCodeTarget)
+  APP_CONFIG_PROPERTY(TScriptFormat, GenerateUrlScriptFormat)
+  APP_CONFIG_PROPERTY(bool, HttpForWebDAV)
   // The colors of the files in the panels (TFileColorData::SaveList)
   APP_CONFIG_PROPERTY(UnicodeString, FileColors)
   // The custom colors picked for the sessions and for the files (comma

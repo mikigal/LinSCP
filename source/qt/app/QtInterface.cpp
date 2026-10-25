@@ -12,8 +12,10 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QDesktopServices>
 #include <QGuiApplication>
 #include <QMimeData>
+#include <QUrl>
 
 #include <chrono>
 //---------------------------------------------------------------------------
@@ -234,6 +236,18 @@ void SystemRequired()
   // (SetThreadExecutionState); the counterpart on Linux is the inhibit
   // portal, which holds an inhibition until it is released, rather than a
   // periodic call
+}
+//---------------------------------------------------------------------------
+void OpenBrowser(const UnicodeString & Url)
+{
+  QDesktopServices::openUrl(QUrl(ToQString(Url)));
+}
+//---------------------------------------------------------------------------
+void ShowHelp(const UnicodeString & HelpKeyword)
+{
+  // The documentation of the upstream application applies (the keywords
+  // are the names of its pages, with their anchors)
+  OpenBrowser(L"https://winscp.net/eng/docs/" + HelpKeyword);
 }
 //---------------------------------------------------------------------------
 void __fastcall CopyToClipboard(UnicodeString Text)

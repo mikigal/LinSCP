@@ -116,6 +116,11 @@ packaging (PLAN.md, section 7).
   the changes of the directory of one, a missing directory is created when confirmed (else the
   browsing is not synchronized anymore), Home goes home in both panels; kept in the state of
   the session and its workspace.
+- Generate Session URL/Code (Tabs menu) and Generate File URL (File Names of the remote files),
+  `dialogs/GenerateUrlDialog.cpp`: the URL with its components, the script file, a shell
+  script (in place of upstream's batch file) and the command-line arguments of
+  `openscp-cli`; the core's RTF with its colors and links is shown as HTML
+  (`app/RtfText.cpp`), the links open the documentation.
 
 Decisions:
 
@@ -140,6 +145,10 @@ Decisions:
   TScpExplorerForm next to TScpCommanderForm on their common base): the interface is switched
   at once, the hidden local panel keeps the local directory of the session; there are no icon
   and thumbnail views of the files (the report view only).
+- **The help is upstream's documentation** (`ShowHelp` opens WinSCP's online documentation of
+  the keyword): it describes the same application, OpenSCP has no documentation of its own.
+  Generate Code does not generate PowerShell scripts nor the code of the .NET assembly (which
+  is not ported).
 - Advanced site settings not ported: PuTTY's terminal settings of the site (upstream edits
   them in PuTTY through its registry; PuTTY on Linux keeps its sessions in files and the
   sessions open in it by their command line) and the generation of a key by PuTTYgen (a

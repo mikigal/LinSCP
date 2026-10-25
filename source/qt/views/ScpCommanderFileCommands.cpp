@@ -295,6 +295,10 @@ void TScpCommanderForm::PanelContextPopup(TDirPanel * Panel, bool OnFile, const 
     QMenu * FileNamesMenu = Menu.addMenu(tr("&File Names"));
     FileNamesMenu->addAction(FileListToClipboardAction);
     FileNamesMenu->addAction(FullFileListToClipboardAction);
+    if (Remote)
+    {
+      FileNamesMenu->addAction(FileGenerateUrlAction2);
+    }
     Menu.addSeparator();
     Menu.addAction(CurrentPropertiesAction);
   }
