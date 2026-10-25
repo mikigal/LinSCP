@@ -150,8 +150,10 @@ in Qt.**
 - **Qt object names = component names from the `.dfm` files** — so the translations in
   `translations/*.ini` (`Copy.dfm` → `OkButton.Caption=…`) can be loaded in their existing
   format, and E2E tests can address controls by stable names.
-- Icons: freedesktop icon theme (Breeze etc.) with a fallback to WinSCP glyphs extracted from
-  `Glyphs*.dfm` (PNG in several scales).
+- Icons: OpenSCP's own colorful icon set (SVG, drawn from scratch in the style of WinSCP's
+  icons), or the freedesktop icon theme of the desktop by a preference. WinSCP's own icons
+  (`Glyphs*.dfm`, `source/resource`) are not GPL: their license (`license.txt`, part B) forbids
+  reusing them in other software, so they are never built into OpenSCP (M9).
 
 ### 3.5 CLI
 
@@ -303,6 +305,7 @@ test checks that the file appeared in the target directory with correct content.
 | M6 | Queue, copy dialog with options, properties/chmod, rename, find files, synchronization + checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor + external editing | E2E for each feature |
 | M7 | Desktop integration: D&D (both modes), file clipboard, URL handlers, single instance, notifications, tray, taskbar progress, `.desktop`, terminal | E2E D&D and clipboard with Dolphin in the headless KWin |
 | M8 | Preferences, Explorer interface, tabs/workspaces, session import, translations, packaging (PKGBUILD) | functionally complete per section 1 |
+| M9 | Fidelity of the main window to upstream: its toolbars (with their drop-down menus, `ToolbarsLayout2`, Options > Toolbars), the panels' two rows of toolbars, path labels and path combo boxes, the "New Tab" tab, the four-part status bar, the Explorer's toolbars, the command line panel, the buttons of the site manager, a review of the other dialogs, an own icon set | each window matches upstream's layout (its `.dfm` and the screenshots of upstream's documentation) in E2E screenshots; the new controls have E2E tests |
 
 This order gives a working, testable product (the CLI) right after M3 — later steps build the
 GUI on top of a verified core.
@@ -366,4 +369,7 @@ GUI on top of a verified core.
 - 2026-10-25: the help opens upstream's online documentation; the project's pages are its
   GitHub pages; the version is the core's (upstream's).
 - 2026-10-25: the package is a PKGBUILD in `packaging/arch`, built from the checkout.
+- 2026-10-25: M9 makes the main window look and work as upstream's (toolbars, path labels,
+  status bar); the icons are OpenSCP's own (WinSCP's are not free to reuse), the path combo
+  boxes are upstream's (places and the path's hierarchy) but a path can still be typed in.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

@@ -2,6 +2,17 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## M9 — fidelity to upstream (in progress)
+
+The main window and the site manager as upstream's: the toolbars, the panels, the status bar
+(PLAN.md, section 7). Compared with upstream's `.dfm` files and with the screenshots of
+upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
+
+Decisions:
+
+- **No icons of WinSCP**: their license (`license.txt`, part B) forbids reusing them in other
+  software. OpenSCP draws its own, in a similar style (the last step of M9).
+
 ## M8 — completeness (done, 2026-10-25)
 
 Preferences, the Explorer interface, tabs and workspaces, session import, translations,
