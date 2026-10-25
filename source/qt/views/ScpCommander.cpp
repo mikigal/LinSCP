@@ -57,6 +57,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FPendingQueueActionItem = NULL;
   FDragSourcePanel = NULL;
   FDragging = false;
+  FDragExtracted = false;
   CreateEditorManager();
 
   // The file panels, the queue below them
@@ -185,6 +186,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  DoDelayedDeletion();
   ForceCloseEditors();
   HideFileFindDialog();
   DestroyProgressForm();

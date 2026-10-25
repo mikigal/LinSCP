@@ -26,6 +26,7 @@ class QLabel;
 class QMenu;
 class QMimeData;
 class QSplitter;
+class QUrl;
 class QTimer;
 class QToolBar;
 class QTreeWidget;
@@ -131,6 +132,12 @@ private:
   bool FDragging;
   // A drop on a panel during a drag of ours, done once the drag ends
   std::function<void()> FPendingDropOperation;
+  // The directory the target of a drag from the remote panel told
+  QString FDragExtractDirectory;
+  bool FDragExtracted;
+  // The temporary directories of the files downloaded for other
+  // applications, deleted after a while
+  std::vector<UnicodeString> FDelayedDeletionList;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -390,6 +397,14 @@ private:
   void PanelDrop(TDirPanel * APanel, const TDropParams & Params, Qt::DropAction Action);
   // The local files of the data of a drag or of the clipboard, or NULL
   TStrings * LocalFileListFromMimeData(const QMimeData * Data);
+  // The files of the drag were dropped to the directory of another
+  // application (empty when it is not local)
+  void DragExtracted(const UnicodeString & TargetDirectory, bool Move);
+  // Downloads the remote files to a temporary directory for another
+  // application; their URLs (none when it failed)
+  QList<QUrl> TemporarilyDownloadForOtherApplication(TStrings * FileList);
+  void AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay);
+  void DoDelayedDeletion();
   bool DoDirectoryExists(void * Session, const UnicodeString & Directory);
   bool NeedSecondarySessionForRemoteCopy(TStrings * FileList);
   TCopyParamType TemporaryFileCopyParam(bool ForceText);

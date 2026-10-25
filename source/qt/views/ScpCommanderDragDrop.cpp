@@ -6,19 +6,23 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <ExportedFiles.h>
 #include <TerminalManager.h>
 
 #include "DirModel.h"
 #include "DirPanel.h"
 #include "ScpCommander.h"
 
+#include <QDeadlineTimer>
 #include <QDrag>
+#include <QEventLoop>
 #include <QMimeData>
 #include <QTimer>
 #include <QUrl>
 //---------------------------------------------------------------------------
-// A drag from the remote panel carries no data, the panel has the files
-static const QString RemoteFilesMimeType = QStringLiteral("application/x-openscp-remote-files");
+// How long the target of a drag may take to tell its directory after the
+// drop (upstream's DDExtTimeout)
+static const int DDExtTimeout = 1000;
 //---------------------------------------------------------------------------
 void TScpCommanderForm::PanelStartDrag(TDirPanel * APanel)
 {
@@ -32,9 +36,11 @@ void TScpCommanderForm::PanelStartDrag(TDirPanel * APanel)
     return;
   }
 
-  QMimeData * Data = new QMimeData();
+  QMimeData * Data;
+  std::unique_ptr<TDragExtractObject> ExtractObject;
   if (APanel == FLocalPanel)
   {
+    Data = new QMimeData();
     QList<QUrl> Urls;
     for (int Index = 0; Index < FileList->Count; Index++)
     {
@@ -44,7 +50,27 @@ void TScpCommanderForm::PanelStartDrag(TDirPanel * APanel)
   }
   else
   {
-    Data->setData(RemoteFilesMimeType, QByteArray());
+    // Other applications get the files downloaded to the directory of the
+    // drop, if they tell it, else downloaded to a temporary directory
+    TRemoteFilesMimeData * RemoteData = new TRemoteFilesMimeData();
+    if (AppConfiguration->DDFakeFile)
+    {
+      ExtractObject.reset(new TDragExtractObject(this));
+      if (ExtractObject->Register())
+      {
+        RemoteData->SetExtractObject(ExtractObject->GetPath());
+        ExtractObject->OnExtract = [this](const QString & Directory)
+        {
+          FDragExtractDirectory = Directory;
+          FDragExtracted = true;
+        };
+      }
+    }
+    else
+    {
+      RemoteData->SetDownload([this]() { return TemporarilyDownloadForOtherApplication(FDragFileList.get()); });
+    }
+    Data = RemoteData;
   }
 
   QDrag * Drag = new QDrag(APanel->GetDirView());
@@ -59,11 +85,36 @@ void TScpCommanderForm::PanelStartDrag(TDirPanel * APanel)
 
   FDragFileList.reset(FileList.release());
   FDragSourcePanel = APanel;
+  FDragExtracted = false;
+  Qt::DropAction Result;
   {
     TAutoFlag DraggingFlag(FDragging);
-    Drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::CopyAction);
+    Result = Drag->exec(Qt::CopyAction | Qt::MoveAction, Qt::CopyAction);
   }
   FDragSourcePanel = NULL;
+
+  // Dropped to another application (a drop on a panel takes the files)
+  if ((ExtractObject != nullptr) && (FDragFileList != nullptr) &&
+      ((Result == Qt::CopyAction) || (Result == Qt::MoveAction)))
+  {
+    if (!FDragExtracted)
+    {
+      QEventLoop Loop;
+      ExtractObject->OnExtract = [this, &Loop](const QString & Directory)
+      {
+        FDragExtractDirectory = Directory;
+        FDragExtracted = true;
+        Loop.quit();
+      };
+      QTimer::singleShot(DDExtTimeout, &Loop, &QEventLoop::quit);
+      Loop.exec();
+      ExtractObject->OnExtract = nullptr;
+    }
+    if (FDragExtracted)
+    {
+      DragExtracted(LocalTargetDirectory(FDragExtractDirectory), (Result == Qt::MoveAction));
+    }
+  }
   FDragFileList.reset();
 
   // A drop on a panel waits until the drag ends
@@ -73,6 +124,106 @@ void TScpCommanderForm::PanelStartDrag(TDirPanel * APanel)
     FPendingDropOperation = nullptr;
     QTimer::singleShot(0, this, Operation);
   }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DragExtracted(const UnicodeString & TargetDirectory, bool Move)
+{
+  if (TargetDirectory.IsEmpty())
+  {
+    MessageDialog(
+      ToUnicodeString(tr("The files can be dropped to local directories only (%1).").arg(FDragExtractDirectory)),
+      qtError, qaOK);
+  }
+  else
+  {
+    std::shared_ptr<TStrings> FileList(FDragFileList.release());
+    QTimer::singleShot(0, this, [this, FileList, TargetDirectory, Move]()
+    {
+      if (!IsBusy() && FRemotePanel->IsReady())
+      {
+        Configuration->Usage->Inc(L"DownloadsDragDropExternalExt");
+        TTransferOperationParam Param;
+        Param.TargetDirectory = TargetDirectory;
+        Param.DragDrop = true;
+        ExecuteCopyMoveFileOperation(Move ? foMove : foCopy, osRemote, FileList.get(), Param);
+      }
+    });
+  }
+}
+//---------------------------------------------------------------------------
+QList<QUrl> TScpCommanderForm::TemporarilyDownloadForOtherApplication(TStrings * FileList)
+{
+  QList<QUrl> Result;
+  TTerminal * Terminal = GetTerminal();
+  if (IsBusy() || (Terminal == NULL) || !Terminal->Active || (FileList == NULL))
+  {
+    return Result;
+  }
+  // Called from the event loop of Qt, which does not take exceptions
+  try
+  {
+    UnicodeString TempDir = AppConfiguration->TemporaryDir();
+    if (!ForceDirectories(ApiPath(TempDir)))
+    {
+      throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (TempDir)));
+    }
+    // The other application copies the files from it meanwhile
+    AddDelayedDirectoryDeletion(TempDir, AppConfiguration->DDDeleteDelay);
+
+    {
+      ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+      TAutoNestingCounter BusyCounter(FBusy);
+      UpdateActions();
+      ::rtl::TFinally Finally([&]() { DestroyProgressForm(); });
+      TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+      CopyParam.IncludeFileMask.SetRoots(TempDir, FileList);
+      Configuration->Usage->Inc(L"DownloadsDragDropExternalTemp");
+      Terminal->CopyToLocal(FileList, TempDir, &CopyParam, cpTemporary, NULL);
+    }
+
+    // The local names may differ from the remote ones
+    TSearchRecOwned SearchRec;
+    if (FindFirstUnchecked(TempDir + L"*", faAnyFile, SearchRec) == 0)
+    {
+      do
+      {
+        if (SearchRec.IsRealFile())
+        {
+          Result.append(LocalPathToUrl(TempDir + SearchRec.Name));
+        }
+      }
+      while (FindNextUnchecked(SearchRec) == 0);
+    }
+  }
+  catch (Exception & E)
+  {
+    TTerminalManager::Instance()->HandleException(&E);
+    Result.clear();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay)
+{
+  FDelayedDeletionList.push_back(Directory);
+  QTimer::singleShot(SecDelay * MSecsPerSec, this, [this, Directory]()
+  {
+    auto Iterator = std::find(FDelayedDeletionList.begin(), FDelayedDeletionList.end(), Directory);
+    if (Iterator != FDelayedDeletionList.end())
+    {
+      FDelayedDeletionList.erase(Iterator);
+      RecursiveDeleteFile(ExcludeTrailingBackslash(Directory));
+    }
+  });
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoDelayedDeletion()
+{
+  for (const UnicodeString & Directory : FDelayedDeletionList)
+  {
+    RecursiveDeleteFile(ExcludeTrailingBackslash(Directory));
+  }
+  FDelayedDeletionList.clear();
 }
 //---------------------------------------------------------------------------
 static bool IsDirectoryInside(const UnicodeString & Directory, const UnicodeString & Parent)

@@ -2,10 +2,11 @@
 # 3.4). Everything but main() is in the openscp_qt library, which the GUI
 # component tests link too.
 
-find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS DBus Widgets)
 
 add_library(openscp_qt STATIC
   app/EditorManager.cpp
+  app/ExportedFiles.cpp
   app/LocalFiles.cpp
   app/LocalProcesses.cpp
   app/OpenScpApplication.cpp
@@ -59,7 +60,7 @@ target_include_directories(openscp_qt PUBLIC
 target_compile_definitions(openscp_qt PUBLIC QT_NO_KEYWORDS)
 target_link_libraries(openscp_qt
   PRIVATE openscp::options
-  PUBLIC openscp::app Qt6::Widgets)
+  PUBLIC openscp::app Qt6::DBus Qt6::Widgets)
 
 # The automation hook of the end-to-end tests (app/Automation.h)
 if(OPENSCP_AUTOMATION)
