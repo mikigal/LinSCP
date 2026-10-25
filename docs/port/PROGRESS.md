@@ -2,14 +2,20 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## M6 — the features of the GUI (in progress)
+## Next: M7 — desktop integration
 
-Queue, copy dialog with options, properties/chmod, rename, find files, synchronization +
-checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor +
-external editing.
+Drag and drop (both modes), the file clipboard, URL handlers, a single instance,
+notifications, the tray, taskbar progress, the `.desktop` file, the Dolphin service menu,
+the terminal (PLAN.md, section 7).
 
-Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit/qt`):
+## M6 — the features of the GUI (done, 2026-10-25)
 
+Exit criteria met: each feature has its E2E test in the headless KWin (`test_gui_ssh`
+against the local sshd, `test_gui_vm` against the test VM), most also L3 tests of their
+dialogs (`tests/unit/qt`); the screenshots were reviewed. All 292 tests pass under
+ASan/UBSan, with the VM; the release build compiles.
+
+- Rename stays the in-place rename of M5; moving remote files has its dialog (below).
 - The properties dialog (`TPropertiesDialog`, F9) with the permissions editor
   (`TRightsFrame`): size calculation, owner and group (by ID where the protocol needs it),
   permissions, recursion, checksums (with the separate shell session where the protocol has
