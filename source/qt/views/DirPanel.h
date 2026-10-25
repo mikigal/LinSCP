@@ -23,6 +23,7 @@ class QLabel;
 class QMenu;
 class QMimeData;
 class QModelIndex;
+class QPushButton;
 class QStackedWidget;
 class QTimer;
 class QToolBar;
@@ -76,6 +77,16 @@ struct TDropParams
   bool OnDirectory;
 };
 //---------------------------------------------------------------------------
+// The state of a panel while another session is shown (upstream's
+// TDirViewState): the history and the focused file
+class TDirPanelState : public TObject
+{
+public:
+  std::vector<UnicodeString> History;
+  int HistoryIndex;
+  UnicodeString FocusedFile;
+};
+//---------------------------------------------------------------------------
 class TDirPanel : public QWidget
 {
   Q_OBJECT
@@ -110,6 +121,10 @@ public:
   const std::vector<UnicodeString> & GetHistory() const { return FHistory; }
   // The full path of the directory of a row (".." is the parent directory)
   UnicodeString RowDirectory(int Row) const;
+  // The state of the panel for the session (TDirPanelState); restoring
+  // NULL starts a new history
+  TObject * SaveState();
+  void RestoreState(TObject * State);
 
   // Drag and drop, done by the main window: a drag of the selected files
   // starts; the action of a drop of the data on the panel; the files are
@@ -214,13 +229,22 @@ public:
   virtual void HomeDirectory() override;
   TRemoteFile * GetFile(int Row) const;
 
+  // Why the session (shown disconnected) was disconnected
+  void SetDisconnectMessage(const UnicodeString & Message);
+
 Q_SIGNALS:
   void NewSessionRequested();
+  void ReconnectRequested();
 
 private:
   TRemoteDirModel * FRemoteModel;
   TTerminal * FTerminal;
+  bool FShownReady;
   QStackedWidget * FStack;
+  QLabel * FNoSessionLabel;
+  QLabel * ReconnectLabel;
+  QPushButton * FNewSessionButton;
+  QPushButton * ReconnectItem;
 
   void TerminalChangeDirectory(TObject * Sender);
   void TerminalReadDirectory(TObject * Sender, Boolean ReloadOnly);

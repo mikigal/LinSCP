@@ -40,9 +40,7 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
     if (ForActiveTerminal)
     {
       DebugAssert(!Terminal->Active);
-      // Upstream keeps the session disconnected in its tab; there are no
-      // tabs yet
-      Manager->FreeActiveTerminal();
+      Manager->DisconnectActiveTerminal();
     }
 
     if (Terminate->Operation == odoSuspend)
@@ -67,12 +65,14 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
       TMessageParams Params(mpNeverAskAgainCheck);
       if (ForActiveTerminal)
       {
+        UnicodeString MessageFormat =
+          (Manager->Count > 1) ?
+            FMTLOAD(DISCONNECT_ON_COMPLETION, (Manager->Count - 1)) :
+            LoadStr(EXIT_ON_COMPLETION);
         // Remove the leading "%s\n\n" (not to change the translation originals - previously the error message was prepended)
-        UnicodeString MessageFormat = FORMAT(LoadStr(EXIT_ON_COMPLETION), (UnicodeString())).Trim();
+        MessageFormat = FORMAT(MessageFormat, (UnicodeString())).Trim();
         MessageFormat = MainInstructions(MessageFormat) + L"\n\n%s";
-        // Upstream offers to reconnect the session kept disconnected in
-        // its tab; it is freed here
-        Result = ExceptionMessageDialog(E, qtInformation, MessageFormat, qaYes | qaNo, &Params);
+        Result = FatalExceptionMessageDialog(E, qtInformation, MessageFormat, qaYes | qaNo, &Params);
       }
       else
       {
@@ -95,6 +95,11 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
       // TerminateApplication
       QMetaObject::invokeMethod(Manager->ScpExplorer, "close", Qt::QueuedConnection);
     }
+    // qaRetry is the "Reconnect" button of FatalExceptionMessageDialog
+    else if ((Result == qaRetry) && ForActiveTerminal)
+    {
+      Manager->ReconnectActiveTerminal();
+    }
     if ((Result == qaYes) && (Terminate->Operation == odoShutDown))
     {
       try
@@ -113,11 +118,36 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
     if (Show)
     {
       // Upstream offers a few more choices (a timeout of the automatic
-      // reconnect, reconnecting always, closing the session silently),
-      // which are configured in the preferences
-      Answer = FatalExceptionMessageDialog(E, qtError, EmptyStr, qaOK, NULL);
+      // reconnect, closing the session silently), which are configured in
+      // the preferences
+      EFatal * FatalException = dynamic_cast<EFatal *>(E);
+      bool InactiveTerminationMessage = (FatalException != NULL) && FatalException->InactiveTerminationMessage;
+      TMessageParams Params;
+      if (InactiveTerminationMessage)
+      {
+        Params.Params |= mpNeverAskAgainCheck;
+        Params.NeverAskAgainTitle = LoadStr(ALWAYS_RECONNECT);
+        Params.NeverAskAgainAnswer = qaRetry;
+      }
+      Answer = FatalExceptionMessageDialog(E, qtError, EmptyStr, qaOK, &Params);
+      if (Answer == qaNeverAskAgain)
+      {
+        Answer = Params.NeverAskAgainAnswer;
+        if (InactiveTerminationMessage)
+        {
+          GUIConfiguration->SessionReopenAutoInactive = true;
+        }
+      }
     }
-    Manager->FatalExceptionAnswered(Answer);
+    // qaRetry is the "Reconnect" button of FatalExceptionMessageDialog
+    if (Answer == qaRetry)
+    {
+      Manager->ReconnectActiveTerminal();
+    }
+    else
+    {
+      Manager->DisconnectActiveTerminalIfPermanentFreeOtherwise(UnicodeString());
+    }
   }
   else if (Show)
   {

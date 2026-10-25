@@ -359,4 +359,6 @@ GUI on top of a verified core.
 - 2026-10-25: a session of the command line goes to a running instance (D-Bus,
   `org.openscp.OpenSCP`) only while it has no session, until the tabs (M8).
 - 2026-10-25: no Dolphin service menu ("Upload with OpenSCP"); the user does not want it.
+- 2026-10-25: the tabs (M8) hold remote sessions only, no local browser tabs; the sessions
+  of the command line and of other instances open in new tabs.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

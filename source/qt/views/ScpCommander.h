@@ -34,6 +34,7 @@ class QSystemTrayIcon;
 class QUrl;
 class QTimer;
 class QToolBar;
+class QTabBar;
 class QTreeWidget;
 class TBookmark;
 class TEditorManager;
@@ -43,6 +44,7 @@ class TBookmarkList;
 class TDirPanel;
 struct TDropParams;
 class TLocalDirPanel;
+class TManagedTerminal;
 class TOptions;
 class TPasteWatcher;
 class TProgressForm;
@@ -83,8 +85,32 @@ public:
   void MinimizeApplication(bool ToTray);
   void RestoreApplication();
   static bool IsSystemTrayAvailable();
-  // The active session changed (opened, closed)
-  void TerminalChanged();
+  // The session shown (upstream's ManagedSession), NULL while the active
+  // one connects
+  TManagedTerminal * GetManagedSession() const { return FManagedSession; }
+  void SetManagedSession(TManagedTerminal * Value);
+  // The transfer queue of the session shown
+  void SetQueue(TTerminalQueue * Value);
+  // The active session is ready (connected or disconnected in its tab)
+  void SessionReady();
+  // The sessions were opened, closed or reordered (ScpCommanderSessions.cpp)
+  void SessionListChanged();
+  // A session (connected or lost in the background)
+  void TerminalStatusChanged(TManagedTerminal * Terminal);
+  // The state of the panels goes to the session (its directories, ...)
+  void UpdateSession(TManagedTerminal * Session);
+  // The session is being freed
+  void TerminalRemoved(TTerminal * Terminal);
+  // The active session was disconnected, its tab stays
+  void TerminalDisconnected();
+  void LastTerminalClosed();
+  // A note in the status bar, for the seconds (the timeout of the
+  // notifications by default)
+  void PostNote(const UnicodeString & Note, unsigned int Seconds = 0);
+  void CancelNote(const UnicodeString & Note);
+  // A notification about a session in the background (its error, ...)
+  void InactiveTerminalNotify(TManagedTerminal * Terminal, const UnicodeString & Message, TQueryType Type,
+    Exception * E = NULL);
   void OperationProgress(TFileOperationProgressType & ProgressData);
   void OperationFinished(TFileOperation Operation, TOperationSide Side,
     bool Temp, const UnicodeString & FileName, bool Success, bool NotCancelled,
@@ -108,6 +134,15 @@ protected:
   virtual bool eventFilter(QObject * Object, QEvent * Event) override;
 
 private:
+  // The session shown, NULL while the active one connects
+  TManagedTerminal * FManagedSession;
+  // The tabs of the sessions and the "new tab" tab (ScpCommanderSessions.cpp)
+  QTabBar * SessionsPageControl;
+  bool FUpdatingSessionTabs;
+  int FNewSessionNesting;
+  // Its local directory is shown regardless of PreserveLocalDirectory
+  bool FFirstTerminal;
+  UnicodeString FNote;
   QSplitter * FPanelSplitter;
   TLocalDirPanel * FLocalPanel;
   TRemoteDirPanel * FRemotePanel;
@@ -121,8 +156,6 @@ private:
   // The preset selected by the user, and the one selected by its rule
   UnicodeString FCopyParamDefault;
   UnicodeString FCopyParamAutoSelected;
-  // The session whose local directory the local panel went to
-  TTerminal * FLocalDirectoryTerminal;
   QTimer * FIdleTimer;
   // The operations on files report their files to it (the file find dialog)
   TFileOperationFinishedEvent FOnFileOperationFinished;
@@ -192,7 +225,14 @@ private:
   QActionGroup * FQueueOnceEmptyGroup;
 
   QAction * NewSessionAction;
+  QAction * CloseTabAction;
+  QAction * DuplicateTabAction;
+  QAction * RenameTabAction;
+  QAction * NextTabAction;
+  QAction * PreviousTabAction;
   QAction * DisconnectSessionAction;
+  QAction * ReconnectSessionAction;
+  QAction * SaveCurrentSessionAction2;
   QAction * CloseApplicationAction;
   QAction * CurrentCopyAction;
   QAction * CurrentMoveAction;
@@ -267,7 +307,6 @@ private:
   void CreateQueueActions();
   void CreateQueuePanel();
   QMenu * CreateQueueMenu();
-  void SetQueue(TTerminalQueue * Value);
   void QueueListUpdate(TTerminalQueue * Queue);
   void QueueItemUpdate(TTerminalQueue * Queue, TQueueItem * Item);
   void UpdateQueueStatus(bool QueueChanging);
@@ -288,8 +327,42 @@ private:
   void ResetQueueOnceEmptyOperation();
   void QueueViewShowChange(TQueueViewShow Show);
 
+  // The sessions and their tabs (ScpCommanderSessions.cpp)
+  void CreateSessionsPageControl();
+  // The site manager when there is no session (on startup, once the last
+  // one closed), as configured
+  void NeedSession(bool Startup);
+  // The protocol of the session in the status bar, the reason of its
+  // disconnection in the remote panel
+  void UpdateSessionStatus();
+  // Tab switches the panels
+  bool EventFilterPanels(QObject * Object, QEvent * Event);
+  void SessionChanging();
+  void SessionChanged();
+  // The state of the session for its tab and the workspaces (its
+  // directories, its name)
+  void UpdateSessionData(TSessionData * Data);
+  void RestoreSessionLocalDirectory(const UnicodeString & LocalDirectory);
+  // The session of the tab, NULL for the "new tab" tab
+  TManagedTerminal * GetSessionTabSession(int Index);
+  void UpdateSessionTab(int Index);
+  void SessionTabSwitched();
+  void CloseSessionTab(int Index);
+  bool CanCloseQueue(TTerminalQueue * Queue);
+  // The session's things that cannot outlive it (the file find dialog, the
+  // clipboard, keeping its directory up to date)
+  void DetachTerminal(TTerminal * ATerminal);
+  TSessionData * CloneCurrentSessionData();
+  void CreateOpenedTabsMenu(QMenu * Menu);
   void NewSessionActionExecute() { NewSession(); }
+  void CloseTabActionExecute();
+  void DuplicateTabActionExecute();
+  void RenameTabActionExecute();
+  void NextTabActionExecute();
+  void PreviousTabActionExecute();
   void DisconnectSessionActionExecute();
+  void ReconnectSessionActionExecute();
+  void SaveCurrentSessionActionExecute();
   void CloseApplicationActionExecute();
   void CurrentCopyActionExecute() { ExecuteCopyMoveFileOperation(foCopy); }
   void CurrentMoveActionExecute() { ExecuteCopyMoveFileOperation(foMove); }
@@ -410,7 +483,8 @@ private:
   // The editors are closed before the window is (asked to save their files)
   bool CloseEditors();
   void ForceCloseEditors();
-  void EditedFilesTerminalChanged(TTerminal * ActiveTerminal);
+  // The edited files of the session lose it (upstream's FileTerminalRemoved)
+  void EditedFilesTerminalRemoved(TTerminal * ATerminal);
   void FileActivated(TDirPanel * APanel);
   void DoEditFoundFiles(TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished);
   void CurrentEditActionExecute();
@@ -475,7 +549,7 @@ private:
   void CopyFilesToClipboard();
   void ClipboardStop();
   void ClipboardChanged();
-  void ClipboardTerminalChanged(TTerminal * ATerminal);
+  void ClipboardClear();
   // The clipboard has the remote files of the session copied by us
   bool DoesClipboardContainOurFiles();
   void ClipboardPasted(const UnicodeString & Directory);

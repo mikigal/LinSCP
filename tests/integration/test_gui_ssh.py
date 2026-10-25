@@ -134,13 +134,24 @@ class GuiSshTest(GuiSshTestCase):
         gui.trigger(W + 'RemoteBackAction')
         gui.wait_for(lambda: gui.get(combo)['text'] != str(remote), what='going back')
 
-        # The host key is cached: no prompt the next time
+        # A disconnected session keeps its tab; the host key is cached: no
+        # prompt the next time
         gui.trigger(W + 'DisconnectSessionAction')
         gui.wait_for(lambda: gui.get(W + 'RemoteNoSessionPage')['visible'], what='the disconnected panel')
-        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'OpenSCP')
-        gui.click(W + 'RemoteNewSessionButton')
+        self.assertTrue(gui.get(W + 'ReconnectItem')['visible'])
+        self.assertFalse(gui.get(W + 'RemoteNewSessionButton')['visible'])
+        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['agent site', ''])
+        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('agent site'))
+        gui.click(W + 'ReconnectItem')
+        gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
+        self.assertIsNone(gui.window('MessageForm'))
+
+        # Closing the last tab shows the site manager, with the last
+        # session's site
+        gui.trigger(W + 'CloseTabAction')
         gui.wait_window('LoginDialog')
-        # The last session's site is selected
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'OpenSCP')
+        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], [''])
         selected = [row['cells'][0] for row in gui.get('LoginDialog/SessionTree')['rows'] if row['current']]
         self.assertEqual(selected, ['agent site'])
         gui.click('LoginDialog/LoginButton')
@@ -1145,6 +1156,116 @@ class GuiSshTest(GuiSshTestCase):
                      60, 'the new file')
         gui.key('Escape', E + 'EditorMemo')
         gui.wait_no_window('EditorForm')
+        self.assertEqual(gui.quit(), 0)
+
+    def tab_point(self, gui, index):
+        """The center of a session tab on the screen."""
+        rect = gui.get(W + 'SessionsPageControl')['rects'][index]
+        x, y = gui.client_origin('ScpCommanderForm')
+        return x + rect['x'] + rect['width'] // 2, y + rect['y'] + rect['height'] // 2
+
+    def test_tabs(self):
+        one = self.work_dir('one')
+        (one / 'a.txt').write_text('a')
+        two = self.work_dir('two')
+        (two / 'dir').mkdir()
+        (two / 'dir' / 'b.txt').write_text('b')
+        local1 = self.work_dir('local1')
+        local2 = self.work_dir('local2')
+        (local2 / 'sub').mkdir()
+        gui = self.start_gui(ini=site_ini('first', remote=one, local=local1) + site_ini('second', remote=two, local=local2))
+        tabs = W + 'SessionsPageControl'
+        remote_path = W + 'RemotePathComboBox'
+        local_path = W + 'LocalPathComboBox'
+        self.login(gui, 'first')
+        self.assertEqual(gui.get(tabs)['items'], ['first', ''])
+        self.assertEqual(gui.get(tabs)['index'], 0)
+
+        # Another session in a new tab (the host key is known already)
+        gui.trigger(W + 'NewSessionAction')
+        gui.wait_window('LoginDialog')
+        gui.select('LoginDialog/SessionTree', 'second')
+        gui.click('LoginDialog/LoginButton')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], 60, 'the second tab')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), 60, 'the second session')
+        gui.wait_idle()
+        self.assertEqual(gui.get(tabs)['index'], 1)
+        self.assertEqual(gui.get(local_path)['text'], str(local2))
+        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('second'))
+        self.assertIn('%s@127.0.0.1' % SSHD.user, gui.get(tabs)['tooltips'][1])
+        # Its directories change
+        gui.activate(W + 'RemoteDirView', 'dir')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), what='the remote subdirectory')
+        gui.activate(W + 'LocalDirView', 'sub')
+        gui.wait_for(lambda: gui.get(local_path)['text'] == str(local2 / 'sub'), what='the local subdirectory')
+
+        # Each tab shows its session with its directories
+        gui.set(tabs, 0)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the first session')
+        gui.wait_idle()
+        self.assertEqual(gui.get(local_path)['text'], str(local1))
+        self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'a.txt'])
+        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('first'))
+        gui.set(tabs, 1)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), what='the second session again')
+        gui.wait_idle()
+        self.assertEqual(gui.get(local_path)['text'], str(local2 / 'sub'))
+        # with the history of its panels
+        self.assertTrue(gui.get(W + 'RemoteBackAction')['enabled'])
+        gui.trigger(W + 'RemoteBackAction')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), what='going back')
+        self.screenshot('tabs')
+
+        # Ctrl+Tab cycles the tabs
+        gui.focus(W + 'LocalDirView')
+        self.session.input('key', 'ctrl+tab')
+        gui.wait_for(lambda: gui.get(tabs)['index'] == 0, what='the next tab')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the first session by the key')
+
+        # A duplicate opens the same directory, the tabs of the same name
+        # tell their directories
+        gui.trigger(W + 'DuplicateTabAction')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first (one)', 'second', 'first (one)', ''], 60,
+                     'the duplicate tab')
+        self.assertEqual(gui.get(tabs)['index'], 2)
+        gui.wait_idle()
+        self.assertEqual(gui.get(remote_path)['text'], str(one))
+        gui.trigger(W + 'RenameTabAction')
+        gui.wait_window('InputDialog')
+        self.assertEqual(gui.get('InputDialog/Edit')['text'], 'first')
+        gui.set('InputDialog/Edit', 'renamed')
+        gui.click('InputDialog/OKButton')
+        gui.wait_no_window('InputDialog')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'renamed', ''], what='the renamed tab')
+        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('renamed'))
+
+        # Tabs are reordered by dragging them
+        gui.drag_real(self.tab_point(gui, 2), self.tab_point(gui, 0))
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['renamed', 'first', 'second', ''], what='the moved tab')
+        self.assertEqual(gui.get(tabs)['index'], 0)
+        gui.set(tabs, 2)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), what='the second session after the move')
+
+        # A disconnected session stays disconnected when its tab is shown again
+        gui.trigger(W + 'DisconnectSessionAction')
+        gui.wait_for(lambda: gui.get(W + 'ReconnectItem')['visible'], what='the disconnected session')
+        self.assertEqual(gui.get(tabs)['items'], ['renamed', 'first', 'second', ''])
+        gui.set(tabs, 1)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the first session again')
+        gui.set(tabs, 2)
+        gui.wait_for(lambda: gui.get(W + 'ReconnectItem')['visible'], what='the disconnected tab')
+        gui.wait_idle()
+        self.assertFalse(gui.get(W + 'RemoteDirView')['visible'])
+
+        # A middle click closes a tab that is not active, closing the active
+        # one shows its neighbour
+        x, y = self.tab_point(gui, 0)
+        self.session.input('move', x, y, 'click', 'middle')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], what='the closed tab')
+        self.assertEqual(gui.get(tabs)['index'], 1)
+        gui.trigger(W + 'CloseTabAction')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', ''], what='the closed active tab')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the remaining session')
         self.assertEqual(gui.quit(), 0)
 
     def test_connection_refused(self):

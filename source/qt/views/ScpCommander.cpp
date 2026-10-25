@@ -18,6 +18,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QBoxLayout>
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
@@ -27,6 +28,7 @@
 #include <QMenuBar>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QTabBar>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeView>
@@ -43,9 +45,12 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   resize(1100, 720);
   FProgressForm = nullptr;
   FSynchronizeProgressForm = nullptr;
+  FManagedSession = NULL;
+  FUpdatingSessionTabs = false;
+  FNewSessionNesting = 0;
+  FFirstTerminal = true;
   FBusy = 0;
   FUpdatingTransferList = 0;
-  FLocalDirectoryTerminal = NULL;
   FRefreshLocalDirectory = false;
   FRefreshRemoteDirectory = false;
   FFileFindTerminal = NULL;
@@ -67,8 +72,16 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FTrayIcon = nullptr;
   CreateEditorManager();
 
-  // The file panels, the queue below them
-  FQueueSplitter = new QSplitter(Qt::Vertical, this);
+  // The tabs of the sessions, the file panels below them, the queue below
+  // them
+  QWidget * Central = new QWidget(this);
+  Central->setObjectName(QStringLiteral("CentralWidget"));
+  QVBoxLayout * CentralLayout = new QVBoxLayout(Central);
+  CentralLayout->setContentsMargins(0, 0, 0, 0);
+  CentralLayout->setSpacing(0);
+  CreateSessionsPageControl();
+  CentralLayout->addWidget(SessionsPageControl);
+  FQueueSplitter = new QSplitter(Qt::Vertical, Central);
   FQueueSplitter->setObjectName(QStringLiteral("QueueSplitter"));
   FQueueSplitter->setChildrenCollapsible(false);
   FPanelSplitter = new QSplitter(Qt::Horizontal, FQueueSplitter);
@@ -83,7 +96,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FQueueSplitter->addWidget(QueuePanel);
   FQueueSplitter->setStretchFactor(0, 1);
   QueuePanel->setVisible(false);
-  setCentralWidget(FQueueSplitter);
+  CentralLayout->addWidget(FQueueSplitter, 1);
+  setCentralWidget(Central);
   FCurrentPanel = FLocalPanel;
 
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
@@ -111,12 +125,36 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     connect(DirView->selectionModel(), &QItemSelectionModel::currentChanged, this, [this]() { UpdateActions(); });
     connect(DirView->model(), &QAbstractItemModel::modelReset, this, [this]() { UpdateActions(); });
   }
-  connect(FRemotePanel, &TRemoteDirPanel::NewSessionRequested, this, [this]() { NewSession(); });
+  connect(FRemotePanel, &TRemoteDirPanel::NewSessionRequested, this, [this]() { ExecuteHandler([this]() { NewSession(); }); });
+  connect(FRemotePanel, &TRemoteDirPanel::ReconnectRequested, this,
+    [this]() { ExecuteHandler([this]() { ReconnectSessionActionExecute(); }); });
 
   NewSessionAction = CreateAction("NewSessionAction", tr("&New Session..."), QStringLiteral("network-connect"),
     { QKeySequence(Qt::CTRL | Qt::Key_N) }, &TScpCommanderForm::NewSessionActionExecute);
+  CloseTabAction = CreateAction("CloseTabAction", tr("&Close Tab"), QStringLiteral("tab-close"),
+    { QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) },
+    &TScpCommanderForm::CloseTabActionExecute);
+  CloseTabAction->setToolTip(tr("Close the current tab"));
+  DuplicateTabAction = CreateAction("DuplicateTabAction", tr("Du&plicate Tab"), QStringLiteral("tab-duplicate"),
+    {}, &TScpCommanderForm::DuplicateTabActionExecute);
+  DuplicateTabAction->setToolTip(tr("Open new tab with the same folder"));
+  RenameTabAction = CreateAction("RenameTabAction", tr("&Rename Tab"), QString(),
+    {}, &TScpCommanderForm::RenameTabActionExecute);
+  // Upstream cycles the tabs by Ctrl+Tab in its key handler
+  NextTabAction = CreateAction("NextTabAction", tr("&Next Tab"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::Key_Tab) }, &TScpCommanderForm::NextTabActionExecute);
+  PreviousTabAction = CreateAction("PreviousTabAction", tr("&Previous Tab"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Backtab) },
+    &TScpCommanderForm::PreviousTabActionExecute);
   DisconnectSessionAction = CreateAction("DisconnectSessionAction", tr("&Disconnect Session"), QStringLiteral("network-disconnect"),
     {}, &TScpCommanderForm::DisconnectSessionActionExecute);
+  DisconnectSessionAction->setToolTip(tr("Disconnect the current session, but keep the tab opened"));
+  ReconnectSessionAction = CreateAction("ReconnectSessionAction", tr("&Reconnect Session"), QStringLiteral("view-refresh"),
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_R) }, &TScpCommanderForm::ReconnectSessionActionExecute);
+  ReconnectSessionAction->setToolTip(tr("Reconnect the current disconnected session"));
+  SaveCurrentSessionAction2 = CreateAction("SaveCurrentSessionAction2", tr("&Save Session as Site..."),
+    QStringLiteral("document-save"), {}, &TScpCommanderForm::SaveCurrentSessionActionExecute);
+  SaveCurrentSessionAction2->setToolTip(tr("Save current session as site"));
   CloseApplicationAction = CreateAction("CloseApplicationAction", tr("&Quit"), QStringLiteral("application-exit"),
     { QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Q) }, &TScpCommanderForm::CloseApplicationActionExecute);
   CurrentCopyAction = CreateAction("CurrentCopyAction", tr("&Copy..."), QStringLiteral("edit-copy"),
@@ -196,7 +234,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FRemotePanel->SetShowHiddenFiles(AppConfiguration->ShowHiddenFiles);
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
-  TerminalChanged();
+  SessionChanged();
   FLocalPanel->GetDirView()->setFocus();
 
   connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this]() { ClipboardChanged(); });
@@ -211,8 +249,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  // The sessions outlive the window
+  FRemotePanel->SetTerminal(NULL);
   // The remote files of the clipboard cannot be downloaded any more
-  ClipboardTerminalChanged(NULL);
+  ClipboardClear();
   DoDelayedDeletion();
   ForceCloseEditors();
   HideFileFindDialog();
@@ -347,10 +387,24 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->addSeparator();
   CommandsMenu->addAction(CloseApplicationAction);
 
-  QMenu * SessionMenu = Menu->addMenu(tr("&Session"));
-  SessionMenu->setObjectName(QStringLiteral("SessionMenu"));
-  SessionMenu->addAction(NewSessionAction);
-  SessionMenu->addAction(DisconnectSessionAction);
+  QMenu * TabsMenu = Menu->addMenu(tr("&Tabs"));
+  TabsMenu->setObjectName(QStringLiteral("TabsMenu"));
+  TabsMenu->addAction(NewSessionAction);
+  TabsMenu->addAction(CloseTabAction);
+  TabsMenu->addAction(DuplicateTabAction);
+  TabsMenu->addAction(RenameTabAction);
+  TabsMenu->addSeparator();
+  TabsMenu->addAction(DisconnectSessionAction);
+  TabsMenu->addAction(ReconnectSessionAction);
+  TabsMenu->addAction(SaveCurrentSessionAction2);
+  TabsMenu->addSeparator();
+  QMenu * OpenedTabsMenu = TabsMenu->addMenu(tr("&Opened Tabs"));
+  OpenedTabsMenu->setObjectName(QStringLiteral("OpenedTabsMenu"));
+  connect(OpenedTabsMenu, &QMenu::aboutToShow, this, [this, OpenedTabsMenu]()
+  {
+    OpenedTabsMenu->clear();
+    CreateOpenedTabsMenu(OpenedTabsMenu);
+  });
 
   QMenu * OptionsMenu = Menu->addMenu(tr("&Options"));
   OptionsMenu->setObjectName(QStringLiteral("OptionsMenu"));
@@ -416,8 +470,7 @@ void TScpCommanderForm::CreateToolbars()
 //---------------------------------------------------------------------------
 TTerminal * TScpCommanderForm::GetTerminal() const
 {
-  TTerminalManager * Manager = TTerminalManager::Instance(false);
-  return (Manager != NULL) ? Manager->ActiveTerminal : NULL;
+  return FManagedSession;
 }
 //---------------------------------------------------------------------------
 TDirPanel * TScpCommanderForm::OtherPanel(TDirPanel * Panel) const
@@ -434,7 +487,7 @@ void TScpCommanderForm::SetCurrentPanel(TDirPanel * Panel)
   }
 }
 //---------------------------------------------------------------------------
-bool TScpCommanderForm::eventFilter(QObject * Object, QEvent * Event)
+bool TScpCommanderForm::EventFilterPanels(QObject * Object, QEvent * Event)
 {
   // Tab switches the panels
   if ((Event->type() == QEvent::KeyPress) &&
@@ -452,7 +505,7 @@ bool TScpCommanderForm::eventFilter(QObject * Object, QEvent * Event)
       return true;
     }
   }
-  return QMainWindow::eventFilter(Object, Event);
+  return false;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateActions()
@@ -464,7 +517,18 @@ void TScpCommanderForm::UpdateActions()
   bool HasSelection = CurrentReady && !FCurrentPanel->GetSelectedRows().empty();
 
   NewSessionAction->setEnabled(!Busy);
-  DisconnectSessionAction->setEnabled(!Busy && (Terminal != NULL));
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  bool HasSession = (FManagedSession != NULL);
+  CloseTabAction->setEnabled(!Busy && HasSession);
+  DuplicateTabAction->setEnabled(!Busy && HasSession);
+  RenameTabAction->setEnabled(!Busy && HasSession);
+  bool MultipleTabs = (Manager != NULL) && (Manager->Count > 1);
+  NextTabAction->setEnabled(!Busy && MultipleTabs);
+  PreviousTabAction->setEnabled(!Busy && MultipleTabs);
+  DisconnectSessionAction->setEnabled(!Busy && Connected);
+  ReconnectSessionAction->setEnabled(!Busy && HasSession && !Connected);
+  ReconnectSessionAction->setVisible(HasSession && !Connected);
+  SaveCurrentSessionAction2->setEnabled(!Busy && HasSession);
   bool CanTransfer = !Busy && HasSelection && Connected && OtherPanel(FCurrentPanel)->IsReady();
   CurrentCopyAction->setEnabled(CanTransfer);
   CurrentMoveAction->setEnabled(CanTransfer);
@@ -491,7 +555,6 @@ void TScpCommanderForm::UpdateActions()
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   ConsoleAction->setEnabled(!Busy && CanConsole());
-  TTerminalManager * Manager = TTerminalManager::Instance(false);
   PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
 }
 //---------------------------------------------------------------------------
@@ -646,104 +709,12 @@ void TScpCommanderForm::TransferPresetAutoSelect()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateCaption()
 {
-  TTerminal * Terminal = GetTerminal();
-  UnicodeString SessionName = ((Terminal != NULL) && Terminal->Active) ? Terminal->SessionData->SessionName : UnicodeString();
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  UnicodeString SessionName = (Manager != NULL) ? Manager->GetActiveSessionAppTitle() : UnicodeString();
   setWindowTitle(ToQString(FormatMainFormCaption(UnicodeString(), SessionName)));
   UpdateTrayIcon();
 }
 //---------------------------------------------------------------------------
-void TScpCommanderForm::TerminalChanged()
-{
-  TTerminal * Terminal = GetTerminal();
-  FRemotePanel->SetTerminal(Terminal);
-  TTerminalManager * Manager = TTerminalManager::Instance(false);
-  SetQueue((Manager != NULL) ? Manager->ActiveQueue : NULL);
-  // The file find of a session that is gone
-  if ((FFileFindTerminal != NULL) && (FFileFindTerminal != Terminal))
-  {
-    FFileFindTerminal = NULL;
-    HideFileFindDialog();
-  }
-  EditedFilesTerminalChanged(Terminal);
-  ClipboardTerminalChanged(Terminal);
-  // Keeping the remote directory of a session that is gone up to date
-  if ((FOnSynchronizeAbort != nullptr) && (FSynchronizeTerminal != Terminal))
-  {
-    FOnSynchronizeAbort();
-  }
-  UnicodeString Status;
-  UnicodeString Hint;
-  if ((Terminal != NULL) && Terminal->Active)
-  {
-    // As upstream's status bar: the protocol of the file system (SFTP-3),
-    // else of the session; the encryption in the hint
-    const TSessionInfo & SessionInfo = Terminal->GetSessionInfo();
-    const TFileSystemInfo & FileSystemInfo = Terminal->GetFileSystemInfo();
-    Status = FileSystemInfo.ProtocolName.IsEmpty() ? SessionInfo.ProtocolName : FileSystemInfo.ProtocolName;
-    Hint = SessionInfo.SecurityProtocolName;
-    // As upstream: the local directory of the site, once it opens
-    if (FLocalDirectoryTerminal != Terminal)
-    {
-      FLocalDirectoryTerminal = Terminal;
-      UnicodeString LocalDirectory = Terminal->SessionData->LocalDirectoryExpanded;
-      if (!LocalDirectory.IsEmpty())
-      {
-        try
-        {
-          FLocalPanel->ChangeDirectory(LocalDirectory);
-        }
-        catch (Exception & E)
-        {
-          ShowExtendedException(&E);
-        }
-      }
-    }
-  }
-  else if (Terminal == NULL)
-  {
-    FLocalDirectoryTerminal = NULL;
-  }
-  FSessionStatusLabel->setText(ToQString(Status));
-  FSessionStatusLabel->setToolTip(ToQString(Hint));
-  UpdateTransferList();
-  if (!FRemotePanel->IsReady() && (FCurrentPanel == FRemotePanel))
-  {
-    FLocalPanel->GetDirView()->setFocus();
-    SetCurrentPanel(FLocalPanel);
-  }
-  UpdateCaption();
-  UpdateActions();
-}
-//---------------------------------------------------------------------------
-void TScpCommanderForm::NewSession()
-{
-  if (!IsBusy())
-  {
-    std::unique_ptr<TObjectList> DataList(new TObjectList());
-    bool Connected = false;
-    // As upstream on startup: the site manager again, when the session does
-    // not open
-    while (!Connected && DoLoginDialog(DataList.get(), this, false))
-    {
-      TTerminalManager * Manager = TTerminalManager::Instance();
-      Manager->NewSession(static_cast<TSessionData *>(DataList->Items[0]));
-      Connected = Manager->ConnectActiveTerminal();
-    }
-    if (Connected)
-    {
-      FRemotePanel->GetDirView()->setFocus();
-    }
-  }
-}
-//---------------------------------------------------------------------------
-void TScpCommanderForm::DisconnectSessionActionExecute()
-{
-  TTerminalManager * Manager = TTerminalManager::Instance();
-  if (!IsBusy() && (Manager->ActiveTerminal != NULL) && CanCloseQueue())
-  {
-    Manager->FreeActiveTerminal();
-  }
-}
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CloseApplicationActionExecute()
 {

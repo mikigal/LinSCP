@@ -122,17 +122,14 @@ void TScpCommanderForm::ClipboardChanged()
   UpdateActions();
 }
 //---------------------------------------------------------------------------
-void TScpCommanderForm::ClipboardTerminalChanged(TTerminal * ATerminal)
+void TScpCommanderForm::ClipboardClear()
 {
   // The files of a session that is gone cannot be pasted
-  if ((FClipboardTerminal != NULL) && (FClipboardTerminal != ATerminal))
+  ClipboardStop();
+  QClipboard * Clipboard = QApplication::clipboard();
+  if (Clipboard->ownsClipboard() && IsRemoteFilesMimeData(Clipboard->mimeData()))
   {
-    ClipboardStop();
-    QClipboard * Clipboard = QApplication::clipboard();
-    if (Clipboard->ownsClipboard() && IsRemoteFilesMimeData(Clipboard->mimeData()))
-    {
-      Clipboard->clear();
-    }
+    Clipboard->clear();
   }
 }
 //---------------------------------------------------------------------------
@@ -233,7 +230,7 @@ void TScpCommanderForm::PasteFromClipboard()
   {
     UnicodeString Text = ToUnicodeString(Data->text()).Trim();
     int ParsedInfo = StoredSessions->GetUrlInfo(Text);
-    // A session URL replaces the session (there are no tabs yet)
+    // A session URL opens in a new tab
     if (FLAGSET(ParsedInfo, piProtocolDefined))
     {
       if (!FLAGSET(ParsedInfo, piUnsafeSettings) ||

@@ -517,29 +517,94 @@ void TScpCommanderForm::EditedFileUploaded(TTerminal * ATerminal, HANDLE UploadC
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ExecutedFileChanged(
-  const UnicodeString & FileName, const TDateTime & /*Timestamp*/, TEditedFileData * Data,
+  const UnicodeString & FileName, const TDateTime & Timestamp, TEditedFileData * Data,
   HANDLE UploadCompleteEvent, bool & Retry)
 {
-  TTerminal * Terminal = GetTerminal();
-  bool IsInavailable = (Data->Terminal == NULL) || !Data->Terminal->Active;
-  // OpenSCP: with a single session, the session of the file is the active
-  // one or gone; upstream also reconnects inactive sessions (of its tabs)
-  if (IsInavailable)
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  TManagedTerminal * DataTerminal = dynamic_cast<TManagedTerminal *>(Data->Terminal);
+
+  bool IsInavailable = !Manager->IsAvailableTerminal(Data->Terminal);
+  if (Manager->IsReconnectingTerminal(Data->Terminal))
+  {
+    AppLog(L"Session is being reconnected, will retry the upload later");
+    Retry = true;
+  }
+  else if (IsInavailable &&
+           GUIConfiguration->SessionReopenAutoInactive &&
+           (DataTerminal != NULL) &&
+           (DataTerminal->NextInactiveReconnect != TDateTime()))
+  {
+    if (DataTerminal->LastInactiveSave != Timestamp)
+    {
+      AppLog(L"Inactive session reconnect is pending, rescheduling it for as soon as possible to retry the upload");
+      DataTerminal->NextInactiveReconnect = Now();
+      DataTerminal->LastInactiveSave = Timestamp;
+    }
+    else
+    {
+      AppLog(L"Inactive session reconnect is pending, will retry the upload later");
+    }
+    Retry = true;
+  }
+  else if (IsInavailable)
   {
     if (!IsBusy())
     {
       UnicodeString FileNameOnly = ExtractFileName(FileName);
-      if ((Data->Terminal == NULL) && (Terminal != NULL) && Terminal->Active &&
-          Terminal->SessionData->IsSameSite(Data->SessionData))
+      if (Data->Terminal == NULL)
+      {
+        TManagedTerminal * SameSiteTerminal = Manager->FindActiveTerminalForSite(Data->SessionData);
+        if (SameSiteTerminal != NULL)
+        {
+          UnicodeString Message =
+            FMTLOAD(EDIT_SESSION_REATTACH,
+              (FileNameOnly, Data->SessionName, FileNameOnly));
+          if (MessageDialog(Message, qtConfirmation, qaOK | qaCancel) == qaOK)
+          {
+            Data->Terminal = SameSiteTerminal;
+            Data->SessionName = SameSiteTerminal->SessionData->SessionName;
+            // We might also overwrite session data
+          }
+          else
+          {
+            Abort();
+          }
+        }
+      }
+      // Foreground session should reconnect itself (except for those disconnected explicitly by the user)
+      else if (DebugAlwaysTrue(DataTerminal != NULL) &&
+               ((DataTerminal != FManagedSession) || DataTerminal->Disconnected))
       {
         UnicodeString Message =
-          FMTLOAD(EDIT_SESSION_REATTACH,
-            (FileNameOnly, Data->SessionName, FileNameOnly));
-        if (MessageDialog(Message, qtConfirmation, qaOK | qaCancel) == qaOK)
+          MainInstructions(
+            FMTLOAD(EDIT_SESSION_RECONNECT, (Data->SessionName, FileNameOnly)));
+        TMessageParams Params(FLAGMASK(!GUIConfiguration->SessionReopenAutoInactive, mpNeverAskAgainCheck));
+        Params.NeverAskAgainTitle = LoadStr(ALWAYS_RECONNECT);
+        unsigned int Answer = MessageDialog(Message, qtConfirmation, qaOK | qaCancel, &Params);
+        if (Answer == qaNeverAskAgain)
         {
-          Data->Terminal = Terminal;
-          Data->SessionName = Terminal->SessionData->SessionName;
-          // We might also overwrite session data
+          GUIConfiguration->SessionReopenAutoInactive = true;
+          Answer = qaOK;
+        }
+
+        if (Answer == qaOK)
+        {
+          // OpenSCP: upstream tests whether the session shown is the
+          // disconnected one
+          if (DataTerminal->Disconnected)
+          {
+            Manager->ActiveSession = DataTerminal;
+            ReconnectSessionActionExecute();
+            // Was it reconnected? (if not, Data->Terminal should be nulled now)
+            if (!Manager->IsAvailableTerminal(Data->Terminal) || (FManagedSession != Data->Terminal))
+            {
+              Abort();
+            }
+          }
+          else
+          {
+            Manager->SetActiveTerminalWithAutoReconnect(DataTerminal);
+          }
         }
         else
         {
@@ -548,7 +613,7 @@ void TScpCommanderForm::ExecutedFileChanged(
       }
     }
 
-    if ((Data->Terminal == NULL) || !Data->Terminal->Active)
+    if (!Manager->IsAvailableTerminal(Data->Terminal))
     {
       // Prevent this when not idle (IsBusy())?
       throw Exception(FMTLOAD(EDIT_SESSION_CLOSED2,
@@ -603,12 +668,13 @@ void TScpCommanderForm::ExecutedFileChanged(
     }
 
     int Params = cpNoConfirmation | cpTemporary;
-    if (Data->Terminal->IsCapable[fcBackgroundTransfers] && (FQueue != NULL))
+    if (Data->Terminal->IsCapable[fcBackgroundTransfers])
     {
+      TTerminalQueue * AQueue = Manager->FindQueueForTerminal(Data->Terminal);
       TQueueItem * QueueItem =
         new TEditorUploadQueueItem(Data->Terminal, FileList.get(), Data->RemoteDirectory, &CopyParam, Params);
       QueueItem->CompleteEvent = UploadCompleteEvent;
-      FQueue->AddItem(QueueItem);
+      AQueue->AddItem(QueueItem);
     }
     else
     {
@@ -873,14 +939,12 @@ void TScpCommanderForm::ForceCloseEditors()
   }
 }
 //---------------------------------------------------------------------------
-void TScpCommanderForm::EditedFilesTerminalChanged(TTerminal * ActiveTerminal)
+void TScpCommanderForm::EditedFilesTerminalRemoved(TTerminal * ATerminal)
 {
-  // upstream's FileTerminalRemoved: with a single session, the files of any
-  // other one lost theirs
   FEditorManager->ProcessFiles(
-    [ActiveTerminal](const UnicodeString &, TEditedFileData * Data, void *)
+    [ATerminal](const UnicodeString &, TEditedFileData * Data, void *)
     {
-      if (Data->Terminal != ActiveTerminal)
+      if (Data->Terminal == ATerminal)
       {
         Data->Terminal = NULL;
       }

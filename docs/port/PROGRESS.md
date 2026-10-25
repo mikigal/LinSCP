@@ -2,10 +2,34 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M8 — completeness
+## M8 — completeness (in progress)
 
 Preferences, the Explorer interface, tabs and workspaces, session import, translations,
 packaging (PLAN.md, section 7).
+
+- Tabs (`views/ScpCommanderSessions.cpp`, `app/TerminalManager.cpp` as upstream's
+  `TTerminalManager : TTerminalList`): any number of sessions, each with its queue, in the tabs
+  of `SessionsPageControl` (a `QTabBar` above the panels, with the "new tab" tab last). A
+  session switched to shows its directories and the history and focused file of its panels
+  (`PreservePanelState`, `TDirPanelState`; the local directory unless `PreserveLocalDirectory`).
+  Tabs are closed (also by a middle click), duplicated, renamed, reordered by dragging,
+  cycled by Ctrl+Tab; the Tabs menu with the opened tabs. A disconnected session (Disconnect
+  Session, closed once done, or a lost connection of a session ever connected) keeps its tab
+  with upstream's Reconnect button and reason; tabs of sessions of the same name tell their
+  directories (`SessionTabNameFormat`). Closing the last session shows the site manager
+  (`ShowLoginWhenNoSession`), an ad hoc session that fails is edited again. Sessions lost in
+  the background are reported when activated (reconnected with `SessionReopenAutoInactive`,
+  also in the background); the edited files of inactive sessions are uploaded through their
+  queues, their sessions reconnected when asked. Sessions of the command line and of other
+  instances open in new tabs.
+
+Decisions:
+
+- **No local browser tabs** (upstream's local-local Commander tabs): the local panel has no
+  local file operations; without a session the remote panel offers a new session, as before.
+- **Terminals are never abandoned** (left to their threads when they do not react to
+  cancelling): upstream does it with the active one, which would have to be replaced in the
+  window, and the queue of its session refers to it.
 
 ## M7 — desktop integration (done, 2026-10-25)
 

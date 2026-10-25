@@ -163,9 +163,9 @@ void TConsoleDialog::SetTerminal(TTerminal * Value)
   if (FTerminal != Value)
   {
     // OpenSCP: the session may be freed meanwhile (once its connection is
-    // lost), unlike upstream's kept in its tab
+    // lost and it was never connected)
     TTerminalManager * Manager = TTerminalManager::Instance(false);
-    if ((FTerminal != NULL) && (Manager != NULL) && !Manager->IsActiveTerminal(FTerminal))
+    if ((FTerminal != NULL) && (Manager != NULL) && (Manager->IndexOf(FTerminal) < 0))
     {
       FTerminal = NULL;
     }

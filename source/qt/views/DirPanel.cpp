@@ -500,6 +500,57 @@ void TDirPanel::FilesReloaded()
   UpdateStatusBar();
 }
 //---------------------------------------------------------------------------
+TObject * TDirPanel::SaveState()
+{
+  TDirPanelState * State = new TDirPanelState();
+  State->History = FHistory;
+  State->HistoryIndex = FHistoryIndex;
+  QModelIndex Current = DirView->currentIndex();
+  if (IsReady() && Current.isValid() && (Current.row() < FModel->Count()))
+  {
+    State->FocusedFile = FModel->Item(Current.row()).FileName;
+  }
+  return State;
+}
+//---------------------------------------------------------------------------
+void TDirPanel::RestoreState(TObject * AState)
+{
+  TDirPanelState * State = dynamic_cast<TDirPanelState *>(AState);
+  if (State != nullptr)
+  {
+    FHistory = State->History;
+    FHistoryIndex = State->HistoryIndex;
+  }
+  else
+  {
+    FHistory.clear();
+    FHistoryIndex = -1;
+  }
+  // The directory shown is the current one of the history
+  if (IsReady())
+  {
+    UnicodeString Path = GetPath();
+    if ((FHistoryIndex < 0) || (FHistoryIndex >= static_cast<int>(FHistory.size())) || (FHistory[FHistoryIndex] != Path))
+    {
+      FHistory.resize(std::max(0, std::min(FHistoryIndex + 1, static_cast<int>(FHistory.size()))));
+      FHistory.push_back(Path);
+      FHistoryIndex = static_cast<int>(FHistory.size()) - 1;
+    }
+    FPrevPath = Path;
+    if ((State != nullptr) && !State->FocusedFile.IsEmpty())
+    {
+      int Row = FModel->FindFile(State->FocusedFile);
+      if (Row >= 0)
+      {
+        QModelIndex Index = FModel->index(Row, 0);
+        DirView->selectionModel()->setCurrentIndex(Index, QItemSelectionModel::NoUpdate);
+        DirView->scrollTo(Index);
+      }
+    }
+  }
+  UpdateActions();
+}
+//---------------------------------------------------------------------------
 void TDirPanel::FocusFile(const UnicodeString & FileName)
 {
   int Row = FModel->FindFile(FileName);
@@ -684,7 +735,8 @@ void TLocalDirPanel::HomeDirectory()
 //---------------------------------------------------------------------------
 TRemoteDirPanel::TRemoteDirPanel(QWidget * Parent) :
   TDirPanel(osRemote, Parent),
-  FTerminal(NULL)
+  FTerminal(NULL),
+  FShownReady(false)
 {
   FRemoteModel = new TRemoteDirModel(this);
   SetModel(FRemoteModel);
@@ -700,17 +752,29 @@ TRemoteDirPanel::TRemoteDirPanel(QWidget * Parent) :
   NoSessionPage->setObjectName(QStringLiteral("RemoteNoSessionPage"));
   QVBoxLayout * PageLayout = new QVBoxLayout(NoSessionPage);
   PageLayout->addStretch(1);
-  QLabel * Label = new QLabel(tr("Not connected."), NoSessionPage);
-  Label->setObjectName(QStringLiteral("RemoteNoSessionLabel"));
-  Label->setAlignment(Qt::AlignCenter);
-  PageLayout->addWidget(Label);
-  QPushButton * NewSessionButton = new QPushButton(tr("&New Session..."), NoSessionPage);
-  NewSessionButton->setObjectName(QStringLiteral("RemoteNewSessionButton"));
-  PageLayout->addWidget(NewSessionButton, 0, Qt::AlignCenter);
+  FNoSessionLabel = new QLabel(tr("Not connected."), NoSessionPage);
+  FNoSessionLabel->setObjectName(QStringLiteral("RemoteNoSessionLabel"));
+  FNoSessionLabel->setAlignment(Qt::AlignCenter);
+  PageLayout->addWidget(FNoSessionLabel);
+  FNewSessionButton = new QPushButton(tr("&New Session..."), NoSessionPage);
+  FNewSessionButton->setObjectName(QStringLiteral("RemoteNewSessionButton"));
+  PageLayout->addWidget(FNewSessionButton, 0, Qt::AlignCenter);
+  // upstream's ReconnectToolbar: the session of the tab was disconnected
+  ReconnectItem = new QPushButton(QIcon::fromTheme(QStringLiteral("view-refresh")), tr("&Reconnect"), NoSessionPage);
+  ReconnectItem->setObjectName(QStringLiteral("ReconnectItem"));
+  PageLayout->addWidget(ReconnectItem, 0, Qt::AlignCenter);
+  ReconnectLabel = new QLabel(NoSessionPage);
+  ReconnectLabel->setObjectName(QStringLiteral("ReconnectLabel"));
+  ReconnectLabel->setAlignment(Qt::AlignCenter);
+  ReconnectLabel->setWordWrap(true);
+  PageLayout->addWidget(ReconnectLabel);
   PageLayout->addStretch(1);
   FStack->addWidget(NoSessionPage);
-  connect(NewSessionButton, &QPushButton::clicked, this, [this]() { Q_EMIT NewSessionRequested(); });
+  connect(FNewSessionButton, &QPushButton::clicked, this, [this]() { Q_EMIT NewSessionRequested(); });
+  connect(ReconnectItem, &QPushButton::clicked, this, [this]() { Q_EMIT ReconnectRequested(); });
 
+  // Not shown yet
+  FShownReady = true;
   SetTerminal(NULL);
 }
 //---------------------------------------------------------------------------
@@ -726,6 +790,11 @@ UnicodeString TRemoteDirPanel::GetPath() const
 //---------------------------------------------------------------------------
 void TRemoteDirPanel::SetTerminal(TTerminal * Terminal)
 {
+  // The files of the terminal shown follow its events
+  if ((FTerminal == Terminal) && (FShownReady == ((Terminal != NULL) && Terminal->Active)))
+  {
+    return;
+  }
   if ((FTerminal != NULL) && (FTerminal != Terminal))
   {
     FTerminal->OnChangeDirectory = NULL;
@@ -751,10 +820,27 @@ void TRemoteDirPanel::SetTerminal(TTerminal * Terminal)
   {
     FRemoteModel->Clear();
     PathComboBox->clear();
+    // A session of a tab is disconnected, else there is none
+    bool Disconnected = (FTerminal != NULL);
+    FNoSessionLabel->setText(Disconnected ? tr("Disconnected.") : tr("Not connected."));
+    FNewSessionButton->setVisible(!Disconnected);
+    ReconnectItem->setVisible(Disconnected);
+    if (!Disconnected)
+    {
+      ReconnectLabel->clear();
+    }
+    ReconnectLabel->setVisible(Disconnected && !ReconnectLabel->text().isEmpty());
     FStack->setCurrentIndex(1);
   }
+  FShownReady = IsReady();
   UpdateActions();
   UpdateStatusBar();
+}
+//---------------------------------------------------------------------------
+void TRemoteDirPanel::SetDisconnectMessage(const UnicodeString & Message)
+{
+  ReconnectLabel->setText(ToQString(Message));
+  ReconnectLabel->setVisible((FTerminal != NULL) && !IsReady() && !Message.IsEmpty());
 }
 //---------------------------------------------------------------------------
 void TRemoteDirPanel::TerminalChangeDirectory(TObject * /*Sender*/)

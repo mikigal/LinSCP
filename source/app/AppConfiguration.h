@@ -16,6 +16,16 @@ class TEditorPreferences;
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
 // When the queue list is shown (upstream's WinConfiguration.h)
 enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
+// How the tabs of sessions with the same name are told apart
+enum TSessionTabNameFormat : int { stnfNone, stnfShortPath, stnfShortPathTrunc };
+// An option with its field, accessors and property; its key is its name
+#define APP_CONFIG_PROPERTY(TYPE, NAME) \
+  public: \
+    TYPE Get ## NAME() const { return F ## NAME; } \
+    void Set ## NAME(TYPE value) { SET_CONFIG_PROPERTY(NAME); } \
+    __declspec(property(get = Get ## NAME, put = Set ## NAME)) TYPE NAME; \
+  private: \
+    TYPE F ## NAME;
 // The settings of the editors (upstream's TEditorConfiguration, without the
 // colors and the window placement)
 struct TEditorConfiguration
@@ -194,6 +204,37 @@ public:
   __declspec(property(get = GetEditorList, put = SetEditorList)) const TEditorList * EditorList;
   __declspec(property(get = GetOnMasterPasswordPrompt, put = SetOnMasterPasswordPrompt))
     TMasterPasswordPromptEvent OnMasterPasswordPrompt;
+
+  // The sessions and their tabs
+  // The number of sessions above which opening another is confirmed
+  APP_CONFIG_PROPERTY(int, MaxSessions)
+  // A connected session is opened in the SSH client too
+  APP_CONFIG_PROPERTY(bool, AutoOpenInPutty)
+  // All the sessions of a workspace are connected (the inactive ones in the
+  // background), not only the first one
+  APP_CONFIG_PROPERTY(bool, WorkspaceConnectAll)
+  // The sessions are saved as the workspace AutoWorkspace when the
+  // application closes (with their passwords)
+  APP_CONFIG_PROPERTY(bool, AutoSaveWorkspace)
+  APP_CONFIG_PROPERTY(bool, AutoSaveWorkspacePasswords)
+  APP_CONFIG_PROPERTY(UnicodeString, AutoWorkspace)
+  // The workspace last saved (offered when saving again)
+  APP_CONFIG_PROPERTY(UnicodeString, LastWorkspace)
+  APP_CONFIG_PROPERTY(TSessionTabNameFormat, SessionTabNameFormat)
+  // The panels of a session are shown as they were when it is activated
+  // again (the history, the focused file)
+  APP_CONFIG_PROPERTY(bool, PreservePanelState)
+  // Closing the application with connected sessions is confirmed
+  APP_CONFIG_PROPERTY(bool, ConfirmClosingSession)
+  // The site manager is shown once the last session is closed, and the
+  // application keeps running without sessions
+  APP_CONFIG_PROPERTY(bool, ShowLoginWhenNoSession)
+  APP_CONFIG_PROPERTY(bool, KeepOpenWhenNoSession)
+  // The local panel keeps its directory when another session is activated
+  // (Interface\Commander)
+  APP_CONFIG_PROPERTY(bool, PreserveLocalDirectory)
+  // The tabs of the sessions are shown (Interface\Commander)
+  APP_CONFIG_PROPERTY(bool, SessionsTabs)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

@@ -330,11 +330,25 @@ QJsonObject Describe(QObject * Object, bool Children)
   else if (QTabBar * Tabs = qobject_cast<QTabBar *>(Object))
   {
     QJsonArray Items;
+    QJsonArray ToolTips;
+    // In the client area of the window (real input clicks them)
+    QJsonArray Rects;
     for (int Index = 0; Index < Tabs->count(); Index++)
     {
       Items.append(Tabs->tabText(Index));
+      ToolTips.append(Tabs->tabToolTip(Index));
+      QRect Rect = Tabs->tabRect(Index);
+      QPoint Position = Tabs->mapTo(Tabs->window(), Rect.topLeft());
+      QJsonObject Geometry;
+      Geometry[QStringLiteral("x")] = Position.x();
+      Geometry[QStringLiteral("y")] = Position.y();
+      Geometry[QStringLiteral("width")] = Rect.width();
+      Geometry[QStringLiteral("height")] = Rect.height();
+      Rects.append(Geometry);
     }
     Result[QStringLiteral("items")] = Items;
+    Result[QStringLiteral("tooltips")] = ToolTips;
+    Result[QStringLiteral("rects")] = Rects;
     Result[QStringLiteral("index")] = Tabs->currentIndex();
   }
   else if (QAbstractItemView * View = qobject_cast<QAbstractItemView *>(Object))
@@ -610,6 +624,24 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
         throw EAutomation(QStringLiteral("No enabled page %1 in %2").arg(Value.toVariant().toString(), Name(Pages)));
       }
       QPointer<QTabWidget> Pointer(Pages);
+      Action = [Pointer, Index]() { if (Pointer) Pointer->setCurrentIndex(Index); };
+    }
+    else if (QTabBar * Tabs = qobject_cast<QTabBar *>(Target))
+    {
+      // A tab by its caption or its index
+      int Index = -1;
+      for (int I = 0; (Index < 0) && (I < Tabs->count()); I++)
+      {
+        if (Value.isDouble() ? (I == Value.toInt()) : (Tabs->tabText(I) == Value.toString()))
+        {
+          Index = I;
+        }
+      }
+      if ((Index < 0) || !Tabs->isTabEnabled(Index))
+      {
+        throw EAutomation(QStringLiteral("No enabled tab %1 in %2").arg(Value.toVariant().toString(), Name(Tabs)));
+      }
+      QPointer<QTabBar> Pointer(Tabs);
       Action = [Pointer, Index]() { if (Pointer) Pointer->setCurrentIndex(Index); };
     }
     else

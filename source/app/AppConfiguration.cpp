@@ -109,6 +109,20 @@ void __fastcall TAppConfiguration::Default()
   FNotificationsTimeout = 10;
   FMinimizeToTray = false;
   FFlashTaskbar = true;
+  FMaxSessions = 100;
+  FAutoOpenInPutty = false;
+  FWorkspaceConnectAll = false;
+  FAutoSaveWorkspace = false;
+  FAutoSaveWorkspacePasswords = false;
+  FAutoWorkspace = L"";
+  FLastWorkspace = L"";
+  FSessionTabNameFormat = stnfShortPathTrunc;
+  FPreservePanelState = true;
+  FConfirmClosingSession = true;
+  FShowLoginWhenNoSession = true;
+  FKeepOpenWhenNoSession = true;
+  FPreserveLocalDirectory = false;
+  FSessionsTabs = true;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -214,6 +228,22 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Integer, FNotificationsTimeout); \
     KEY(Bool,    FMinimizeToTray); \
     KEY(Bool,    FFlashTaskbar); \
+    KEY(Integer, FMaxSessions); \
+    KEY(Bool,    FAutoOpenInPutty); \
+    KEY(Bool,    FWorkspaceConnectAll); \
+    KEY(Bool,    FAutoSaveWorkspace); \
+    KEY(Bool,    FAutoSaveWorkspacePasswords); \
+    KEY(String,  FAutoWorkspace); \
+    KEY(String,  FLastWorkspace); \
+    KEY(Enum,    FSessionTabNameFormat); \
+    KEY(Bool,    FPreservePanelState); \
+    KEY(Bool,    FConfirmClosingSession); \
+    KEY(Bool,    FShowLoginWhenNoSession); \
+    KEY(Bool,    FKeepOpenWhenNoSession); \
+  ); \
+  BLOCK(L"Interface\\Commander", CANCREATE, \
+    KEY(Bool,    FPreserveLocalDirectory); \
+    KEY(Bool,    FSessionsTabs); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \

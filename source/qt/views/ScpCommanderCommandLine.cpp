@@ -76,10 +76,10 @@ bool TScpCommanderForm::OpenCommandLineSession(
     }
   }
 
-  // A single session yet, the first of a folder
   TTerminalManager * Manager = TTerminalManager::Instance();
-  Manager->NewSession(static_cast<TSessionData *>(DataList->Items[0]));
-  bool Result = Manager->ConnectActiveTerminal();
+  TManagedTerminal * Session = Manager->NewSessions(DataList.get());
+  Manager->ActiveSession = Session;
+  bool Result = Manager->IsAvailableTerminal(Session) && (Manager->ActiveSession == Session);
   if (Result)
   {
     FRemotePanel->GetDirView()->setFocus();
@@ -115,7 +115,7 @@ void TScpCommanderForm::ExecuteCommandLine(TOptions * Params)
   if (SessionName.IsEmpty() && !CommandLineOperation)
   {
     // The site manager on startup
-    NewSession();
+    NeedSession(true);
   }
   else
   {
@@ -203,10 +203,10 @@ void TScpCommanderForm::CommandLineDownload(const UnicodeString & FileName, int 
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanCommandLineFromAnotherInstance()
 {
-  // A single session yet (upstream opens it in a new tab); not while
-  // a modal window (the site manager) shows
+  // The session opens in a new tab; not while a modal window (the site
+  // manager) shows
   return
-    isVisible() && !IsBusy() && (GetTerminal() == NULL) &&
+    isVisible() && !IsBusy() &&
     (QApplication::activeModalWidget() == nullptr);
 }
 //---------------------------------------------------------------------------

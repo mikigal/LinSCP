@@ -312,6 +312,9 @@ void TScpCommanderForm::QueueChanged()
 {
   if (FQueueStatus != NULL)
   {
+    // OpenSCP: the items of the view refer to the status (the view updates
+    // the actions while it is filled with the items of the new status)
+    FQueueController->UpdateQueueStatus(NULL);
     // UpdateFileList implementation relies on the status being recreated when session changes
     delete FQueueStatus;
     FQueueStatus = NULL;
@@ -522,12 +525,7 @@ void TScpCommanderForm::ResetQueueOnceEmptyOperation()
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanCloseQueue()
 {
-  bool Result = (FQueue == NULL) || FQueue->IsEmpty;
-  if (!Result)
-  {
-    Result = (MessageDialog(LoadStr(PENDING_QUEUE_ITEMS2), qtWarning, qaOK | qaCancel) == qaOK);
-  }
-  return Result;
+  return (FQueue == NULL) || CanCloseQueue(FQueue);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::AddQueueItem(TTransferDirection Direction, TStrings * FileList,

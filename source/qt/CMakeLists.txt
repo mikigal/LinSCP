@@ -54,6 +54,7 @@ add_library(openscp_qt STATIC
   views/ScpCommanderDragDrop.cpp
   views/ScpCommanderEditor.cpp
   views/ScpCommanderQueue.cpp
+  views/ScpCommanderSessions.cpp
   views/ScpCommanderSynchronize.cpp)
 
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
