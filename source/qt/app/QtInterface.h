@@ -71,7 +71,9 @@ unsigned int FatalExceptionMessageDialog(
   Exception * E, TQueryType Type, const UnicodeString & MessageFormat, unsigned int Answers,
   const TMessageParams * Params);
 
-void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E);
+// WhileIdle: not of an operation (a lost connection of an idle session
+// may be closed silently)
+void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E, bool WhileIdle = false);
 
 // dialogs/CustomDialog.cpp
 bool InputDialog(const UnicodeString & ACaption,
@@ -92,6 +94,28 @@ bool DoSaveWorkspaceDialog(UnicodeString & WorkspaceName,
 void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName);
 // Asks for the current master password
 bool DoMasterPasswordDialog();
+// Asks for the current master password (if any) and a new one
+bool DoChangeMasterPasswordDialog(UnicodeString & NewPassword);
+// Adds or edits a trusted host certification authority
+bool DoSshHostCADialog(bool Add, TSshHostCA & SshHostCA);
+
+// dialogs/PreferencesDialog.cpp
+// The page the preferences open on
+enum TPreferencesMode { pmDefault, pmEditor, pmCustomCommands,
+    pmQueue, pmLogging, pmUpdates, pmPresets, pmEditors, pmCommander,
+    pmEditorInternal, pmFileColors };
+struct TPreferencesDialogData
+{
+  // The rule data for new presets ("current" in the preset dialog)
+  TCopyParamRuleData * CopyParamRuleData;
+};
+bool DoPreferencesDialog(TPreferencesMode APreferencesMode, TPreferencesDialogData * DialogData = NULL);
+
+// dialogs/EditorPreferencesDialog.cpp
+struct TEditorData;
+enum TEditorPreferencesMode { epmAdd, epmEdit, epmAdHoc };
+// An editor of the list (with Remember for an ad hoc one)
+bool DoEditorPreferencesDialog(TEditorData * Editor, bool & Remember, TEditorPreferencesMode Mode, bool MayRemote);
 
 enum TTransferDirection { tdToRemote, tdToLocal };
 // The operation on a file finished (an empty name: on all files)
@@ -193,8 +217,6 @@ const int ccoDisableRemoteFiles = 0x02;
 typedef std::function<void(const TCustomCommandType & Command)> TCustomCommandValidate;
 bool DoCustomCommandDialog(TCustomCommandType & Command, const TCustomCommandList * CustomCommandList,
   TCustomCommandsMode Mode, int Options, TCustomCommandValidate OnValidate, const TShortCuts * ShortCuts);
-// The list of the custom commands (upstream has it in the preferences)
-bool DoCustomCommandsDialog();
 // The prompts of the custom commands in one dialog, the output of local
 // commands
 class TWinInteractiveCustomCommand : public TInteractiveCustomCommand

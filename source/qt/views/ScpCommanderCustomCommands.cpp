@@ -723,10 +723,8 @@ void TScpCommanderForm::LastCustomCommand()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CustomCommandsCustomize()
 {
-  if (DoCustomCommandsDialog())
-  {
-    UpdateCustomCommandShortCuts();
-  }
+  // The shortcuts follow the configuration (ConfigurationChanged)
+  DoPreferencesDialog(pmCustomCommands);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateCustomCommandsMenu(QMenu * Menu)

@@ -73,7 +73,10 @@ TDirModel::TDirModel(const std::vector<TDirViewColumn> & Columns, QObject * Pare
   FColumns(Columns),
   FSortColumn(0),
   FSortOrder(Qt::AscendingOrder),
-  FEditableRow(-1)
+  FEditableRow(-1),
+  FFormatSizeBytes(fbKilobytes),
+  FNaturalOrderNumericalSorting(true),
+  FAlwaysSortDirectoriesByName(false)
 {
 }
 //---------------------------------------------------------------------------
@@ -140,7 +143,7 @@ QVariant TDirModel::data(const QModelIndex & Index, int Role) const
         case dvSize:
           if (!Item.IsDirectory)
           {
-            Result = ToQString(FormatPanelBytes(Item.Size, fbKilobytes));
+            Result = ToQString(FormatPanelBytes(Item.Size, FFormatSizeBytes));
           }
           break;
         case dvType:
@@ -196,7 +199,10 @@ void TDirModel::SortItems()
 {
   TDirViewColumn Column = FColumns[FSortColumn];
   bool Ascending = (FSortOrder == Qt::AscendingOrder);
-  std::stable_sort(FItems.begin(), FItems.end(), [Column, Ascending](const TDirViewItem & Item1, const TDirViewItem & Item2)
+  bool NaturalOrderNumericalSorting = FNaturalOrderNumericalSorting;
+  bool AlwaysSortDirectoriesByName = FAlwaysSortDirectoriesByName;
+  std::stable_sort(FItems.begin(), FItems.end(),
+    [Column, Ascending, NaturalOrderNumericalSorting, AlwaysSortDirectoriesByName](const TDirViewItem & Item1, const TDirViewItem & Item2)
   {
     // The parent directory first, then the directories, in any order
     if (Item1.IsParentDirectory != Item2.IsParentDirectory)
@@ -208,7 +214,9 @@ void TDirModel::SortItems()
       return Item1.IsDirectory;
     }
     int Result = 0;
-    switch (Column)
+    // The directories by their names, in the order of the column
+    TDirViewColumn AColumn = (AlwaysSortDirectoriesByName && Item1.IsDirectory) ? dvName : Column;
+    switch (AColumn)
     {
       case dvSize:
         Result = CompareNumber(Item1.Size, Item2.Size);
@@ -236,7 +244,7 @@ void TDirModel::SortItems()
     }
     if (Result == 0)
     {
-      Result = CompareLogicalText(Item1.FileName, Item2.FileName, true);
+      Result = CompareLogicalText(Item1.FileName, Item2.FileName, NaturalOrderNumericalSorting);
     }
     return Ascending ? (Result < 0) : (Result > 0);
   });
@@ -264,6 +272,26 @@ void TDirModel::sort(int Column, Qt::SortOrder Order)
     }
     changePersistentIndexList(Persistent, Updated);
     Q_EMIT layoutChanged({}, QAbstractItemModel::VerticalSortHint);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirModel::SetDisplayOptions(
+  TFormatBytesStyle FormatSizeBytes, bool NaturalOrderNumericalSorting, bool AlwaysSortDirectoriesByName)
+{
+  bool Resort =
+    (FNaturalOrderNumericalSorting != NaturalOrderNumericalSorting) ||
+    (FAlwaysSortDirectoriesByName != AlwaysSortDirectoriesByName);
+  bool Redisplay = (FFormatSizeBytes != FormatSizeBytes);
+  FFormatSizeBytes = FormatSizeBytes;
+  FNaturalOrderNumericalSorting = NaturalOrderNumericalSorting;
+  FAlwaysSortDirectoriesByName = AlwaysSortDirectoriesByName;
+  if (Resort)
+  {
+    sort(FSortColumn, FSortOrder);
+  }
+  if (Redisplay && (Count() > 0))
+  {
+    Q_EMIT dataChanged(index(0, 0), index(Count() - 1, columnCount() - 1), { Qt::DisplayRole });
   }
 }
 //---------------------------------------------------------------------------
@@ -435,7 +463,7 @@ void TRemoteDirModel::Clear()
   SetItems(std::vector<TDirViewItem>());
 }
 //---------------------------------------------------------------------------
-void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles)
+void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool ShowInaccesibleDirectories)
 {
   // The terminal reuses its list, the model has its own copy
   TRemoteFileList * Copy = new TRemoteFileList();
@@ -445,7 +473,8 @@ void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles)
   for (int Index = 0; Index < Copy->Count; Index++)
   {
     TRemoteFile * File = Copy->Files[Index];
-    if ((!ShowHiddenFiles && File->IsHidden) || File->IsThisDirectory)
+    if ((!ShowHiddenFiles && File->IsHidden) || File->IsThisDirectory ||
+        (!ShowInaccesibleDirectories && File->IsInaccesibleDirectory))
     {
       continue;
     }

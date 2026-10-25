@@ -367,6 +367,7 @@ bool DoCopyParamPresetDialog(TCopyParamList * CopyParamList,
 }
 //---------------------------------------------------------------------------
 const int cpiDefault = -1;
+const int cpiConfigure = -2;
 const int cpiCustom = -3;
 const int cpiSaveSettings = -4;
 const int cpiSavePreset = -6;
@@ -431,14 +432,27 @@ int CopyParamListPopup(const QPoint & Pos, TCopyParamType & Param, UnicodeString
   }
 
   CustomizeItem->setChecked(!AnyChecked);
-  // The preferences (the presets) are not ported yet: no "Configure..."
+
+  Menu.addSeparator();
+  AddItem(ToQString(LoadStr(COPY_PARAM_CONFIGURE)), cpiConfigure, "ConfigureItem");
 
   QAction * Chosen = Menu.exec(Pos);
   int Result = 0;
   if (Chosen != nullptr)
   {
     int Tag = Chosen->data().toInt();
-    if (Tag == cpiCustom)
+    if (Tag == cpiConfigure)
+    {
+      bool MatchedPreset = (GUIConfiguration->CopyParamPreset[Preset] == Param);
+      DoPreferencesDialog(pmPresets);
+      Result = (MatchedPreset && GUIConfiguration->HasCopyParamPreset[Preset]) ? 1 : 0;
+      if (Result > 0)
+      {
+        // For cast, see a comment below
+        Param = TCopyParamType(GUIConfiguration->CopyParamPreset[Preset]);
+      }
+    }
+    else if (Tag == cpiCustom)
     {
       Result = DoCopyParamCustomDialog(Param, CopyParamAttrs) ? 1 : 0;
     }

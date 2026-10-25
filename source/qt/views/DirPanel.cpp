@@ -2,6 +2,7 @@
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
+#include <AppConfiguration.h>
 #include <RemoteFiles.h>
 #include <Terminal.h>
 
@@ -9,6 +10,7 @@
 #include "DirPanel.h"
 
 #include <QAbstractItemDelegate>
+#include <QApplication>
 #include <QAction>
 #include <QComboBox>
 #include <QDir>
@@ -22,6 +24,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QPointer>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
@@ -54,6 +57,61 @@ TDirView::TDirView(TDirPanel * Panel) :
   setAcceptDrops(true);
   setDragDropMode(QAbstractItemView::DragDrop);
   setDropIndicatorShown(false);
+}
+//---------------------------------------------------------------------------
+void TDirView::keyboardSearch(const QString & Search)
+{
+  TIncrementalSearch Mode = AppConfiguration->PanelSearch;
+  const TDirModel * Model = FPanel->GetModel();
+  if ((Mode == isOff) || Search.isEmpty() || (Model == nullptr) || (Model->Count() == 0))
+  {
+    return;
+  }
+
+  // As Qt's: the typed letters add up until a pause
+  bool Continue = FSearchTimer.isValid() && (FSearchTimer.elapsed() < QApplication::keyboardInputInterval());
+  FSearchTimer.restart();
+  // The same letter again goes to the next file
+  bool Next = !Continue || ((FSearchText.length() == 1) && (FSearchText == Search));
+  FSearchText = Continue && !Next ? (FSearchText + Search) : Search;
+
+  int Start = currentIndex().isValid() ? currentIndex().row() : 0;
+  for (int Offset = (Next ? 1 : 0); Offset <= Model->Count(); Offset++)
+  {
+    int Row = (Start + Offset) % Model->Count();
+    const TDirViewItem & Item = Model->Item(Row);
+    if (Item.IsParentDirectory)
+    {
+      continue;
+    }
+    bool Matches;
+    QString Name = ToQString(Item.FileName);
+    switch (Mode)
+    {
+      case isNameStartOnly:
+        Matches = Name.startsWith(FSearchText, Qt::CaseInsensitive);
+        break;
+
+      case isName:
+        Matches = Name.contains(FSearchText, Qt::CaseInsensitive);
+        break;
+
+      default:
+        Matches = false;
+        for (int Column = 0; !Matches && (Column < Model->columnCount()); Column++)
+        {
+          Matches = Model->data(Model->index(Row, Column)).toString().contains(FSearchText, Qt::CaseInsensitive);
+        }
+        break;
+    }
+    if (Matches)
+    {
+      QModelIndex Index = Model->index(Row, 0);
+      selectionModel()->setCurrentIndex(Index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+      scrollTo(Index);
+      break;
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TDirView::startDrag(Qt::DropActions /*SupportedActions*/)
@@ -341,6 +399,25 @@ void TDirPanel::StartRename()
     QModelIndex NameIndex = FModel->index(Current.row(), 0);
     FModel->SetEditableRow(NameIndex.row());
     DirView->edit(NameIndex);
+    // Without the extension of files, unless RenameWholeName
+    const TDirViewItem & Item = FModel->Item(Current.row());
+    if (!AppConfiguration->RenameWholeName && !Item.IsDirectory)
+    {
+      QString Name = ToQString(Item.FileName);
+      int P = Name.lastIndexOf(QLatin1Char('.'));
+      if (P > 0)
+      {
+        QPointer<QLineEdit> Editor = DirView->findChild<QLineEdit *>(QStringLiteral("RenameEdit"));
+        // Once the editor got the focus (which selects all)
+        QTimer::singleShot(0, this, [Editor, P]()
+        {
+          if (Editor)
+          {
+            Editor->setSelection(0, P);
+          }
+        });
+      }
+    }
   }
 }
 //---------------------------------------------------------------------------
@@ -611,6 +688,20 @@ void TDirPanel::SetShowHiddenFiles(bool Value)
   }
 }
 //---------------------------------------------------------------------------
+void TDirPanel::ApplyConfiguration()
+{
+  QFont Font = PanelFont(AppConfiguration->PanelFont);
+  if (DirView->font() != Font)
+  {
+    DirView->setFont(Font);
+  }
+  FModel->SetDisplayOptions(
+    AppConfiguration->FormatSizeBytes, AppConfiguration->NaturalOrderNumericalSorting,
+    AppConfiguration->AlwaysSortDirectoriesByName);
+  SetShowHiddenFiles(AppConfiguration->ShowHiddenFiles);
+  UpdateStatusBar();
+}
+//---------------------------------------------------------------------------
 void TDirPanel::UpdateStatusBar()
 {
   UnicodeString Text;
@@ -730,13 +821,14 @@ void TLocalDirPanel::Reload()
 //---------------------------------------------------------------------------
 void TLocalDirPanel::HomeDirectory()
 {
-  ChangeDirectory(ToUnicodeString(QDir::homePath()));
+  ChangeDirectory(FHomeDirectory.IsEmpty() ? ToUnicodeString(QDir::homePath()) : FHomeDirectory);
 }
 //---------------------------------------------------------------------------
 TRemoteDirPanel::TRemoteDirPanel(QWidget * Parent) :
   TDirPanel(osRemote, Parent),
   FTerminal(NULL),
-  FShownReady(false)
+  FShownReady(false),
+  FShowInaccesibleDirectories(true)
 {
   FRemoteModel = new TRemoteDirModel(this);
   SetModel(FRemoteModel);
@@ -856,8 +948,22 @@ void TRemoteDirPanel::TerminalReadDirectory(TObject * /*Sender*/, Boolean /*Relo
 void TRemoteDirPanel::LoadFiles()
 {
   SaveFocus();
-  FRemoteModel->Load(FTerminal->Files, FShowHiddenFiles);
+  FRemoteModel->Load(FTerminal->Files, FShowHiddenFiles, FShowInaccesibleDirectories);
   FilesReloaded();
+  Q_EMIT FilesLoaded();
+}
+//---------------------------------------------------------------------------
+void TRemoteDirPanel::ApplyConfiguration()
+{
+  TDirPanel::ApplyConfiguration();
+  if (FShowInaccesibleDirectories != AppConfiguration->ShowInaccesibleDirectories)
+  {
+    FShowInaccesibleDirectories = AppConfiguration->ShowInaccesibleDirectories;
+    if (IsReady())
+    {
+      LoadFiles();
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TRemoteDirPanel::ChangeDirectory(const UnicodeString & Path)

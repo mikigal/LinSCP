@@ -123,6 +123,31 @@ void __fastcall TAppConfiguration::Default()
   FKeepOpenWhenNoSession = true;
   FPreserveLocalDirectory = false;
   FSessionsTabs = true;
+  FSessionTabCaptionTruncation = true;
+  FPathInCaption = picShort;
+  FConfirmRecycling = true;
+  FDeleteToRecycleBin = true;
+  FDDWarnLackOfTempSpace = true;
+  FDDWarnLackOfTempSpaceRatio = 1.1;
+  FDDTemporaryDirectory = L"";
+  FTemporaryDirectoryAppendSession = false;
+  FTemporaryDirectoryAppendPath = true;
+  FTemporaryDirectoryDeterministic = false;
+  FTemporaryDirectoryCleanup = true;
+  FConfirmTemporaryDirectoryCleanup = true;
+  FDefaultDirIsHome = true;
+  FRenameWholeName = false;
+  FShowInaccesibleDirectories = true;
+  FDoubleClickAction = dcaEdit;
+  FCopyOnDoubleClickConfirmation = false;
+  FNaturalOrderNumericalSorting = true;
+  FAlwaysSortDirectoriesByName = false;
+  FFormatSizeBytes = fbKilobytes;
+  FPanelSearch = isNameStartOnly;
+  FRefreshRemotePanel = false;
+  FRefreshRemotePanelInterval = TDateTime(0, 1, 0, 0);
+  FPanelFont = TFontConfiguration();
+  FEditorCheckNotModified = false;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -143,6 +168,8 @@ void __fastcall TAppConfiguration::Default()
   FEditor.WarnOnEncodingFallback = true;
   FEditor.WarnOrLargeFileSize = true;
   FEditor.LargeFileSize = 10*1024;
+  FEditor.FontColor = TColor(0);
+  FEditor.BackgroundColor = TColor(0);
   // OpenSCP: upstream adds Notepad as an external editor of the list
   FEditorList->Clear();
   FEditorList->Add(new TEditorPreferences());
@@ -176,9 +203,71 @@ void __fastcall TAppConfiguration::DefaultLocalized()
   }
 }
 //---------------------------------------------------------------------------
+UnicodeString TAppConfiguration::ExpandedTemporaryDirectory()
+{
+  UnicodeString Result =
+    ExpandFileName(ExpandEnvironmentVariables(DDTemporaryDirectory));
+  if (Result.IsEmpty())
+  {
+    Result = SystemTemporaryDirectory();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
 UnicodeString TAppConfiguration::TemporaryDir(bool Mask)
 {
-  return UniqTempDir(SystemTemporaryDirectory(), L"scp", Mask);
+  return UniqTempDir(ExpandedTemporaryDirectory(), L"scp", Mask);
+}
+//---------------------------------------------------------------------------
+TStrings * TAppConfiguration::FindTemporaryFolders()
+{
+  std::unique_ptr<TStrings> Result(new TStringList());
+  TSearchRecOwned SRec;
+  UnicodeString Mask = TemporaryDir(true);
+  if (FindFirstUnchecked(Mask, faDirectory | faHidden, SRec) == 0)
+  {
+    do
+    {
+      if (SRec.IsDirectory())
+      {
+        Result->Add(SRec.GetFilePath());
+      }
+    }
+    while (FindNextChecked(SRec) == 0);
+  }
+
+  if (Result->Count == 0)
+  {
+    Result.reset(NULL);
+  }
+
+  return Result.release();
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::CleanupTemporaryFolders(TStrings * Folders)
+{
+  if (DebugAlwaysTrue(Folders->Count > 0))
+  {
+    Usage->Inc(L"TemporaryDirectoryCleanups");
+  }
+
+  UnicodeString ErrorList;
+  for (int i = 0; i < Folders->Count; i++)
+  {
+    if (!RecursiveDeleteFile(Folders->Strings[i]))
+    {
+      if (!ErrorList.IsEmpty())
+      {
+        ErrorList += L"\n";
+      }
+      ErrorList += Folders->Strings[i];
+    }
+  }
+
+  if (!ErrorList.IsEmpty())
+  {
+    throw ExtException(LoadStr(CLEANUP_TEMP_ERROR), ErrorList);
+  }
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall TAppConfiguration::DefaultIniFileStorageName()
@@ -234,12 +323,39 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FAutoSaveWorkspace); \
     KEY(Bool,    FAutoSaveWorkspacePasswords); \
     KEY(String,  FAutoWorkspace); \
-    KEY(String,  FLastWorkspace); \
     KEY(Enum,    FSessionTabNameFormat); \
     KEY(Bool,    FPreservePanelState); \
     KEY(Bool,    FConfirmClosingSession); \
     KEY(Bool,    FShowLoginWhenNoSession); \
     KEY(Bool,    FKeepOpenWhenNoSession); \
+    KEY(Bool,    FSessionTabCaptionTruncation); \
+    KEY(Enum,    FPathInCaption); \
+    KEY(Bool,    FConfirmRecycling); \
+    KEY(Bool,    FDeleteToRecycleBin); \
+    KEY(Bool,    FDDWarnLackOfTempSpace); \
+    KEY(Float,   FDDWarnLackOfTempSpaceRatio); \
+    KEY(String,  FDDTemporaryDirectory); \
+    KEY(Bool,    FTemporaryDirectoryAppendSession); \
+    KEY(Bool,    FTemporaryDirectoryAppendPath); \
+    KEY(Bool,    FTemporaryDirectoryDeterministic); \
+    KEY(Bool,    FTemporaryDirectoryCleanup); \
+    KEY(Bool,    FConfirmTemporaryDirectoryCleanup); \
+    KEY(Bool,    FDefaultDirIsHome); \
+    KEY(Bool,    FRenameWholeName); \
+    KEY(Bool,    FShowInaccesibleDirectories); \
+    KEY(Enum,    FDoubleClickAction); \
+    KEY(Bool,    FCopyOnDoubleClickConfirmation); \
+    KEY(Bool,    FNaturalOrderNumericalSorting); \
+    KEY(Bool,    FAlwaysSortDirectoriesByName); \
+    KEY(Enum,    FFormatSizeBytes); \
+    KEY(Enum,    FPanelSearch); \
+    KEY(Bool,    FRefreshRemotePanel); \
+    KEY(DateTime, FRefreshRemotePanelInterval); \
+    KEYEX(String, FPanelFont.FontName, L"PanelFontName"); \
+    KEYEX(Integer, FPanelFont.FontSize, L"PanelFontSize"); \
+    KEYEX(Integer, FPanelFont.FontStyle, L"PanelFontStyle"); \
+    KEYEX(Integer, FPanelFont.FontCharset, L"PanelFontCharset"); \
+    KEY(Bool,    FEditorCheckNotModified); \
   ); \
   BLOCK(L"Interface\\Commander", CANCREATE, \
     KEY(Bool,    FPreserveLocalDirectory); \
@@ -262,6 +378,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,      FEditor.WarnOnEncodingFallback); \
     KEY(Bool,      FEditor.WarnOrLargeFileSize); \
     KEY(Integer,   FEditor.LargeFileSize); \
+    KEY(Enum,      FEditor.FontColor); \
+    KEY(Enum,      FEditor.BackgroundColor); \
   ); \
   BLOCK(L"Interface\\QueueView", CANCREATE, \
     KEYEX(Integer, FQueueViewHeight, L"Height"); \
@@ -449,6 +567,50 @@ void __fastcall TAppConfiguration::SetMasterPassword(UnicodeString value)
   {
     FPlainMasterPasswordEncrypt = value;
     FPlainMasterPasswordDecrypt = value;
+  }
+}
+//---------------------------------------------------------------------------
+void __fastcall TAppConfiguration::ChangeMasterPassword(
+  UnicodeString value, TStrings * RecryptPasswordErrors)
+{
+  RawByteString Verifier;
+  AES256CreateVerifier(value, Verifier);
+  FMasterPasswordVerifier = BytesToHex(Verifier);
+  FPlainMasterPasswordEncrypt = value;
+  FUseMasterPassword = true;
+  ::rtl::TFinally Finally([&]() { FPlainMasterPasswordDecrypt = value; });
+  RecryptPasswords(RecryptPasswordErrors);
+}
+//---------------------------------------------------------------------------
+void __fastcall TAppConfiguration::ClearMasterPassword(TStrings * RecryptPasswordErrors)
+{
+  FMasterPasswordVerifier = L"";
+  FUseMasterPassword = false;
+  Shred(FPlainMasterPasswordEncrypt);
+  ::rtl::TFinally Finally([&]() { Shred(FPlainMasterPasswordDecrypt); });
+  RecryptPasswords(RecryptPasswordErrors);
+}
+//---------------------------------------------------------------------------
+void __fastcall TAppConfiguration::RecryptPasswords(TStrings * RecryptPasswordErrors)
+{
+  StoredSessions->RecryptPasswords(RecryptPasswordErrors);
+
+  if (OnMasterPasswordRecrypt != nullptr)
+  {
+    try
+    {
+      OnMasterPasswordRecrypt();
+    }
+    catch (Exception & E)
+    {
+      UnicodeString Message;
+      if (ExceptionMessage(&E, Message))
+      {
+        // we do not expect this really to happen,
+        // so we do not bother providing context
+        RecryptPasswordErrors->Add(Message);
+      }
+    }
   }
 }
 //---------------------------------------------------------------------------
@@ -696,8 +858,16 @@ bool TEditorConfiguration::operator !=(const TEditorConfiguration & rhc) const
     C(FontName) C(FontSize) C(WordWrap) C(FindText) C(ReplaceText)
     C(FindMatchCase) C(FindWholeWord) C(FindDown) C(TabSize)
     C(MaxEditors) C(EarlyClose) C(SDIShellEditor)
-    C(Encoding) C(WarnOnEncodingFallback) C(WarnOrLargeFileSize) C(LargeFileSize) false;
+    C(Encoding) C(WarnOnEncodingFallback) C(WarnOrLargeFileSize) C(LargeFileSize)
+    C(FontColor) C(BackgroundColor) false;
   #undef C
+}
+//---------------------------------------------------------------------------
+bool TFontConfiguration::operator !=(const TFontConfiguration & rhc) const
+{
+  return
+    (FontName != rhc.FontName) || (FontSize != rhc.FontSize) ||
+    (FontCharset != rhc.FontCharset) || (FontStyle != rhc.FontStyle);
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::SetEditor(const TEditorConfiguration & value)

@@ -34,11 +34,9 @@ static QString EscapeValue(const QString & Value)
   return Result;
 }
 //---------------------------------------------------------------------------
-void CreateDesktopSessionShortCut(const UnicodeString & SessionName)
+static void CreateDesktopShortCut(const QString & Name, const QStringList & Arguments)
 {
   QString Directory = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
-  // The name of the file from the last part of the name of the site
-  QString Name = ToQString(UnixExtractFileName(SessionName));
   QString FileBase = Name;
   for (QChar & Char : FileBase)
   {
@@ -53,10 +51,11 @@ void CreateDesktopSessionShortCut(const UnicodeString & SessionName)
   }
   QString FileName = QDir(Directory).filePath(FileBase + QStringLiteral(".desktop"));
 
-  QString Exec =
-    QuoteExecArgument(QCoreApplication::applicationFilePath()) + QLatin1Char(' ') +
-    // encode session name because of slashes in hierarchical sessions
-    QuoteExecArgument(ToQString(EncodeUrlString(SessionName)));
+  QString Exec = QuoteExecArgument(QCoreApplication::applicationFilePath());
+  for (const QString & Argument : Arguments)
+  {
+    Exec += QLatin1Char(' ') + QuoteExecArgument(Argument);
+  }
   QString Content =
     QStringLiteral("[Desktop Entry]\n"
                    "Type=Application\n"
@@ -75,5 +74,17 @@ void CreateDesktopSessionShortCut(const UnicodeString & SessionName)
   {
     throw ExtException(LoadStr(CREATE_SHORTCUT_ERROR), ToUnicodeString(FileName + QStringLiteral(": ") + File.errorString()));
   }
+}
+//---------------------------------------------------------------------------
+void CreateDesktopSessionShortCut(const UnicodeString & SessionName)
+{
+  // The name of the file from the last part of the name of the site;
+  // encode session name because of slashes in hierarchical sessions
+  CreateDesktopShortCut(ToQString(UnixExtractFileName(SessionName)), { ToQString(EncodeUrlString(SessionName)) });
+}
+//---------------------------------------------------------------------------
+void CreateAppDesktopShortCut()
+{
+  CreateDesktopShortCut(ToQString(AppName), QStringList());
 }
 //---------------------------------------------------------------------------

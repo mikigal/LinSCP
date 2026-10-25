@@ -549,6 +549,10 @@ void TScpCommanderForm::AddQueueItem(TTransferDirection Direction, TStrings * Fi
       new TDownloadQueueItem(
         Terminal, FileList, TargetDirectory, &CopyParam, Params, CopyParam.QueueParallel);
   }
+  if (FQueue->IsEmpty && (FManagedSession != NULL))
+  {
+    FManagedSession->QueueOperationStart = Now();
+  }
   FQueue->AddItem(QueueItem);
 }
 //---------------------------------------------------------------------------
@@ -577,7 +581,13 @@ void TScpCommanderForm::QueueEvent(TTerminal * ATerminal, TTerminalQueue * /*Que
       break;
 
     case qeEmpty:
-      // Upstream beeps once a long operation completes (off by default)
+      {
+        TManagedTerminal * ManagedTerminal = dynamic_cast<TManagedTerminal *>(ATerminal);
+        if ((ManagedTerminal != NULL) && (ManagedTerminal->QueueOperationStart != TDateTime()))
+        {
+          OperationComplete(ManagedTerminal->QueueOperationStart);
+        }
+      }
       break;
 
     case qePendingUserAction:

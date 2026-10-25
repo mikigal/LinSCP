@@ -23,9 +23,6 @@
 //---------------------------------------------------------------------------
 namespace
 {
-// Upstream's EditorCheckNotModified preference (off by default): the remote
-// file is checked not to have changed since it was opened
-const bool EditorCheckNotModified = false;
 //---------------------------------------------------------------------------
 class TEditorUploadQueueItem : public TUploadQueueItem
 {
@@ -83,24 +80,39 @@ void TScpCommanderForm::TemporaryDirectoryForRemoteFiles(
   const UnicodeString & RemoteDirectory, const TCopyParamType & CopyParam,
   UnicodeString & Result, UnicodeString & RootDirectory)
 {
-  // Upstream's preferences may make the directory deterministic and add the
-  // session to it; its defaults add the remote path only
-  RootDirectory = IncludeTrailingBackslash(AppConfiguration->TemporaryDir());
-  Result = RootDirectory;
-
-  // OpenSCP: upstream's FromUnixPath and ValidLocalPath work with
-  // Windows paths
-  UnicodeString ARemoteDirectory = RemoteDirectory;
-  UnicodeString LocalPath;
-  while (!ARemoteDirectory.IsEmpty())
+  if (!AppConfiguration->TemporaryDirectoryDeterministic)
   {
-    UnicodeString Name = CutToChar(ARemoteDirectory, L'/', false);
-    if (!Name.IsEmpty())
-    {
-      AddToList(LocalPath, CopyParam.ValidLocalFileName(Name), L"/");
-    }
+    RootDirectory = IncludeTrailingBackslash(AppConfiguration->TemporaryDir());
+    Result = RootDirectory;
   }
-  Result = IncludeTrailingBackslash(Result + LocalPath);
+  else
+  {
+    RootDirectory = L"";
+    Result = AppConfiguration->ExpandedTemporaryDirectory();
+    Result = IncludeTrailingBackslash(Result);
+  }
+
+  if (AppConfiguration->TemporaryDirectoryAppendSession)
+  {
+    Result = IncludeTrailingBackslash(Result + MakeValidFileName(GetTerminal()->SessionData->SessionName));
+  }
+
+  if (AppConfiguration->TemporaryDirectoryAppendPath)
+  {
+    // OpenSCP: upstream's FromUnixPath and ValidLocalPath work with
+    // Windows paths
+    UnicodeString ARemoteDirectory = RemoteDirectory;
+    UnicodeString LocalPath;
+    while (!ARemoteDirectory.IsEmpty())
+    {
+      UnicodeString Name = CutToChar(ARemoteDirectory, L'/', false);
+      if (!Name.IsEmpty())
+      {
+        AddToList(LocalPath, CopyParam.ValidLocalFileName(Name), L"/");
+      }
+    }
+    Result = IncludeTrailingBackslash(Result + LocalPath);
+  }
 
   if (!ForceDirectories(ApiPath(Result)))
   {
@@ -158,7 +170,7 @@ void TScpCommanderForm::CustomExecuteFile(TOperationSide Side,
     Data->OriginalFileName = OriginalFileName;
     Data->Command = L""; // will be changed later for external editor
     // Empty SourceTimestamp indicates that checking was disabled when the file was opened
-    if (EditorCheckNotModified)
+    if (AppConfiguration->EditorCheckNotModified)
     {
       Data->SourceTimestamp = SourceTimestamp;
     }
@@ -488,7 +500,7 @@ void TScpCommanderForm::EditNew(TOperationSide Side)
 void TScpCommanderForm::EditedFileUploaded(TTerminal * ATerminal, HANDLE UploadCompleteEvent)
 {
   // Called by the thread of the queue
-  if (EditorCheckNotModified) // optimization
+  if (AppConfiguration->EditorCheckNotModified) // optimization
   {
     UnicodeString RemoteFilePath;
     {
@@ -621,7 +633,7 @@ void TScpCommanderForm::ExecutedFileChanged(
     }
   }
 
-  if (!Retry && EditorCheckNotModified && (Data->SourceTimestamp != TDateTime()))
+  if (!Retry && AppConfiguration->EditorCheckNotModified && (Data->SourceTimestamp != TDateTime()))
   {
     if (IsBusy())
     {
@@ -731,7 +743,7 @@ void TScpCommanderForm::ExecutedFileReload(const UnicodeString & FileName, TEdit
   ::rtl::TFinally Finally([&]() { DestroyProgressForm(); });
   TemporarilyDownloadFiles(FileList.get(), Data->ForceText, RootTempDir, TempDir, true);
 
-  if (EditorCheckNotModified && (Data->SourceTimestamp != TDateTime()))
+  if (AppConfiguration->EditorCheckNotModified && (Data->SourceTimestamp != TDateTime()))
   {
     Data->SourceTimestamp = File->Modification;
   }
@@ -953,8 +965,39 @@ void TScpCommanderForm::EditedFilesTerminalRemoved(TTerminal * ATerminal)
 //---------------------------------------------------------------------------
 void TScpCommanderForm::FileActivated(TDirPanel * APanel)
 {
-  // upstream's DoDirViewExecFile with its default double-click action (edit)
-  ExecuteFile(APanel->GetSide(), efDefaultEditor, NULL, false);
+  // upstream's DoDirViewExecFile (files only, the panel enters directories)
+  TOperationSide Side = APanel->GetSide();
+  switch (AppConfiguration->DoubleClickAction)
+  {
+    case dcaCopy:
+      {
+        TTerminal * Terminal = GetTerminal();
+        if ((Terminal != NULL) && Terminal->Active && OtherPanel(APanel)->IsReady() && !IsBusy())
+        {
+          // The focused file only
+          QModelIndex Current = APanel->GetDirView()->currentIndex();
+          if (Current.isValid())
+          {
+            std::unique_ptr<TStrings> FileList(CreateFileList(APanel, true, Current.row()));
+            if (FileList->Count > 0)
+            {
+              TTransferOperationParam Param;
+              Param.NoConfirmation = !AppConfiguration->CopyOnDoubleClickConfirmation;
+              ExecuteCopyMoveFileOperation(foCopy, Side, FileList.get(), Param);
+            }
+          }
+        }
+      }
+      break;
+
+    case dcaOpen:
+      ExecuteFile(Side, efShell, NULL, false);
+      break;
+
+    default:
+      ExecuteFile(Side, efDefaultEditor, NULL, false);
+      break;
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::DoEditFoundFiles(TTerminal * ATerminal, TStrings * FileList,

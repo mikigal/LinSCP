@@ -4,7 +4,9 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <Cryptography.h>
 #include <FileMasks.h>
+#include <PuttyTools.h>
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
@@ -14,6 +16,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFileDialog>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPlainTextEdit>
@@ -170,6 +174,28 @@ void ValidateMaskEdit(QPlainTextEdit * Edit, bool Directory)
   // edit; the whole text is selected
   ValidateMaskEditT(Mask, Edit, Directory ? 1 : 0,
     [Edit](int, int) { Edit->selectAll(); });
+}
+//---------------------------------------------------------------------------
+void BrowseForExecutable(QComboBox * Control, const UnicodeString & Title, bool FileNameCommand)
+{
+  UnicodeString Executable = ToUnicodeString(Control->currentText());
+  if (FileNameCommand)
+  {
+    ReformatFileNameCommand(Executable);
+  }
+  UnicodeString Program, Params, Dir;
+  SplitCommand(Executable, Program, Params, Dir);
+  UnicodeString ExpandedProgram = ExpandEnvironmentVariables(Program);
+  QString FileName = QFileDialog::getOpenFileName(Control->window(), ToQString(Title), ToQString(ExpandedProgram));
+  if (!FileName.isEmpty())
+  {
+    // preserve unexpanded file, if the destination has not changed actually
+    if (!IsPathToSameFile(ExpandedProgram, ToUnicodeString(FileName)))
+    {
+      Program = ToUnicodeString(FileName);
+    }
+    Control->setEditText(ToQString(FormatCommand(Program, Params)));
+  }
 }
 //---------------------------------------------------------------------------
 class TInputDialog : public TCustomDialog
@@ -582,26 +608,359 @@ void SessionNameValidate(const UnicodeString & Text, const UnicodeString & Origi
   }
 }
 //---------------------------------------------------------------------------
-bool DoMasterPasswordDialog()
+// The current master password, or a new one (upstream's
+// TMasterPasswordDialog of windows/UserInterface.cpp)
+class TMasterPasswordDialog : public TCustomDialog
 {
-  bool Result;
-  bool Valid;
-  do
+public:
+  explicit TMasterPasswordDialog(bool Current);
+
+  bool Execute(UnicodeString & CurrentPassword, UnicodeString & NewPassword);
+
+protected:
+  virtual void DoValidate() override;
+  virtual void DoChange(bool & CanSubmit) override;
+
+private:
+  QLineEdit * CurrentEdit;
+  QLineEdit * NewEdit;
+  QLineEdit * ConfirmEdit;
+
+  QLineEdit * CreatePasswordEdit(const char * Name, int Label);
+};
+//---------------------------------------------------------------------------
+TMasterPasswordDialog::TMasterPasswordDialog(bool Current)
+{
+  setObjectName(QStringLiteral("MasterPasswordDialog"));
+  setWindowTitle(ToQString(LoadStr(MASTER_PASSWORD_CAPTION)));
+
+  CurrentEdit = CreatePasswordEdit("CurrentEdit", MASTER_PASSWORD_CURRENT);
+  CurrentEdit->setEnabled(Current || AppConfiguration->UseMasterPassword);
+
+  if (!Current)
   {
-    UnicodeString Password;
-    Result = InputDialog(L"Master Password", LoadStr(CONSOLE_MASTER_PASSWORD_PROMPT).TrimRight(), Password, NULL, false, false);
-    Valid = !Result || AppConfiguration->ValidateMasterPassword(Password);
-    if (!Valid)
+    NewEdit = CreatePasswordEdit("NewEdit", MASTER_PASSWORD_NEW);
+
+    if (!AppConfiguration->UseMasterPassword)
     {
-      MessageDialog(LoadStr(MASTER_PASSWORD_INCORRECT), qtError, qaOK);
+      NewEdit->setFocus();
     }
-    else if (Result)
+
+    ConfirmEdit = CreatePasswordEdit("ConfirmEdit", MASTER_PASSWORD_CONFIRM);
+  }
+  else
+  {
+    NewEdit = NULL;
+    ConfirmEdit = NULL;
+  }
+  setMinimumWidth(fontMetrics().averageCharWidth() * 50);
+}
+//---------------------------------------------------------------------------
+QLineEdit * TMasterPasswordDialog::CreatePasswordEdit(const char * Name, int Label)
+{
+  QLineEdit * Result = new QLineEdit(this);
+  Result->setObjectName(QString::fromLatin1(Name));
+  Result->setEchoMode(QLineEdit::Password);
+  Result->setMaxLength(PasswordMaxLength());
+  AddEditLikeControl(Result, CreateLabel(LoadStr(Label)));
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool TMasterPasswordDialog::Execute(UnicodeString & CurrentPassword, UnicodeString & NewPassword)
+{
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    if (CurrentEdit->isEnabled())
     {
-      AppConfiguration->SetMasterPassword(Password);
+      CurrentPassword = ToUnicodeString(CurrentEdit->text());
+    }
+    if (NewEdit != NULL)
+    {
+      NewPassword = ToUnicodeString(NewEdit->text());
     }
   }
-  while (!Valid);
   return Result;
+}
+//---------------------------------------------------------------------------
+void TMasterPasswordDialog::DoChange(bool & CanSubmit)
+{
+  CanSubmit =
+    (!AppConfiguration->UseMasterPassword || (IsValidPassword(ToUnicodeString(CurrentEdit->text())) >= 0)) &&
+    ((NewEdit == NULL) || (IsValidPassword(ToUnicodeString(NewEdit->text())) >= 0)) &&
+    ((ConfirmEdit == NULL) || (IsValidPassword(ToUnicodeString(ConfirmEdit->text())) >= 0));
+  TCustomDialog::DoChange(CanSubmit);
+}
+//---------------------------------------------------------------------------
+void TMasterPasswordDialog::DoValidate()
+{
+  TCustomDialog::DoValidate();
+
+  if (AppConfiguration->UseMasterPassword &&
+      !AppConfiguration->ValidateMasterPassword(ToUnicodeString(CurrentEdit->text())))
+  {
+    CurrentEdit->setFocus();
+    CurrentEdit->selectAll();
+    throw Exception(MainInstructions(LoadStr(MASTER_PASSWORD_INCORRECT)));
+  }
+
+  if (NewEdit != NULL)
+  {
+    if (NewEdit->text() != ConfirmEdit->text())
+    {
+      ConfirmEdit->setFocus();
+      ConfirmEdit->selectAll();
+      throw Exception(MainInstructions(LoadStr(MASTER_PASSWORD_DIFFERENT)));
+    }
+
+    int Valid = IsValidPassword(ToUnicodeString(NewEdit->text()));
+    if (Valid <= 0)
+    {
+      DebugAssert(Valid == 0);
+      if (MessageDialog(LoadStr(MASTER_PASSWORD_SIMPLE2), qtWarning, qaOK | qaCancel) == qaCancel)
+      {
+        NewEdit->setFocus();
+        NewEdit->selectAll();
+        Abort();
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+static bool DoMasterPasswordDialog(bool Current, UnicodeString & NewPassword)
+{
+  TMasterPasswordDialog Dialog(Current);
+  UnicodeString CurrentPassword;
+  bool Result = Dialog.Execute(CurrentPassword, NewPassword);
+  if (Result)
+  {
+    if ((Current || AppConfiguration->UseMasterPassword) &&
+        DebugAlwaysTrue(!CurrentPassword.IsEmpty()))
+    {
+      AppConfiguration->SetMasterPassword(CurrentPassword);
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool DoMasterPasswordDialog()
+{
+  UnicodeString NewPassword;
+  bool Result = DoMasterPasswordDialog(true, NewPassword);
+  DebugAssert(NewPassword.IsEmpty());
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool DoChangeMasterPasswordDialog(UnicodeString & NewPassword)
+{
+  return DoMasterPasswordDialog(false, NewPassword);
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+class TSshHostCADialog : public TCustomDialog
+{
+public:
+  explicit TSshHostCADialog(bool Add);
+  bool Execute(TSshHostCA & SshHostCA);
+
+protected:
+  virtual void DoChange(bool & CanSubmit) override;
+  virtual void DoValidate() override;
+
+private:
+  QLineEdit * NameEdit;
+  QLineEdit * PublicKeyEdit;
+  QLineEdit * PublicKeyLabel;
+  QLineEdit * ValidityExpressionEdit;
+  QCheckBox * PermitRsaSha1Check;
+  QCheckBox * PermitRsaSha256Check;
+  QCheckBox * PermitRsaSha512Check;
+
+  void BrowseButtonClick();
+  QCheckBox * AddValidityCheckBox(QWidget * Parent, int CaptionStrPart);
+  bool ValidatePublicKey(UnicodeString & Status);
+};
+//---------------------------------------------------------------------------
+TSshHostCADialog::TSshHostCADialog(bool Add)
+{
+  setObjectName(QStringLiteral("SshHostCADialog"));
+  setWindowTitle(ToQString(LoadStr(Add ? SSH_HOST_CA_ADD : SSH_HOST_CA_EDIT)));
+
+  NameEdit = new QLineEdit(this);
+  NameEdit->setObjectName(QStringLiteral("NameEdit"));
+  AddEditLikeControl(NameEdit, CreateLabel(LoadStr(SSH_HOST_CA_NAME)));
+
+  QWidget * PublicKeyRow = new QWidget(this);
+  QHBoxLayout * PublicKeyLayout = new QHBoxLayout(PublicKeyRow);
+  PublicKeyLayout->setContentsMargins(0, 0, 0, 0);
+  PublicKeyEdit = new QLineEdit(PublicKeyRow);
+  PublicKeyEdit->setObjectName(QStringLiteral("PublicKeyEdit"));
+  PublicKeyLayout->addWidget(PublicKeyEdit, 1);
+  QPushButton * BrowseButton = new QPushButton(ToQString(LoadStr(SSH_HOST_CA_BROWSE)), PublicKeyRow);
+  BrowseButton->setObjectName(QStringLiteral("BrowseButton"));
+  BrowseButton->setAutoDefault(false);
+  connect(BrowseButton, &QPushButton::clicked, this, [this]() { ExecuteHandler([this]() { BrowseButtonClick(); }); });
+  PublicKeyLayout->addWidget(BrowseButton);
+  QLabel * PublicKeyEditLabel = CreateLabel(LoadStr(SSH_HOST_CA_PUBLIC_KEY));
+  PublicKeyEditLabel->setBuddy(PublicKeyEdit);
+  AddWidget(PublicKeyEditLabel);
+  AddWidget(PublicKeyRow);
+  connect(PublicKeyEdit, &QLineEdit::textChanged, this, [this]() { Change(); });
+
+  PublicKeyLabel = new QLineEdit(this);
+  PublicKeyLabel->setObjectName(QStringLiteral("PublicKeyLabel"));
+  PublicKeyLabel->setReadOnly(true);
+  PublicKeyLabel->setFrame(false);
+  PublicKeyLabel->setFocusPolicy(Qt::NoFocus);
+  AddWidget(PublicKeyLabel);
+
+  ValidityExpressionEdit = new QLineEdit(this);
+  ValidityExpressionEdit->setObjectName(QStringLiteral("ValidityExpressionEdit"));
+  AddEditLikeControl(ValidityExpressionEdit, CreateLabel(LoadStr(SSH_HOST_CA_PUBLIC_HOSTS)));
+
+  QWidget * SignaturesRow = new QWidget(this);
+  QHBoxLayout * SignaturesLayout = new QHBoxLayout(SignaturesRow);
+  SignaturesLayout->setContentsMargins(0, 0, 0, 0);
+  SignaturesLayout->addWidget(new QLabel(ToQString(LoadStr(SSH_HOST_CA_SIGNATURE_TYPES)), SignaturesRow));
+  PermitRsaSha1Check = AddValidityCheckBox(SignaturesRow, 1);
+  PermitRsaSha1Check->setObjectName(QStringLiteral("PermitRsaSha1Check"));
+  PermitRsaSha256Check = AddValidityCheckBox(SignaturesRow, 2);
+  PermitRsaSha256Check->setObjectName(QStringLiteral("PermitRsaSha256Check"));
+  PermitRsaSha512Check = AddValidityCheckBox(SignaturesRow, 3);
+  PermitRsaSha512Check->setObjectName(QStringLiteral("PermitRsaSha512Check"));
+  SignaturesLayout->addStretch(1);
+  AddWidget(SignaturesRow);
+  setMinimumWidth(fontMetrics().averageCharWidth() * 80);
+}
+//---------------------------------------------------------------------------
+QCheckBox * TSshHostCADialog::AddValidityCheckBox(QWidget * Parent, int CaptionStrPart)
+{
+  QCheckBox * Result = new QCheckBox(ToQString(LoadStrPart(SSH_HOST_CA_SIGNATURES, CaptionStrPart)), Parent);
+  connect(Result, &QCheckBox::toggled, this, [this]() { Change(); });
+  Parent->layout()->addWidget(Result);
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool TSshHostCADialog::ValidatePublicKey(UnicodeString & Status)
+{
+  bool Result = false;
+  UnicodeString PublicKeyText = ToUnicodeString(PublicKeyEdit->text()).Trim();
+  if (PublicKeyText.IsEmpty())
+  {
+    Status = LoadStr(SSH_HOST_CA_NO_KEY);
+  }
+  else
+  {
+    RawByteString PublicKeyDummy;
+    try
+    {
+      ParseCertificatePublicKey(PublicKeyText, PublicKeyDummy, Status);
+      Result = true;
+    }
+    catch (Exception & E)
+    {
+      Status = E.Message;
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TSshHostCADialog::DoChange(bool & CanSubmit)
+{
+  TCustomDialog::DoChange(CanSubmit);
+
+  UnicodeString PublicKeyStatus;
+  ValidatePublicKey(PublicKeyStatus);
+  // Should drop "SHA256:" prefix, the way we do in TSecureShell::VerifyHostKey
+  PublicKeyLabel->setText(ToQString(PublicKeyStatus));
+
+  CanSubmit = !NameEdit->text().trimmed().isEmpty() && !PublicKeyEdit->text().trimmed().isEmpty();
+}
+//---------------------------------------------------------------------------
+void TSshHostCADialog::DoValidate()
+{
+  TCustomDialog::DoValidate();
+
+  UnicodeString PublicKeyStatus;
+  if (!ValidatePublicKey(PublicKeyStatus))
+  {
+    PublicKeyEdit->setFocus();
+    throw Exception(MainInstructions(PublicKeyStatus));
+  }
+
+  if (ValidityExpressionEdit->text().trimmed().isEmpty())
+  {
+    ValidityExpressionEdit->setFocus();
+    throw Exception(MainInstructions(LoadStr(SSH_HOST_CA_NO_HOSTS)));
+  }
+
+  UnicodeString Error;
+  int ErrorStart, ErrorLen;
+  if (!IsCertificateValidityExpressionValid(ToUnicodeString(ValidityExpressionEdit->text()), Error, ErrorStart, ErrorLen))
+  {
+    std::unique_ptr<TStrings> MoreMessages(TextToStringList(Error));
+    MoreMessageDialog(MainInstructions(LoadStr(SSH_HOST_CA_HOSTS_INVALID)), MoreMessages.get(), qtError, qaOK);
+
+    ValidityExpressionEdit->setFocus();
+    ValidityExpressionEdit->setSelection(ErrorStart, ErrorLen);
+    Abort();
+  }
+}
+//---------------------------------------------------------------------------
+bool TSshHostCADialog::Execute(TSshHostCA & SshHostCA)
+{
+  NameEdit->setText(ToQString(SshHostCA.Name));
+  RawByteString PublicKey = SshHostCA.PublicKey;
+  PublicKeyEdit->setText(ToQString(EncodeStrToBase64(PublicKey)));
+  ValidityExpressionEdit->setText(ToQString(SshHostCA.ValidityExpression));
+  PermitRsaSha1Check->setChecked(SshHostCA.PermitRsaSha1);
+  PermitRsaSha256Check->setChecked(SshHostCA.PermitRsaSha256);
+  PermitRsaSha512Check->setChecked(SshHostCA.PermitRsaSha512);
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    SshHostCA.Name = ToUnicodeString(NameEdit->text());
+    SshHostCA.PublicKey = DecodeBase64ToStr(ToUnicodeString(PublicKeyEdit->text()));
+    SshHostCA.ValidityExpression = ToUnicodeString(ValidityExpressionEdit->text());
+    SshHostCA.PermitRsaSha1 = PermitRsaSha1Check->isChecked();
+    SshHostCA.PermitRsaSha256 = PermitRsaSha256Check->isChecked();
+    SshHostCA.PermitRsaSha512 = PermitRsaSha512Check->isChecked();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TSshHostCADialog::BrowseButtonClick()
+{
+  QString FileName =
+    QFileDialog::getOpenFileName(this, ToQString(LoadStr(SSH_HOST_CA_BROWSE_TITLE)), QString(),
+      FileDialogFilter(LoadStr(SSH_HOST_CA_BROWSE_FILTER)));
+  if (!FileName.isEmpty())
+  {
+    UnicodeString AFileName = ToUnicodeString(FileName);
+    UnicodeString Algorithm, Comment;
+    bool HasCertificate;
+    RawByteString PublicKey;
+    try
+    {
+      PublicKey = LoadPublicKey(AFileName, Algorithm, Comment, HasCertificate);
+    }
+    catch (Exception & E)
+    {
+      throw ExtException(&E, MainInstructions(FMTLOAD(SSH_HOST_CA_LOAD_ERROR, (AFileName))));
+    }
+
+    if (NameEdit->text().isEmpty())
+    {
+      NameEdit->setText(ToQString(Comment));
+    }
+    PublicKeyEdit->setText(ToQString(EncodeStrToBase64(PublicKey)));
+  }
+}
+//---------------------------------------------------------------------------
+bool DoSshHostCADialog(bool Add, TSshHostCA & SshHostCA)
+{
+  TSshHostCADialog Dialog(Add);
+  return Dialog.Execute(SshHostCA);
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------

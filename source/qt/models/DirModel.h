@@ -70,6 +70,8 @@ public:
   // The size and count of the files, without the parent directory
   void Totals(__int64 & Size, int & Count) const;
   TDirViewColumn Column(int Index) const { return FColumns[Index]; }
+  // The preferences of the display: the format of the sizes, the sorting
+  void SetDisplayOptions(TFormatBytesStyle FormatSizeBytes, bool NaturalOrderNumericalSorting, bool AlwaysSortDirectoriesByName);
 
 protected:
   void SetItems(std::vector<TDirViewItem> && Items);
@@ -81,6 +83,9 @@ private:
   int FSortColumn;
   Qt::SortOrder FSortOrder;
   int FEditableRow;
+  TFormatBytesStyle FFormatSizeBytes;
+  bool FNaturalOrderNumericalSorting;
+  bool FAlwaysSortDirectoriesByName;
 
   void SortItems();
 };
@@ -109,7 +114,7 @@ public:
   virtual ~TRemoteDirModel();
 
   // A copy of the files of the terminal's current directory
-  void Load(TRemoteFileList * Files, bool ShowHiddenFiles);
+  void Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool ShowInaccesibleDirectories);
   void Clear();
 
 protected:

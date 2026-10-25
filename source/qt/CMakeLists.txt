@@ -28,6 +28,7 @@ add_library(openscp_qt STATIC
   dialogs/CustomCommandDialog.cpp
   dialogs/CustomDialog.cpp
   dialogs/EditMaskDialog.cpp
+  dialogs/EditorPreferencesDialog.cpp
   dialogs/EditorForm.cpp
   dialogs/FileFindDialog.cpp
   dialogs/FullSynchronizeDialog.cpp
@@ -36,6 +37,7 @@ add_library(openscp_qt STATIC
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
   dialogs/OpenDirectoryDialog.cpp
+  dialogs/PreferencesDialog.cpp
   dialogs/ProgressForm.cpp
   dialogs/PropertiesDialog.cpp
   dialogs/RemoteTransferDialog.cpp

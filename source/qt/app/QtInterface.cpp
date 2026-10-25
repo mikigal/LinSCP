@@ -22,10 +22,10 @@ static std::chrono::steady_clock::time_point LastGUIUpdate;
 //---------------------------------------------------------------------------
 void __fastcall ShowExtendedException(Exception * E)
 {
-  ShowExtendedExceptionEx(NULL, E);
+  ShowExtendedExceptionEx(NULL, E, false);
 }
 //---------------------------------------------------------------------------
-void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
+void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E, bool WhileIdle)
 {
   bool Show = ShouldDisplayException(E);
   TTerminalManager * Manager = TTerminalManager::Instance(false);
@@ -115,27 +115,61 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
   else if (ForActiveTerminal)
   {
     unsigned int Answer = qaOK;
+    UnicodeString DisconnectError;
     if (Show)
     {
-      // Upstream offers a few more choices (a timeout of the automatic
-      // reconnect, closing the session silently), which are configured in
-      // the preferences
       EFatal * FatalException = dynamic_cast<EFatal *>(E);
       bool InactiveTerminationMessage = (FatalException != NULL) && FatalException->InactiveTerminationMessage;
-      TMessageParams Params;
-      if (InactiveTerminationMessage)
+
+      if (!InactiveTerminationMessage && GUIConfiguration->SessionSilentDisconnect && WhileIdle)
       {
-        Params.Params |= mpNeverAskAgainCheck;
-        Params.NeverAskAgainTitle = LoadStr(ALWAYS_RECONNECT);
-        Params.NeverAskAgainAnswer = qaRetry;
+        Answer = qaOK;
+        DisconnectError = E->Message;
       }
-      Answer = FatalExceptionMessageDialog(E, qtError, EmptyStr, qaOK, &Params);
-      if (Answer == qaNeverAskAgain)
+      else
       {
-        Answer = Params.NeverAskAgainAnswer;
+        TMessageParams Params;
+        TManagedTerminal * ActiveTerminal = Manager->ActiveTerminal;
+        // The reconnect is automatic after a while, unless reconnecting
+        // for too long already (upstream also hooks the dialog to retry
+        // the upload of an edited file in it)
+        if ((Configuration->SessionReopenTimeout == 0) ||
+            (ActiveTerminal->ReopenStart == TDateTime()) ||
+            (int(double(Now() - ActiveTerminal->ReopenStart) * MSecsPerDay) < Configuration->SessionReopenTimeout))
+        {
+          Params.Timeout = GUIConfiguration->SessionReopenAutoIdleOn ? GUIConfiguration->SessionReopenAutoIdle : 0;
+          Params.TimeoutAnswer = qaRetry;
+          Params.TimeoutResponse = Params.TimeoutAnswer;
+        }
+
+        bool PermanentTerminal = ActiveTerminal->Permanent;
         if (InactiveTerminationMessage)
         {
-          GUIConfiguration->SessionReopenAutoInactive = true;
+          Params.Params |= mpNeverAskAgainCheck;
+          Params.NeverAskAgainTitle = LoadStr(ALWAYS_RECONNECT);
+          Params.NeverAskAgainAnswer = qaRetry;
+        }
+        // For now - maybe it is worth doing even for non-permanent sessions
+        else if (PermanentTerminal && WhileIdle)
+        {
+          Params.Params |= mpNeverAskAgainCheck;
+          Params.NeverAskAgainTitle = LoadStr(NEVER_POPUP_DISCONNECT);
+          Params.NeverAskAgainAnswer = qaOK;
+        }
+
+        Answer = FatalExceptionMessageDialog(E, qtError, EmptyStr, qaOK, &Params);
+
+        if (Answer == qaNeverAskAgain)
+        {
+          Answer = Params.NeverAskAgainAnswer;
+          if (InactiveTerminationMessage)
+          {
+            GUIConfiguration->SessionReopenAutoInactive = true;
+          }
+          else if (DebugAlwaysTrue(PermanentTerminal))
+          {
+            GUIConfiguration->SessionSilentDisconnect = true;
+          }
         }
       }
     }
@@ -146,7 +180,7 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
     }
     else
     {
-      Manager->DisconnectActiveTerminalIfPermanentFreeOtherwise(UnicodeString());
+      Manager->DisconnectActiveTerminalIfPermanentFreeOtherwise(DisconnectError);
     }
   }
   else if (Show)

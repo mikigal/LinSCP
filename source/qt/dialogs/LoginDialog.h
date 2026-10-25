@@ -44,6 +44,8 @@ private:
 
   QTreeWidget * SessionTree;
   QPushButton * ManageButton;
+  QPushButton * ToolsMenuButton;
+  QMenu * ToolsPopupMenu;
   QWidget * SitePanel;
   QGroupBox * BasicGroup;
   QLabel * TransferProtocolLabel;
@@ -83,6 +85,7 @@ private:
   QAction * DeleteSessionAction;
   QAction * RenameSessionAction;
   QAction * NewSessionFolderAction;
+  QAction * PreferencesAction;
   QAction * CloneToNewSiteAction;
   QAction * EditCancelAction;
   QAction * LoginAction;
@@ -197,6 +200,7 @@ private:
   void SaveAsSessionActionExecute();
   void DeleteSessionActionExecute();
   void RenameSessionActionExecute();
+  void PreferencesActionExecute();
   void NewSessionFolderActionExecute();
   void CloneToNewSite();
   void EditCancelActionExecute();

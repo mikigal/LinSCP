@@ -24,6 +24,8 @@ public:
   // On the session bus, the service is served once the instances before
   // this one end; false when there is no bus
   bool Register();
+  // No other instance runs (or there is no bus)
+  bool IsOnlyInstance() const { return FOnlyInstance; }
 
   // Takes the arguments of the command line of another instance (and the
   // token to activate its window with); false when it cannot open them
@@ -35,9 +37,12 @@ public Q_SLOTS:
 
 private:
   bool FRegistered;
+  bool FOnlyInstance;
 };
 //---------------------------------------------------------------------------
 // Passes the arguments to a running instance; true when it took them
 bool SendToAnotherInstance(const QStringList & Arguments);
+// Another instance runs (queued for the service, as this one)
+bool AnyOtherInstanceOfSelf();
 //---------------------------------------------------------------------------
 #endif

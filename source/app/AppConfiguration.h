@@ -14,10 +14,33 @@ class TCustomCommandList;
 class TEditorList;
 class TEditorPreferences;
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
+// The passwords are encrypted with another master password (or without it)
+typedef std::function<void()> TMasterPasswordRecryptEvent;
 // When the queue list is shown (upstream's WinConfiguration.h)
 enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
 // How the tabs of sessions with the same name are told apart
 enum TSessionTabNameFormat : int { stnfNone, stnfShortPath, stnfShortPathTrunc };
+// The path of the current panel in the title of the window
+enum TPathInCaption : int { picShort, picFull, picNone };
+// What double-click does on a file (upstream's WinConfiguration.h)
+enum TDoubleClickAction : int { dcaOpen = 0, dcaCopy = 1, dcaEdit = 2 };
+// How a panel searches as letters are typed (CustomWinConfiguration.h)
+enum TIncrementalSearch : int { isOff = -1, isNameStartOnly, isName, isAll };
+// The style bits of fonts (VCL's TFontStyles)
+const int fsBold = 0x01;
+const int fsItalic = 0x02;
+const int fsUnderline = 0x04;
+const int fsStrikeOut = 0x08;
+// A font of the configuration, the default one when the name is empty
+struct TFontConfiguration
+{
+  UnicodeString FontName;
+  int FontSize = 0;
+  int FontCharset = 1; // DEFAULT_CHARSET
+  int FontStyle = 0;
+
+  bool operator !=(const TFontConfiguration & rhc) const;
+};
 // An option with its field, accessors and property; its key is its name
 #define APP_CONFIG_PROPERTY(TYPE, NAME) \
   public: \
@@ -50,6 +73,9 @@ struct TEditorConfiguration
   bool WarnOrLargeFileSize;
   // KiB
   int LargeFileSize;
+  // The colors of the text and the background, 0 for the default
+  TColor FontColor;
+  TColor BackgroundColor;
 
   bool operator !=(const TEditorConfiguration & rhc) const;
 };
@@ -66,6 +92,16 @@ public:
   void __fastcall SetMasterPassword(UnicodeString value);
   bool __fastcall ValidateMasterPassword(UnicodeString value);
   void __fastcall AskForMasterPasswordIfNotSet();
+  // The passwords of the sites are encrypted with the new master password,
+  // or not at all; the errors are collected
+  void __fastcall ChangeMasterPassword(UnicodeString value, TStrings * RecryptPasswordErrors);
+  void __fastcall ClearMasterPassword(TStrings * RecryptPasswordErrors);
+  // The directory for the temporary directories, $TMPDIR unless
+  // DDTemporaryDirectory
+  UnicodeString ExpandedTemporaryDirectory();
+  // The temporary directories left by previous runs
+  TStrings * FindTemporaryFolders();
+  void CleanupTemporaryFolders(TStrings * Folders);
 
   // $XDG_CONFIG_HOME/openscp/openscp.ini, used unless /ini= says otherwise
   static UnicodeString __fastcall DefaultIniFileStorageName();
@@ -204,6 +240,8 @@ public:
   __declspec(property(get = GetEditorList, put = SetEditorList)) const TEditorList * EditorList;
   __declspec(property(get = GetOnMasterPasswordPrompt, put = SetOnMasterPasswordPrompt))
     TMasterPasswordPromptEvent OnMasterPasswordPrompt;
+  // The copies of the sites (of the site manager) are recrypted
+  TMasterPasswordRecryptEvent OnMasterPasswordRecrypt;
 
   // The sessions and their tabs
   // The number of sessions above which opening another is confirmed
@@ -235,6 +273,52 @@ public:
   APP_CONFIG_PROPERTY(bool, PreserveLocalDirectory)
   // The tabs of the sessions are shown (Interface\Commander)
   APP_CONFIG_PROPERTY(bool, SessionsTabs)
+  APP_CONFIG_PROPERTY(bool, SessionTabCaptionTruncation)
+  APP_CONFIG_PROPERTY(TPathInCaption, PathInCaption)
+
+  // Moving local files to the trash is confirmed, Delete moves them there
+  APP_CONFIG_PROPERTY(bool, ConfirmRecycling)
+  APP_CONFIG_PROPERTY(bool, DeleteToRecycleBin)
+  // A download to the temporary directory warns when there is not enough
+  // space (the size of the files by the ratio)
+  APP_CONFIG_PROPERTY(bool, DDWarnLackOfTempSpace)
+  APP_CONFIG_PROPERTY(double, DDWarnLackOfTempSpaceRatio)
+  // The temporary directory (edited and dragged files), the system one when
+  // empty
+  APP_CONFIG_PROPERTY(UnicodeString, DDTemporaryDirectory)
+  // The temporary copies of edited remote files are in a directory of the
+  // session, of the remote path, in a directory that does not change
+  APP_CONFIG_PROPERTY(bool, TemporaryDirectoryAppendSession)
+  APP_CONFIG_PROPERTY(bool, TemporaryDirectoryAppendPath)
+  APP_CONFIG_PROPERTY(bool, TemporaryDirectoryDeterministic)
+  // The temporary directories of previous runs are deleted on startup,
+  // when confirmed
+  APP_CONFIG_PROPERTY(bool, TemporaryDirectoryCleanup)
+  APP_CONFIG_PROPERTY(bool, ConfirmTemporaryDirectoryCleanup)
+
+  // The panels
+  // The home directory of the local panel is the local directory of the
+  // site
+  APP_CONFIG_PROPERTY(bool, DefaultDirIsHome)
+  // Renaming selects the extension too
+  APP_CONFIG_PROPERTY(bool, RenameWholeName)
+  // Remote directories that cannot be read are listed
+  APP_CONFIG_PROPERTY(bool, ShowInaccesibleDirectories)
+  APP_CONFIG_PROPERTY(TDoubleClickAction, DoubleClickAction)
+  APP_CONFIG_PROPERTY(bool, CopyOnDoubleClickConfirmation)
+  // Numbers in names sort by their values; directories sort by name
+  // whatever the column
+  APP_CONFIG_PROPERTY(bool, NaturalOrderNumericalSorting)
+  APP_CONFIG_PROPERTY(bool, AlwaysSortDirectoriesByName)
+  APP_CONFIG_PROPERTY(TFormatBytesStyle, FormatSizeBytes)
+  APP_CONFIG_PROPERTY(TIncrementalSearch, PanelSearch)
+  // The remote directory is reloaded after the interval
+  APP_CONFIG_PROPERTY(bool, RefreshRemotePanel)
+  APP_CONFIG_PROPERTY(TDateTime, RefreshRemotePanelInterval)
+  APP_CONFIG_PROPERTY(TFontConfiguration, PanelFont)
+  // An edited remote file is uploaded only when it did not change on the
+  // server meanwhile (confirmed otherwise)
+  APP_CONFIG_PROPERTY(bool, EditorCheckNotModified)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);
@@ -288,6 +372,7 @@ private:
   bool FCustomCommandsDefaults;
 
   void __fastcall AskForMasterPassword();
+  void __fastcall RecryptPasswords(TStrings * RecryptPasswordErrors);
   void ClearHistory();
   void DefaultHistory();
 };

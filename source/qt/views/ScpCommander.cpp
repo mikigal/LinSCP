@@ -26,17 +26,15 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QMenuBar>
+#include <QProcess>
 #include <QSplitter>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QTabBar>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeView>
 #include <QTreeWidget>
-//---------------------------------------------------------------------------
-// Upstream's DeleteToRecycleBin preference (on by default): Delete moves
-// local files to the trash, Shift+Delete deletes them
-static const bool DeleteToRecycleBin = true;
 //---------------------------------------------------------------------------
 TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   QMainWindow(Parent)
@@ -46,6 +44,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FProgressForm = nullptr;
   FSynchronizeProgressForm = nullptr;
   FManagedSession = NULL;
+  FPendingTempSpaceWarn = false;
   FUpdatingSessionTabs = false;
   FNewSessionNesting = 0;
   FFirstTerminal = true;
@@ -128,6 +127,15 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   connect(FRemotePanel, &TRemoteDirPanel::NewSessionRequested, this, [this]() { ExecuteHandler([this]() { NewSession(); }); });
   connect(FRemotePanel, &TRemoteDirPanel::ReconnectRequested, this,
     [this]() { ExecuteHandler([this]() { ReconnectSessionActionExecute(); }); });
+  connect(FRemotePanel, &TRemoteDirPanel::FilesLoaded, this, [this]()
+  {
+    if (FManagedSession != NULL)
+    {
+      FManagedSession->DirectoryLoaded = Now();
+    }
+  });
+  // The path in the title of the window
+  connect(FRemotePanel, &TDirPanel::DirectoryChanged, this, [this]() { UpdateCaption(); });
 
   NewSessionAction = CreateAction("NewSessionAction", tr("&New Session..."), QStringLiteral("network-connect"),
     { QKeySequence(Qt::CTRL | Qt::Key_N) }, &TScpCommanderForm::NewSessionActionExecute);
@@ -166,6 +174,9 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   SessionsTabsAction2->setToolTip(tr("Hide/show tabs"));
   SessionsTabsAction2->setCheckable(true);
   SessionsTabsAction2->setChecked(AppConfiguration->SessionsTabs);
+  PreferencesAction = CreateAction("PreferencesAction", tr("&Preferences..."), QStringLiteral("configure"),
+    { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_P) }, &TScpCommanderForm::PreferencesActionExecute);
+  PreferencesAction->setToolTip(tr("Show/change user preferences"));
   SessionsPageControl->setVisible(AppConfiguration->SessionsTabs);
   for (int Index = 0; Index < 10; Index++)
   {
@@ -251,8 +262,9 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FSessionStatusLabel->setObjectName(QStringLiteral("SessionStatusLabel"));
   statusBar()->addPermanentWidget(FSessionStatusLabel);
 
-  FLocalPanel->SetShowHiddenFiles(AppConfiguration->ShowHiddenFiles);
-  FRemotePanel->SetShowHiddenFiles(AppConfiguration->ShowHiddenFiles);
+  FLocalPanel->ApplyConfiguration();
+  FRemotePanel->ApplyConfiguration();
+  SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
   SessionChanged();
@@ -321,6 +333,15 @@ void TScpCommanderForm::Idle()
     {
       FLocalPanel->Reload();
       FRefreshLocalDirectory = false;
+    }
+
+    if (AppConfiguration->RefreshRemotePanel)
+    {
+      if ((FManagedSession != NULL) && (FManagedSession->Status == ssOpened) && FRemotePanel->IsReady() &&
+          (Now() - FManagedSession->DirectoryLoaded > AppConfiguration->RefreshRemotePanelInterval))
+      {
+        FRemotePanel->Reload();
+      }
     }
   }
 
@@ -453,6 +474,8 @@ void TScpCommanderForm::CreateMenus()
   QMenu * QueueViewMenu = OptionsMenu->addMenu(tr("&Queue"));
   QueueViewMenu->setObjectName(QStringLiteral("QueueViewMenu"));
   QueueViewMenu->addActions(FQueueShowGroup->actions());
+  OptionsMenu->addSeparator();
+  OptionsMenu->addAction(PreferencesAction);
 
   QMenu * RemoteMenu = Menu->addMenu(tr("&Remote"));
   RemoteMenu->setObjectName(QStringLiteral("RemoteMenuButton"));
@@ -626,11 +649,39 @@ void TScpCommanderForm::PuttyActionExecute()
   }
 }
 //---------------------------------------------------------------------------
+void TScpCommanderForm::PreferencesActionExecute()
+{
+  if (!IsBusy())
+  {
+    // The rules of new presets from the current session
+    std::unique_ptr<TCopyParamRuleData> CopyParamRuleData;
+    TTerminal * Terminal = GetTerminal();
+    if ((Terminal != NULL) && Terminal->Active && FRemotePanel->IsReady())
+    {
+      CopyParamRuleData.reset(new TCopyParamRuleData());
+      CopyParamRuleData->HostName = Terminal->SessionData->HostNameExpanded;
+      CopyParamRuleData->UserName = Terminal->SessionData->UserNameExpanded;
+      CopyParamRuleData->RemoteDirectory = FRemotePanel->GetPath();
+      CopyParamRuleData->LocalDirectory = FLocalPanel->GetPath();
+    }
+    TPreferencesDialogData PreferencesData;
+    PreferencesData.CopyParamRuleData = CopyParamRuleData.get();
+    DoPreferencesDialog(pmDefault, &PreferencesData);
+  }
+}
+//---------------------------------------------------------------------------
 void TScpCommanderForm::ConfigurationChanged()
 {
   UpdateTransferList();
   UpdateBookmarkShortCuts();
   UpdateCustomCommandShortCuts();
+  // The preferences
+  ShowHiddenFilesAction->setChecked(AppConfiguration->ShowHiddenFiles);
+  FLocalPanel->ApplyConfiguration();
+  FRemotePanel->ApplyConfiguration();
+  SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
+  UpdateQueueView();
+  UpdateCaption();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()
@@ -752,10 +803,63 @@ void TScpCommanderForm::TransferPresetAutoSelect()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateCaption()
 {
+  // upstream's TTerminalManager::UpdateAppTitle
   TTerminalManager * Manager = TTerminalManager::Instance(false);
   UnicodeString SessionName = (Manager != NULL) ? Manager->GetActiveSessionAppTitle() : UnicodeString();
-  setWindowTitle(ToQString(FormatMainFormCaption(UnicodeString(), SessionName)));
+  UnicodeString Title = FormatMainFormCaption(UnicodeString(), SessionName);
+  UnicodeString Path = PathForCaption();
+  if (!Path.IsEmpty())
+  {
+    Title = Path + TitleSeparator + Title;
+  }
+  setWindowTitle(ToQString(Title));
   UpdateTrayIcon();
+}
+//---------------------------------------------------------------------------
+UnicodeString TScpCommanderForm::PathForCaption()
+{
+  UnicodeString Result;
+  TTerminal * Terminal = GetTerminal();
+  if ((Terminal != NULL) && FRemotePanel->IsReady())
+  {
+    switch (AppConfiguration->PathInCaption)
+    {
+      case picShort:
+        Result = ExtractShortName(Terminal->CurrentDirectory, true);
+        break;
+
+      case picFull:
+        Result = Terminal->CurrentDirectory;
+        break;
+
+      default:
+        break;
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::OperationComplete(const TDateTime & StartTime)
+{
+  if (GUIConfiguration->BeepOnFinish &&
+      (Now() - StartTime > GUIConfiguration->BeepOnFinishAfter))
+  {
+    // OpenSCP: the sound of the freedesktop sound theme, or of a file
+    UnicodeString BeepSound = GUIConfiguration->BeepSound;
+    QString Player = QStandardPaths::findExecutable(QStringLiteral("canberra-gtk-play"));
+    if (Player.isEmpty())
+    {
+      QApplication::beep();
+    }
+    else if (!ExtractFileExt(BeepSound).IsEmpty())
+    {
+      QProcess::startDetached(Player, { QStringLiteral("-f"), ToQString(BeepSound) });
+    }
+    else
+    {
+      QProcess::startDetached(Player, { QStringLiteral("-i"), QStringLiteral("complete"), QStringLiteral("-d"), ToQString(AppName) });
+    }
+  }
 }
 //---------------------------------------------------------------------------
 //---------------------------------------------------------------------------
@@ -786,10 +890,11 @@ void TScpCommanderForm::closeEvent(QCloseEvent * Event)
   }
 }
 //---------------------------------------------------------------------------
-TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel, bool FullPath)
+TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel, bool FullPath, int ARow)
 {
   std::unique_ptr<TStringList> Result(new TStringList());
-  for (int Row : Panel->GetSelectedRows())
+  std::vector<int> Rows = (ARow >= 0) ? std::vector<int>{ ARow } : Panel->GetSelectedRows();
+  for (int Row : Rows)
   {
     const TDirViewItem & Item = Panel->GetModel()->Item(Row);
     if (Panel == FLocalPanel)
@@ -927,7 +1032,7 @@ bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, T
   TTransferType Type = (Operation == foCopy ? ttCopy : ttMove);
   UnicodeString TargetDirectory = Param.TargetDirectory.IsEmpty() ? Target->GetPath() : Param.TargetDirectory;
   TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
-  bool Confirm = !Param.DragDrop || (AppConfiguration->DDTransferConfirmation != asOff);
+  bool Confirm = !Param.NoConfirmation && (!Param.DragDrop || (AppConfiguration->DDTransferConfirmation != asOff));
   bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, Confirm, Param.DragDrop);
   if (Result)
   {
@@ -1184,24 +1289,47 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative)
 {
-  if (AppConfiguration->ConfirmDeleting)
+  // Delete moves local files to the trash, Shift+Delete deletes them
+  // (by default); the remote ones go to the recycle bin of the site
+  bool Recycle;
+  if (Side == osLocal)
+  {
+    Recycle = (AppConfiguration->DeleteToRecycleBin != Alternative);
+  }
+  else
+  {
+    TTerminal * Terminal = GetTerminal();
+    Recycle =
+      (Terminal->SessionData->DeleteToRecycleBin != Alternative) &&
+      !Terminal->SessionData->RecycleBinPath.IsEmpty() &&
+      !Terminal->IsRecycledFile(FileList->Strings[0]);
+  }
+
+  if (Recycle ? AppConfiguration->ConfirmRecycling : AppConfiguration->ConfirmDeleting)
   {
     UnicodeString Message;
     if (FileList->Count == 1)
     {
       UnicodeString FileName =
         (Side == osLocal) ? ExtractFileName(FileList->Strings[0]) : UnixExtractFileName(FileList->Strings[0]);
-      Message = FMTLOAD(CONFIRM_DELETE_FILE, (FileName));
+      Message = FMTLOAD((Recycle ? CONFIRM_RECYCLE_FILE : CONFIRM_DELETE_FILE), (FileName));
     }
     else
     {
-      Message = FMTLOAD(CONFIRM_DELETE_FILES, (FileList->Count));
+      Message = FMTLOAD((Recycle ? CONFIRM_RECYCLE_FILES : CONFIRM_DELETE_FILES), (FileList->Count));
     }
     TMessageParams Params(mpNeverAskAgainCheck);
     unsigned int Answer = MessageDialog(MainInstructions(Message), qtConfirmation, qaOK | qaCancel, &Params);
     if (Answer == qaNeverAskAgain)
     {
-      AppConfiguration->ConfirmDeleting = false;
+      if (Recycle)
+      {
+        AppConfiguration->ConfirmRecycling = false;
+      }
+      else
+      {
+        AppConfiguration->ConfirmDeleting = false;
+      }
     }
     else if (Answer != qaOK)
     {
@@ -1223,7 +1351,7 @@ bool TScpCommanderForm::DeleteFiles(TOperationSide Side, TStrings * FileList, bo
     });
     if (Side == osLocal)
     {
-      bool ToRecycleBin = (DeleteToRecycleBin != Alternative);
+      bool ToRecycleBin = Recycle;
       for (int Index = 0; Index < FileList->Count; Index++)
       {
         RecursiveDeleteFileChecked(FileList->Strings[Index], ToRecycleBin);
@@ -1673,6 +1801,18 @@ void TScpCommanderForm::CreateProgressForm(TSynchronizeProgress * SynchronizePro
 //---------------------------------------------------------------------------
 void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressData)
 {
+  // Download to temporary local directory
+  if (FPendingTempSpaceWarn && ProgressData.InProgress && ProgressData.TotalSizeSet)
+  {
+    bool Continue = true;
+    FPendingTempSpaceWarn = false;
+    DoWarnLackOfTempSpace(ProgressData.Directory, ProgressData.TotalSize, Continue);
+    if (!Continue)
+    {
+      Abort();
+    }
+  }
+
   // The operation runs and the progress is not shown yet
   if (ProgressData.InProgress && (FProgressForm == nullptr))
   {
@@ -1685,6 +1825,12 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
   else if (!ProgressData.InProgress && (FProgressForm != nullptr) && (FProgressForm->GetSynchronizeProgress() == nullptr))
   {
     DestroyProgressForm();
+
+    if ((ProgressData.Cancel == csContinue) &&
+        !FAutoOperation)
+    {
+      OperationComplete(ProgressData.StartTime);
+    }
   }
 
   if ((FProgressForm != nullptr) && ProgressData.InProgress)

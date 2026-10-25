@@ -15,7 +15,8 @@ static const int CallTimeout = 10000;
 //---------------------------------------------------------------------------
 TInstanceService::TInstanceService(QObject * Parent) :
   QObject(Parent),
-  FRegistered(false)
+  FRegistered(false),
+  FOnlyInstance(true)
 {
 }
 //---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ bool TInstanceService::Register()
       Bus.interface()->registerService(
         ServiceName, QDBusConnectionInterface::QueueService, QDBusConnectionInterface::DontAllowReplacement);
     FRegistered = Reply.isValid();
+    FOnlyInstance = !FRegistered || (Reply.value() == QDBusConnectionInterface::ServiceRegistered);
     if (!FRegistered)
     {
       Bus.unregisterObject(ObjectPath);
@@ -64,6 +66,32 @@ bool SendToAnotherInstance(const QStringList & Arguments)
     Message << Arguments << qEnvironmentVariable("XDG_ACTIVATION_TOKEN");
     QDBusReply<bool> Reply = Bus.call(Message, QDBus::Block, CallTimeout);
     Result = Reply.isValid() && Reply.value();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool AnyOtherInstanceOfSelf()
+{
+  bool Result = false;
+  QDBusConnection Bus = QDBusConnection::sessionBus();
+  if (Bus.isConnected())
+  {
+    QDBusMessage Message =
+      QDBusMessage::createMethodCall(
+        QStringLiteral("org.freedesktop.DBus"), QStringLiteral("/org/freedesktop/DBus"),
+        QStringLiteral("org.freedesktop.DBus"), QStringLiteral("ListQueuedOwners"));
+    Message << ServiceName;
+    QDBusReply<QStringList> Reply = Bus.call(Message);
+    if (Reply.isValid())
+    {
+      for (const QString & Owner : Reply.value())
+      {
+        if (Owner != Bus.baseService())
+        {
+          Result = true;
+        }
+      }
+    }
   }
   return Result;
 }

@@ -17,6 +17,7 @@
 #include <QDrag>
 #include <QEventLoop>
 #include <QMimeData>
+#include <QStorageInfo>
 #include <QTimer>
 #include <QUrl>
 //---------------------------------------------------------------------------
@@ -178,6 +179,8 @@ QList<QUrl> TScpCommanderForm::TemporarilyDownloadForOtherApplication(TStrings *
       TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
       CopyParam.IncludeFileMask.SetRoots(TempDir, FileList);
       Configuration->Usage->Inc(L"DownloadsDragDropExternalTemp");
+      // Once the size of the files is known (OperationProgress)
+      TValueRestorer<bool> PendingTempSpaceWarnRestorer(FPendingTempSpaceWarn, AppConfiguration->DDWarnLackOfTempSpace);
       Terminal->CopyToLocal(FileList, TempDir, &CopyParam, cpTemporary, NULL);
     }
 
@@ -380,6 +383,36 @@ void TScpCommanderForm::PanelDrop(TDirPanel * APanel, const TDropParams & Params
   else
   {
     QTimer::singleShot(0, this, Operation);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoWarnLackOfTempSpace(const UnicodeString & Path, __int64 RequiredSpace, bool & Continue)
+{
+  if (AppConfiguration->DDWarnLackOfTempSpace)
+  {
+    QStorageInfo Storage(ToQString(ExpandFileName(Path)));
+    if (Storage.isValid())
+    {
+      __int64 FreeSpace = Storage.bytesAvailable();
+      DebugAssert(RequiredSpace >= 0);
+      __int64 RequiredWithReserve;
+      RequiredWithReserve = static_cast<__int64>(RequiredSpace * AppConfiguration->DDWarnLackOfTempSpaceRatio);
+      if (FreeSpace < RequiredWithReserve)
+      {
+        unsigned int Result;
+        TMessageParams Params(mpNeverAskAgainCheck);
+        Result = MessageDialog(FMTLOAD(DD_WARN_LACK_OF_TEMP_SPACE, (Path,
+          FormatBytes(FreeSpace), FormatBytes(RequiredSpace))),
+          qtWarning, qaYes | qaNo, &Params);
+
+        if (Result == qaNeverAskAgain)
+        {
+          AppConfiguration->DDWarnLackOfTempSpace = false;
+        }
+
+        Continue = (Result == qaYes || Result == qaNeverAskAgain);
+      }
+    }
   }
 }
 //---------------------------------------------------------------------------

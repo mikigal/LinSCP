@@ -43,6 +43,11 @@ class OpenScpGui:
     def start(self, *args, env=None, log_name='openscp', timeout=60):
         self.socket_path.unlink(missing_ok=True)
         extra_env = self.automation_env()
+        # A temporary directory of its own (the application cleans up the
+        # temporary directories of its previous runs)
+        self.temp_dir = self.session.dir / ('tmp-%s' % log_name)
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        extra_env['TMPDIR'] = str(self.temp_dir)
         extra_env.update(env or {})
         self.process = self.session.spawn([self.binary, *map(str, args)], log_name=log_name, extra_env=extra_env)
         self.log = self.session.logs / ('%s.log' % log_name)

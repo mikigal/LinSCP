@@ -2,7 +2,11 @@
 //---------------------------------------------------------------------------
 #include "QtTools.h"
 
+#include <AppConfiguration.h>
+
+#include <QApplication>
 #include <QCoreApplication>
+#include <QFontDatabase>
 #include <QThread>
 
 #include <cmath>
@@ -35,6 +39,74 @@ QUrl LocalPathToUrl(const UnicodeString & Path)
 {
   UTF8String Bytes = UTF8Encode(Path);
   return QUrl::fromEncoded(QByteArray("file://") + QByteArray(Bytes.c_str(), Bytes.Length()).toPercentEncoding("/"));
+}
+//---------------------------------------------------------------------------
+QString FileDialogFilter(const UnicodeString & Filter)
+{
+  QStringList Result;
+  QStringList Parts = ToQString(Filter).split(QLatin1Char('|'));
+  for (int Index = 0; Index + 1 < Parts.count(); Index += 2)
+  {
+    QString Description = Parts[Index];
+    // Qt takes the patterns from the parentheses
+    int P = Description.lastIndexOf(QLatin1Char('('));
+    if (P > 0)
+    {
+      Description = Description.left(P).trimmed();
+    }
+    QStringList Patterns = Parts[Index + 1].split(QLatin1Char(';'), Qt::SkipEmptyParts);
+    for (QString & Pattern : Patterns)
+    {
+      if (Pattern == QLatin1String("*.*"))
+      {
+        Pattern = QStringLiteral("*");
+      }
+    }
+    Result.append(QStringLiteral("%1 (%2)").arg(Description, Patterns.join(QLatin1Char(' '))));
+  }
+  return Result.join(QStringLiteral(";;"));
+}
+//---------------------------------------------------------------------------
+QColor TColorToQColor(TColor Color)
+{
+  return QColor(Color & 0xFF, (Color >> 8) & 0xFF, (Color >> 16) & 0xFF);
+}
+//---------------------------------------------------------------------------
+TColor QColorToTColor(const QColor & Color)
+{
+  return static_cast<TColor>(Color.red() | (Color.green() << 8) | (Color.blue() << 16));
+}
+//---------------------------------------------------------------------------
+QFont EditorFont(const TEditorConfiguration & Editor)
+{
+  QFont Font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+  if (!Editor.FontName.IsEmpty())
+  {
+    Font.setFamily(ToQString(Editor.FontName));
+  }
+  if (Editor.FontSize > 0)
+  {
+    Font.setPointSize(Editor.FontSize);
+  }
+  return Font;
+}
+//---------------------------------------------------------------------------
+QFont PanelFont(const TFontConfiguration & AFont)
+{
+  QFont Font = QApplication::font();
+  if (!AFont.FontName.IsEmpty())
+  {
+    Font.setFamily(ToQString(AFont.FontName));
+    if (AFont.FontSize > 0)
+    {
+      Font.setPointSize(AFont.FontSize);
+    }
+    Font.setBold(FLAGSET(AFont.FontStyle, fsBold));
+    Font.setItalic(FLAGSET(AFont.FontStyle, fsItalic));
+    Font.setUnderline(FLAGSET(AFont.FontStyle, fsUnderline));
+    Font.setStrikeOut(FLAGSET(AFont.FontStyle, fsStrikeOut));
+  }
+  return Font;
 }
 //---------------------------------------------------------------------------
 bool IsMainThread()

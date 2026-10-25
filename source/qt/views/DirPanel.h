@@ -9,6 +9,7 @@
 
 #include <CopyParam.h>
 
+#include <QElapsedTimer>
 #include <QTreeView>
 #include <QWidget>
 
@@ -45,6 +46,8 @@ public:
 
   TDirPanel * GetPanel() const { return FPanel; }
 
+  virtual void keyboardSearch(const QString & Search) override;
+
 protected:
   virtual void startDrag(Qt::DropActions SupportedActions) override;
   virtual void dragEnterEvent(QDragEnterEvent * Event) override;
@@ -56,6 +59,9 @@ protected:
 private:
   TDirPanel * FPanel;
   int FDropTargetRow;
+  // The incremental search (upstream's PanelSearch)
+  QString FSearchText;
+  QElapsedTimer FSearchTimer;
 
   // The directory the files would be dropped to (the parent directory or
   // a directory under the pointer, else the panel's), with its row
@@ -116,6 +122,8 @@ public:
   void StartRename();
   std::function<void(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName)> OnRename;
   void SetShowHiddenFiles(bool Value);
+  // The preferences of the panels (the font, the sizes, the sorting, ...)
+  virtual void ApplyConfiguration();
   void UpdateStatusBar();
   // The visited directories
   const std::vector<UnicodeString> & GetHistory() const { return FHistory; }
@@ -203,9 +211,12 @@ public:
   virtual void ChangeDirectory(const UnicodeString & Path) override;
   virtual void Reload() override;
   virtual void HomeDirectory() override;
+  // The directory of the Home command, the user's home when empty
+  void SetHomeDirectory(const UnicodeString & Value) { FHomeDirectory = Value; }
 
 private:
   TLocalDirModel * FLocalModel;
+  UnicodeString FHomeDirectory;
   QFileSystemWatcher * FWatcher;
   QTimer * FReloadTimer;
 
@@ -231,15 +242,19 @@ public:
 
   // Why the session (shown disconnected) was disconnected
   void SetDisconnectMessage(const UnicodeString & Message);
+  virtual void ApplyConfiguration() override;
 
 Q_SIGNALS:
   void NewSessionRequested();
   void ReconnectRequested();
+  // The files of the directory were read
+  void FilesLoaded();
 
 private:
   TRemoteDirModel * FRemoteModel;
   TTerminal * FTerminal;
   bool FShownReady;
+  bool FShowInaccesibleDirectories;
   QStackedWidget * FStack;
   QLabel * FNoSessionLabel;
   QLabel * ReconnectLabel;

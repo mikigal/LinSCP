@@ -98,6 +98,8 @@ void TLoginDialog::CreateControls()
   RenameSessionAction->setShortcutContext(Qt::WidgetShortcut);
   NewSessionFolderAction =
     CreateAction("NewSessionFolderAction", tr("Ne&w Folder..."), &TLoginDialog::NewSessionFolderActionExecute);
+  PreferencesAction =
+    CreateAction("PreferencesAction", tr("&Preferences..."), &TLoginDialog::PreferencesActionExecute);
   CloneToNewSiteAction = CreateAction("CloneToNewSiteAction", tr("&Clone to New Site"), &TLoginDialog::CloneToNewSite);
   EditCancelAction = CreateAction("EditCancelAction", tr("Cancel"), &TLoginDialog::EditCancelActionExecute);
   LoginAction = CreateAction("LoginAction", ToQString(LoadStr(LOGIN_LOGIN)), &TLoginDialog::LoginActionExecute);
@@ -346,6 +348,13 @@ void TLoginDialog::CreateControls()
 
   QHBoxLayout * ButtonLayout = new QHBoxLayout();
   MainPanelLayout->addLayout(ButtonLayout);
+  ToolsMenuButton = new QPushButton(tr("&Tools"), this);
+  ToolsMenuButton->setObjectName(QStringLiteral("ToolsMenuButton"));
+  ToolsPopupMenu = new QMenu(this);
+  ToolsPopupMenu->setObjectName(QStringLiteral("ToolsPopupMenu"));
+  ToolsPopupMenu->addAction(PreferencesAction);
+  ToolsMenuButton->setMenu(ToolsPopupMenu);
+  ButtonLayout->addWidget(ToolsMenuButton);
   ButtonLayout->addStretch(1);
   LoginButton = new QPushButton(LoginAction->text(), this);
   LoginButton->setObjectName(QStringLiteral("LoginButton"));
@@ -1390,6 +1399,11 @@ void TLoginDialog::SessionTreeEdited(QTreeWidgetItem * Node, const UnicodeString
     }
     Select(Node);
   }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::PreferencesActionExecute()
+{
+  DoPreferencesDialog(pmDefault);
 }
 //---------------------------------------------------------------------------
 void TLoginDialog::NewSessionFolderActionExecute()

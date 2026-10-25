@@ -9,5 +9,7 @@
 //---------------------------------------------------------------------------
 // The shortcut opens the site, the site folder or the workspace of the name
 void CreateDesktopSessionShortCut(const UnicodeString & SessionName);
+// The shortcut starts the application
+void CreateAppDesktopShortCut();
 //---------------------------------------------------------------------------
 #endif

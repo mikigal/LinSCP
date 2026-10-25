@@ -6,6 +6,8 @@
 //---------------------------------------------------------------------------
 #include <AppPCH.h>
 
+#include <QColor>
+#include <QFont>
 #include <QString>
 #include <QUrl>
 //---------------------------------------------------------------------------
@@ -18,11 +20,22 @@ UnicodeString ToUnicodeString(const QString & Str);
 // file:// URLs of local paths and back, with the bytes of the names
 UnicodeString UrlToLocalPath(const QUrl & Url);
 QUrl LocalPathToUrl(const UnicodeString & Path);
+// The filter of a file dialog from a VCL filter ("Description|*.a;*.b|...")
+QString FileDialogFilter(const UnicodeString & Filter);
+// The colors of the configuration (VCL's 0x00BBGGRR)
+QColor TColorToQColor(TColor Color);
+TColor QColorToTColor(const QColor & Color);
+// The fonts of the configuration (the fixed width font of the desktop for
+// the editor, the font of the desktop for the panels, by default)
+struct TEditorConfiguration;
+struct TFontConfiguration;
+QFont EditorFont(const TEditorConfiguration & Editor);
+QFont PanelFont(const TFontConfiguration & Font);
 //---------------------------------------------------------------------------
 bool IsMainThread();
 //---------------------------------------------------------------------------
-// Sizes as upstream's file panels format them (packages/filemng/BaseUtils.pas)
-enum TFormatBytesStyle { fbNone, fbKilobytes, fbShort };
+// Sizes as upstream's file panels format them (packages/filemng/BaseUtils.pas;
+// TFormatBytesStyle in AppInterface.h)
 UnicodeString FormatBytes(__int64 Bytes, TFormatBytesStyle Style = fbShort, bool UseUnitsForBytes = true);
 UnicodeString FormatPanelBytes(__int64 Bytes, TFormatBytesStyle Style);
 //---------------------------------------------------------------------------

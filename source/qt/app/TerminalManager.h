@@ -34,6 +34,10 @@ public:
   TObject * LocalExplorerState;
   TObject * RemoteExplorerState;
   TDateTime ReopenStart;
+  // When the remote directory was read last (RefreshRemotePanel)
+  TDateTime DirectoryLoaded;
+  // When the first item of the queue was added (BeepOnFinish)
+  TDateTime QueueOperationStart;
   // The thread that opens the terminal, while it opens
   TTerminalThread * TerminalThread;
   // To distinguish sessions that were explicitly disconnected and

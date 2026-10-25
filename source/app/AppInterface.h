@@ -40,6 +40,12 @@
 //---------------------------------------------------------------------------
 extern const UnicodeString AppName;
 //---------------------------------------------------------------------------
+// Sizes as upstream's file panels format them (packages/filemng/BaseUtils.pas)
+enum TFormatBytesStyle : int { fbNone, fbKilobytes, fbShort };
+// A color of the VCL (0x00BBGGRR); 0 is the default color in the
+// configuration
+typedef int TColor;
+//---------------------------------------------------------------------------
 class TOptions;
 class TProgramParams;
 bool __fastcall CheckSafe(TOptions * Params);

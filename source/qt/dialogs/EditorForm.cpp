@@ -405,16 +405,19 @@ QAction * TEditorForm::CreateAction(const char * Name, const QString & Caption, 
 void TEditorForm::ApplyConfiguration()
 {
   const TEditorConfiguration & Editor = AppConfiguration->Editor;
-  QFont Font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
-  if (!Editor.FontName.IsEmpty())
-  {
-    Font.setFamily(ToQString(Editor.FontName));
-  }
-  if (Editor.FontSize > 0)
-  {
-    Font.setPointSize(Editor.FontSize);
-  }
+  QFont Font = EditorFont(Editor);
   EditorMemo->setFont(Font);
+  // The colors of the configuration, else of the desktop
+  QPalette Palette = QApplication::palette(EditorMemo);
+  if (Editor.FontColor != TColor(0))
+  {
+    Palette.setColor(QPalette::Text, TColorToQColor(Editor.FontColor));
+  }
+  if (Editor.BackgroundColor != TColor(0))
+  {
+    Palette.setColor(QPalette::Base, TColorToQColor(Editor.BackgroundColor));
+  }
+  EditorMemo->setPalette(Palette);
   EditorMemo->setTabStopDistance(QFontMetricsF(Font).horizontalAdvance(QLatin1Char(' ')) * std::max(Editor.TabSize, 1));
   EditorMemo->setLineWrapMode(Editor.WordWrap ? QPlainTextEdit::WidgetWidth : QPlainTextEdit::NoWrap);
   UpdateControls();

@@ -374,8 +374,15 @@ void TScpCommanderForm::SessionChanged()
     FRemotePanel->RestoreState(AppConfiguration->PreservePanelState ? Session->RemoteExplorerState : NULL);
 
     bool RestoreState = AppConfiguration->PreservePanelState && !AppConfiguration->PreserveLocalDirectory;
+    // reset home directory
+    FLocalPanel->SetHomeDirectory(UnicodeString());
     RestoreSessionLocalDirectory(Session->StateData->LocalDirectory);
     FFirstTerminal = false;
+    if (AppConfiguration->DefaultDirIsHome &&
+        !Session->SessionData->UpdateDirectories)
+    {
+      FLocalPanel->SetHomeDirectory(Session->SessionData->LocalDirectoryExpanded);
+    }
     if (RestoreState)
     {
       FLocalPanel->RestoreState(Session->LocalExplorerState);

@@ -60,6 +60,8 @@ struct TTransferOperationParam
   UnicodeString TargetDirectory;
   // By drag and drop or by pasting (DDTransferConfirmation)
   bool DragDrop = false;
+  // Without the copy dialog (a double-click)
+  bool NoConfirmation = false;
 };
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
@@ -236,6 +238,7 @@ private:
   QAction * SaveWorkspaceAction;
   QAction * SiteManagerAction;
   QAction * SessionsTabsAction2;
+  QAction * PreferencesAction;
   // Alt+1..9, Alt+0 activate the tabs (upstream's OpenSessionShortCut)
   std::vector<QAction *> FOpenedTabActions;
   QAction * CloseApplicationAction;
@@ -302,8 +305,12 @@ private:
   TDirPanel * OtherPanel(TDirPanel * Panel) const;
   TDirPanel * Panel(TOperationSide Side) const;
   TTerminal * GetTerminal() const;
-  // The selected files of the panel: full paths (and the remote files)
-  TStrings * CreateFileList(TDirPanel * Panel, bool FullPath = true);
+  UnicodeString PathForCaption();
+  // The operation took long enough to beep (BeepOnFinish)
+  void OperationComplete(const TDateTime & StartTime);
+  // The selected files of the panel (or of the row): full paths (and the
+  // remote files)
+  TStrings * CreateFileList(TDirPanel * Panel, bool FullPath = true, int Row = -1);
   void DestroyProgressForm();
   void CreateProgressForm(TSynchronizeProgress * SynchronizeProgress);
   void Idle();
@@ -378,6 +385,7 @@ private:
   void SessionsClosing();
   void SaveWorkspaceActionExecute();
   void SessionsTabsActionExecute();
+  void PreferencesActionExecute();
   void OpenedTabActionExecute(int Index);
   void NewSessionActionExecute() { NewSession(); }
   void CloseTabActionExecute();
@@ -546,6 +554,10 @@ private:
   // Downloads the remote files to a temporary directory for another
   // application; their URLs (none when it failed)
   QList<QUrl> TemporarilyDownloadForOtherApplication(TStrings * FileList);
+  // A download to the temporary directory warns about the free space once
+  // the size of the files is known (DDWarnLackOfTempSpace)
+  bool FPendingTempSpaceWarn;
+  void DoWarnLackOfTempSpace(const UnicodeString & Path, __int64 RequiredSpace, bool & Continue);
   void AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay);
   void DoDelayedDeletion();
   // The desktop integration (ScpCommanderDesktop.cpp)

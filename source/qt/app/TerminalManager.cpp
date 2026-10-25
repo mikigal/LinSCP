@@ -20,6 +20,8 @@ TManagedTerminal::TManagedTerminal(TSessionData * SessionData, TConfiguration * 
   LocalExplorerState = NULL;
   RemoteExplorerState = NULL;
   ReopenStart = TDateTime();
+  DirectoryLoaded = Now();
+  QueueOperationStart = TDateTime();
   TerminalThread = NULL;
   Disconnected = false;
   DisconnectedTemporarily = false;
@@ -1320,7 +1322,8 @@ void TTerminalManager::TerminalDisplayBanner(
 void TTerminalManager::TerminalShowExtendedException(
   TTerminal * Terminal, Exception * E, void * /*Arg*/)
 {
-  ShowExtendedExceptionEx(Terminal, E);
+  bool WhileIdle = (FScpExplorer != NULL) && !FScpExplorer->IsBusy() && !IsBusy();
+  ShowExtendedExceptionEx(Terminal, E, WhileIdle);
 }
 //---------------------------------------------------------------------------
 void TTerminalManager::AuthenticatingDone()

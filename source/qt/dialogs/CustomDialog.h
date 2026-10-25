@@ -53,5 +53,8 @@ void SaveToHistory(QComboBox * Combo);
 void ValidateMaskEdit(QComboBox * Edit, int ForceDirectoryMasks = -1);
 void ValidateMaskEdit(QLineEdit * Edit, int ForceDirectoryMasks = -1);
 void ValidateMaskEdit(QPlainTextEdit * Edit, bool Directory);
+// Selects the program of the command (keeping its parameters; with
+// FileNameCommand, the file name pattern is added to them)
+void BrowseForExecutable(QComboBox * Control, const UnicodeString & Title, bool FileNameCommand);
 //---------------------------------------------------------------------------
 #endif

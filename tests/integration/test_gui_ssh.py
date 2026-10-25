@@ -120,7 +120,7 @@ class GuiSshTest(GuiSshTestCase):
         self.assertIn('PortNumber=%d' % SSHD.port, ini)
 
         self.login(gui, 'agent site')
-        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('agent site'))
+        self.assertIn('agent site \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
         self.assertEqual(gui.get(W + 'SessionStatusLabel')['text'], 'SFTP-3')
 
         # Into a directory by its path, and back
@@ -141,7 +141,7 @@ class GuiSshTest(GuiSshTestCase):
         self.assertTrue(gui.get(W + 'ReconnectItem')['visible'])
         self.assertFalse(gui.get(W + 'RemoteNewSessionButton')['visible'])
         self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['agent site', ''])
-        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('agent site'))
+        self.assertIn('agent site \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
         gui.click(W + 'ReconnectItem')
         gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
         self.assertIsNone(gui.window('MessageForm'))
@@ -238,6 +238,8 @@ class GuiSshTest(GuiSshTestCase):
         self.select(gui, 'Local', 'download.txt')
         gui.trigger(W + 'CurrentDeleteAction')
         gui.wait_window('MessageForm')
+        self.assertEqual(gui.get('MessageForm/MainMessage')['text'],
+                         "Are you sure you want to move file 'download.txt' to recycle bin?")
         gui.click('MessageForm/OK')
         gui.wait_no_window('MessageForm')
         gui.wait_idle()
@@ -1015,11 +1017,13 @@ class GuiSshTest(GuiSshTestCase):
         gui = self.start_gui(ini=site_ini(remote=remote, local=local))
         self.login(gui, 'local')
 
-        # The defaults, a new command with a shortcut
-        L = 'CustomCommandsDialog/'
+        # The defaults, a new command with a shortcut (the Commands page of
+        # the preferences)
+        L = 'PreferencesDialog/'
         D = 'CustomCommandDialog/'
         gui.trigger(W + 'CustomCommandsCustomizeAction')
-        gui.wait_window('CustomCommandsDialog')
+        gui.wait_window('PreferencesDialog')
+        self.assertTrue(gui.get(L + 'CustomCommandsSheet')['visible'])
         self.assertEqual(gui.names(L + 'CustomCommandsView')[:3], ['Execute', 'Touch', 'Tar/GZip...'])
         self.assertEqual(gui.rows(L + 'CustomCommandsView')[-1], ['Print', 'lp "!"', 'L'])
         gui.click(L + 'AddCommandButton')
@@ -1034,7 +1038,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_no_window('CustomCommandDialog')
         self.assertEqual(gui.rows(L + 'CustomCommandsView')[-1], ['Lines', 'wc -l "!"', 'R'])
         gui.click(L + 'OKButton')
-        gui.wait_no_window('CustomCommandsDialog')
+        gui.wait_no_window('PreferencesDialog')
 
         # By its shortcut, the results in the console
         self.select(gui, 'Remote', 'a.txt')
@@ -1191,7 +1195,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_idle()
         self.assertEqual(gui.get(tabs)['index'], 1)
         self.assertEqual(gui.get(local_path)['text'], str(local2))
-        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('second'))
+        self.assertIn('second \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
         self.assertIn('%s@127.0.0.1' % SSHD.user, gui.get(tabs)['tooltips'][1])
         # Its directories change
         gui.activate(W + 'RemoteDirView', 'dir')
@@ -1205,7 +1209,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_idle()
         self.assertEqual(gui.get(local_path)['text'], str(local1))
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'a.txt'])
-        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('first'))
+        self.assertIn('first \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
         gui.set(tabs, 1)
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), what='the second session again')
         gui.wait_idle()
@@ -1237,7 +1241,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.click('InputDialog/OKButton')
         gui.wait_no_window('InputDialog')
         gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'renamed', ''], what='the renamed tab')
-        self.assertTrue(gui.window('ScpCommanderForm')['title'].startswith('renamed'))
+        self.assertIn('renamed \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
 
         # Tabs are reordered by dragging them
         gui.drag_real(self.tab_point(gui, 2), self.tab_point(gui, 0))
@@ -1377,6 +1381,50 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(selected, ['work'])
         self.assertEqual(gui.quit(), 0)
 
+    def test_preferences(self):
+        remote = self.work_dir('remote')
+        (remote / 'big.bin').write_bytes(b'x' * 3000)
+        local = self.work_dir('local')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+        # The short path in the title by default
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'remote \u2013 local \u2013 OpenSCP')
+        self.assertEqual(self.row(gui, 'Remote', 'big.bin')[1], '3 KB')
+
+        R = 'PreferencesDialog/'
+        gui.trigger(W + 'PreferencesAction')
+        gui.wait_window('PreferencesDialog')
+        self.assertTrue(gui.get(R + 'PreferencesSheet')['visible'])
+        gui.set(R + 'ConfirmDeletingCheck', False)
+        gui.select(R + 'NavigationTree', ['Environment', 'Window'])
+        gui.wait_for(lambda: gui.get(R + 'WindowSheet')['visible'], what='the Window page')
+        gui.set(R + 'PathInCaptionFullButton', True)
+        gui.select(R + 'NavigationTree', 'Panels')
+        gui.set(R + 'FormatSizeBytesCombo', 'Bytes')
+        gui.set(R + 'DoubleClickActionCombo', 'Copy')
+        self.screenshot('preferences')
+        gui.click(R + 'OKButton')
+        gui.wait_no_window('PreferencesDialog')
+        gui.wait_idle()
+        ini = gui.config_file.read_text()
+        for key in ['ConfirmDeleting=0', 'PathInCaption=1', 'FormatSizeBytes=0', 'DoubleClickAction=1']:
+            self.assertIn(key, ini)
+
+        # The full path in the title, the sizes in bytes
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], '%s \u2013 local \u2013 OpenSCP' % remote)
+        self.assertEqual(self.row(gui, 'Remote', 'big.bin')[1], '3,000')
+        # A double-click copies, without the copy dialog
+        gui.focus(W + 'RemoteDirView')
+        gui.activate(W + 'RemoteDirView', 'big.bin')
+        gui.wait_for(lambda: (local / 'big.bin').exists() and (local / 'big.bin').stat().st_size == 3000, 60, 'the copy')
+        self.assertIsNone(gui.window('CopyDialog'))
+        # Deleted without the confirmation
+        self.select(gui, 'Remote', 'big.bin')
+        gui.trigger(W + 'CurrentDeleteAction')
+        gui.wait_for(lambda: not (remote / 'big.bin').exists(), 30, 'the deletion')
+        self.assertIsNone(gui.window('MessageForm'))
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))
@@ -1389,7 +1437,8 @@ class GuiSshTest(GuiSshTestCase):
         message = gui.get('MessageForm', children=True)
         texts = ' '.join(child.get('text', '') for child in message['children'])
         self.assertIn('Connection refused', texts)
-        self.assertEqual(gui.get('MessageForm/Retry')['text'], '&Reconnect')
+        # Reconnecting automatically after a while (SessionReopenAutoIdle)
+        self.assertRegex(gui.get('MessageForm/Retry')['text'], r'^&Reconnect \(\d s\)$')
         self.screenshot('refused')
         gui.click('MessageForm/OK')
         # The site manager again

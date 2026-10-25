@@ -31,6 +31,28 @@ packaging (PLAN.md, section 7).
   their last directories when their sessions close (`UpdateDirectories`, as upstream).
 - Desktop shortcuts (`app/DesktopShortcut.cpp`, upstream's `CreateDesktopSessionShortCut`): a
   desktop entry in the desktop directory that opens the site or workspace.
+- Preferences (`dialogs/PreferencesDialog.cpp`, Options > Preferences, Ctrl+Alt+P, also from
+  the site manager's Tools, the presets menu's Configure and Customize of the custom commands):
+  the navigation tree with upstream's pages Environment (confirmations, notifications),
+  Window, Panels (with Remote and Local), Editors (with the editor dialog,
+  `dialogs/EditorPreferencesDialog.cpp`) and Internal editor (with its colors), Transfer
+  (presets) with Drag & Drop, Background and Endurance, Network, Security (the master password
+  set, changed and removed with `TMasterPasswordDialog`, trusted host certification
+  authorities with `TSshHostCADialog`), Logging, Integration (a desktop icon, the default
+  handler of the URL schemes by `xdg-mime`) with Applications, Commands (replaces M6's dialog
+  of the custom commands), Storage (the temporary directory). Their options work: the delete
+  confirmation of the trash (`ConfirmRecycling`, `DeleteToRecycleBin`), the beep once a long
+  operation or the queue completes (`BeepOnFinish`, the freedesktop sound theme by
+  `canberra-gtk-play`), the path in the title (`PathInCaption`), the incremental search of
+  the panels (`PanelSearch`), the format of the sizes, the natural sorting, the directories
+  by name, the panel font, renaming without the extension (`RenameWholeName`), the site's
+  local directory as Home (`DefaultDirIsHome`), the double-click action, the inaccessible
+  directories, the periodic refresh of the remote panel, the check of edited files not
+  changed on the server, the free space warning of downloads to the temporary directory,
+  the options of the temporary directories of edited files and their cleanup on startup
+  (`TemporaryDirectoryCleanup`, by the only running instance), the silent disconnect of idle
+  sessions and upstream's automatic reconnect after a countdown in the error of a lost
+  connection (`SessionReopenAutoIdle`).
 
 Decisions:
 
@@ -39,6 +61,14 @@ Decisions:
 - **Terminals are never abandoned** (left to their threads when they do not react to
   cancelling): upstream does it with the active one, which would have to be replaced in the
   window, and the queue of its session refers to it.
+- Preferences not ported: the pages of the automatic updates and of the Windows shell (Send
+  To, the search path), the registry storage and the custom INI file (the INI file is the
+  only storage; its path is shown), the authentication agent (OpenSSH's only), PuTTY's
+  registry key and host CAs, the drives of drag and drop, the tips, the smooth scrolling of
+  the editor, the search of the preferences. The other encoding of the internal editor is
+  ISO-8859-1.
+- The GUI tests give each run a temporary directory of its own (`TMPDIR`), as the
+  application cleans up the temporary directories of its previous runs.
 
 ## M7 — desktop integration (done, 2026-10-25)
 
