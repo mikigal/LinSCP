@@ -45,9 +45,9 @@ class HarnessTest(unittest.TestCase):
             type(self).failed = True
         return result
 
-    def start_probe(self, title, *args):
+    def start_probe(self, title, *args, env=None):
         log = self.session.logs / f"{title}.events"
-        self.session.spawn([probe_binary(), "--title", title, "--log", str(log), *args], log_name=title)
+        self.session.spawn([probe_binary(), "--title", title, "--log", str(log), *args], log_name=title, extra_env=env)
         self.wait_event(log, lambda e: e["event"] == "shown")
         self.session.wait_for_window(title)
         return log
@@ -108,6 +108,14 @@ class HarnessTest(unittest.TestCase):
         drop = self.wait_event(target_log, lambda e: e["event"] == "drop")
         self.assertIn(payload.as_uri(), drop["urls"])
         self.assertIn("text/uri-list", drop["formats"])
+
+    def test_accessibility(self):
+        self.session.start_accessibility()
+        self.start_probe("probe-a11y", env=wlharness.ACCESSIBILITY_ENV)
+        window = self.session.place_window("probe-a11y", 40, 40, 400, 300)
+        found = self.session.wait_for_accessible("wlh-probe", "probe-a11y")
+        # In the client area of the window
+        self.assertEqual((found["width"], found["height"]), (window["client"]["width"], window["client"]["height"]))
 
 
 if __name__ == "__main__":

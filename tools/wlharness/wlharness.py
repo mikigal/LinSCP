@@ -390,6 +390,57 @@ class Session:
     def input(self, *commands):
         self.run([_default_tool("wlh-input"), *[str(c) for c in commands]], timeout=60)
 
+    # --- accessibility ---------------------------------------------------
+
+    def start_accessibility(self):
+        """Starts the AT-SPI registry, so that applications started later
+        with ACCESSIBILITY_ENV can be inspected (accessibles). The session
+        bus activates the accessibility bus; the registry is started here,
+        as the accessibility bus cannot activate it without systemd."""
+        if self.state.get("atspi"):
+            return
+        process = self.spawn(["/usr/lib/at-spi2-registryd"], log_name="at-spi2-registryd")
+        # Ended with the other children of the session
+        self._registry = process
+        self.state["atspi"] = process.pid
+        self._save()
+        _wait_for(lambda: "org.a11y.atspi.Registry" in (self.logs / "at-spi2-registryd.log").read_text(errors="replace")
+                  or process.poll() is not None, 20, "the AT-SPI registry")
+        if process.poll() is not None:
+            raise HarnessError(f"at-spi2-registryd exited; see {self.logs / 'at-spi2-registryd.log'}")
+
+    def accessibles(self, application, name=None, role=None):
+        """The accessible objects of an application (wlh-atspi.py), with
+        their extents in the client area of its window."""
+        command = [sys.executable, str(Path(__file__).with_name("wlh-atspi.py")), application]
+        if name is not None:
+            command += ["--name", name]
+        if role is not None:
+            command += ["--role", role]
+        result = self.run(command, timeout=60)
+        return [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+
+    def wait_for_accessible(self, application, name, role=None, timeout=20):
+        """The first showing accessible object of the name (and role)."""
+        found = []
+
+        def present():
+            found[:] = [a for a in self.accessibles(application, name, role) if a["showing"] and a["width"] > 0]
+            return bool(found)
+
+        _wait_for(present, timeout, f"the accessible '{name}' of {application}")
+        return found[0]
+
+    def do_accessible_action(self, application, name, action, role=None):
+        command = [sys.executable, str(Path(__file__).with_name("wlh-atspi.py")), application, "--name", name, "--action", action]
+        if role is not None:
+            command += ["--role", role]
+        self.run(command, timeout=60)
+
+
+# Applications started with it in a session can be inspected over AT-SPI
+ACCESSIBILITY_ENV = {"QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1"}
+
 
 def _main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
