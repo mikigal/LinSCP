@@ -7,6 +7,10 @@
 #define AppConfigurationH
 //---------------------------------------------------------------------------
 #include "GUIConfiguration.h"
+
+#include <FileMasks.h>
+
+#include <vector>
 //---------------------------------------------------------------------------
 class TBookmarks;
 class TBookmarkList;
@@ -26,6 +30,10 @@ enum TPathInCaption : int { picShort, picFull, picNone };
 enum TDoubleClickAction : int { dcaOpen = 0, dcaCopy = 1, dcaEdit = 2 };
 // How a panel searches as letters are typed (CustomWinConfiguration.h)
 enum TIncrementalSearch : int { isOff = -1, isNameStartOnly, isName, isAll };
+// How the panels select files (upstream's TNortonLikeMode, the inverse of
+// its "Explorer-style selection"): the keyboard (nlKeyboard) or also the
+// mouse (nlOn) only focus files, Insert and Space select them
+enum TNortonLikeMode : int { nlOn, nlOff, nlKeyboard };
 // The style bits of fonts (VCL's TFontStyles)
 const int fsBold = 0x01;
 const int fsItalic = 0x02;
@@ -79,6 +87,23 @@ struct TEditorConfiguration
 
   bool operator !=(const TEditorConfiguration & rhc) const;
 };
+// The color of the files matching a mask (upstream's TFileColorData)
+struct TFileColorData
+{
+  TFileColorData();
+
+  TFileMasks FileMask;
+  TColor Color;
+
+  void Load(const UnicodeString & S);
+  UnicodeString Save() const;
+  typedef std::vector<TFileColorData> TList;
+  static void LoadList(const UnicodeString & S, TList & List);
+  static UnicodeString SaveList(const TList & List);
+};
+// The colors in the configuration (BGR, in hexadecimal)
+TColor RestoreColor(const UnicodeString & CStr);
+UnicodeString StoreColor(TColor Color);
 //---------------------------------------------------------------------------
 class TAppConfiguration : public TGUIConfiguration
 {
@@ -319,6 +344,25 @@ public:
   // An edited remote file is uploaded only when it did not change on the
   // server meanwhile (confirmed otherwise)
   APP_CONFIG_PROPERTY(bool, EditorCheckNotModified)
+  // Selecting by a mask selects the matching directories too
+  APP_CONFIG_PROPERTY(bool, SelectDirectories)
+  // The colors of the files in the panels (TFileColorData::SaveList)
+  APP_CONFIG_PROPERTY(UnicodeString, FileColors)
+  // The custom colors picked for the sessions and for the files (comma
+  // separated, StoreColor), offered in the color menus
+  APP_CONFIG_PROPERTY(UnicodeString, SessionColors)
+  APP_CONFIG_PROPERTY(UnicodeString, FontColors)
+
+  // The Commander (Interface\Commander)
+  // The remote panel is on the left
+  APP_CONFIG_PROPERTY(bool, SwappedPanels)
+  APP_CONFIG_PROPERTY(TNortonLikeMode, NortonLikeMode)
+  // Comparing the directories of the panels marks newer files, and files
+  // of the same time with other sizes
+  APP_CONFIG_PROPERTY(bool, CompareByTime)
+  APP_CONFIG_PROPERTY(bool, CompareBySize)
+  // The keyboard shortcuts of the Explorer interface (F5 refreshes, ...)
+  APP_CONFIG_PROPERTY(bool, ExplorerKeyboardShortcuts)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

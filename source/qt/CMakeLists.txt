@@ -21,6 +21,7 @@ add_library(openscp_qt STATIC
   app/TaskbarProgress.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
+  dialogs/ColorMenu.cpp
   dialogs/ConsoleDialog.cpp
   dialogs/CopyDialog.cpp
   dialogs/CopyParamDialogs.cpp
@@ -42,6 +43,7 @@ add_library(openscp_qt STATIC
   dialogs/PropertiesDialog.cpp
   dialogs/RemoteTransferDialog.cpp
   dialogs/RightsFrame.cpp
+  dialogs/SelectMaskDialog.cpp
   dialogs/SynchronizeChecklistDialog.cpp
   dialogs/SynchronizeDialog.cpp
   dialogs/SynchronizeProgressForm.cpp
@@ -56,6 +58,7 @@ add_library(openscp_qt STATIC
   views/ScpCommanderDesktop.cpp
   views/ScpCommanderDragDrop.cpp
   views/ScpCommanderEditor.cpp
+  views/ScpCommanderMark.cpp
   views/ScpCommanderQueue.cpp
   views/ScpCommanderSessions.cpp
   views/ScpCommanderSynchronize.cpp)

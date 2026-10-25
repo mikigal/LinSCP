@@ -7,7 +7,11 @@
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
+#include <AppConfiguration.h>
+#include <RemoteFiles.h>
+
 #include <QAbstractTableModel>
+#include <QColor>
 #include <QIcon>
 
 #include <functional>
@@ -32,6 +36,8 @@ struct TDirViewItem
   bool IsSymLink = false;
   __int64 Size = 0;
   TDateTime Modification;
+  // The precision of the time (of a remote listing)
+  TModificationFmt ModificationFmt = mfFull;
   QString ModificationText;
   QString RightsText;
   QString OwnerText;
@@ -39,6 +45,8 @@ struct TDirViewItem
   QString TypeText;
   QString LinkTarget;
   QIcon Icon;
+  // Of the file colors, invalid for the default one
+  QColor Color;
   // The remote file (owned by the model)
   TRemoteFile * File = nullptr;
 };
@@ -72,9 +80,20 @@ public:
   TDirViewColumn Column(int Index) const { return FColumns[Index]; }
   // The preferences of the display: the format of the sizes, the sorting
   void SetDisplayOptions(TFormatBytesStyle FormatSizeBytes, bool NaturalOrderNumericalSorting, bool AlwaysSortDirectoriesByName);
+  // Only the files matching the mask are shown (all when empty), once the
+  // files are loaded again (upstream's Mask of the directory views)
+  void SetMask(const UnicodeString & Mask);
+  UnicodeString GetMask() const { return FMask.Masks; }
+  // The colors of the files matching their masks
+  void SetFileColors(const TFileColorData::TList & FileColors);
+  // The files not shown, as hidden ones or not matching the mask
+  int GetHiddenCount() const { return FHiddenCount; }
+  int GetFilteredCount() const { return FFilteredCount; }
 
 protected:
-  void SetItems(std::vector<TDirViewItem> && Items);
+  virtual bool IsLocal() const = 0;
+  // The files without the hidden ones (their count)
+  void SetItems(std::vector<TDirViewItem> && Items, int HiddenCount);
   virtual void ClearItems();
 
 private:
@@ -86,8 +105,13 @@ private:
   TFormatBytesStyle FFormatSizeBytes;
   bool FNaturalOrderNumericalSorting;
   bool FAlwaysSortDirectoriesByName;
+  TFileMasks FMask;
+  TFileColorData::TList FFileColors;
+  int FHiddenCount;
+  int FFilteredCount;
 
   void SortItems();
+  QColor ItemColor(const TDirViewItem & Item) const;
 };
 //---------------------------------------------------------------------------
 class TLocalDirModel : public TDirModel
@@ -100,6 +124,9 @@ public:
   // Lists the directory; throws when it cannot be read
   void Load(const UnicodeString & Path, bool ShowHiddenFiles);
   const UnicodeString & GetPath() const { return FPath; }
+
+protected:
+  virtual bool IsLocal() const override { return true; }
 
 private:
   UnicodeString FPath;
@@ -118,6 +145,7 @@ public:
   void Clear();
 
 protected:
+  virtual bool IsLocal() const override { return false; }
   virtual void ClearItems() override;
 
 private:

@@ -148,6 +148,15 @@ void __fastcall TAppConfiguration::Default()
   FRefreshRemotePanelInterval = TDateTime(0, 1, 0, 0);
   FPanelFont = TFontConfiguration();
   FEditorCheckNotModified = false;
+  FSelectDirectories = false;
+  FFileColors = L"";
+  FSessionColors = L"";
+  FFontColors = L"";
+  FSwappedPanels = false;
+  FNortonLikeMode = nlKeyboard;
+  FCompareByTime = true;
+  FCompareBySize = false;
+  FExplorerKeyboardShortcuts = false;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -356,10 +365,19 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(Integer, FPanelFont.FontStyle, L"PanelFontStyle"); \
     KEYEX(Integer, FPanelFont.FontCharset, L"PanelFontCharset"); \
     KEY(Bool,    FEditorCheckNotModified); \
+    KEY(Bool,    FSelectDirectories); \
+    KEY(String,  FFileColors); \
+    KEY(String,  FSessionColors); \
+    KEY(String,  FFontColors); \
   ); \
   BLOCK(L"Interface\\Commander", CANCREATE, \
     KEY(Bool,    FPreserveLocalDirectory); \
     KEY(Bool,    FSessionsTabs); \
+    KEY(Bool,    FSwappedPanels); \
+    KEYEX(Enum,  FNortonLikeMode, L"ExplorerStyleSelection"); \
+    KEY(Bool,    FCompareByTime); \
+    KEY(Bool,    FCompareBySize); \
+    KEY(Bool,    FExplorerKeyboardShortcuts); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \
@@ -868,6 +886,58 @@ bool TFontConfiguration::operator !=(const TFontConfiguration & rhc) const
   return
     (FontName != rhc.FontName) || (FontSize != rhc.FontSize) ||
     (FontCharset != rhc.FontCharset) || (FontStyle != rhc.FontStyle);
+}
+//---------------------------------------------------------------------------
+static const wchar_t FileColorDataSeparator = L':';
+TFileColorData::TFileColorData() :
+  Color(TColor())
+{
+}
+//---------------------------------------------------------------------------
+void TFileColorData::Load(const UnicodeString & S)
+{
+  UnicodeString Buf(S);
+  Color = RestoreColor(CutToChar(Buf, FileColorDataSeparator, true));
+  FileMask = Buf;
+}
+//---------------------------------------------------------------------------
+UnicodeString TFileColorData::Save() const
+{
+  UnicodeString Result = StoreColor(Color) + FileColorDataSeparator + FileMask.Masks;
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TFileColorData::LoadList(const UnicodeString & S, TList & List)
+{
+  std::unique_ptr<TStringList> Strings(CommaTextToStringList(S));
+
+  List.clear();
+  for (int Index = 0; Index < Strings->Count; Index++)
+  {
+    TFileColorData FileColorData;
+    FileColorData.Load(Strings->Strings[Index]);
+    List.push_back(FileColorData);
+  }
+}
+//---------------------------------------------------------------------------
+UnicodeString TFileColorData::SaveList(const TList & List)
+{
+  std::unique_ptr<TStringList> Strings(new TStringList());
+  for (TFileColorData::TList::const_iterator Iter = List.begin(); Iter != List.end(); Iter++)
+  {
+    Strings->Add((*Iter).Save());
+  }
+  return Strings->CommaText;
+}
+//---------------------------------------------------------------------------
+TColor RestoreColor(const UnicodeString & CStr)
+{
+  return TColor(StrToInt(UnicodeString(L"$") + CStr));
+}
+//---------------------------------------------------------------------------
+UnicodeString StoreColor(TColor Color)
+{
+  return IntToHex(Color, 6);
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::SetEditor(const TEditorConfiguration & value)

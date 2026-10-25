@@ -108,6 +108,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     connect(Panel, &TDirPanel::AddBookmarkRequested, this, [this](TDirPanel * APanel) { AddBookmark(APanel->GetSide()); });
     connect(Panel, &TDirPanel::BookmarksMenuRequested, this,
       [this](TDirPanel * APanel, QMenu * Menu) { CreateOpenDirMenu(APanel, Menu); });
+    connect(Panel, &TDirPanel::ToggleHiddenFilesRequested, this, [this]() { ShowHiddenFilesAction->trigger(); });
     Panel->OnRename = [this](TDirPanel * APanel, const UnicodeString & FileName, const UnicodeString & NewName)
     {
       RenameFile(APanel, FileName, NewName);
@@ -252,6 +253,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
   ShowHiddenFilesAction->setChecked(AppConfiguration->ShowHiddenFiles);
+  CreateMarkActions();
 
   CreateMenus();
   CreateToolbars();
@@ -265,6 +267,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FLocalPanel->ApplyConfiguration();
   FRemotePanel->ApplyConfiguration();
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
+  UpdatePanelsLayout();
+  UpdateKeyboardShortcuts();
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
   SessionChanged();
@@ -378,6 +382,8 @@ void TScpCommanderForm::CreateMenus()
   LocalMenu->addActions(FLocalPanel->actions());
   LocalMenu->addAction(LocalPathToClipboardAction2);
 
+  Menu->addMenu(CreateMarkMenu());
+
   QMenu * FilesMenu = Menu->addMenu(tr("&Files"));
   FilesMenu->setObjectName(QStringLiteral("FilesMenu"));
   QMenu * NewMenu = FilesMenu->addMenu(tr("&New"));
@@ -412,6 +418,7 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
   CommandsMenu->addAction(CurrentCreateDirAction);
   CommandsMenu->addAction(RemoteFindFilesAction2);
+  CommandsMenu->addAction(CompareDirectoriesAction2);
   CommandsMenu->addAction(FullSynchronizeAction2);
   CommandsMenu->addAction(SynchronizeAction);
   CommandsMenu->addSeparator();
@@ -524,11 +531,18 @@ void TScpCommanderForm::CreateToolbars()
          { CurrentRenameAction, CurrentEditAction, CurrentCopyAction, CurrentMoveAction, CurrentCreateDirAction, CurrentDeleteAction,
            CurrentPropertiesAction, CloseApplicationAction })
   {
-    QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
-    QAction * Proxy = Hotkeys->addAction(Action->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(' ') + Caption);
+    QAction * Proxy = Hotkeys->addAction(QString());
     Proxy->setObjectName(Action->objectName() + QStringLiteral("Hotkey"));
+    auto UpdateProxy = [Action, Proxy]()
+    {
+      QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
+      Proxy->setText(Action->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(' ') + Caption);
+    };
+    UpdateProxy();
     connect(Proxy, &QAction::triggered, Action, &QAction::trigger);
     connect(Action, &QAction::enabledChanged, Proxy, &QAction::setEnabled);
+    // The keys change with the preferences
+    connect(Action, &QAction::changed, Proxy, UpdateProxy);
   }
 }
 //---------------------------------------------------------------------------
@@ -567,6 +581,23 @@ bool TScpCommanderForm::EventFilterPanels(QObject * Object, QEvent * Event)
         Other->GetDirView()->setFocus();
       }
       return true;
+    }
+    // The shortcuts of the numeric keypad: Qt matches shortcuts without
+    // the keypad modifier on xkb (as the keys of the main keyboard)
+    if (KeyEvent->modifiers().testFlag(Qt::KeypadModifier))
+    {
+      QKeyCombination Combination(KeyEvent->modifiers(), static_cast<Qt::Key>(KeyEvent->key()));
+      for (QAction * Action : { SelectAction, UnselectAction, InvertSelectionAction, SelectSameExtAction, UnselectSameExtAction })
+      {
+        if (!Action->shortcut().isEmpty() && (Action->shortcut()[0] == Combination))
+        {
+          if (Action->isEnabled())
+          {
+            Action->trigger();
+          }
+          return true;
+        }
+      }
     }
   }
   return false;
@@ -622,6 +653,7 @@ void TScpCommanderForm::UpdateActions()
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   ConsoleAction->setEnabled(!Busy && CanConsole());
   PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
+  UpdateMarkActions();
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanConsole()
@@ -682,6 +714,39 @@ void TScpCommanderForm::ConfigurationChanged()
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
   UpdateQueueView();
   UpdateCaption();
+  UpdatePanelsLayout();
+  UpdateKeyboardShortcuts();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::UpdatePanelsLayout()
+{
+  // The remote panel on the left (SwappedPanels)
+  TDirPanel * Left = AppConfiguration->SwappedPanels ? static_cast<TDirPanel *>(FRemotePanel) : static_cast<TDirPanel *>(FLocalPanel);
+  if (FPanelSplitter->indexOf(Left) != 0)
+  {
+    QList<int> Sizes = FPanelSplitter->sizes();
+    FPanelSplitter->insertWidget(0, Left);
+    std::reverse(Sizes.begin(), Sizes.end());
+    FPanelSplitter->setSizes(Sizes);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::UpdateKeyboardShortcuts()
+{
+  // upstream's CommanderShortcuts: the Explorer's keys for copying,
+  // refreshing and finding files
+  bool Explorer = AppConfiguration->ExplorerKeyboardShortcuts;
+  CurrentCopyAction->setShortcut(Explorer ? QKeySequence(Qt::CTRL | Qt::Key_K) : QKeySequence(Qt::Key_F5));
+  QKeySequence RefreshShortCut = Explorer ? QKeySequence(Qt::Key_F5) : QKeySequence(Qt::CTRL | Qt::Key_R);
+  FLocalPanel->SetRefreshShortCut(RefreshShortCut);
+  FRemotePanel->SetRefreshShortCut(RefreshShortCut);
+  RemoteFindFilesAction2->setShortcut(Explorer ? QKeySequence(Qt::Key_F3) : QKeySequence(Qt::ALT | Qt::Key_F7));
+  QList<QKeySequence> CloseTabShortCuts = { QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) };
+  if (Explorer)
+  {
+    CloseTabShortCuts.append(QKeySequence(Qt::CTRL | Qt::Key_F4));
+  }
+  CloseTabAction->setShortcuts(CloseTabShortCuts);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()
@@ -998,6 +1063,7 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
     else
     {
       TDirPanel * Source = (Side == osLocal) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
+      Source->SaveSelectedNames();
       Source->GetDirView()->selectionModel()->clearSelection();
     }
   }
@@ -1036,6 +1102,7 @@ bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, T
   bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, Confirm, Param.DragDrop);
   if (Result)
   {
+    Panel(Side)->SaveSelectedNames();
     int Params = FLAGMASK(Operation == foMove, cpDelete);
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
     TAutoNestingCounter BusyCounter(FBusy);
@@ -1289,6 +1356,7 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative)
 {
+  Panel(Side)->SaveSelectedNames();
   // Delete moves local files to the trash, Shift+Delete deletes them
   // (by default); the remote ones go to the recycle bin of the site
   bool Recycle;
@@ -1449,6 +1517,7 @@ void TScpCommanderForm::CurrentPropertiesActionExecute()
   if (FileList->Count > 0)
   {
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+    Panel->SaveSelectedNames();
     SetProperties(Panel, FileList.get());
   }
 }

@@ -270,6 +270,17 @@ private:
   QAction * CustomCommandsLastAction;
   QAction * CustomCommandsCustomizeAction;
   QAction * ShowHiddenFilesAction;
+  // The Mark menu (ScpCommanderMark.cpp)
+  QAction * SelectOneAction;
+  QAction * SelectAction;
+  QAction * UnselectAction;
+  QAction * SelectAllAction;
+  QAction * InvertSelectionAction;
+  QAction * ClearSelectionAction;
+  QAction * RestoreSelectionAction;
+  QAction * SelectSameExtAction;
+  QAction * UnselectSameExtAction;
+  QAction * CompareDirectoriesAction2;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
   QAction * QueueItemQueryAction;
@@ -306,6 +317,10 @@ private:
   TDirPanel * Panel(TOperationSide Side) const;
   TTerminal * GetTerminal() const;
   UnicodeString PathForCaption();
+  // The order of the panels (SwappedPanels)
+  void UpdatePanelsLayout();
+  // The keys of the Commander or of the Explorer (ExplorerKeyboardShortcuts)
+  void UpdateKeyboardShortcuts();
   // The operation took long enough to beep (BeepOnFinish)
   void OperationComplete(const TDateTime & StartTime);
   // The selected files of the panel (or of the row): full paths (and the
@@ -413,6 +428,24 @@ private:
   void PuttyActionExecute();
   bool CanConsole();
   void OpenConsole(const UnicodeString & Command = UnicodeString());
+
+  // The selection of the files (ScpCommanderMark.cpp)
+  void CreateMarkActions();
+  QMenu * CreateMarkMenu();
+  void UpdateMarkActions();
+  void SelectOneActionExecute();
+  void SelectActionExecute() { SelectByMask(true); }
+  void UnselectActionExecute() { SelectByMask(false); }
+  void SelectAllActionExecute();
+  void InvertSelectionActionExecute();
+  void ClearSelectionActionExecute();
+  void RestoreSelectionActionExecute();
+  void SelectSameExtActionExecute() { SelectSameExt(true); }
+  void UnselectSameExtActionExecute() { SelectSameExt(false); }
+  void SelectByMask(bool Select);
+  void SelectSameExt(bool Select);
+  // Selects the files that differ between the panels
+  void CompareDirectories();
 
   // The synchronization (ScpCommanderSynchronize.cpp)
   struct TSynchronizeParams

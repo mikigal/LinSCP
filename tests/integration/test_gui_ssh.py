@@ -1425,6 +1425,113 @@ class GuiSshTest(GuiSshTestCase):
         self.assertIsNone(gui.window('MessageForm'))
         self.assertEqual(gui.quit(), 0)
 
+    def test_mark(self):
+        remote = self.work_dir('remote')
+        for name in ['a.txt', 'b.txt', 'c.log', 'd.log']:
+            (remote / name).write_text(name)
+        local = self.work_dir('local')
+        (local / 'a.txt').write_text('a.txt')
+        (local / 'b.txt').write_text('b.txt')
+        os.utime(local / 'b.txt', (time.time() + 3600, time.time() + 3600))
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        def selected(side):
+            return sorted(row['cells'][0] for row in gui.get(W + side + 'DirView')['rows'] if row['selected'])
+
+        def current(side):
+            return [row['cells'][0] for row in gui.get(W + side + 'DirView')['rows'] if row['current']]
+
+        # Num+ selects by a mask
+        gui.focus(W + 'RemoteDirView')
+        self.session.input('key', 'KP_Add')
+        gui.wait_window('SelectMaskDialog')
+        self.assertEqual(gui.window('SelectMaskDialog')['title'], 'Select')
+        gui.set('SelectMaskDialog/MaskEdit', '*.txt')
+        gui.click('SelectMaskDialog/OKBtn')
+        gui.wait_no_window('SelectMaskDialog')
+        gui.wait_for(lambda: selected('Remote') == ['a.txt', 'b.txt'], what='the files of the mask')
+        # Num* inverts, Ctrl+Shift+L clears, Ctrl+Shift+S restores the
+        # selection of the last operation
+        self.session.input('key', 'KP_Multiply')
+        gui.wait_for(lambda: selected('Remote') == ['c.log', 'd.log'], what='the inverted selection')
+        gui.trigger(W + 'CurrentPropertiesAction')
+        gui.wait_window('PropertiesDialog')
+        gui.click('PropertiesDialog/CancelButton')
+        gui.wait_no_window('PropertiesDialog')
+        self.session.input('key', 'ctrl+shift+l')
+        gui.wait_for(lambda: selected('Remote') == [], what='no selection')
+        self.session.input('key', 'ctrl+shift+s')
+        gui.wait_for(lambda: selected('Remote') == ['c.log', 'd.log'], what='the restored selection')
+        gui.trigger(W + 'ClearSelectionAction')
+
+        # The keyboard moves the focus without selecting, Insert selects
+        gui.select(W + 'RemoteDirView', 'a.txt')
+        gui.trigger(W + 'ClearSelectionAction')
+        gui.wait_idle()
+        self.session.input('key', 'Down')
+        gui.wait_for(lambda: current('Remote') == ['b.txt'], what='the focus')
+        self.assertEqual(selected('Remote'), [])
+        self.session.input('key', 'Insert', 'key', 'Insert')
+        gui.wait_for(lambda: selected('Remote') == ['b.txt', 'c.log'], what='the files selected by Insert')
+        self.assertEqual(current('Remote'), ['d.log'])
+        self.screenshot('norton_like')
+        # Alt+Num- unselects the files of the same extension
+        self.session.input('key', 'alt+KP_Subtract')
+        gui.wait_for(lambda: selected('Remote') == ['b.txt'], what='the files of other extensions')
+
+        # The filter of the panel
+        self.session.input('key', 'ctrl+alt+f')
+        gui.wait_window('SelectMaskDialog')
+        self.assertEqual(gui.window('SelectMaskDialog')['title'], 'Filter')
+        gui.set('SelectMaskDialog/MaskEdit', '*.log')
+        gui.click('SelectMaskDialog/OKBtn')
+        gui.wait_no_window('SelectMaskDialog')
+        gui.wait_for(lambda: gui.names(W + 'RemoteDirView') == ['..', 'c.log', 'd.log'], what='the filtered files')
+        self.assertTrue(gui.get(W + 'RemoteFilteredFilesLabel')['visible'])
+        self.assertEqual(gui.get(W + 'RemoteFilteredFilesLabel')['text'], '2 filtered')
+        gui.trigger(W + 'RemoteFilterAction')
+        gui.wait_window('SelectMaskDialog')
+        gui.click('SelectMaskDialog/ClearButton')
+        gui.click('SelectMaskDialog/OKBtn')
+        gui.wait_for(lambda: len(gui.names(W + 'RemoteDirView')) == 5, what='all the files')
+        self.assertFalse(gui.get(W + 'RemoteFilteredFilesLabel')['visible'])
+
+        # Comparing the directories marks the newer and the missing files
+        gui.trigger(W + 'CompareDirectoriesAction2')
+        gui.wait_for(lambda: selected('Remote') == ['c.log', 'd.log'], what='the remote differences')
+        self.assertEqual(selected('Local'), ['b.txt'])
+
+        # A color of the files
+        R = 'PreferencesDialog/'
+        gui.trigger(W + 'PreferencesAction')
+        gui.wait_window('PreferencesDialog')
+        gui.select(R + 'NavigationTree', ['Panels', 'File colors'])
+        gui.click(R + 'AddFileColorButton')
+        gui.wait_window('SelectMaskDialog')
+        gui.set('SelectMaskDialog/MaskEdit', '*.log')
+        gui.click('SelectMaskDialog/ColorButton')
+        gui.wait_window('ColorMenu')
+        self.screenshot('color_menu')
+        gui.click('ColorMenu/Color0000FF')
+        gui.wait_no_window('ColorMenu')
+        gui.click('SelectMaskDialog/OKBtn')
+        gui.wait_no_window('SelectMaskDialog')
+        self.assertEqual(gui.names(R + 'FileColorsView'), ['*.log'])
+        # The Commander's preferences
+        gui.select(R + 'NavigationTree', ['Environment', 'Commander'])
+        gui.set(R + 'SwappedPanelsCheck', True)
+        gui.click(R + 'OKButton')
+        gui.wait_no_window('PreferencesDialog')
+        gui.wait_idle()
+        ini = gui.config_file.read_text()
+        self.assertIn('FileColors=0000FF:*.log', ini)
+        self.assertIn('SwappedPanels=1', ini)
+        # The remote panel on the left
+        self.assertLess(gui.get(W + 'RemotePanel')['geometry']['x'], gui.get(W + 'LocalPanel')['geometry']['x'])
+        self.screenshot('file_colors')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

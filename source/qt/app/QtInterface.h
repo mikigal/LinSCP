@@ -168,6 +168,27 @@ void HideFileFindDialog();
 // dialogs/EditMaskDialog.cpp
 bool DoEditMaskDialog(TFileMasks & Mask);
 
+// dialogs/SelectMaskDialog.cpp
+// The files of a panel selected by a mask (upstream's TFileFilter of
+// its directory views)
+struct TFileFilter
+{
+  UnicodeString Masks;
+  bool Directories = false;
+};
+struct TFileColorData;
+// The mask of the files to select or unselect (the last one, SelectMask)
+bool DoSelectMaskDialog(QWidget * Parent, bool Select, TFileFilter & Filter);
+// The mask of the files shown in a panel
+bool DoFilterMaskDialog(QWidget * Parent, UnicodeString & Mask);
+bool DoFileColorDialog(TFileColorData & FileColorData);
+
+// dialogs/ColorMenu.cpp
+// The menu of the colors at the position: the default one (0), the custom
+// colors picked before, the standard palette (light colors of the sessions
+// or the colors of the fonts), More Colors; false when no color was picked
+bool ColorMenuPopup(const QPoint & Pos, TColor & Color, bool SessionColors);
+
 // dialogs/FullSynchronizeDialog.cpp
 enum TSynchronizeMode { smRemote, smLocal, smBoth };
 const int fsoDisableTimestamp = 0x01;

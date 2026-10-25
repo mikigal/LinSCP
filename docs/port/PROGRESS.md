@@ -53,6 +53,19 @@ packaging (PLAN.md, section 7).
   (`TemporaryDirectoryCleanup`, by the only running instance), the silent disconnect of idle
   sessions and upstream's automatic reconnect after a countdown in the error of a lost
   connection (`SessionReopenAutoIdle`).
+- Selection (`views/ScpCommanderMark.cpp`, `TDirView` and `TDirPanel` of `views/DirPanel.cpp`):
+  the Mark menu (select and unselect by a mask with `dialogs/SelectMaskDialog.cpp`, all,
+  invert, clear, restore the selection of the last operation, the files of the extension of
+  the focused file, with upstream's keys of the numeric keypad), upstream's Norton-like
+  selection (`NortonLikeMode`, by default the keyboard only moves a focus rectangle, Insert
+  and Space select, Shift selects without unselecting, a file selected by a click is
+  unselected by the keyboard), the selection kept over reloads, the filter of a panel
+  (Ctrl+Alt+F, the counts of the hidden and the filtered files in its status bar, clicked to
+  show them), Compare Directories (Shift+F2, `CompareByTime`, `CompareBySize`). The pages
+  Commander (also swapped panels, the Explorer's keyboard shortcuts, location profiles) and
+  File colors (`FileColors`, the files of the masks in their colors) of the preferences, with
+  upstream's color menu (`dialogs/ColorMenu.cpp`: the palettes of the sessions and of the
+  fonts, the custom colors picked before, More Colors), also for the colors of the editor.
 
 Decisions:
 
@@ -69,6 +82,10 @@ Decisions:
   ISO-8859-1.
 - The GUI tests give each run a temporary directory of its own (`TMPDIR`), as the
   application cleans up the temporary directories of its previous runs.
+- The shortcuts of the numeric keypad are taken by the panels from their key events: Qt matches
+  shortcuts without the keypad modifier on xkb, as the keys of the main keyboard, which the
+  incremental search needs. The directory trees of the Commander (`TreeOnLeft`) come with the
+  Explorer interface.
 
 ## M7 — desktop integration (done, 2026-10-25)
 

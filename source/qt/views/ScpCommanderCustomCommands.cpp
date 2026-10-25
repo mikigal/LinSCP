@@ -649,6 +649,7 @@ void TScpCommanderForm::ExecuteCustomCommand(const TCustomCommandType & Command)
   std::unique_ptr<TStrings> FileList;
   if (FRemotePanel->IsReady())
   {
+    FRemotePanel->SaveSelectedNames();
     FileList.reset(CreateFileList(FRemotePanel, false));
   }
   else

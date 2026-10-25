@@ -81,6 +81,7 @@ add_executable(openscp_qt_tests
   qt/BookmarksTest.cpp
   qt/CopyDialogTest.cpp
   qt/CustomCommandsTest.cpp
+  qt/DirPanelTest.cpp
   qt/EditorTest.cpp
   qt/MessageDialogTest.cpp
   qt/PreferencesDialogTest.cpp
@@ -88,6 +89,7 @@ add_executable(openscp_qt_tests
   qt/PropertiesDialogTest.cpp
   qt/QtTestMain.cpp
   qt/RightsFrameTest.cpp
+  qt/SelectMaskDialogTest.cpp
   qt/SynchronizeDialogTest.cpp)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
 target_link_libraries(openscp_qt_tests PRIVATE

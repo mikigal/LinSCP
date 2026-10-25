@@ -3,8 +3,8 @@
 //
 // Not ported: the pages of upstream's automatic updates and of its Windows
 // shell integration, the configuration in the registry, the search of the
-// preferences. The Interface, Explorer, Languages, Commander and File
-// colors pages are added with their features.
+// preferences. The Interface, Explorer and Languages pages are added with
+// their features.
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
@@ -25,7 +25,6 @@
 #include <QBoxLayout>
 #include <QButtonGroup>
 #include <QCheckBox>
-#include <QColorDialog>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileDialog>
@@ -122,6 +121,13 @@ private:
   QComboBox * AutoWorkspaceCombo;
   QCheckBox * AutoSaveWorkspacePasswordsCheck;
   QCheckBox * WorkspaceConnectAllCheck;
+  // Commander
+  QComboBox * NortonLikeModeCombo;
+  QCheckBox * SwappedPanelsCheck;
+  QComboBox * ExplorerKeyboardShortcutsCombo;
+  QCheckBox * UseLocationProfilesCheck;
+  QCheckBox * CompareByTimeCheck;
+  QCheckBox * CompareBySizeCheck;
   // Panels
   QCheckBox * ShowHiddenFilesCheck;
   QCheckBox * DefaultDirIsHomeCheck;
@@ -143,6 +149,14 @@ private:
   QSpinBox * RefreshRemotePanelIntervalEdit;
   QCheckBox * PreserveLocalDirectoryCheck;
   QCheckBox * DeleteToRecycleBinCheck;
+  // File colors
+  TFileColorData::TList FFileColors;
+  QTreeWidget * FileColorsView;
+  QPushButton * AddFileColorButton;
+  QPushButton * EditFileColorButton;
+  QPushButton * RemoveFileColorButton;
+  QPushButton * UpFileColorButton;
+  QPushButton * DownFileColorButton;
   // Editors
   QTreeWidget * EditorListView3;
   QPushButton * AddEditorButton;
@@ -268,7 +282,9 @@ private:
 
   void CreateEnvironmentSheet();
   void CreateWindowSheet();
+  void CreateCommanderSheet();
   void CreatePanelsSheets();
+  void CreateFileColorsSheet();
   void CreateEditorSheets();
   void CreateTransferSheets();
   void CreateNetworkSheet();
@@ -297,6 +313,10 @@ private:
   void EditorMove(int Source, int Dest);
   void RemoveEditor();
   void AddEditEditor(bool Edit);
+  void UpdateFileColorsView();
+  void AddEditFileColor(bool Edit);
+  void RemoveFileColor();
+  void FileColorMove(int Source, int Dest);
   void UpdateSshHostCAsView();
   void AddEditSshHostCA(bool Edit);
   void RemoveSshHostCA();
@@ -610,6 +630,7 @@ void TPreferencesDialog::CreateEnvironmentSheet()
   static_cast<QVBoxLayout *>(PreferencesSheet->layout())->addStretch(1);
 
   CreateWindowSheet();
+  CreateCommanderSheet();
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateWindowSheet()
@@ -654,6 +675,40 @@ void TPreferencesDialog::CreateWindowSheet()
   SessionSilentDisconnectCheck =
     AddCheck(WindowMiscellaneousGroup, "SessionSilentDisconnectCheck", tr("Do not p&opup error message when idle session is disconnected"));
   static_cast<QVBoxLayout *>(WindowSheet->layout())->addStretch(1);
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::CreateCommanderSheet()
+{
+  QWidget * CommanderSheet = AddSheet("CommanderSheet", tr("Commander"), ppCommander, NodeOf(ppEnvironment));
+  QLabel * Label3 = new QLabel(tr("Preferences on this page apply to Commander interface only."), CommanderSheet);
+  CommanderSheet->layout()->addWidget(Label3);
+  QGroupBox * PanelsGroup = AddGroup(CommanderSheet, "PanelsGroup", tr("Panels"));
+  QHBoxLayout * NortonLikeModeRow = AddRow(PanelsGroup);
+  QLabel * Label8 = new QLabel(tr("&Explorer-style selection:"), PanelsGroup);
+  NortonLikeModeRow->addWidget(Label8);
+  NortonLikeModeCombo =
+    CreateCombo(PanelsGroup, "NortonLikeModeCombo", { tr("Never"), tr("Mouse only"), tr("Mouse and Keyboard") });
+  Label8->setBuddy(NortonLikeModeCombo);
+  NortonLikeModeRow->addWidget(NortonLikeModeCombo);
+  NortonLikeModeRow->addStretch(1);
+  SwappedPanelsCheck = AddCheck(PanelsGroup, "SwappedPanelsCheck", tr("S&wap panels (local on right, remote on left)"));
+
+  QGroupBox * CommanderMiscGroup = AddGroup(CommanderSheet, "CommanderMiscGroup", tr("Miscellaneous"));
+  QHBoxLayout * ShortcutsRow = AddRow(CommanderMiscGroup);
+  QLabel * Label10 = new QLabel(tr("&Keyboard shortcuts"), CommanderMiscGroup);
+  ShortcutsRow->addWidget(Label10);
+  ExplorerKeyboardShortcutsCombo =
+    CreateCombo(CommanderMiscGroup, "ExplorerKeyboardShortcutsCombo", { tr("Commander"), tr("Explorer") });
+  Label10->setBuddy(ExplorerKeyboardShortcutsCombo);
+  ShortcutsRow->addWidget(ExplorerKeyboardShortcutsCombo);
+  ShortcutsRow->addStretch(1);
+  UseLocationProfilesCheck =
+    AddCheck(CommanderMiscGroup, "UseLocationProfilesCheck", tr("&Use Location Profiles instead of Directory Bookmarks"));
+
+  QGroupBox * CompareCriterionsGroup = AddGroup(CommanderSheet, "CompareCriterionsGroup", tr("Compare directory criteria"));
+  CompareByTimeCheck = AddCheck(CompareCriterionsGroup, "CompareByTimeCheck", tr("Compare by &time"));
+  CompareBySizeCheck = AddCheck(CompareCriterionsGroup, "CompareBySizeCheck", tr("Compare by &size"));
+  static_cast<QVBoxLayout *>(CommanderSheet->layout())->addStretch(1);
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreatePanelsSheets()
@@ -732,6 +787,45 @@ void TPreferencesDialog::CreatePanelsSheets()
     AddCheck(LocalPanelGroup, "PreserveLocalDirectoryCheck", tr("Do not &change state when switching sessions"));
   DeleteToRecycleBinCheck = AddCheck(LocalPanelGroup, "DeleteToRecycleBinCheck", tr("&Delete files to trash"));
   static_cast<QVBoxLayout *>(PanelLocalSheet->layout())->addStretch(1);
+
+  CreateFileColorsSheet();
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::CreateFileColorsSheet()
+{
+  QWidget * FileColorsSheet = AddSheet("FileColorsSheet", tr("File colors"), ppFileColors, NodeOf(ppPanels));
+  QGroupBox * FileColorsGroup = AddGroup(FileColorsSheet, "FileColorsGroup", tr("File colors"));
+  QHBoxLayout * FileColorsRow = AddRow(FileColorsGroup);
+  FileColorsView = CreateListView(FileColorsGroup, "FileColorsView", { tr("Mask") });
+  FileColorsView->setHeaderHidden(true);
+  FileColorsView->setMinimumHeight(fontMetrics().height() * 15);
+  AddFileColorButton = CreateButton(FileColorsGroup, "AddFileColorButton", tr("&Add..."));
+  EditFileColorButton = CreateButton(FileColorsGroup, "EditFileColorButton", tr("&Edit..."));
+  RemoveFileColorButton = CreateButton(FileColorsGroup, "RemoveFileColorButton", tr("&Remove"));
+  UpFileColorButton = CreateButton(FileColorsGroup, "UpFileColorButton", tr("&Up"));
+  DownFileColorButton = CreateButton(FileColorsGroup, "DownFileColorButton", tr("&Down"));
+  AddListButtons(FileColorsGroup, FileColorsRow, FileColorsView,
+    { AddFileColorButton, EditFileColorButton, RemoveFileColorButton, UpFileColorButton, DownFileColorButton });
+  connect(AddFileColorButton, &QPushButton::clicked, this, [this]() { ExecuteHandler([this]() { AddEditFileColor(false); }); });
+  connect(EditFileColorButton, &QPushButton::clicked, this, [this]() { ExecuteHandler([this]() { AddEditFileColor(true); }); });
+  connect(RemoveFileColorButton, &QPushButton::clicked, this, [this]() { RemoveFileColor(); });
+  connect(UpFileColorButton, &QPushButton::clicked, this, [this]()
+  {
+    int Index = ListIndex(FileColorsView);
+    FileColorMove(Index, Index - 1);
+  });
+  connect(DownFileColorButton, &QPushButton::clicked, this, [this]()
+  {
+    int Index = ListIndex(FileColorsView);
+    FileColorMove(Index, Index + 1);
+  });
+  connect(FileColorsView, &QTreeWidget::itemDoubleClicked, this, [this]()
+  {
+    if (EditFileColorButton->isEnabled())
+    {
+      ExecuteHandler([this]() { AddEditFileColor(true); });
+    }
+  });
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateEditorSheets()
@@ -1307,6 +1401,8 @@ bool TPreferencesDialog::Execute(TPreferencesDialogData * DialogData)
     case pmPresets: InitialPage = ppTransfer; break;
     case pmEditors: InitialPage = ppEditor; break;
     case pmEditorInternal: InitialPage = ppEditorInternal; break;
+    case pmCommander: InitialPage = ppCommander; break;
+    case pmFileColors: InitialPage = ppFileColors; break;
     default: InitialPage = ppEnvironment; break;
   }
   SetActivePage(InitialPage);
@@ -1335,6 +1431,28 @@ void TPreferencesDialog::LoadConfiguration()
   TAutoNestingCounter NoUpdateCounter(FNoUpdate);
 
   #define BOOLPROP(PROP) PROP ## Check->setChecked(AppConfiguration->PROP)
+  BOOLPROP(SwappedPanels);
+  BOOLPROP(UseLocationProfiles);
+  BOOLPROP(CompareByTime);
+  BOOLPROP(CompareBySize);
+  // "Explorer-style selection"
+  switch (AppConfiguration->NortonLikeMode)
+  {
+    case nlOff:
+      NortonLikeModeCombo->setCurrentIndex(2);
+      break;
+
+    case nlKeyboard:
+      NortonLikeModeCombo->setCurrentIndex(1);
+      break;
+
+    default:
+      NortonLikeModeCombo->setCurrentIndex(0);
+      break;
+  }
+  ExplorerKeyboardShortcutsCombo->setCurrentIndex(AppConfiguration->ExplorerKeyboardShortcuts ? 1 : 0);
+  TFileColorData::LoadList(AppConfiguration->FileColors, FFileColors);
+  UpdateFileColorsView();
   BOOLPROP(DefaultDirIsHome);
   BOOLPROP(PreservePanelState);
   BOOLPROP(DeleteToRecycleBin);
@@ -1622,6 +1740,26 @@ void TPreferencesDialog::SaveConfiguration()
   TGUICopyParamType CopyParam = GUIConfiguration->DefaultCopyParam;
 
   #define BOOLPROP(PROP) AppConfiguration->PROP = PROP ## Check->isChecked()
+  BOOLPROP(SwappedPanels);
+  BOOLPROP(UseLocationProfiles);
+  BOOLPROP(CompareByTime);
+  BOOLPROP(CompareBySize);
+  switch (NortonLikeModeCombo->currentIndex())
+  {
+    case 2:
+      AppConfiguration->NortonLikeMode = nlOff;
+      break;
+
+    case 1:
+      AppConfiguration->NortonLikeMode = nlKeyboard;
+      break;
+
+    default:
+      AppConfiguration->NortonLikeMode = nlOn;
+      break;
+  }
+  AppConfiguration->ExplorerKeyboardShortcuts = (ExplorerKeyboardShortcutsCombo->currentIndex() != 0);
+  AppConfiguration->FileColors = TFileColorData::SaveList(FFileColors);
   BOOLPROP(DefaultDirIsHome);
   BOOLPROP(PreservePanelState);
   BOOLPROP(DeleteToRecycleBin);
@@ -1950,6 +2088,13 @@ void TPreferencesDialog::UpdateControls()
     (FEditorFontColor != TColor(0)) ? TColorToQColor(FEditorFontColor) : DefaultPalette.color(QPalette::Text));
   EditorFontLabel->setPalette(EditorPalette);
 
+  int FileColorIndex = ListIndex(FileColorsView);
+  bool FileColorSelected = (FileColorIndex >= 0);
+  EditFileColorButton->setEnabled(FileColorSelected);
+  RemoveFileColorButton->setEnabled(FileColorSelected);
+  UpFileColorButton->setEnabled(FileColorSelected && (FileColorIndex > 0));
+  DownFileColorButton->setEnabled(FileColorSelected && (FileColorIndex < static_cast<int>(FFileColors.size()) - 1));
+
   int CommandIndex = ListIndex(CustomCommandsView);
   bool CommandSelected = (CommandIndex >= 0);
   EditCommandButton->setEnabled(CommandSelected);
@@ -2134,6 +2279,19 @@ bool TPreferencesDialog::eventFilter(QObject * Object, QEvent * Event)
       if (AddEditorButton->isEnabled() && (Key == Qt::Key_Insert))
       {
         ExecuteHandler([this]() { AddEditEditor(false); });
+        return true;
+      }
+    }
+    else if (Object == FileColorsView)
+    {
+      if (RemoveFileColorButton->isEnabled() && (Key == Qt::Key_Delete))
+      {
+        RemoveFileColor();
+        return true;
+      }
+      if (AddFileColorButton->isEnabled() && (Key == Qt::Key_Insert))
+      {
+        ExecuteHandler([this]() { AddEditFileColor(false); });
         return true;
       }
     }
@@ -2418,6 +2576,73 @@ void TPreferencesDialog::AddEditEditor(bool Edit)
   }
 }
 //---------------------------------------------------------------------------
+void TPreferencesDialog::UpdateFileColorsView()
+{
+  int Current = ListIndex(FileColorsView);
+  FileColorsView->clear();
+  for (const TFileColorData & FileColor : FFileColors)
+  {
+    QTreeWidgetItem * Item = new QTreeWidgetItem(FileColorsView);
+    Item->setText(0, ToQString(FileColor.FileMask.Masks));
+    if (FileColor.Color != TColor(0))
+    {
+      Item->setForeground(0, TColorToQColor(FileColor.Color));
+    }
+  }
+  SetListIndex(FileColorsView, Current);
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::AddEditFileColor(bool Edit)
+{
+  TFileColorData FileColorData;
+  int Index = ListIndex(FileColorsView);
+  if (Edit)
+  {
+    FileColorData = FFileColors[Index];
+  }
+  else
+  {
+    FileColorData.FileMask = AnyMask;
+  }
+
+  if (DoFileColorDialog(FileColorData))
+  {
+    if (Edit)
+    {
+      FFileColors[Index] = FileColorData;
+    }
+    else if (Index < 0)
+    {
+      FFileColors.push_back(FileColorData);
+      Index = static_cast<int>(FFileColors.size()) - 1;
+    }
+    else
+    {
+      FFileColors.insert(FFileColors.begin() + Index, FileColorData);
+    }
+
+    UpdateFileColorsView();
+    SetListIndex(FileColorsView, Index);
+    UpdateControls();
+  }
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::RemoveFileColor()
+{
+  int Index = ListIndex(FileColorsView);
+  FFileColors.erase(FFileColors.begin() + Index);
+  UpdateFileColorsView();
+  UpdateControls();
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::FileColorMove(int Source, int Dest)
+{
+  std::swap(FFileColors[Source], FFileColors[Dest]);
+  UpdateFileColorsView();
+  SetListIndex(FileColorsView, Dest);
+  UpdateControls();
+}
+//---------------------------------------------------------------------------
 void TPreferencesDialog::UpdateSshHostCAsView()
 {
   int Current = ListIndex(SshHostCAsView);
@@ -2489,33 +2714,12 @@ void TPreferencesDialog::EditorFontButtonClick()
 //---------------------------------------------------------------------------
 void TPreferencesDialog::EditorColorButtonClick(bool Background, const QPoint & Pos)
 {
-  // upstream's color menu: the default color or a custom one
+  // upstream's CreateEditorBackgroundColorMenu (the light colors of the
+  // sessions) and CreateColorPopupMenu
   TColor & Color = Background ? FEditorBackgroundColor : FEditorFontColor;
-  QMenu Menu(this);
-  Menu.setObjectName(QStringLiteral("ColorMenu"));
-  QAction * DefaultItem = Menu.addAction(tr("&Default"));
-  DefaultItem->setObjectName(QStringLiteral("DefaultColorItem"));
-  DefaultItem->setCheckable(true);
-  DefaultItem->setChecked(Color == TColor(0));
-  QAction * CustomItem = Menu.addAction(tr("&More Colors..."));
-  CustomItem->setObjectName(QStringLiteral("CustomColorItem"));
-  QAction * Selected = Menu.exec(Pos);
-  if (Selected == DefaultItem)
+  if (ColorMenuPopup(Pos, Color, Background))
   {
-    Color = TColor(0);
     UpdateControls();
-  }
-  else if (Selected == CustomItem)
-  {
-    QColor Initial =
-      (Color != TColor(0)) ? TColorToQColor(Color) :
-        QApplication::palette().color(Background ? QPalette::Base : QPalette::Text);
-    QColor NewColor = QColorDialog::getColor(Initial, this);
-    if (NewColor.isValid())
-    {
-      Color = QColorToTColor(NewColor);
-      UpdateControls();
-    }
   }
 }
 //---------------------------------------------------------------------------

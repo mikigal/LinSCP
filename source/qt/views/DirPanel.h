@@ -7,6 +7,7 @@
 //---------------------------------------------------------------------------
 #include <QtInterface.h>
 
+#include <AppConfiguration.h>
 #include <CopyParam.h>
 
 #include <QElapsedTimer>
@@ -14,6 +15,7 @@
 #include <QWidget>
 
 #include <functional>
+#include <unordered_set>
 #include <vector>
 //---------------------------------------------------------------------------
 class QAction;
@@ -35,8 +37,12 @@ class TRemoteDirModel;
 class TRemoteFile;
 class TTerminal;
 //---------------------------------------------------------------------------
+// How the selection of a panel changes (upstream's TSelectMode)
+enum TSelectMode { smAll, smNone, smInvert };
+//---------------------------------------------------------------------------
 // The files of a panel: dragging the selected files, dropping on the view
-// or on its directories (the target, highlighted)
+// or on its directories (the target, highlighted); the selection by the
+// keyboard and the mouse (upstream's TCustomNortonLikeListView)
 class TDirView : public QTreeView
 {
   Q_OBJECT
@@ -46,9 +52,24 @@ public:
 
   TDirPanel * GetPanel() const { return FPanel; }
 
+  virtual void setModel(QAbstractItemModel * Model) override;
   virtual void keyboardSearch(const QString & Search) override;
+  // The keyboard (nlKeyboard) or also the mouse (nlOn) only focus the
+  // files, Insert and Space select them
+  void SetNortonLike(TNortonLikeMode Value) { FNortonLike = Value; }
+  TNortonLikeMode GetNortonLike() const { return FNortonLike; }
+  // Toggles the selection of the focused file (Insert)
+  void SelectCurrentItem(bool FocusNext);
+  // The flags of the selection when the focus moves to another file
+  QItemSelectionModel::SelectionFlags FocusCommand() const;
 
 protected:
+  virtual QItemSelectionModel::SelectionFlags selectionCommand(
+    const QModelIndex & Index, const QEvent * Event = nullptr) const override;
+  virtual void keyPressEvent(QKeyEvent * Event) override;
+  virtual void mousePressEvent(QMouseEvent * Event) override;
+  virtual void mouseMoveEvent(QMouseEvent * Event) override;
+  virtual void mouseReleaseEvent(QMouseEvent * Event) override;
   virtual void startDrag(Qt::DropActions SupportedActions) override;
   virtual void dragEnterEvent(QDragEnterEvent * Event) override;
   virtual void dragMoveEvent(QDragMoveEvent * Event) override;
@@ -62,6 +83,16 @@ private:
   // The incremental search (upstream's PanelSearch)
   QString FSearchText;
   QElapsedTimer FSearchTimer;
+  TNortonLikeMode FNortonLike;
+  // All the selected files were selected by clicks (then the keyboard
+  // clears the selection in the nlKeyboard mode), while a click selects
+  bool FAnyAndAllSelectedImplicitly;
+  bool FSelectingImplicitly;
+  // The keys do not change the selection
+  bool FNoSelectionUpdate;
+
+  bool IsSearching() const;
+  void MouseEvent(QMouseEvent * Event, const std::function<void()> & Handler);
 
   // The directory the files would be dropped to (the parent directory or
   // a directory under the pointer, else the panel's), with its row
@@ -134,6 +165,30 @@ public:
   TObject * SaveState();
   void RestoreState(TObject * State);
 
+  // The selection (upstream's TCustomDirView): the files matching the
+  // filter, all the files, none, the inverse, the focused file
+  void SelectFiles(const TFileFilter & Filter, bool Select);
+  void SelectAll(TSelectMode Mode);
+  void SelectCurrentItem();
+  // The files selected before an operation, to be selected again
+  void SaveSelectedNames();
+  void RestoreSelectedNames();
+  bool GetSelectedNamesSaved() const { return !FSavedNames.empty(); }
+  // The selected files and all the files (without the parent directory)
+  int GetSelCount() const;
+  int GetFilesCount() const;
+  // The focused file, not the parent directory
+  bool HasFocusedFile() const;
+  UnicodeString GetFocusedFileName() const;
+  // Selects the files that are newer than in the other panel or missing
+  // there, by the criteria (upstream's CompareFiles)
+  void CompareFiles(TDirPanel * Other, bool CompareByTime, bool CompareBySize);
+  // Only the files matching the mask are shown (the filter dialog)
+  void Filter();
+  void SetMask(const UnicodeString & Mask);
+  UnicodeString GetMask() const;
+  void SetRefreshShortCut(const QKeySequence & ShortCut);
+
   // Drag and drop, done by the main window: a drag of the selected files
   // starts; the action of a drop of the data on the panel; the files are
   // dropped
@@ -153,12 +208,16 @@ Q_SIGNALS:
   void AddBookmarkRequested(TDirPanel * Panel);
   // The menu of the bookmarks is about to show (to be filled)
   void BookmarksMenuRequested(TDirPanel * Panel, QMenu * Menu);
+  // The count of the hidden files in the status bar was clicked
+  void ToggleHiddenFilesRequested();
 
 protected:
   QToolBar * PathToolbar;
   QComboBox * PathComboBox;
   TDirView * DirView;
   QLabel * StatusBar;
+  QLabel * HiddenFilesLabel;
+  QLabel * FilteredFilesLabel;
   QAction * BackAction;
   QAction * ForwardAction;
   QAction * ParentDirAction;
@@ -167,6 +226,7 @@ protected:
   QAction * RefreshAction;
   QAction * OpenDirAction;
   QAction * AddBookmarkAction2;
+  QAction * FilterAction;
   QMenu * OpenDirMenu;
   TDirModel * FModel;
   bool FShowHiddenFiles;
@@ -188,11 +248,17 @@ private:
   bool FNavigatingHistory;
   UnicodeString FPrevPath;
   UnicodeString FFocusAfterReload;
+  // The selected files of a reload of the directory
+  std::unordered_set<UnicodeString> FSelectionAfterReload;
+  std::unordered_set<UnicodeString> FSavedNames;
   bool FUpdatingPath;
+  UnicodeString FFileColors;
 
   QAction * CreateAction(const QString & Name, const QString & Caption, const QString & IconName,
     const QKeySequence & ShortCut, void (TDirPanel::*Method)());
   void PathComboActivated();
+  // Selects or unselects the rows
+  void SelectRows(const std::vector<int> & Rows, bool Select);
   void RefreshActionExecute() { Reload(); }
   void HomeDirActionExecute() { HomeDirectory(); }
   void OpenDirActionExecute() { Q_EMIT OpenDirectoryRequested(this); }

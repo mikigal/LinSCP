@@ -41,6 +41,10 @@ protected:
     AppConfiguration->PanelSearch = isNameStartOnly;
     AppConfiguration->DDTemporaryDirectory = L"";
     AppConfiguration->DDTransferConfirmation = asAuto;
+    AppConfiguration->NortonLikeMode = nlKeyboard;
+    AppConfiguration->SwappedPanels = false;
+    AppConfiguration->ExplorerKeyboardShortcuts = false;
+    AppConfiguration->FileColors = L"";
     Configuration->QueueTransfersLimit = 2;
     GUIConfiguration->CopyParamList = &FCopyParamList;
     AppConfiguration->EditorList = &FEditorList;
@@ -142,6 +146,8 @@ TEST_F(PreferencesDialogTest, ModesOpenTheirPages)
     { pmQueue, "QueueSheet" },
     { pmLogging, "LogSheet" },
     { pmEditorInternal, "EditorInternalSheet" },
+    { pmCommander, "CommanderSheet" },
+    { pmFileColors, "FileColorsSheet" },
   };
   for (const auto & Mode : Modes)
   {
@@ -232,5 +238,48 @@ TEST_F(PreferencesDialogTest, EditorPreferencesDialog)
   EXPECT_EQ(Editor.ExternalEditor, UnicodeString(L"/usr/bin/kate !.!"));
   EXPECT_EQ(Editor.FileMask.Masks, UnicodeString(L"*.c"));
   EXPECT_TRUE(Editor.ExternalEditorText);
+}
+//---------------------------------------------------------------------------
+TEST_F(PreferencesDialogTest, CommanderAndFileColors)
+{
+  AppConfiguration->NortonLikeMode = nlKeyboard;
+  AppConfiguration->FileColors = L"0000FF:*.txt";
+  WhenModal([&](QWidget * Dialog)
+  {
+    QTreeWidget * FileColorsView = Child<QTreeWidget>(Dialog, "FileColorsView");
+    ASSERT_EQ(FileColorsView->topLevelItemCount(), 1);
+    EXPECT_EQ(FileColorsView->topLevelItem(0)->text(0), QStringLiteral("*.txt"));
+    EXPECT_EQ(FileColorsView->topLevelItem(0)->foreground(0).color(), QColor(Qt::red));
+    EXPECT_FALSE(Child<QPushButton>(Dialog, "EditFileColorButton")->isEnabled());
+    WhenModal("SelectMaskDialog", [](QWidget * MaskDialog)
+    {
+      Child<QComboBox>(MaskDialog, "MaskEdit")->setEditText(QStringLiteral("*.log"));
+      Child<QPushButton>(MaskDialog, "OKBtn")->click();
+      WhenModal("PreferencesDialog", [](QWidget * ADialog)
+      {
+        QTreeWidget * FileColorsView = Child<QTreeWidget>(ADialog, "FileColorsView");
+        ASSERT_EQ(FileColorsView->topLevelItemCount(), 2);
+        // Moved to the top
+        EXPECT_TRUE(Child<QPushButton>(ADialog, "UpFileColorButton")->isEnabled());
+        Child<QPushButton>(ADialog, "UpFileColorButton")->click();
+        EXPECT_EQ(FileColorsView->topLevelItem(0)->text(0), QStringLiteral("*.log"));
+
+        SelectPage(ADialog, QStringLiteral("Commander"));
+        EXPECT_EQ(CurrentSheet(ADialog), QStringLiteral("CommanderSheet"));
+        QComboBox * NortonLikeModeCombo = Child<QComboBox>(ADialog, "NortonLikeModeCombo");
+        EXPECT_EQ(NortonLikeModeCombo->currentIndex(), 1);
+        NortonLikeModeCombo->setCurrentIndex(2);
+        Child<QCheckBox>(ADialog, "SwappedPanelsCheck")->setChecked(true);
+        Child<QComboBox>(ADialog, "ExplorerKeyboardShortcutsCombo")->setCurrentIndex(1);
+        Child<QPushButton>(ADialog, "OKButton")->click();
+      });
+    });
+    Child<QPushButton>(Dialog, "AddFileColorButton")->click();
+  });
+  EXPECT_TRUE(DoPreferencesDialog(pmFileColors));
+  EXPECT_EQ(AppConfiguration->FileColors, UnicodeString(L"000000:*.log,0000FF:*.txt"));
+  EXPECT_EQ(AppConfiguration->NortonLikeMode, nlOff);
+  EXPECT_TRUE(AppConfiguration->SwappedPanels);
+  EXPECT_TRUE(AppConfiguration->ExplorerKeyboardShortcuts);
 }
 //---------------------------------------------------------------------------

@@ -76,7 +76,9 @@ TDirModel::TDirModel(const std::vector<TDirViewColumn> & Columns, QObject * Pare
   FEditableRow(-1),
   FFormatSizeBytes(fbKilobytes),
   FNaturalOrderNumericalSorting(true),
-  FAlwaysSortDirectoriesByName(false)
+  FAlwaysSortDirectoriesByName(false),
+  FHiddenCount(0),
+  FFilteredCount(0)
 {
 }
 //---------------------------------------------------------------------------
@@ -169,6 +171,10 @@ QVariant TDirModel::data(const QModelIndex & Index, int Role) const
     else if ((Role == Qt::DecorationRole) && (Column == dvName))
     {
       Result = Item.Icon;
+    }
+    else if ((Role == Qt::ForegroundRole) && Item.Color.isValid())
+    {
+      Result = QBrush(Item.Color);
     }
     else if ((Role == Qt::TextAlignmentRole) && (Column == dvSize))
     {
@@ -295,11 +301,75 @@ void TDirModel::SetDisplayOptions(
   }
 }
 //---------------------------------------------------------------------------
-void TDirModel::SetItems(std::vector<TDirViewItem> && Items)
+void TDirModel::SetMask(const UnicodeString & Mask)
+{
+  FMask = Mask;
+}
+//---------------------------------------------------------------------------
+QColor TDirModel::ItemColor(const TDirViewItem & Item) const
+{
+  // upstream's DirViewGetItemColor
+  QColor Result;
+  if (!Item.IsParentDirectory)
+  {
+    TFileMasks::TParams MaskParams;
+    MaskParams.Size = Item.Size;
+    MaskParams.Modification = Item.Modification;
+    for (const TFileColorData & FileColor : FFileColors)
+    {
+      bool ImplicitMatch;
+      if (FileColor.FileMask.Matches(Item.FileName, IsLocal(), Item.IsDirectory, &MaskParams, false, ImplicitMatch) &&
+          !ImplicitMatch)
+      {
+        Result = TColorToQColor(FileColor.Color);
+        break;
+      }
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TDirModel::SetFileColors(const TFileColorData::TList & FileColors)
+{
+  FFileColors = FileColors;
+  for (TDirViewItem & Item : FItems)
+  {
+    Item.Color = ItemColor(Item);
+  }
+  if (Count() > 0)
+  {
+    Q_EMIT dataChanged(index(0, 0), index(Count() - 1, columnCount() - 1), { Qt::ForegroundRole });
+  }
+}
+//---------------------------------------------------------------------------
+void TDirModel::SetItems(std::vector<TDirViewItem> && Items, int HiddenCount)
 {
   beginResetModel();
   ClearItems();
-  FItems = std::move(Items);
+  FHiddenCount = HiddenCount;
+  FFilteredCount = 0;
+  bool Filter = !FMask.Masks.IsEmpty();
+  FItems.clear();
+  FItems.reserve(Items.size());
+  for (TDirViewItem & Item : Items)
+  {
+    // upstream's DirViewMatchMask with implicit matches (the directories
+    // match masks of files)
+    if (Filter && !Item.IsParentDirectory)
+    {
+      TFileMasks::TParams MaskParams;
+      MaskParams.Size = Item.Size;
+      MaskParams.Modification = Item.Modification;
+      bool ImplicitMatch;
+      if (!FMask.Matches(Item.FileName, false, Item.IsDirectory, &MaskParams, true, ImplicitMatch))
+      {
+        FFilteredCount++;
+        continue;
+      }
+    }
+    Item.Color = ItemColor(Item);
+    FItems.push_back(std::move(Item));
+  }
   SortItems();
   endResetModel();
 }
@@ -377,6 +447,7 @@ void TLocalDirModel::Load(const UnicodeString & Path, bool ShowHiddenFiles)
   }
 
   std::vector<TDirViewItem> Items;
+  int HiddenCount = 0;
   struct dirent * Entry;
   while ((Entry = readdir(Directory)) != NULL)
   {
@@ -395,6 +466,7 @@ void TLocalDirModel::Load(const UnicodeString & Path, bool ShowHiddenFiles)
     }
     if ((Name[0] == '.') && !ShowHiddenFiles)
     {
+      HiddenCount++;
       continue;
     }
 
@@ -436,7 +508,7 @@ void TLocalDirModel::Load(const UnicodeString & Path, bool ShowHiddenFiles)
   closedir(Directory);
 
   FPath = Path;
-  SetItems(std::move(Items));
+  SetItems(std::move(Items), HiddenCount);
 }
 //---------------------------------------------------------------------------
 TRemoteDirModel::TRemoteDirModel(QObject * Parent) :
@@ -460,7 +532,7 @@ void TRemoteDirModel::ClearItems()
 //---------------------------------------------------------------------------
 void TRemoteDirModel::Clear()
 {
-  SetItems(std::vector<TDirViewItem>());
+  SetItems(std::vector<TDirViewItem>(), 0);
 }
 //---------------------------------------------------------------------------
 void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool ShowInaccesibleDirectories)
@@ -470,12 +542,18 @@ void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool S
   Files->DuplicateTo(Copy);
 
   std::vector<TDirViewItem> Items;
+  int HiddenCount = 0;
   for (int Index = 0; Index < Copy->Count; Index++)
   {
     TRemoteFile * File = Copy->Files[Index];
-    if ((!ShowHiddenFiles && File->IsHidden) || File->IsThisDirectory ||
+    if (File->IsThisDirectory)
+    {
+      continue;
+    }
+    if ((!ShowHiddenFiles && File->IsHidden) ||
         (!ShowInaccesibleDirectories && File->IsInaccesibleDirectory))
     {
+      HiddenCount++;
       continue;
     }
     TDirViewItem Item;
@@ -488,6 +566,7 @@ void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool S
     if (!Item.IsParentDirectory)
     {
       Item.Modification = File->Modification;
+      Item.ModificationFmt = File->ModificationFmt;
       Item.ModificationText = ToQString(File->UserModificationStr);
       Item.RightsText = ToQString(File->RightsStr);
       Item.OwnerText = ToQString(File->Owner.DisplayText);
@@ -502,7 +581,7 @@ void TRemoteDirModel::Load(TRemoteFileList * Files, bool ShowHiddenFiles, bool S
     Items.push_back(Item);
   }
 
-  SetItems(std::move(Items));
+  SetItems(std::move(Items), HiddenCount);
   // After SetItems, which frees the previous copy
   FFiles = Copy;
 }

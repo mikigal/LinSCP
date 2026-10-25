@@ -21,9 +21,13 @@
 #include <QEvent>
 #include <QFileSystemWatcher>
 #include <QHeaderView>
+#include <QKeyEvent>
+#include <QMouseEvent>
+#include <QScrollBar>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QPainter>
 #include <QPointer>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -51,12 +55,229 @@ public:
 TDirView::TDirView(TDirPanel * Panel) :
   QTreeView(Panel),
   FPanel(Panel),
-  FDropTargetRow(-1)
+  FDropTargetRow(-1),
+  FNortonLike(nlKeyboard),
+  FAnyAndAllSelectedImplicitly(false),
+  FSelectingImplicitly(false),
+  FNoSelectionUpdate(false)
 {
   setDragEnabled(true);
   setAcceptDrops(true);
   setDragDropMode(QAbstractItemView::DragDrop);
   setDropIndicatorShown(false);
+}
+//---------------------------------------------------------------------------
+void TDirView::setModel(QAbstractItemModel * Model)
+{
+  QTreeView::setModel(Model);
+  connect(selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]()
+  {
+    if (!FSelectingImplicitly)
+    {
+      FAnyAndAllSelectedImplicitly = false;
+    }
+  });
+}
+//---------------------------------------------------------------------------
+QItemSelectionModel::SelectionFlags TDirView::FocusCommand() const
+{
+  QItemSelectionModel::SelectionFlags Result;
+  if (FNortonLike == nlOff)
+  {
+    Result = QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows;
+  }
+  else if ((FNortonLike == nlKeyboard) && FAnyAndAllSelectedImplicitly)
+  {
+    // The file selected by a click is unselected
+    Result = QItemSelectionModel::Clear;
+  }
+  else
+  {
+    Result = QItemSelectionModel::NoUpdate;
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+QItemSelectionModel::SelectionFlags TDirView::selectionCommand(const QModelIndex & Index, const QEvent * Event) const
+{
+  if ((FNortonLike != nlOff) && (Event != nullptr))
+  {
+    switch (Event->type())
+    {
+      case QEvent::KeyPress:
+        {
+          const QKeyEvent * KeyEvent = static_cast<const QKeyEvent *>(Event);
+          switch (KeyEvent->key())
+          {
+            case Qt::Key_Down:
+            case Qt::Key_Up:
+            case Qt::Key_Left:
+            case Qt::Key_Right:
+            case Qt::Key_Home:
+            case Qt::Key_End:
+            case Qt::Key_PageUp:
+            case Qt::Key_PageDown:
+              if (FNoSelectionUpdate || KeyEvent->modifiers().testFlag(Qt::ControlModifier))
+              {
+                return QItemSelectionModel::NoUpdate;
+              }
+              return FocusCommand();
+
+            default:
+              break;
+          }
+        }
+        break;
+
+      case QEvent::MouseButtonPress:
+      case QEvent::MouseButtonRelease:
+      case QEvent::MouseButtonDblClick:
+      case QEvent::MouseMove:
+        // Only the clicks with Ctrl or Shift select (nlOn), the right button
+        // never does
+        if (FNortonLike == nlOn)
+        {
+          const QMouseEvent * MouseEvent = static_cast<const QMouseEvent *>(Event);
+          bool RightButton =
+            (MouseEvent->button() == Qt::RightButton) || MouseEvent->buttons().testFlag(Qt::RightButton);
+          if (RightButton || !(MouseEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier)))
+          {
+            return QItemSelectionModel::NoUpdate;
+          }
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+  return QTreeView::selectionCommand(Index, Event);
+}
+//---------------------------------------------------------------------------
+bool TDirView::IsSearching() const
+{
+  return
+    !FSearchText.isEmpty() && FSearchTimer.isValid() &&
+    (FSearchTimer.elapsed() < QApplication::keyboardInputInterval());
+}
+//---------------------------------------------------------------------------
+void TDirView::SelectCurrentItem(bool FocusNext)
+{
+  const TDirModel * Model = FPanel->GetModel();
+  if ((Model != nullptr) && (Model->Count() > 0))
+  {
+    QModelIndex Current = currentIndex();
+    if (!Current.isValid())
+    {
+      Current = Model->index(0, 0);
+    }
+    // The parent directory is never selected
+    if (!Model->Item(Current.row()).IsParentDirectory)
+    {
+      selectionModel()->select(Current, QItemSelectionModel::Toggle | QItemSelectionModel::Rows);
+    }
+    if (FocusNext && (Current.row() + 1 < Model->Count()))
+    {
+      QModelIndex Next = Model->index(Current.row() + 1, 0);
+      selectionModel()->setCurrentIndex(Next, QItemSelectionModel::NoUpdate);
+      scrollTo(Next);
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TDirView::keyPressEvent(QKeyEvent * Event)
+{
+  Qt::KeyboardModifiers Modifiers = Event->modifiers() & ~Qt::KeypadModifier;
+  int Key = Event->key();
+  if ((FNortonLike != nlOff) && (state() != EditingState))
+  {
+    if ((Key == Qt::Key_Insert) && (Modifiers == Qt::NoModifier))
+    {
+      SelectCurrentItem(true);
+      Event->accept();
+      return;
+    }
+    // Space continues the incremental search, else it selects
+    if ((Key == Qt::Key_Space) && (Modifiers == Qt::NoModifier) && !IsSearching())
+    {
+      SelectCurrentItem(false);
+      Event->accept();
+      return;
+    }
+    // Without a horizontal scroll bar, left and right go to the first and
+    // the last file
+    if (((Key == Qt::Key_Left) || (Key == Qt::Key_Right)) && !horizontalScrollBar()->isVisible())
+    {
+      QKeyEvent HomeEnd(
+        Event->type(), (Key == Qt::Key_Left) ? Qt::Key_Home : Qt::Key_End, Event->modifiers(), Event->text(),
+        Event->isAutoRepeat(), Event->count());
+      keyPressEvent(&HomeEnd);
+      Event->setAccepted(HomeEnd.isAccepted());
+      return;
+    }
+    // Shift selects the files the focus moves over, never unselects
+    bool Movement =
+      (Key == Qt::Key_Down) || (Key == Qt::Key_Up) || (Key == Qt::Key_Home) || (Key == Qt::Key_End) ||
+      (Key == Qt::Key_PageUp) || (Key == Qt::Key_PageDown);
+    if (Movement && (Modifiers == Qt::ShiftModifier))
+    {
+      QModelIndex OldCurrent = currentIndex();
+      {
+        TAutoFlag NoSelectionUpdateFlag(FNoSelectionUpdate);
+        QTreeView::keyPressEvent(Event);
+      }
+      QModelIndex NewCurrent = currentIndex();
+      const TDirModel * Model = FPanel->GetModel();
+      if (OldCurrent.isValid() && NewCurrent.isValid() && (Model != nullptr))
+      {
+        std::vector<int> Rows;
+        for (int Row = std::min(OldCurrent.row(), NewCurrent.row()); Row <= std::max(OldCurrent.row(), NewCurrent.row()); Row++)
+        {
+          if (!Model->Item(Row).IsParentDirectory)
+          {
+            Rows.push_back(Row);
+          }
+        }
+        QItemSelection Selection;
+        for (int Row : Rows)
+        {
+          Selection.select(Model->index(Row, 0), Model->index(Row, Model->columnCount() - 1));
+        }
+        selectionModel()->select(Selection, QItemSelectionModel::Select);
+      }
+      return;
+    }
+  }
+  QTreeView::keyPressEvent(Event);
+}
+//---------------------------------------------------------------------------
+void TDirView::MouseEvent(QMouseEvent * Event, const std::function<void()> & Handler)
+{
+  // The selection by a click without Ctrl and Shift is implicit
+  bool Implicit = !(Event->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier));
+  bool PrevSelectingImplicitly = FSelectingImplicitly;
+  FSelectingImplicitly = Implicit;
+  Handler();
+  FSelectingImplicitly = PrevSelectingImplicitly;
+  if (Implicit && (Event->type() != QEvent::MouseMove) && selectionModel()->hasSelection())
+  {
+    FAnyAndAllSelectedImplicitly = true;
+  }
+}
+//---------------------------------------------------------------------------
+void TDirView::mousePressEvent(QMouseEvent * Event)
+{
+  MouseEvent(Event, [this, Event]() { QTreeView::mousePressEvent(Event); });
+}
+//---------------------------------------------------------------------------
+void TDirView::mouseMoveEvent(QMouseEvent * Event)
+{
+  MouseEvent(Event, [this, Event]() { QTreeView::mouseMoveEvent(Event); });
+}
+//---------------------------------------------------------------------------
+void TDirView::mouseReleaseEvent(QMouseEvent * Event)
+{
+  MouseEvent(Event, [this, Event]() { QTreeView::mouseReleaseEvent(Event); });
 }
 //---------------------------------------------------------------------------
 void TDirView::keyboardSearch(const QString & Search)
@@ -107,7 +328,7 @@ void TDirView::keyboardSearch(const QString & Search)
     if (Matches)
     {
       QModelIndex Index = Model->index(Row, 0);
-      selectionModel()->setCurrentIndex(Index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+      selectionModel()->setCurrentIndex(Index, FocusCommand());
       scrollTo(Index);
       break;
     }
@@ -237,6 +458,21 @@ void TDirView::drawRow(QPainter * Painter, const QStyleOptionViewItem & Option, 
   {
     QTreeView::drawRow(Painter, Option, Index);
   }
+  // The focused file, which the keyboard does not select (the focus
+  // rectangle of upstream's list views)
+  if ((FNortonLike != nlOff) && hasFocus() && (Index.row() == currentIndex().row()))
+  {
+    QColor Color = palette().color(QPalette::Highlight);
+    if (selectionModel()->isRowSelected(Index.row()))
+    {
+      Color = Color.darker(150);
+    }
+    Painter->save();
+    Painter->setPen(QPen(Color, 1));
+    Painter->setBrush(Qt::NoBrush);
+    Painter->drawRect(QRect(-header()->offset(), Option.rect.y(), header()->length(), Option.rect.height()).adjusted(0, 0, -1, -1));
+    Painter->restore();
+  }
 }
 //---------------------------------------------------------------------------
 TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
@@ -300,6 +536,14 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   }
   AddBookmarkAction2 = CreateAction(Prefix + QStringLiteral("AddBookmarkAction2"), tr("&Add Path to Bookmarks"),
     QStringLiteral("bookmark-new"), QKeySequence(Qt::CTRL | Qt::Key_B), &TDirPanel::AddBookmarkActionExecute);
+  // In the menu of the panel only
+  FilterAction = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), tr("&Filter..."), this);
+  FilterAction->setObjectName(Prefix + QStringLiteral("FilterAction"));
+  FilterAction->setToolTip(tr("Filter displayed files"));
+  FilterAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_F));
+  FilterAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+  addAction(FilterAction);
+  connect(FilterAction, &QAction::triggered, this, [this]() { ExecuteHandler([this]() { Filter(); }); });
 
   DirView = new TDirView(this);
   DirView->setObjectName(Prefix + QStringLiteral("DirView"));
@@ -323,11 +567,29 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   connect(DirView, &QTreeView::activated, this, [this](const QModelIndex & Index) { ItemActivated(Index.row()); });
   Layout->addWidget(DirView, 1);
 
+  // The selected and all the files, the hidden ones and the filtered ones,
+  // clicked to show them
+  QHBoxLayout * StatusLayout = new QHBoxLayout();
+  StatusLayout->setSpacing(2);
   StatusBar = new QLabel(this);
   StatusBar->setObjectName(Prefix + QStringLiteral("StatusBar"));
-  StatusBar->setFrameShape(QFrame::StyledPanel);
-  StatusBar->setFrameShadow(QFrame::Sunken);
-  Layout->addWidget(StatusBar);
+  HiddenFilesLabel = new QLabel(this);
+  HiddenFilesLabel->setObjectName(Prefix + QStringLiteral("HiddenFilesLabel"));
+  HiddenFilesLabel->setToolTip(tr("Click to show hidden files"));
+  FilteredFilesLabel = new QLabel(this);
+  FilteredFilesLabel->setObjectName(Prefix + QStringLiteral("FilteredFilesLabel"));
+  FilteredFilesLabel->setToolTip(tr("Click to change filter"));
+  for (QLabel * Label : { StatusBar, HiddenFilesLabel, FilteredFilesLabel })
+  {
+    Label->setFrameShape(QFrame::StyledPanel);
+    Label->setFrameShadow(QFrame::Sunken);
+    StatusLayout->addWidget(Label, (Label == StatusBar) ? 1 : 0);
+  }
+  HiddenFilesLabel->installEventFilter(this);
+  FilteredFilesLabel->installEventFilter(this);
+  HiddenFilesLabel->setVisible(false);
+  FilteredFilesLabel->setVisible(false);
+  Layout->addLayout(StatusLayout);
 }
 //---------------------------------------------------------------------------
 QAction * TDirPanel::CreateAction(const QString & Name, const QString & Caption, const QString & IconName,
@@ -426,6 +688,14 @@ bool TDirPanel::eventFilter(QObject * Object, QEvent * Event)
   if ((Event->type() == QEvent::FocusIn) && ((Object == DirView) || (Object == PathComboBox)))
   {
     Q_EMIT Entered(this);
+  }
+  else if ((Event->type() == QEvent::MouseButtonRelease) && (Object == HiddenFilesLabel))
+  {
+    Q_EMIT ToggleHiddenFilesRequested();
+  }
+  else if ((Event->type() == QEvent::MouseButtonRelease) && (Object == FilteredFilesLabel))
+  {
+    ExecuteHandler([this]() { Filter(); });
   }
   return QWidget::eventFilter(Object, Event);
 }
@@ -549,13 +819,22 @@ void TDirPanel::PathChanged()
 //---------------------------------------------------------------------------
 void TDirPanel::SaveFocus()
 {
-  // Keeps the focused file over a reload of the same directory
-  if (FFocusAfterReload.IsEmpty() && (FModel != nullptr))
+  // Keeps the focused file and the selected ones over a reload of the same
+  // directory
+  if (FModel != nullptr)
   {
-    QModelIndex Current = DirView->currentIndex();
-    if (Current.isValid() && (Current.row() < FModel->Count()))
+    if (FFocusAfterReload.IsEmpty())
     {
-      FFocusAfterReload = FModel->Item(Current.row()).FileName;
+      QModelIndex Current = DirView->currentIndex();
+      if (Current.isValid() && (Current.row() < FModel->Count()))
+      {
+        FFocusAfterReload = FModel->Item(Current.row()).FileName;
+      }
+    }
+    FSelectionAfterReload.clear();
+    for (const QModelIndex & Index : DirView->selectionModel()->selectedRows())
+    {
+      FSelectionAfterReload.insert(FModel->Item(Index.row()).FileName);
     }
   }
 }
@@ -573,6 +852,19 @@ void TDirPanel::FilesReloaded()
     QModelIndex Index = FModel->index(Row, 0);
     DirView->selectionModel()->setCurrentIndex(Index, QItemSelectionModel::NoUpdate);
     DirView->scrollTo(Index);
+  }
+  if (!FSelectionAfterReload.empty())
+  {
+    std::vector<int> Rows;
+    for (int ARow = 0; ARow < FModel->Count(); ARow++)
+    {
+      if (FSelectionAfterReload.count(FModel->Item(ARow).FileName) > 0)
+      {
+        Rows.push_back(ARow);
+      }
+    }
+    FSelectionAfterReload.clear();
+    SelectRows(Rows, true);
   }
   UpdateStatusBar();
 }
@@ -634,8 +926,244 @@ void TDirPanel::FocusFile(const UnicodeString & FileName)
   if (Row >= 0)
   {
     QModelIndex Index = FModel->index(Row, 0);
-    DirView->selectionModel()->setCurrentIndex(Index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    DirView->selectionModel()->setCurrentIndex(Index, DirView->FocusCommand());
     DirView->scrollTo(Index);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SelectRows(const std::vector<int> & Rows, bool Select)
+{
+  // The ranges of the consecutive rows
+  QItemSelection Selection;
+  size_t Index = 0;
+  while (Index < Rows.size())
+  {
+    size_t End = Index;
+    while ((End + 1 < Rows.size()) && (Rows[End + 1] == Rows[End] + 1))
+    {
+      End++;
+    }
+    Selection.select(FModel->index(Rows[Index], 0), FModel->index(Rows[End], FModel->columnCount() - 1));
+    Index = End + 1;
+  }
+  if (!Selection.isEmpty())
+  {
+    DirView->selectionModel()->select(Selection, Select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SelectFiles(const TFileFilter & Filter, bool Select)
+{
+  // upstream's ItemMatchesFilter: the directories match as files too
+  // when asked
+  TFileMasks Masks(Filter.Masks);
+  std::vector<int> Rows;
+  for (int Row = 0; Row < FModel->Count(); Row++)
+  {
+    const TDirViewItem & Item = FModel->Item(Row);
+    if (!Item.IsParentDirectory)
+    {
+      TFileMasks::TParams MaskParams;
+      MaskParams.Size = Item.Size;
+      MaskParams.Modification = Item.Modification;
+      bool ImplicitMatch;
+      bool Matches =
+        Filter.Masks.IsEmpty() ||
+        (Masks.Matches(Item.FileName, false, Item.IsDirectory, &MaskParams, true, ImplicitMatch) && !ImplicitMatch) ||
+        (Item.IsDirectory && Filter.Directories &&
+         Masks.Matches(Item.FileName, false, false, &MaskParams, true, ImplicitMatch) && !ImplicitMatch);
+      if (Matches)
+      {
+        Rows.push_back(Row);
+      }
+    }
+  }
+  SelectRows(Rows, Select);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SelectAll(TSelectMode Mode)
+{
+  QItemSelectionModel * Selection = DirView->selectionModel();
+  std::vector<int> Select;
+  for (int Row = 0; Row < FModel->Count(); Row++)
+  {
+    if (!FModel->Item(Row).IsParentDirectory &&
+        ((Mode == smAll) || ((Mode == smInvert) && !Selection->isRowSelected(Row))))
+    {
+      Select.push_back(Row);
+    }
+  }
+  // Keeps the focused file
+  QModelIndex Current = DirView->currentIndex();
+  Selection->select(QItemSelection(), QItemSelectionModel::Clear);
+  SelectRows(Select, true);
+  if (Current.isValid())
+  {
+    Selection->setCurrentIndex(Current, QItemSelectionModel::NoUpdate);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SelectCurrentItem()
+{
+  DirView->SelectCurrentItem(DirView->GetNortonLike() != nlOff);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SaveSelectedNames()
+{
+  FSavedNames.clear();
+  for (const QModelIndex & Index : DirView->selectionModel()->selectedRows())
+  {
+    FSavedNames.insert(FModel->Item(Index.row()).FileName);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::RestoreSelectedNames()
+{
+  std::vector<int> Rows;
+  for (int Row = 0; Row < FModel->Count(); Row++)
+  {
+    if (FSavedNames.count(FModel->Item(Row).FileName) > 0)
+    {
+      Rows.push_back(Row);
+    }
+  }
+  QModelIndex Current = DirView->currentIndex();
+  DirView->selectionModel()->select(QItemSelection(), QItemSelectionModel::Clear);
+  SelectRows(Rows, true);
+  if (Current.isValid())
+  {
+    DirView->selectionModel()->setCurrentIndex(Current, QItemSelectionModel::NoUpdate);
+  }
+}
+//---------------------------------------------------------------------------
+int TDirPanel::GetSelCount() const
+{
+  int Result = 0;
+  if (IsReady())
+  {
+    for (const QModelIndex & Index : DirView->selectionModel()->selectedRows())
+    {
+      if (!FModel->Item(Index.row()).IsParentDirectory)
+      {
+        Result++;
+      }
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+int TDirPanel::GetFilesCount() const
+{
+  __int64 Size;
+  int Count = 0;
+  if (IsReady())
+  {
+    FModel->Totals(Size, Count);
+  }
+  return Count;
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::HasFocusedFile() const
+{
+  QModelIndex Current = DirView->currentIndex();
+  return IsReady() && Current.isValid() && (Current.row() < FModel->Count()) && !FModel->Item(Current.row()).IsParentDirectory;
+}
+//---------------------------------------------------------------------------
+UnicodeString TDirPanel::GetFocusedFileName() const
+{
+  return HasFocusedFile() ? FModel->Item(DirView->currentIndex().row()).FileName : UnicodeString();
+}
+//---------------------------------------------------------------------------
+void TDirPanel::CompareFiles(TDirPanel * Other, bool CompareByTime, bool CompareBySize)
+{
+  // upstream's ProcessChangedFiles
+  const TDirModel * OtherModel = Other->GetModel();
+  std::vector<int> Changed;
+  for (int Row = 0; Row < FModel->Count(); Row++)
+  {
+    const TDirViewItem & Item = FModel->Item(Row);
+    if (!Item.IsDirectory)
+    {
+      bool AChanged = false;
+      int MirrorRow = OtherModel->FindFile(Item.FileName);
+      if (MirrorRow < 0)
+      {
+        AChanged = true;
+      }
+      else
+      {
+        const TDirViewItem & MirrorItem = OtherModel->Item(MirrorRow);
+        bool SameTime;
+        if (CompareByTime)
+        {
+          TDateTime FileTime = Item.Modification;
+          TDateTime MirrorFileTime = MirrorItem.Modification;
+          TModificationFmt Precision = LessDateTimePrecision(Item.ModificationFmt, MirrorItem.ModificationFmt);
+          FileTime = ReduceDateTimePrecision(FileTime, Precision);
+          MirrorFileTime = ReduceDateTimePrecision(MirrorFileTime, Precision);
+          SameTime = (FileTime == MirrorFileTime);
+          if (Precision == mfFull)
+          {
+            // 1 ms more solves the rounding issues
+            MirrorFileTime = MirrorFileTime + EncodeTimeVerbose(0, 0, 1, 1);
+          }
+          AChanged = (FileTime > MirrorFileTime);
+        }
+        else
+        {
+          SameTime = true;
+        }
+        if (!AChanged && SameTime && CompareBySize)
+        {
+          AChanged = (Item.Size != MirrorItem.Size);
+        }
+      }
+      if (AChanged)
+      {
+        Changed.push_back(Row);
+      }
+    }
+  }
+  QModelIndex Current = DirView->currentIndex();
+  DirView->selectionModel()->select(QItemSelection(), QItemSelectionModel::Clear);
+  SelectRows(Changed, true);
+  if (Current.isValid())
+  {
+    DirView->selectionModel()->setCurrentIndex(Current, QItemSelectionModel::NoUpdate);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::Filter()
+{
+  if (IsReady())
+  {
+    UnicodeString Mask = GetMask();
+    if (DoFilterMaskDialog(this, Mask))
+    {
+      SetMask(TFileMasks::NormalizeMask(Mask));
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetRefreshShortCut(const QKeySequence & ShortCut)
+{
+  RefreshAction->setShortcut(ShortCut);
+}
+//---------------------------------------------------------------------------
+UnicodeString TDirPanel::GetMask() const
+{
+  return FModel->GetMask();
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetMask(const UnicodeString & Mask)
+{
+  if (GetMask() != Mask)
+  {
+    FModel->SetMask(Mask);
+    if (IsReady())
+    {
+      Reload();
+    }
   }
 }
 //---------------------------------------------------------------------------
@@ -695,6 +1223,14 @@ void TDirPanel::ApplyConfiguration()
   {
     DirView->setFont(Font);
   }
+  DirView->SetNortonLike(AppConfiguration->NortonLikeMode);
+  if (FFileColors != AppConfiguration->FileColors)
+  {
+    FFileColors = AppConfiguration->FileColors;
+    TFileColorData::TList FileColors;
+    TFileColorData::LoadList(FFileColors, FileColors);
+    FModel->SetFileColors(FileColors);
+  }
   FModel->SetDisplayOptions(
     AppConfiguration->FormatSizeBytes, AppConfiguration->NaturalOrderNumericalSorting,
     AppConfiguration->AlwaysSortDirectoriesByName);
@@ -726,6 +1262,12 @@ void TDirPanel::UpdateStatusBar()
         (FormatBytes(SelectedSize), FormatBytes(FilesSize), FormatNumber(SelectedCount), FormatNumber(FilesCount)));
   }
   StatusBar->setText(ToQString(Text));
+  int HiddenCount = (IsReady() && (FModel != nullptr)) ? FModel->GetHiddenCount() : 0;
+  HiddenFilesLabel->setText(ToQString(FMTLOAD(FILE_INFO_HIDDEN2, (FormatNumber(HiddenCount)))));
+  HiddenFilesLabel->setVisible(HiddenCount > 0);
+  int FilteredCount = (IsReady() && (FModel != nullptr)) ? FModel->GetFilteredCount() : 0;
+  FilteredFilesLabel->setText(ToQString(FMTLOAD(FILE_INFO_FILTERED2, (FormatNumber(FilteredCount)))));
+  FilteredFilesLabel->setVisible(FilteredCount > 0);
 }
 //---------------------------------------------------------------------------
 void TDirPanel::UpdateActions()
@@ -739,6 +1281,7 @@ void TDirPanel::UpdateActions()
   RefreshAction->setEnabled(Ready);
   OpenDirAction->setEnabled(Ready);
   AddBookmarkAction2->setEnabled(Ready);
+  FilterAction->setEnabled(Ready);
   PathComboBox->setEnabled(Ready);
 }
 //---------------------------------------------------------------------------
