@@ -35,6 +35,7 @@ add_library(openscp_qt STATIC
   dialogs/FileFindDialog.cpp
   dialogs/FullSynchronizeDialog.cpp
   dialogs/HistoryComboBox.cpp
+  dialogs/ImportSessionsDialog.cpp
   dialogs/LocationProfilesDialog.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp

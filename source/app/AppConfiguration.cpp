@@ -930,6 +930,134 @@ bool TFontConfiguration::operator !=(const TFontConfiguration & rhc) const
     (FontCharset != rhc.FontCharset) || (FontStyle != rhc.FontStyle);
 }
 //---------------------------------------------------------------------------
+UnicodeString TAppConfiguration::GetPuttyFolder()
+{
+  // As PuTTY's make_filename (unix/storage.c): PUTTYDIR, ~/.putty, else the
+  // directory of the XDG base directories
+  UnicodeString Result = GetEnvironmentVariable(L"PUTTYDIR");
+  if (Result.IsEmpty())
+  {
+    UnicodeString Home = GetShellFolderPath(CSIDL_PROFILE);
+    Result = CombinePaths(Home, L".putty");
+    if (!DirectoryExists(Result))
+    {
+      UnicodeString Xdg = CombinePaths(GetShellFolderPath(CSIDL_APPDATA), L"putty");
+      if (DirectoryExists(Xdg))
+      {
+        Result = Xdg;
+      }
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+// The name of a session from the name of its file (PuTTY's
+// make_session_filename escapes the characters as %XX)
+static UnicodeString UnmungePuttyFileName(const UnicodeString & FileName)
+{
+  RawByteString Bytes;
+  UTF8String Source = UTF8String(FileName);
+  for (int Index = 1; Index <= Source.Length(); Index++)
+  {
+    char Ch = Source[Index];
+    int Value;
+    if ((Ch == '%') && (Index + 2 <= Source.Length()) &&
+        TryStrToInt(UnicodeString(L"$") + UnicodeString(Source.SubString(Index + 1, 2)), Value))
+    {
+      Bytes += static_cast<char>(Value);
+      Index += 2;
+    }
+    else
+    {
+      Bytes += Ch;
+    }
+  }
+  return UTF8ToString(Bytes);
+}
+//---------------------------------------------------------------------------
+// The lines "Name=Value" of a file of PuTTY's settings (the host keys are
+// "Name Value")
+static void LoadPuttySettingsFile(const UnicodeString & FileName, TStrings * Lines, bool HostKeys)
+{
+  std::unique_ptr<TStrings> FileLines(new TStringList());
+  LoadScriptFromFile(FileName, FileLines.get(), true);
+  for (int Index = 0; Index < FileLines->Count; Index++)
+  {
+    UnicodeString Line = FileLines->Strings[Index];
+    if (HostKeys)
+    {
+      int P = Line.Pos(L" ");
+      if (P > 1)
+      {
+        Lines->Add(Line.SubString(1, P - 1) + L"=" + Line.SubString(P + 1, Line.Length() - P));
+      }
+    }
+    else if (Line.Pos(L"=") > 1)
+    {
+      Lines->Add(Line);
+    }
+  }
+}
+//---------------------------------------------------------------------------
+TStoredSessionList * TAppConfiguration::SelectPuttySessionsForImport(TStoredSessionList * Sessions, UnicodeString & Error)
+{
+  std::unique_ptr<TStoredSessionList> ImportSessionList(new TStoredSessionList(true));
+  ImportSessionList->DefaultSettings = Sessions->DefaultSettings;
+
+  // The sessions as the sections of an INI storage, as upstream reads them
+  // from PuTTY's registry
+  UnicodeString SessionsFolder = CombinePaths(GetPuttyFolder(), L"sessions");
+  std::unique_ptr<TStrings> Ini(new TStringList());
+  TSearchRecOwned SearchRec;
+  if (FindFirstUnchecked(CombinePaths(SessionsFolder, L"*"), faAnyFile, SearchRec) == 0)
+  {
+    do
+    {
+      if (SearchRec.IsRealFile() && !SearchRec.IsDirectory())
+      {
+        UnicodeString Name = UnmungePuttyFileName(SearchRec.Name);
+        Ini->Add(L"[" + PuttyMungeStr(Name) + L"]");
+        LoadPuttySettingsFile(SearchRec.GetFilePath(), Ini.get(), false);
+      }
+    }
+    while (FindNextChecked(SearchRec) == 0);
+  }
+  TMemIniFile * IniFile = new TMemIniFile(UnicodeString());
+  IniFile->SetStrings(Ini.get());
+  std::unique_ptr<THierarchicalStorage> Storage(new TCustomIniFileStorage(SessionsFolder, IniFile));
+  Storage->ConfigureForPutty();
+  // The sessions are the sections of the root
+  ImportSessionList->Load(Storage.get(), false, true, true);
+
+  TSessionData * PuttySessionData =
+    static_cast<TSessionData *>(ImportSessionList->FindByName(PuttySession));
+  if (PuttySessionData != NULL)
+  {
+    ImportSessionList->Remove(PuttySessionData);
+  }
+  UnicodeString NoSessionsError = FORMAT(L"No sites found in %s sites directory (%s).", (L"PuTTY", SessionsFolder));
+  SelectSessionsToImportIfAny(ImportSessionList.get(), Sessions, Error, NoSessionsError);
+
+  return ImportSessionList.release();
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::ImportPuttyHostKeys(TStoredSessionList * Sessions)
+{
+  // PuTTY's sshhostkeys as the host keys key of an INI storage
+  UnicodeString FileName = CombinePaths(GetPuttyFolder(), L"sshhostkeys");
+  if (FileExists(FileName))
+  {
+    std::unique_ptr<TStrings> Ini(new TStringList());
+    Ini->Add(L"[" + SshHostKeysSubKey + L"]");
+    LoadPuttySettingsFile(FileName, Ini.get(), true);
+    TMemIniFile * IniFile = new TMemIniFile(UnicodeString());
+    IniFile->SetStrings(Ini.get());
+    std::unique_ptr<THierarchicalStorage> Storage(new TCustomIniFileStorage(FileName, IniFile));
+    Storage->ConfigureForPutty();
+    TStoredSessionList::ImportHostKeys(Storage.get(), Sessions, true);
+  }
+}
+//---------------------------------------------------------------------------
 static const wchar_t FileColorDataSeparator = L':';
 TFileColorData::TFileColorData() :
   Color(TColor())

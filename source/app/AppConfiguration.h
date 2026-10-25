@@ -280,6 +280,14 @@ public:
   // The copies of the sites (of the site manager) are recrypted
   TMasterPasswordRecryptEvent OnMasterPasswordRecrypt;
 
+  // The sessions of PuTTY to import (upstream's SelectPuttySessionsForImport
+  // of its registry, here the files of PuTTY's directory) and their host
+  // keys
+  TStoredSessionList * SelectPuttySessionsForImport(TStoredSessionList * Sessions, UnicodeString & Error);
+  void ImportPuttyHostKeys(TStoredSessionList * Sessions);
+  // The directory of PuTTY's configuration
+  static UnicodeString GetPuttyFolder();
+
   // The sessions and their tabs
   // The number of sessions above which opening another is confirmed
   APP_CONFIG_PROPERTY(int, MaxSessions)

@@ -97,6 +97,7 @@ private:
   QAction * PasteUrlAction;
   QAction * PuttyAction;
   QAction * DesktopIconAction;
+  QAction * ImportSessionsAction;
   QAction * SessionAdvancedAction;
   QAction * SessionRawAction;
   QAction * CopyParamRuleAction;
@@ -223,6 +224,7 @@ private:
   void CopyParamRuleActionExecute();
   void PuttyActionExecute();
   void DesktopIconActionExecute();
+  void ImportSessionsActionExecute();
   void PreferencesLoggingActionExecute();
 };
 //---------------------------------------------------------------------------

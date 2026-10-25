@@ -1696,8 +1696,9 @@ TStoredSessionList * __fastcall TConfiguration::SelectFilezillaSessionsForImport
   std::unique_ptr<TStoredSessionList> ImportSessionList(CreateSessionsForImport(Sessions));
 
   UnicodeString AppDataPath = GetShellFolderPath(CSIDL_APPDATA);
-  UnicodeString FilezillaSiteManagerFile = CombinePaths(AppDataPath, L"FileZilla\\sitemanager.xml");
-  UnicodeString FilezillaConfigurationFile = CombinePaths(AppDataPath, L"FileZilla\\filezilla.xml");
+  // OpenSCP: FileZilla's directory of the XDG base directories
+  UnicodeString FilezillaSiteManagerFile = CombinePaths(AppDataPath, L"filezilla/sitemanager.xml");
+  UnicodeString FilezillaConfigurationFile = CombinePaths(AppDataPath, L"filezilla/filezilla.xml");
 
   if (FileExists(ApiPath(FilezillaSiteManagerFile)))
   {

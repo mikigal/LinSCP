@@ -168,6 +168,10 @@ void HideFileFindDialog();
 // dialogs/EditMaskDialog.cpp
 bool DoEditMaskDialog(TFileMasks & Mask);
 
+// dialogs/ImportSessionsDialog.cpp: the sites of other applications
+// imported, the new sites are added to the list
+bool DoImportSessionsDialog(TList * Imported);
+
 // dialogs/SiteAdvancedDialog.cpp
 bool DoSiteAdvancedDialog(TSessionData * SessionData);
 // dialogs/CustomDialog.cpp: the settings of the site that differ from the

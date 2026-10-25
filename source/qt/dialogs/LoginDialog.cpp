@@ -121,6 +121,8 @@ void TLoginDialog::CreateControls()
   PuttyAction->setShortcutContext(Qt::WindowShortcut);
   addAction(PuttyAction);
   DesktopIconAction = CreateAction("DesktopIconAction", tr("Desktop &Icon"), &TLoginDialog::DesktopIconActionExecute);
+  ImportSessionsAction =
+    CreateAction("ImportSessionsAction", tr("&Import Sites..."), &TLoginDialog::ImportSessionsActionExecute);
   CopyParamRuleAction =
     CreateAction("CopyParamRuleAction", tr("Transfer Settings &Rule..."), &TLoginDialog::CopyParamRuleActionExecute);
   PreferencesLoggingAction =
@@ -385,6 +387,8 @@ void TLoginDialog::CreateControls()
   ToolsMenuButton->setObjectName(QStringLiteral("ToolsMenuButton"));
   ToolsPopupMenu = new QMenu(this);
   ToolsPopupMenu->setObjectName(QStringLiteral("ToolsPopupMenu"));
+  ToolsPopupMenu->addAction(ImportSessionsAction);
+  ToolsPopupMenu->addSeparator();
   ToolsPopupMenu->addAction(PreferencesAction);
   ToolsMenuButton->setMenu(ToolsPopupMenu);
   ButtonLayout->addWidget(ToolsMenuButton);
@@ -1061,6 +1065,7 @@ void TLoginDialog::UpdateActions()
     (IsSiteAndCanOpen() && (Data != NULL) && !Data->Tunnel) ||
     (IsFolderOrWorkspaceAndCanOpen() && IsFolderNode(Node)));
   DesktopIconAction->setEnabled((SiteSelected && !FEditing) || FolderOrWorkspaceSelected);
+  ImportSessionsAction->setEnabled(!FEditing);
   CopyParamRuleAction->setEnabled(SiteSelected || IsNewSiteNode(Node));
   UnicodeString ClipboardUrl;
   PasteUrlAction->setEnabled(
@@ -1554,6 +1559,26 @@ void TLoginDialog::DesktopIconActionExecute()
   if (MessageDialog(Message, qtConfirmation, qaYes | qaNo) == qaYes)
   {
     ExecuteHandler([&]() { CreateDesktopSessionShortCut(Name); });
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::ImportSessionsActionExecute()
+{
+  std::unique_ptr<TList> Imported(new TList());
+  bool Result = false;
+  ExecuteHandler([&]() { Result = DoImportSessionsDialog(Imported.get()); });
+  // Empty when known_hosts were imported
+  if (Result && (Imported->Count > 0))
+  {
+    // The first site imported is selected
+    TSessionData * First = static_cast<TSessionData *>(Imported->Items[0]);
+    LoadSessions();
+    QTreeWidgetItem * Node = FindSessionNode(First, true);
+    if (Node != nullptr)
+    {
+      Select(Node);
+    }
+    SessionTree->setFocus();
   }
 }
 //---------------------------------------------------------------------------

@@ -1672,6 +1672,74 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(gui.quit(), 0)
         self.assertIn('Interface=0', gui.config_file.read_text())
 
+    def test_import_sites(self):
+        home = self.session.home
+        putty = home / '.putty'
+        (putty / 'sessions').mkdir(parents=True)
+        self.addCleanup(shutil.rmtree, putty, True)
+        (putty / 'sessions' / 'my%20server').write_text(
+            'HostName=putty.example.com\nPortNumber=2222\nUserName=alice\nProtocol=ssh\n')
+        (putty / 'sshhostkeys').write_text('ssh-ed25519@2222:putty.example.com 0x1234,0x5678\n')
+        ssh = home / '.ssh'
+        ssh.mkdir(exist_ok=True)
+        for name in ['config', 'known_hosts']:
+            self.addCleanup(lambda path=ssh / name: path.unlink(missing_ok=True))
+        (ssh / 'config').write_text('Host box\n  HostName box.example.com\n  User bob\n  Port 2200\n')
+        key = self.work_dir('key') / 'key'
+        subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)], check=True)
+        public_key = ' '.join(key.with_suffix('.pub').read_text().split()[:2])
+        (ssh / 'known_hosts').write_text('known.example.com %s\n' % public_key)
+
+        gui = self.start_gui()
+        gui.wait_window('LoginDialog')
+        D = 'ImportSessionsDialog/'
+
+        def import_from(source, expected):
+            gui.trigger('LoginDialog/ImportSessionsAction')
+            gui.wait_window('ImportSessionsDialog')
+            gui.set(D + 'SourceComboBox', source)
+            gui.wait_for(lambda: gui.names(D + 'SessionListView2') == expected, what='the sites of %s' % source)
+            rows = gui.get(D + 'SessionListView2')['rows']
+            self.assertTrue(all(row['checked'] for row in rows))
+            self.screenshot('import_' + source)
+            gui.click(D + 'OKButton')
+            gui.wait_no_window('ImportSessionsDialog')
+            gui.wait_idle()
+
+        # The first source with sites is offered
+        gui.trigger('LoginDialog/ImportSessionsAction')
+        gui.wait_window('ImportSessionsDialog')
+        self.assertEqual(gui.get(D + 'SourceComboBox')['text'], 'PuTTY')
+        gui.click(D + 'CancelButton')
+        gui.wait_no_window('ImportSessionsDialog')
+
+        import_from('PuTTY', ['my server'])
+        selected = [row['cells'][0] for row in gui.get('LoginDialog/SessionTree')['rows'] if row['current']]
+        self.assertEqual(selected, ['my server'])
+        ini = gui.config_file.read_text()
+        self.assertIn('[Sessions\\my%20server]', ini)
+        self.assertIn('HostName=putty.example.com', ini)
+        self.assertIn('PortNumber=2222', ini)
+        self.assertIn('ssh-ed25519@2222:putty.example.com=0x1234,0x5678', ini)
+
+        import_from('OpenSSH', ['box'])
+        ini = gui.config_file.read_text()
+        self.assertIn('HostName=box.example.com', ini)
+        self.assertIn('PortNumber=2200', ini)
+
+        import_from('known_hosts', ['known.example.com'])
+        self.assertIn('ssh-ed25519@22:known.example.com=', gui.config_file.read_text())
+
+        # Nothing of FileZilla
+        gui.trigger('LoginDialog/ImportSessionsAction')
+        gui.wait_window('ImportSessionsDialog')
+        gui.set(D + 'SourceComboBox', 'FileZilla')
+        gui.wait_for(lambda: gui.get(D + 'ErrorLabel')['visible'], what='the error')
+        self.assertIn('filezilla/sitemanager.xml', gui.get(D + 'ErrorLabel')['text'])
+        self.assertFalse(gui.get(D + 'OKButton')['enabled'])
+        gui.click(D + 'CancelButton')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

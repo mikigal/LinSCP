@@ -95,6 +95,11 @@ packaging (PLAN.md, section 7).
   upstream's Explorer keys (`ExplorerShortcuts`: Ctrl+T downloads, F5 refreshes, ...), the
   downloads and the synchronizations with the last local directory
   (`LastLocalTargetDirectory`), its own layout of the panel and tabs (`Interface\Explorer`).
+- Import of sites (`dialogs/ImportSessionsDialog.cpp`, Tools > Import Sites of the site
+  manager): the sessions of PuTTY (its files in `~/.putty/sessions` or the XDG directory, with
+  the host keys of `sshhostkeys`, `TAppConfiguration::SelectPuttySessionsForImport`),
+  FileZilla (`~/.config/filezilla/sitemanager.xml`), OpenSSH's `~/.ssh/config` (its keys
+  converted to PuTTY's), an INI file and the hosts of `known_hosts` (also pasted).
 
 Decisions:
 
