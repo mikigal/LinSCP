@@ -1,4 +1,4 @@
-"""Startup smoke tests of a build of the GUI (OPENSCP_SMOKE_GUI), the release
+"""Startup smoke tests of a build of the GUI (LINSCP_SMOKE_GUI), the release
 build above all: it has no automation hook, so these check only that the
 application starts, connects to the local sshd and keeps running.
 
@@ -6,7 +6,7 @@ The application runs offscreen, never on the user's desktop, with a profile,
 a runtime directory and a D-Bus of its own: on the user's session bus a
 second instance would hand its command line to a running one. Skipped
 without the binary (the release build is not built); the keys are converted
-by OPENSCP_CLI.
+by LINSCP_CLI.
 """
 
 import os
@@ -19,10 +19,10 @@ import unittest
 from pathlib import Path
 
 from local_sshd import LocalSshd
-from openscp_cli import OpenScpCli
+from linscp_cli import LinScpCli
 
-GUI = os.environ.get('OPENSCP_SMOKE_GUI')
-CLI = os.environ.get('OPENSCP_CLI')
+GUI = os.environ.get('LINSCP_SMOKE_GUI')
+CLI = os.environ.get('LINSCP_CLI')
 # How long the application has to keep running once ready (seconds)
 SETTLE = 3
 # The variables that lead to the user's session
@@ -56,13 +56,13 @@ class SmokeTest(unittest.TestCase):
         if not GUI or not Path(GUI).is_file():
             raise unittest.SkipTest('no GUI binary %s' % GUI)
         if not CLI:
-            raise unittest.SkipTest('OPENSCP_CLI is not set')
+            raise unittest.SkipTest('LINSCP_CLI is not set')
         # Short: the path of the bus socket is limited
         cls.state = Path(tempfile.mkdtemp(prefix='smoke-', dir=os.environ.get('WLH_TMPDIR')))
         cls.bus = cls.start_bus(cls.state / 'bus')
         cls.sshd = LocalSshd(cls.state / 'sshd').start()
         cls.key = cls.state / 'client.ppk'
-        result = OpenScpCli(CLI, cls.state / 'keygen').run('/keygen', cls.sshd.client_key, '/output=%s' % cls.key)
+        result = LinScpCli(CLI, cls.state / 'keygen').run('/keygen', cls.sshd.client_key, '/output=%s' % cls.key)
         if result.returncode != 0:
             raise RuntimeError('cannot convert the client key: %r' % result)
 
@@ -89,7 +89,7 @@ class SmokeTest(unittest.TestCase):
 
     def setUp(self):
         self.profile = self.state / self.id().rsplit('.', 1)[-1]
-        self.config_file = self.profile / 'config' / 'openscp' / 'openscp.ini'
+        self.config_file = self.profile / 'config' / 'linscp' / 'linscp.ini'
         self.process = None
 
     def tearDown(self):

@@ -2,6 +2,17 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Rename to LinSCP (2026-10-25)
+
+The project, called OpenSCP until now, is LinSCP (PLAN.md, section 9): the name in the texts
+and the code, the binaries `linscp` and `linscp-cli`, the desktop file and the icon `linscp`,
+the D-Bus service `org.linscp.LinSCP`, the configuration in `$XDG_CONFIG_HOME/linscp/linscp.ini`,
+the `LinSCP:` marks of the edits of converted upstream code, the build options and the
+environment variables of the tests (`LINSCP_GUI`, `LINSCP_CLI`, `LINSCP_TEST_VM`, ...), the
+servers of the test VM (`linscp-sshd`, `/etc/linscp`, ...; `provision.sh` removes the former
+ones and moves their keys and data). The header of the session log gives the name of the
+application instead of upstream's "WinSCP". All tests pass, with the VM.
+
 ## M9 — fidelity to upstream (done, 2026-10-25)
 
 Exit criteria met: the Commander, the Explorer, the site manager and the dialogs reviewed have
@@ -59,15 +70,15 @@ without warnings.
   date) are split buttons, not two. The synchronization dialog has upstream's layout (the
   direction and the mode in rows, upstream's order of the options); the "do not show again" of
   the copy dialog is below its buttons.
-- OpenSCP's icons (`tools/icons/make_icons.py` generates `source/qt/icons/openscp`, an icon
+- LinSCP's icons (`tools/icons/make_icons.py` generates `source/qt/icons/linscp`, an icon
   theme in the resources): colorful flat icons in the style of upstream's (yellow folders,
   white pages, green and blue arrows, red crosses), drawn from scratch, named as the freedesktop
   icons the GUI asks for, over the desktop's theme (which has the icons of the file types and
-  the others OpenSCP has not); the desktop's icons by a preference (Window > Use icons of the
-  desktop theme, `DesktopIcons`). The application has an icon of its own (`openscp`, installed
+  the others LinSCP has not); the desktop's icons by a preference (Window > Use icons of the
+  desktop theme, `DesktopIcons`). The application has an icon of its own (`linscp`, installed
   to the hicolor theme) instead of the theme's `folder-remote`.
-- The images of upstream's dialogs (its `DialogImages`, `LoadDialogImage`): OpenSCP's own
-  32-pixel pictures (`source/qt/icons/openscp/dialogs`, by the same generator, not a part of the
+- The images of upstream's dialogs (its `DialogImages`, `LoadDialogImage`): LinSCP's own
+  32-pixel pictures (`source/qt/icons/linscp/dialogs`, by the same generator, not a part of the
   theme) left of the controls of the copy (by the direction, and for moving), synchronization,
   keep up to date, console, duplicate, move to, open directory and location profiles dialogs, of
   several files in the properties, of the interfaces in the preferences; the message dialog has
@@ -91,7 +102,7 @@ without warnings.
 Decisions:
 
 - **No icons of WinSCP**: their license (`license.txt`, part B) forbids reusing them in other
-  software. OpenSCP draws its own, in a similar style (the last step of M9).
+  software. LinSCP draws its own, in a similar style (the last step of M9).
 - The toolbars keep the order of upstream's positions, not the gaps (Qt packs them); the
   buttons of the toolbars have upstream's narrower drop-down arrows and separators (a proxy
   of the desktop's style). The window is 1200 pixels wide by default (upstream's 1090 for the
@@ -222,7 +233,7 @@ packaging (PLAN.md, section 7).
 - Generate Session URL/Code (Tabs menu) and Generate File URL (File Names of the remote files),
   `dialogs/GenerateUrlDialog.cpp`: the URL with its components, the script file, a shell
   script (in place of upstream's batch file) and the command-line arguments of
-  `openscp-cli`; the core's RTF with its colors and links is shown as HTML
+  `linscp-cli`; the core's RTF with its colors and links is shown as HTML
   (`app/RtfText.cpp`), the links open the documentation.
 - The site manager's Tools: Export/Backup Configuration and Import/Restore Configuration (the
   application restarts with the restored configuration, as upstream), Clean Up
@@ -231,7 +242,7 @@ packaging (PLAN.md, section 7).
   saved again). The test builds use Qt's file dialogs (`AA_DontUseNativeDialogs`), which the
   tests drive.
 - Translations (`app/Translations.cpp` of the application layer, `qt/app/FormTranslator.cpp`):
-  upstream's `translations/*.ini` as they are, installed to `share/openscp/translations` (the
+  upstream's `translations/*.ini` as they are, installed to `share/linscp/translations` (the
   source tree's for the builds). The language of the configuration (`Language`, the
   Languages page of the preferences, applied on the next start) or of the system (gettext's
   `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG`; upstream's codes map to locales). The resource
@@ -241,15 +252,15 @@ packaging (PLAN.md, section 7).
   `.dfm` files); the strings of the Delphi units (the buttons of the messages, the columns of
   the panels) from the `[WinSCP_DRC.rc]` section; Qt's own translations; right-to-left
   languages. The CLI is translated too (its tests run in English, as do the GUI tests).
-- Branding: the name of the application in upstream's texts is OpenSCP (`rc2cpp --brand`, and
+- Branding: the name of the application in upstream's texts is LinSCP (`rc2cpp --brand`, and
   the translations when loaded). The About dialog (`dialogs/AboutDialog.cpp`, the site
   manager's Tools and the Help menu, with Contents (F1, the documentation), Product Homepage
   and Support Forum, the project's GitHub pages): the version (upstream's, of the core), the
   copyright of WinSCP, the translators, the third-party components (Qt in place of upstream's
-  VCL libraries) and the license (installed to `share/licenses/openscp`).
+  VCL libraries) and the license (installed to `share/licenses/linscp`).
 - Packaging (`packaging/arch/PKGBUILD`): the package of Arch Linux, built from the checkout
   (`makepkg -si`): the binaries, the desktop entry, the translations, the license; built with
-  `OPENSCP_RELEASE_BUILD` (upstream's `BUILD_OFFICIAL`: the version is not a development
+  `LINSCP_RELEASE_BUILD` (upstream's `BUILD_OFFICIAL`: the version is not a development
   build's, not to be distributed).
 
 Decisions:
@@ -280,7 +291,7 @@ Decisions:
   upstream's stays English. A translated text gets no accelerator where the English one has
   none (titles, headers).
 - **The help is upstream's documentation** (`ShowHelp` opens WinSCP's online documentation of
-  the keyword): it describes the same application, OpenSCP has no documentation of its own.
+  the keyword): it describes the same application, LinSCP has no documentation of its own.
   Generate Code does not generate PowerShell scripts nor the code of the .NET assembly (which
   is not ported).
 - Advanced site settings not ported: PuTTY's terminal settings of the site (upstream edits
@@ -290,7 +301,7 @@ Decisions:
 
 ## M7 — desktop integration (done, 2026-10-25)
 
-Exit criteria met: files are dragged and dropped and copied and pasted between OpenSCP and
+Exit criteria met: files are dragged and dropped and copied and pasted between LinSCP and
 Dolphin in the headless KWin (`test_gui_desktop`, against the local sshd); the other
 integrations have their E2E tests there too, with fake services of the desktop shell. All
 tests pass under ASan/UBSan, with the VM; the release build compiles without warnings.
@@ -325,9 +336,9 @@ tests pass under ASan/UBSan, with the VM; the release build compiles without war
   of sessions (upstream's `DefaultKeyFile`).
 - A single instance (`app/SingleInstance.cpp`): a session without an operation goes to a
   running instance (`ExternalSessionInExistingInstance`, not with `/newinstance`) over
-  `org.openscp.OpenSCP` on the session bus, which the instances queue for; the XDG
+  `org.linscp.LinSCP` on the session bus, which the instances queue for; the XDG
   activation token of the launcher is passed along.
-- `source/qt/desktop/openscp.desktop`: the URL schemes upstream registers (sftp, scp, ftp,
+- `source/qt/desktop/linscp.desktop`: the URL schemes upstream registers (sftp, scp, ftp,
   ftps, ftpes, dav, davs, s3) and a New Window action. Install rules for the binaries and the
   desktop file.
 - Notifications (`app/Notifications.cpp`, upstream's balloons, `BalloonNotifications`,
@@ -368,7 +379,7 @@ Decisions:
 - **Exceptions do not cross Qt's code**: the handlers of actions pass their exceptions to
   `HandleApplicationException` (`ExecuteHandler`); Qt is not built for exceptions and
   skipped the guards on its stack.
-- **Minimizing to the tray is by OpenSCP's own commands**: Wayland does not tell a window it
+- **Minimizing to the tray is by LinSCP's own commands**: Wayland does not tell a window it
   was minimized. Windows of modal loops are minimized instead of hidden (hiding ends the
   loop).
 - Notifications go only to a running server (no D-Bus activation: Plasma's activatable one
@@ -377,7 +388,7 @@ Decisions:
   branding (M8).
 - `PuttyPath` keeps upstream's key; its default is detected (PuTTY is rarely installed).
 - **No Dolphin service menu** (the user's decision): upstream's Send To has no counterpart in
-  the file manager; `openscp /upload` stays.
+  the file manager; `linscp /upload` stays.
 
 Not ported yet (or not possible):
 
@@ -465,7 +476,7 @@ ASan/UBSan, with the VM; the release build compiles.
 Decisions:
 
 - Popup menus and shortcuts need the real input of the compositor: the automation hook
-  reports the geometry of widgets and `OpenScpGui.click_real` clicks them with `wlh-input`;
+  reports the geometry of widgets and `LinScpGui.click_real` clicks them with `wlh-input`;
   items of open popup menus are activated by the hook. `wlharness` lists dialogs among the
   windows.
 - Ctrl+Q stays the Quit of the Linux desktops; upstream's "go to queue" has no shortcut.
@@ -484,7 +495,7 @@ Decisions:
   extensions (`.WinSCPextension`, PowerShell scripts) are not supported. Until the
   preferences (M8), Commands > Custom Commands > Customize opens their list in a dialog of
   its own (`TCustomCommandsDialog`, the "Commands" page of upstream's preferences).
-- External editors are started detached (they survive OpenSCP, as on Windows) and watched
+- External editors are started detached (they survive LinSCP, as on Windows) and watched
   by their process ID. The other encoding of the internal editor is ISO-8859-1 (upstream's
   is the ANSI code page of Windows). Not ported yet: the editor color and window placement,
   "Edit With" with other editors (needs the editors page of the preferences, M8), the
@@ -508,7 +519,7 @@ and with an SSH agent) and against the test VM (banner, password and keyboard-in
 prompts); the screenshots were reviewed. All tests pass under ASan/UBSan (260 with the
 VM); the release build runs.
 
-- `source/qt` (Qt 6 Widgets): the `openscp_qt` library and `openscp`. The application
+- `source/qt` (Qt 6 Widgets): the `linscp_qt` library and `linscp`. The application
   object shows the exceptions that escape event handlers (as the VCL does); `ProcessGUI`
   processes the Qt events. Object names are the component names of upstream's `.dfm` files.
   - `app/`: `TTerminalManager` (one session yet: connecting in a `TTerminalThread`, the
@@ -527,12 +538,12 @@ VM); the release build runs.
     over reloads; the Commander window (`TScpCommanderForm`) with menus, toolbars, the
     current panel and the commands: copy (upload/download), rename in place, delete
     (local files to the trash), create directory, show hidden files.
-- The automation hook (`OPENSCP_AUTOMATION`, on in the `dev` preset; `app/Automation.h`):
+- The automation hook (`LINSCP_AUTOMATION`, on in the `dev` preset; `app/Automation.h`):
   a Unix socket with a JSON API to describe and drive the widgets by object names.
-  `tools/testenv/openscp_gui.py` runs the GUI in a harness session and drives it;
+  `tools/testenv/linscp_gui.py` runs the GUI in a harness session and drives it;
   `tests/integration/guitests.py` is the base of the L4 tests (`test_gui`, `test_gui_ssh`,
-  `test_gui_vm`); `OPENSCP_GUI_KEEP` keeps the sessions with their screenshots. L3 tests
-  of components on the offscreen platform: `tests/unit/qt` (`openscp_qt_tests`).
+  `test_gui_vm`); `LINSCP_GUI_KEEP` keeps the sessions with their screenshots. L3 tests
+  of components on the offscreen platform: `tests/unit/qt` (`linscp_qt_tests`).
 - `TAppConfiguration` stores the settings of the GUI under the keys of `WinSCP.ini`
   (`Interface`: `ConfirmDeleting`, `ShowHiddenFiles`, `LastStoredSession`,
   `OpenedStoredSessionFolders`).
@@ -557,7 +568,7 @@ Manual edits in upstream directories since M4:
 
 Findings for later milestones:
 
-- The XDG portal sometimes does not know OpenSCP's app ID when the application starts
+- The XDG portal sometimes does not know LinSCP's app ID when the application starts
   right after the harness session (a race in the portal; matters for D&D in M7).
 - Core strings mention WinSCP (e.g. the host key prompt); a branding pass with M8.
 - The advanced site settings, the transfer settings of the copy dialog, the attributes of
@@ -592,7 +603,7 @@ WebDAV with Apache and nginx over HTTP and HTTPS; S3 with moto over HTTP and HTT
   `winapi/Crt.h`.
 - `tools/testenv/vm/provision.sh`: vsftpd (port 21, implicit TLS on 990), ProFTPD (2121) and
   Pure-FTPd (2122) — Debian's FTP servers conflict with each other, so the last two are
-  unpacked from their packages to `/opt/openscp`; Apache and nginx WebDAV; moto as the S3
+  unpacked from their packages to `/opt/linscp`; Apache and nginx WebDAV; moto as the S3
   server with authentication enforced and nginx as its TLS proxy; a self-signed certificate
   kept across runs. moto verifies signatures against the URL with the query decoded, so it
   runs with the URL as the client sent it (`s3-server.py`).
@@ -637,7 +648,7 @@ Findings for later milestones:
 
 ## M3 — SSH and the CLI (done, 2026-10-24)
 
-Exit criteria met: `openscp-cli` works for SFTP and SCP; the L2 tests pass against the local
+Exit criteria met: `linscp-cli` works for SFTP and SCP; the L2 tests pass against the local
 sshd (under ASan/UBSan and with the release build) and against the test VM (passwords,
 keyboard-interactive, password change, resume, synchronize; host keys and the agent locally).
 
@@ -646,14 +657,14 @@ keyboard-interactive, password change, resume, synchronize; host keys and the ag
   `source/cli`; they are edited on `master`, so upstream changes arrive through the regular
   merges (`UPSTREAM.md`). Ported so far: `ConsoleRunner`, `GUIConfiguration`, `ProgParams`,
   `SynchronizeController`.
-- `source/app` (`openscp::app`), the application layer shared by the front ends:
+- `source/app` (`linscp::app`), the application layer shared by the front ends:
   `TGUIConfiguration` (resource modules of translations dropped: the internal locale only),
-  `TAppConfiguration` (the INI file `$XDG_CONFIG_HOME/openscp/openscp.ini` unless `/ini=`,
+  `TAppConfiguration` (the INI file `$XDG_CONFIG_HOME/linscp/linscp.ini` unless `/ini=`,
   the master password of `TWinConfiguration`), `TProgramParams` (the process's arguments as
   they are), `TDiscMonitor` on inotify (a thread, changes reported with
   `TThread::Synchronize`), the common parts of `core/Interface.h`, helpers of upstream's GUI
   code (`ApplyTabs`, `FormatMainFormCaption`, ...), string tables of `TextsWin1.rc`.
-- `source/cli` (`openscp-cli`, the counterpart of `winscp.com`): the ported `ConsoleRunner`
+- `source/cli` (`linscp-cli`, the counterpart of `winscp.com`): the ported `ConsoleRunner`
   with `TUnixConsole` in place of the Windows consoles. It works as `winscp.com`: interactive
   on a terminal (line input, echo off for passwords, choices by a single key, Esc cancels),
   redirected input read and echoed line by line, redirected output not rewritten (progress
@@ -664,7 +675,7 @@ keyboard-interactive, password change, resume, synchronize; host keys and the ag
 - RTL: `TComponent` (ownership), `TThread::Synchronize`/`Queue` with `CheckSynchronize`,
   `WrapText`/`TSysCharSet`; `sprintf`'s `%ld` is 32-bit.
 - L2 tests (`tests/integration/test_cli_ssh.py`, label `ssh`): unittest (as the other Python
-  tests; pytest is not installed) with `tools/testenv/openscp_cli.py`, which runs the CLI with
+  tests; pytest is not installed) with `tools/testenv/linscp_cli.py`, which runs the CLI with
   an isolated HOME, XDG directories and TMPDIR, without the user's SSH agent, and on a
   pseudo terminal for the interactive tests. They cover transfers (files, directories, masks,
   permissions, timestamps, resume, streams, Unicode names and names invalid on Windows), file
@@ -674,7 +685,7 @@ keyboard-interactive, password change, resume, synchronize; host keys and the ag
   sessions in an INI file. `/copyid` is not tested locally: the local sshd runs as the user,
   it would install the key in the user's own `~/.ssh/authorized_keys`.
 
-- **Test VM** (Debian 13, an LXC container; its address in `OPENSCP_TEST_VM`): reached as
+- **Test VM** (Debian 13, an LXC container; its address in `LINSCP_TEST_VM`): reached as
   root over SSH with a key of its own (`tools/testenv/vm/state/`, ignored by git), never with
   the user's `~/.ssh` or agent. `tools/testenv/vm/provision.sh` (idempotent, run with
   `tools/testenv/testvm.py provision`) sets up a second OpenSSH server on port 2222 (the one
@@ -739,8 +750,8 @@ Findings for later milestones:
 
 ## M2 — Core compilation (done, 2026-10-24)
 
-Exit criteria met: `libopenscp-core` (`openscp::core`) links into executables, and the L1
-tests of core logic (`openscp_core_tests`) pass under ASan/UBSan.
+Exit criteria met: `liblinscp-core` (`linscp::core`) links into executables, and the L1
+tests of core logic (`linscp_core_tests`) pass under ASan/UBSan.
 
 - `bcb2clang` converts statements too: `try`/`__finally` (a `::rtl::TFinally` scope guard,
   also in macro definitions), references to methods (`::rtl::MethodPtr(Object,
@@ -751,7 +762,7 @@ tests of core logic (`openscp_core_tests`) pass under ASan/UBSan.
 - `tools/rc2cpp` generates C++ string tables from the `.rc` files (`TextsCore*.rc`,
   `TextsFileZilla.rc`); they register with the RTL's `LoadStr` before the core's static
   objects are constructed.
-- `source/linux` (`openscp::linux`): the Windows API the core uses, with C linkage, in
+- `source/linux` (`linscp::linux`): the Windows API the core uses, with C linkage, in
   `include/winapi/` (SDK header names in `include/`): files (a `HANDLE` is an fd), kernel
   objects (events, threads, processes, waits that poll sockets), WinSock on POSIX sockets,
   time zones from tzdata, CryptoAPI on OpenSSL, an empty registry, COM stubs, XDG folders,
@@ -785,7 +796,7 @@ Decisions:
 - The core's headers are system headers for its consumers (their upstream warnings are not
   reported in our code).
 - The application name and the SSH client version string are the front end's
-  (`AppNameString`, `SshVersionString` in `Interface.h`); OpenSCP uses `OpenSCP`.
+  (`AppNameString`, `SshVersionString` in `Interface.h`); LinSCP uses `LinSCP`.
 
 Manual edits in upstream directories (keep the list current; `git diff upstream-converted
 master -- source/core source/putty libs` shows them):
@@ -826,7 +837,7 @@ by `bcb2clang`, parse against the shim (`unit.bcb2clang.test_core_headers`; the 
 exceptions are `PuttyIntf.h`, `NeonIntf.h` and `WebDAVFileSystem.h`, which stop at the
 missing PuTTY/neon headers of M3/M4).
 
-`source/rtl` (`openscp::rtl`): the Delphi RTL subset the core uses, in standard C++. Headers
+`source/rtl` (`linscp::rtl`): the Delphi RTL subset the core uses, in standard C++. Headers
 named like C++Builder's (`System.hpp`, `SysUtils.hpp`, `Classes.hpp`, `vcl.h`, ...) in
 `source/rtl/include` include the implementation headers in `source/rtl/include/rtl`.
 Tests: `tests/unit/rtl` (GoogleTest).
@@ -923,7 +934,7 @@ Findings:
   receiver gets no URLs if the document portal is broken (no fallback to `text/uri-list`).
   The portal needs FUSE; under `no_new_privs` the setuid `fusermount3` fails, so the harness
   runs each session in a user+mount namespace with capabilities kept for the bus-activated
-  portal. Relevant for M7: OpenSCP's drop handling depends on a working document portal.
+  portal. Relevant for M7: LinSCP's drop handling depends on a working document portal.
 - Qt logs to the systemd journal when stderr is not a terminal; the harness sets
   `QT_FORCE_STDERR_LOGGING=1`.
 

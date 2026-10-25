@@ -485,12 +485,12 @@ int main()
 
 class FinallySemanticsTest(unittest.TestCase):
     def test_converted_program(self):
-        with tempfile.TemporaryDirectory(prefix='openscp-finally-') as temp:
+        with tempfile.TemporaryDirectory(prefix='linscp-finally-') as temp:
             source = Path(temp) / 'finally.cpp'
             source.write_text(convert(FINALLY_PROGRAM))
             program = Path(temp) / 'finally'
             subprocess.run([
-                os.environ.get('OPENSCP_CXX', 'clang++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
+                os.environ.get('LINSCP_CXX', 'clang++'), '-std=c++17', '-Wall', '-Wextra', '-Werror',
                 '-fsanitize=address,undefined', '-I', str(ROOT / 'source' / 'rtl' / 'include'),
                 str(source), '-o', str(program)], check=True)
             result = subprocess.run([str(program)], capture_output=True, text=True, check=True)

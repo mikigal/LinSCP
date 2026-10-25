@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Generates OpenSCP's icon theme (source/qt/icons/openscp): colorful flat
+"""Generates LinSCP's icon theme (source/qt/icons/linscp): colorful flat
 icons in the style of WinSCP's (yellow folders, white pages, green and blue
 arrows, red crosses), drawn from scratch: WinSCP's own icons are not free to
 reuse (license.txt, part B). The icons are named as the freedesktop icons the
 GUI asks for; the names missing here come from the desktop's theme.
 
-    make_icons.py [OUTPUT_DIR]   # default: source/qt/icons/openscp
+    make_icons.py [OUTPUT_DIR]   # default: source/qt/icons/linscp
     make_icons.py --sheet PNG    # a contact sheet of the icons (rsvg-convert, montage)
 """
 
@@ -434,7 +434,7 @@ def queue_list():
 
 
 def app_icon():
-    # OpenSCP: two panels with the transfer between them
+    # LinSCP: two panels with the transfer between them
     return svg(rect(0.5, 1.5, 15, 13, '#ffffff', BLUE_DARK, 1.5),
                rect(0.5, 1.5, 15, 3, BLUE, BLUE_DARK, 1.5),
                rect(1.8, 5.5, 5.7, 7.8, FOLDER_FRONT, FOLDER_STROKE, 0.6),
@@ -683,8 +683,8 @@ DIALOG_IMAGES = {
 }
 
 INDEX_THEME = """[Icon Theme]
-Name=OpenSCP
-Comment=The icons of OpenSCP
+Name=LinSCP
+Comment=The icons of LinSCP
 Inherits=hicolor
 Directories=scalable
 
@@ -706,7 +706,7 @@ def write(output):
     (output / 'dialogs').mkdir()
     for name, content in sorted(DIALOG_IMAGES.items()):
         (output / 'dialogs' / (name + '.svg')).write_text(content)
-    (output / 'openscp.svg').write_text(app_icon())
+    (output / 'linscp.svg').write_text(app_icon())
 
 
 def sheet(png):
@@ -727,7 +727,7 @@ def sheet(png):
             target = tmp / ('dialog-%s.png' % name)
             subprocess.run(['rsvg-convert', '-w', '32', '-h', '32', '-o', str(target), str(source)], check=True)
             files.append(str(target))
-        app = tmp / 'openscp.svg'
+        app = tmp / 'linscp.svg'
         app.write_text(app_icon())
         subprocess.run(['rsvg-convert', '-w', '64', '-h', '64', '-o', str(tmp / 'app.png'), str(app)], check=True)
         files.append(str(tmp / 'app.png'))
@@ -740,7 +740,7 @@ def main():
         sheet(sys.argv[2])
         return
     root = Path(__file__).resolve().parents[2]
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'source' / 'qt' / 'icons' / 'openscp'
+    output = Path(sys.argv[1]) if len(sys.argv) > 1 else root / 'source' / 'qt' / 'icons' / 'linscp'
     write(output)
 
 

@@ -80,7 +80,7 @@ TEST(ProgressFormTest, Upload)
   EXPECT_TRUE(Child<QWidget>(&Form, "TransferPanel")->isVisible());
   EXPECT_TRUE(Child<QPushButton>(&Form, "SkipItem")->isVisible());
 
-  const char * GrabDir = getenv("OPENSCP_QT_TEST_GRAB_DIR");
+  const char * GrabDir = getenv("LINSCP_QT_TEST_GRAB_DIR");
   if (GrabDir != NULL)
   {
     Form.grab().save(QString::fromLocal8Bit(GrabDir) + QStringLiteral("/progress-upload.png"));

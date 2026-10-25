@@ -1,6 +1,6 @@
 /*
  * storage.c: implementation of the interface defined in storage.h for
- * WinSCP's PuTTY on Linux (OpenSCP).
+ * WinSCP's PuTTY on Linux (LinSCP).
  *
  * Derived from WinSCP's windows/storage.c. WinSCP keeps PuTTY's settings
  * (host keys, the random seed file location) in its own configuration:

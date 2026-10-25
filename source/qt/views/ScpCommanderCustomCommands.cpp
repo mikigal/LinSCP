@@ -503,7 +503,7 @@ void TScpCommanderForm::LocalCustomCommandWithLocalFiles(
         MakeFileListParam.IncludeDirs = FLAGSET(ACommand.Params, ccApplyToDirectories);
         MakeFileListParam.Recursive = true;
 
-        // OpenSCP: upstream uses the method of the terminal, which needs no session
+        // LinSCP: upstream uses the method of the terminal, which needs no session
         TTerminal * Terminal = GetTerminal();
         if (Terminal != NULL)
         {

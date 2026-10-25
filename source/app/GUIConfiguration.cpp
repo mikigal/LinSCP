@@ -555,7 +555,7 @@ void __fastcall TGUIConfiguration::Default()
   FQueueKeepDoneItemsFor = 15;
   FQueueAutoPopup = true;
   FSessionRememberPassword = true;
-  // OpenSCP: PuTTY from the PATH
+  // LinSCP: PuTTY from the PATH
   FDefaultPuttyPathOnly = L"putty";
   FDefaultPuttyPath = FDefaultPuttyPathOnly;
   FPuttyPath = FormatCommand(FDefaultPuttyPath, L"");
@@ -813,7 +813,7 @@ UnicodeString __fastcall TGUIConfiguration::GetTranslationModule(const UnicodeSt
   return Result;
 }
 //---------------------------------------------------------------------------
-// OpenSCP: there are no resource modules (translation libraries) on Linux,
+// LinSCP: there are no resource modules (translation libraries) on Linux,
 // only the internal locale (US English, the language of the string tables)
 const LCID PrimaryLanguageMask = 0x3FF;
 //---------------------------------------------------------------------------
@@ -922,7 +922,7 @@ void __fastcall TGUIConfiguration::SetLocaleInternal(LCID value, bool Safe, bool
 //---------------------------------------------------------------------------
 bool __fastcall TGUIConfiguration::GetCanApplyLocaleImmediately()
 {
-  // OpenSCP: with the internal locale only, nothing is to be reloaded
+  // LinSCP: with the internal locale only, nothing is to be reloaded
   return true;
 }
 //---------------------------------------------------------------------------
@@ -968,7 +968,7 @@ void __fastcall TGUIConfiguration::SetAppliedLocale(LCID AppliedLocale, const Un
 //---------------------------------------------------------------------------
 void TGUIConfiguration::FreeResourceModule(HMODULE DebugUsedArg(Instance))
 {
-  // OpenSCP: the only resource module is the application
+  // LinSCP: the only resource module is the application
   DebugAssert(Instance == HInstance);
 }
 //---------------------------------------------------------------------------
@@ -979,7 +979,7 @@ HMODULE TGUIConfiguration::ChangeToDefaultResourceModule()
 //---------------------------------------------------------------------------
 HINSTANCE TGUIConfiguration::ChangeResourceModule(HMODULE DebugUsedArg(Instance))
 {
-  // OpenSCP: the only resource module is the application
+  // LinSCP: the only resource module is the application
   DebugAssert((Instance == NULL) || (Instance == HInstance));
   return HInstance;
 }
@@ -1023,7 +1023,7 @@ void __fastcall TGUIConfiguration::AddLocale(LCID Locale, const UnicodeString & 
 
   if (Name.IsEmpty())
   {
-    // OpenSCP: the internal locale only
+    // LinSCP: the internal locale only
     DebugAssert(Locale == InternalLocale());
     Name = UnicodeString(L"English") + TitleSeparator + L"English (United States)";
   }
@@ -1077,7 +1077,7 @@ TObjectList * __fastcall TGUIConfiguration::GetLocales()
 
     AddLocale(InternalLocale(), EmptyStr);
 
-    // OpenSCP: translations are not available yet, see LoadNewResourceModule
+    // LinSCP: translations are not available yet, see LoadNewResourceModule
 
     FLocales->Sort(LocalesCompare);
   }

@@ -104,7 +104,7 @@ void TScpCommanderForm::TemporaryDirectoryForRemoteFiles(
 
   if (AppConfiguration->TemporaryDirectoryAppendPath)
   {
-    // OpenSCP: upstream's FromUnixPath and ValidLocalPath work with
+    // LinSCP: upstream's FromUnixPath and ValidLocalPath work with
     // Windows paths
     UnicodeString ARemoteDirectory = RemoteDirectory;
     UnicodeString LocalPath;
@@ -235,7 +235,7 @@ void TScpCommanderForm::CustomExecuteFile(TOperationSide Side,
       SplitCommand(Data->Command, Program, Params, Dir);
       Params = ExpandFileNameCommand(Params, FileName);
       Program = ExpandEnvironmentVariables(Program);
-      // OpenSCP: run by /bin/sh, as the local custom commands
+      // LinSCP: run by /bin/sh, as the local custom commands
       UnicodeString Command = FormatCommand(Program, Params);
       AppLogFmt(L"Executing editor: %s", (Command));
       // Detached, so that the editor survives us, as on Windows
@@ -606,7 +606,7 @@ void TScpCommanderForm::ExecutedFileChanged(
 
         if (Answer == qaOK)
         {
-          // OpenSCP: upstream tests whether the session shown is the
+          // LinSCP: upstream tests whether the session shown is the
           // disconnected one
           if (DataTerminal->Disconnected)
           {

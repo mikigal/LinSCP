@@ -1856,7 +1856,7 @@ void __fastcall TApplicationLog::Log(const UnicodeString & S)
           CommittedMemory += MemoryInfo.RegionSize;
         }
 
-        // OpenSCP: no arithmetic on the null pointer (undefined behavior)
+        // LinSCP: no arithmetic on the null pointer (undefined behavior)
         Address = reinterpret_cast<BYTE *>(reinterpret_cast<uintptr_t>(Address) + MemoryInfo.RegionSize);
       }
 

@@ -4,7 +4,7 @@
 # include/ holds headers named like C++Builder's (System.hpp, Classes.hpp, ...);
 # they include the implementation headers from include/rtl/.
 
-add_library(openscp_rtl STATIC
+add_library(linscp_rtl STATIC
   src/Classes.cpp
   src/Closure.cpp
   src/Contnrs.cpp
@@ -33,13 +33,13 @@ add_library(openscp_rtl STATIC
   src/Variants.cpp
   src/WinError.cpp
   src/Xml.cpp)
-add_library(openscp::rtl ALIAS openscp_rtl)
+add_library(linscp::rtl ALIAS linscp_rtl)
 
-target_include_directories(openscp_rtl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(linscp_rtl PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 # __declspec(property) is used by the RTL headers themselves
-target_compile_options(openscp_rtl PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fdeclspec>)
-target_link_libraries(openscp_rtl
-  PRIVATE openscp::options
+target_compile_options(linscp_rtl PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fdeclspec>)
+target_link_libraries(linscp_rtl
+  PRIVATE linscp::options
   PUBLIC EXPAT::EXPAT)
 # Thrown objects are zero-filled, as Delphi objects (src/ExceptionAllocation.cpp)
-target_link_options(openscp_rtl INTERFACE "LINKER:--wrap=__cxa_allocate_exception")
+target_link_options(linscp_rtl INTERFACE "LINKER:--wrap=__cxa_allocate_exception")

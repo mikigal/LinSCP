@@ -1,5 +1,5 @@
 /*
- * What WinSCP's neon expects from Windows (OpenSCP).
+ * What WinSCP's neon expects from Windows (LinSCP).
  */
 
 #include "config.h"

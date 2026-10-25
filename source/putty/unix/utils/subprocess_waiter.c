@@ -1,5 +1,5 @@
 /*
- * Unix implementation of SubprocessWaiter, for WinSCP (OpenSCP).
+ * Unix implementation of SubprocessWaiter, for WinSCP (LinSCP).
  *
  * PuTTY's own implementation catches SIGCHLD and handles it through a
  * self-pipe in the one event loop. WinSCP runs an event loop for each

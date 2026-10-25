@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Runs the OpenSCP GUI in a headless KWin session and drives it through its
+"""Runs the LinSCP GUI in a headless KWin session and drives it through its
 automation hook, for the end-to-end tests.
 
 The application runs in a wlharness.Session (tools/wlharness), which isolates
 it from the user's desktop (its own compositor, D-Bus, HOME and XDG
 directories). The automation hook (source/qt/app/Automation.h, built with
-OPENSCP_AUTOMATION) listens on a Unix socket in the session directory;
+LINSCP_AUTOMATION) listens on a Unix socket in the session directory;
 widgets are addressed by their object names, "Window/Child".
 """
 
@@ -21,11 +21,11 @@ class AutomationError(RuntimeError):
     pass
 
 
-class OpenScpGui:
+class LinScpGui:
     def __init__(self, session, binary):
         self.session = session
         self.binary = str(binary)
-        self.socket_path = session.dir / 'openscp.sock'
+        self.socket_path = session.dir / 'linscp.sock'
         self.process = None
         self._socket = None
         self._buffer = b''
@@ -38,9 +38,9 @@ class OpenScpGui:
     @property
     def config_file(self):
         """The default configuration file."""
-        return self.home / '.config' / 'openscp' / 'openscp.ini'
+        return self.home / '.config' / 'linscp' / 'linscp.ini'
 
-    def start(self, *args, env=None, log_name='openscp', timeout=60):
+    def start(self, *args, env=None, log_name='linscp', timeout=60):
         self.socket_path.unlink(missing_ok=True)
         extra_env = self.automation_env()
         # A temporary directory of its own (the application cleans up the
@@ -70,7 +70,7 @@ class OpenScpGui:
 
     def attach(self, timeout=60):
         """Connects to an instance started by another application (with
-        OPENSCP_AUTOMATION_SOCKET set to socket_path)."""
+        LINSCP_AUTOMATION_SOCKET set to socket_path)."""
         deadline = time.monotonic() + timeout
         while True:
             if self.socket_path.exists():
@@ -88,7 +88,7 @@ class OpenScpGui:
     def automation_env(self):
         """The environment of an instance to attach to."""
         return {
-            'OPENSCP_AUTOMATION_SOCKET': str(self.socket_path),
+            'LINSCP_AUTOMATION_SOCKET': str(self.socket_path),
             'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS,
             'UBSAN_OPTIONS': 'print_stacktrace=1',
             # English, whatever the language of the user (the tests compare

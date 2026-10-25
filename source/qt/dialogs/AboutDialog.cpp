@@ -30,8 +30,8 @@
 //---------------------------------------------------------------------------
 namespace {
 //---------------------------------------------------------------------------
-const UnicodeString HomepageUrl(L"https://github.com/mikigal/openscp");
-const UnicodeString IssuesUrl(L"https://github.com/mikigal/openscp/issues");
+const UnicodeString HomepageUrl(L"https://github.com/mikigal/linscp");
+const UnicodeString IssuesUrl(L"https://github.com/mikigal/linscp/issues");
 //---------------------------------------------------------------------------
 QString Link(const UnicodeString & Url, const QString & Title = QString())
 {
@@ -128,7 +128,7 @@ void DoLicenseDialog(QWidget * Parent)
   QPlainTextEdit * LicenseMemo = new QPlainTextEdit(&Dialog);
   LicenseMemo->setObjectName(QStringLiteral("LicenseMemo"));
   LicenseMemo->setReadOnly(true);
-  QFile File(ApplicationDataFile(QStringLiteral("licenses/openscp/license.txt"), QStringLiteral("license.txt")));
+  QFile File(ApplicationDataFile(QStringLiteral("licenses/linscp/license.txt"), QStringLiteral("license.txt")));
   if (File.open(QIODevice::ReadOnly))
   {
     LicenseMemo->setPlainText(QString::fromUtf8(File.readAll()).replace(QStringLiteral("\r\n"), QStringLiteral("\n")));

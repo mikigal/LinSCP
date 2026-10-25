@@ -2,7 +2,7 @@
  * local-proxy.c: Unix implementation of platform_new_connection(),
  * supporting an OpenSSH-like proxy command.
  *
- * WinSCP (OpenSCP): PuTTY 0.85's unix/local-proxy.c; the process is
+ * WinSCP (LinSCP): PuTTY 0.85's unix/local-proxy.c; the process is
  * watched in the callback set of the socket's session, and reaped even
  * without a waiter (see utils/subprocess_waiter.c).
  */

@@ -138,7 +138,7 @@ typedef int socklen_t;
 #define read _read
 
 #else
-/* OpenSCP: Linux, see source/libneon */
+/* LinSCP: Linux, see source/libneon */
 #include <neon-linux-config.h>
 #endif
 

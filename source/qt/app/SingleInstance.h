@@ -15,7 +15,7 @@
 class TInstanceService : public QObject
 {
   Q_OBJECT
-  Q_CLASSINFO("D-Bus Interface", "org.openscp.OpenSCP")
+  Q_CLASSINFO("D-Bus Interface", "org.linscp.LinSCP")
 
 public:
   explicit TInstanceService(QObject * Parent);

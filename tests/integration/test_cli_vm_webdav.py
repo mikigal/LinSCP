@@ -1,7 +1,7 @@
 """L2 tests of WebDAV against the test VM (milestone M4): neon with Apache
 mod_dav and nginx, over HTTP and HTTPS.
 
-See vmtests for the VM (OPENSCP_TEST_VM; skipped without it) and the
+See vmtests for the VM (LINSCP_TEST_VM; skipped without it) and the
 matrix of tests that every protocol passes.
 """
 
@@ -37,7 +37,7 @@ class WebDavTestCase(VmTestCase):
         return ''
 
     def files(self):
-        return FileSystemFiles('/srv/openscp/dav/%s' % self.server, 'www-data')
+        return FileSystemFiles('/srv/linscp/dav/%s' % self.server, 'www-data')
 
     def open_switches(self):
         return ['-certificate="%s"' % vmtests.VM.certificate_fingerprint()] if self.tls else []

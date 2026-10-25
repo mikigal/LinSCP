@@ -1,7 +1,7 @@
 /*
  * Unix networking abstraction.
  *
- * WinSCP (OpenSCP): PuTTY 0.85's unix/network.c with WinSCP's changes of
+ * WinSCP (LinSCP): PuTTY 0.85's unix/network.c with WinSCP's changes of
  * windows/network.c (MPEXT): sk_new takes a connection timeout, a send
  * buffer size and a source address; sockets are selected in the callback
  * set of their session (see uxsel.c), and so are callbacks; do_select

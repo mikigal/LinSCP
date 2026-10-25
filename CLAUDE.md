@@ -1,4 +1,4 @@
-# OpenSCP
+# LinSCP
 
 Native Linux (Wayland) port of WinSCP. This repository is a fork of upstream WinSCP; a Windows
 build will never be made from it. Read `docs/port/PLAN.md` (architecture, milestones, decisions)
@@ -33,7 +33,7 @@ ctest --preset dev -L gui           # labels: unit, integration, ssh, gui
 
 Build the `release` preset too before finishing larger changes (`cmake --preset release &&
 cmake --build --preset release`): optimizations expose problems the debug build hides. The L2
-tests take another binary through `OPENSCP_CLI` (see `tests/integration/CMakeLists.txt`).
+tests take another binary through `LINSCP_CLI` (see `tests/integration/CMakeLists.txt`).
 `integration.smoke_release` (label `smoke`) starts the GUI of `build/release` offscreen and
 connects it to the local sshd: build the release preset before `ctest`, it is skipped when the
 release build does not exist and tests a stale one as it is.
@@ -76,13 +76,13 @@ logind).
   FTP/FTPS (vsftpd, ProFTPD, Pure-FTPd), WebDAV (Apache, nginx), S3 (moto); ports and users in
   `tools/testenv/vm/testvm.env`. Provisioned only by `tools/testenv/vm/provision.sh`
   (idempotent), run with
-  `OPENSCP_TEST_VM=<address> tools/testenv/testvm.py provision`; reached only with its own key
+  `LINSCP_TEST_VM=<address> tools/testenv/testvm.py provision`; reached only with its own key
   in `tools/testenv/vm/state/` (ignored by git). Its tests run with
-  `OPENSCP_TEST_VM=<address> ctest --preset dev -L vm` and are skipped without the variable.
+  `LINSCP_TEST_VM=<address> ctest --preset dev -L vm` and are skipped without the variable.
 
 ## Layout
 
-- `source/rtl`: the Delphi RTL shim (`openscp::rtl`); `include/` has C++Builder header names
+- `source/rtl`: the Delphi RTL shim (`linscp::rtl`); `include/` has C++Builder header names
   (`System.hpp`, `Classes.hpp`, `vcl.h`, ...), the implementation headers are in
   `include/rtl/`. Tests in `tests/unit/rtl`.
 - `tools/bcb2clang`: converter of the C++Builder dialect; `tests/unit/bcb2clang` also checks
@@ -90,19 +90,19 @@ logind).
 - `source/linux`: the Windows API on Linux for the upstream code (including window messages
   and `WSAAsyncSelect` for the FileZilla FTP engine); `source/libcore`, `source/libputty`,
   `source/libfilezilla`, ...: build definitions of the converted upstream code.
-- `source/app`: the application layer shared by the front ends; `source/cli`: `openscp-cli`.
+- `source/app`: the application layer shared by the front ends; `source/cli`: `linscp-cli`.
   Some of their files are converted copies of upstream's `source/windows`
   (`PORTED_FILES` in `tools/bcb2clang/convert.py`): edit them minimally, mark edits with
-  `OpenSCP:` comments. Upstream files use CRLF line endings; keep them.
-- `source/qt`: the GUI `openscp` (Qt 6 Widgets): `app/` (application, `TTerminalManager`,
+  `LinSCP:` comments. Upstream files use CRLF line endings; keep them.
+- `source/qt`: the GUI `linscp` (Qt 6 Widgets): `app/` (application, `TTerminalManager`,
   the automation hook `Automation.h` of test builds), `dialogs/`, `models/`, `views/`. Object
   names are the component names of upstream's `.dfm` files, which are the specification.
   L3 tests in `tests/unit/qt` (offscreen platform).
-- L4 tests: `tests/integration/test_gui*.py` (base `guitests.py`) run `openscp` in the
-  headless KWin and drive it through `tools/testenv/openscp_gui.py`; `OPENSCP_GUI_KEEP=1`
+- L4 tests: `tests/integration/test_gui*.py` (base `guitests.py`) run `linscp` in the
+  headless KWin and drive it through `tools/testenv/linscp_gui.py`; `LINSCP_GUI_KEEP=1`
   keeps the sessions with their logs and screenshots.
-- L2 tests: `tests/integration/test_cli_ssh.py` runs `openscp-cli` against the local sshd
-  through `tools/testenv/openscp_cli.py` (isolated environment, pseudo terminals);
+- L2 tests: `tests/integration/test_cli_ssh.py` runs `linscp-cli` against the local sshd
+  through `tools/testenv/linscp_cli.py` (isolated environment, pseudo terminals);
   `test_cli_vm*.py` against the test VM, with the matrix shared by the protocols in
   `vmtests.py`.
 

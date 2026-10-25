@@ -3,8 +3,8 @@ authentication window with password and keyboard-interactive prompts, which
 the local sshd cannot do without root, transfers over a real network, and
 the properties of S3 objects (their ACL and tags).
 
-Skipped without the VM (OPENSCP_TEST_VM, see vmtests) or the GUI
-(OPENSCP_GUI).
+Skipped without the VM (LINSCP_TEST_VM, see vmtests) or the GUI
+(LINSCP_GUI).
 """
 
 import os
@@ -20,9 +20,9 @@ P = 'PropertiesDialog/'
 
 
 def setUpModule():
-    if not os.environ.get('OPENSCP_GUI'):
-        raise unittest.SkipTest('OPENSCP_GUI is not set')
-    vmtests.set_up_module('openscp-sshd')
+    if not os.environ.get('LINSCP_GUI'):
+        raise unittest.SkipTest('LINSCP_GUI is not set')
+    vmtests.set_up_module('linscp-sshd')
 
 
 def tearDownModule():
@@ -57,7 +57,7 @@ class GuiVmTest(GuiTestCase):
         # The authentication banner of the test server
         gui.wait_for(lambda: (gui.window('AuthenticateForm') is not None) and
                      gui.get('AuthenticateForm/BannerPanel')['visible'], 60, 'the banner')
-        self.assertEqual(gui.get('AuthenticateForm/BannerMemo')['text'].strip(), 'OpenSCP test server')
+        self.assertEqual(gui.get('AuthenticateForm/BannerMemo')['text'].strip(), 'LinSCP test server')
         gui.click('AuthenticateForm/BannerCloseButton')
 
     def password_prompt(self, gui):
@@ -141,12 +141,12 @@ class GuiVmTest(GuiTestCase):
 class GuiS3Test(GuiTestCase):
     @classmethod
     def setUpClass(cls):
-        if not vmtests.VM.services_active('openscp-s3'):
+        if not vmtests.VM.services_active('linscp-s3'):
             raise unittest.SkipTest('the S3 server of the test VM is not active')
         super().setUpClass()
 
     def setUp(self):
-        self.access_key, self.secret_key = vmtests.VM.output('cat /etc/openscp/s3-credentials').split()
+        self.access_key, self.secret_key = vmtests.VM.output('cat /etc/linscp/s3-credentials').split()
         self.bucket = 'gui-%s' % uuid.uuid4().hex[:8]
         self.objects = S3Objects()
         self.objects.make_dir('/' + self.bucket)
@@ -197,7 +197,7 @@ class GuiS3Test(GuiTestCase):
         gui.click(P + 'OthersReadCheck')
         self.screenshot('acl')
         self.submit_properties(gui)
-        acl = vmtests.VM.output('openscp-s3 acl %s file.txt' % self.bucket).splitlines()
+        acl = vmtests.VM.output('linscp-s3 acl %s file.txt' % self.bucket).splitlines()
         self.assertIn('http://acs.amazonaws.com/groups/global/AllUsers READ', acl)
 
         # A tag
@@ -208,13 +208,13 @@ class GuiS3Test(GuiTestCase):
         gui.click(P + 'AddTagButton')
         gui.wait_window('TagDialog')
         gui.set('TagDialog/KeyEdit', 'project')
-        gui.set('TagDialog/ValueEdit', 'openscp')
+        gui.set('TagDialog/ValueEdit', 'linscp')
         gui.click('TagDialog/OKButton')
         gui.wait_no_window('TagDialog')
-        self.assertEqual(gui.rows(P + 'TagsView'), [['project', 'openscp']])
+        self.assertEqual(gui.rows(P + 'TagsView'), [['project', 'linscp']])
         self.submit_properties(gui)
-        tags = vmtests.VM.output('openscp-s3 tags %s file.txt' % self.bucket).splitlines()
-        self.assertEqual(tags, ['project=openscp'])
+        tags = vmtests.VM.output('linscp-s3 tags %s file.txt' % self.bucket).splitlines()
+        self.assertEqual(tags, ['project=linscp'])
         self.assertEqual(gui.quit(), 0)
 
 

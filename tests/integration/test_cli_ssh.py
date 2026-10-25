@@ -1,9 +1,9 @@
-"""L2 tests of SFTP and SCP: openscp-cli against the local test sshd
+"""L2 tests of SFTP and SCP: linscp-cli against the local test sshd
 (milestone M3, docs/port/PLAN.md section 6.2).
 
 The local sshd runs as the current user with public key authentication
 only, so the remote side is the local file system: the results are checked
-on the disk directly. The binary is taken from OPENSCP_CLI.
+on the disk directly. The binary is taken from LINSCP_CLI.
 """
 
 import hashlib
@@ -19,9 +19,9 @@ import unittest
 from pathlib import Path
 
 from local_sshd import LocalSshd
-from openscp_cli import OpenScpCli
+from linscp_cli import LinScpCli
 
-CLI = os.environ.get('OPENSCP_CLI')
+CLI = os.environ.get('LINSCP_CLI')
 SSHD = None
 STATE = None
 STATE_KEPT = False
@@ -30,11 +30,11 @@ STATE_KEPT = False
 def setUpModule():
     global SSHD, STATE
     if not CLI:
-        raise unittest.SkipTest('OPENSCP_CLI is not set')
-    STATE = Path(tempfile.mkdtemp(prefix='openscp-l2-'))
+        raise unittest.SkipTest('LINSCP_CLI is not set')
+    STATE = Path(tempfile.mkdtemp(prefix='linscp-l2-'))
     SSHD = LocalSshd(STATE / 'sshd').start()
     # The key in PuTTY's format, converted by the CLI itself
-    cli = OpenScpCli(CLI, STATE / 'keygen')
+    cli = LinScpCli(CLI, STATE / 'keygen')
     result = cli.run('/keygen', SSHD.client_key, '/output=%s' % key_file())
     if result.returncode != 0:
         raise RuntimeError('cannot convert the client key: %r' % result)
@@ -84,7 +84,7 @@ class CliTestCase(unittest.TestCase):
         self.local.mkdir()
         self.remote = SSHD.root / self.work.name
         self.remote.mkdir()
-        self.cli = OpenScpCli(CLI, self.work / 'cli')
+        self.cli = LinScpCli(CLI, self.work / 'cli')
 
     def run(self, result=None):
         # The directories of a failed test are kept for inspection
@@ -425,8 +425,8 @@ class SftpTest(CommonTests, CliTestCase):
         self.assertIn('7', result.stdout)
 
     def test_call(self):
-        result = self.session('call echo openscp-call-$((6*7))')
-        self.assertIn('openscp-call-42', result.stdout)
+        result = self.session('call echo linscp-call-$((6*7))')
+        self.assertIn('linscp-call-42', result.stdout)
 
 
 class ScpTest(CommonTests, CliTestCase):
@@ -439,8 +439,8 @@ class ScpTest(CommonTests, CliTestCase):
         self.assertIn('Operation not supported', result.stderr)
 
     def test_call(self):
-        result = self.session('call echo openscp-call-$((6*7))')
-        self.assertIn('openscp-call-42', result.stdout)
+        result = self.session('call echo linscp-call-$((6*7))')
+        self.assertIn('linscp-call-42', result.stdout)
 
 
 class KeepUpToDateTest(CliTestCase):
@@ -510,7 +510,7 @@ class InteractiveTest(CliTestCase):
         self.assertEqual(console.wait(), 0, console.text)
 
     def test_unknown_host_key_accepted(self):
-        ini = self.work / 'openscp.ini'
+        ini = self.work / 'linscp.ini'
         console = self.cli.spawn_pty('/ini=%s' % ini)
         console.expect('winscp> ')
         console.send('open %s -privatekey="%s"\n' % (self.url(), key_file()))
@@ -530,7 +530,7 @@ class InteractiveTest(CliTestCase):
 
     def test_unknown_host_key_escape(self):
         # (With /ini=nul, the key could not be cached, so there is no prompt)
-        console = self.cli.spawn_pty('/ini=%s' % (self.work / 'openscp.ini'), env=ABANDONED_KEY_EXCHANGE)
+        console = self.cli.spawn_pty('/ini=%s' % (self.work / 'linscp.ini'), env=ABANDONED_KEY_EXCHANGE)
         console.expect('winscp> ')
         console.send('open %s -privatekey="%s"\n' % (self.url(), key_file()))
         console.expect(r'\(A\)ccept.*: ')
@@ -544,7 +544,7 @@ class InteractiveTest(CliTestCase):
     def test_unknown_host_key_in_batch(self):
         # No prompt for the commands of the command line
         console = self.cli.spawn_pty(
-            '/ini=%s' % (self.work / 'openscp.ini'), '/command', 'open %s -privatekey="%s"' % (self.url(), key_file()),
+            '/ini=%s' % (self.work / 'linscp.ini'), '/command', 'open %s -privatekey="%s"' % (self.url(), key_file()),
             env=ABANDONED_KEY_EXCHANGE)
         # In batch mode, the prompt times out in 10 seconds (Cancel)
         console.expect(r'Ca\(n\)cel \(10 s\)')
@@ -648,7 +648,7 @@ class ConfigurationTest(CliTestCase):
     def test_help_and_info(self):
         result = self.cli.run('/help')
         self.assertEqual(result.returncode, 0, result)
-        self.assertIn('OpenSCP, Version', result.stdout)
+        self.assertIn('LinSCP, Version', result.stdout)
         self.assertIn('/keygen', result.stdout)
         result = self.cli.run('/info')
         self.assertEqual(result.returncode, 0, result)

@@ -17,7 +17,7 @@ REVISION=${1:-upstream/master}
 SUFFIX=${2:-}
 NEW=$(git rev-parse --verify "$REVISION^{commit}")
 
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/openscp-convert.XXXXXX")
+WORK=$(mktemp -d "${TMPDIR:-/tmp}/linscp-convert.XXXXXX")
 cleanup()
 {
   git -C "$ROOT" worktree remove --force "$WORK/tree" 2>/dev/null || true

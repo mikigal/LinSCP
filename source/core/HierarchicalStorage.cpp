@@ -896,7 +896,7 @@ UnicodeString __fastcall THierarchicalStorage::IncludeTrailingBackslash(const Un
   }
   else
   {
-    // OpenSCP: keys are delimited by backslashes, not by the path delimiter
+    // LinSCP: keys are delimited by backslashes, not by the path delimiter
     return EndsStr(L"\\", S) ? S : (S + L"\\");
   }
 }
@@ -910,7 +910,7 @@ UnicodeString __fastcall THierarchicalStorage::ExcludeTrailingBackslash(const Un
   }
   else
   {
-    // OpenSCP: keys are delimited by backslashes, not by the path delimiter
+    // LinSCP: keys are delimited by backslashes, not by the path delimiter
     return EndsStr(L"\\", S) ? S.SubString(1, S.Length() - 1) : S;
   }
 }
@@ -1917,7 +1917,7 @@ __fastcall TOptionsIniFile::TOptionsIniFile(TStrings * Options, TWriteMode Write
   FRootKey = RootKey;
   if (!FRootKey.IsEmpty())
   {
-    FRootKey += L'\\'; // OpenSCP: not the path delimiter
+    FRootKey += L'\\'; // LinSCP: not the path delimiter
   }
 }
 //---------------------------------------------------------------------------
@@ -1946,7 +1946,7 @@ bool __fastcall TOptionsIniFile::AllowSection(const UnicodeString & Section)
   UnicodeString Name = Section;
   if (!Name.IsEmpty())
   {
-    Name += L'\\'; // OpenSCP: not the path delimiter
+    Name += L'\\'; // LinSCP: not the path delimiter
   }
   bool Result = SameText(Name.SubString(1, FRootKey.Length()), FRootKey);
   return Result;
@@ -1957,7 +1957,7 @@ UnicodeString __fastcall TOptionsIniFile::FormatKey(const UnicodeString & Sectio
   UnicodeString Result = Section;
   if (!Result.IsEmpty())
   {
-    Result += L'\\'; // OpenSCP: not the path delimiter
+    Result += L'\\'; // LinSCP: not the path delimiter
   }
   Result += Ident; // Can be empty, when called from a constructor, AllowSection or ReadSection
   if (DebugAlwaysTrue(AllowSection(Section)))

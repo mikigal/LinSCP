@@ -4,31 +4,31 @@
 #include "QtInterface.h"
 #include "TerminalManager.h"
 
-#include "OpenScpApplication.h"
+#include "LinScpApplication.h"
 
 #include <QIcon>
 //---------------------------------------------------------------------------
-TOpenScpApplication::TOpenScpApplication(int & argc, char ** argv) :
+TLinScpApplication::TLinScpApplication(int & argc, char ** argv) :
   QApplication(argc, argv)
 {
-  setApplicationName(QStringLiteral("openscp"));
+  setApplicationName(QStringLiteral("linscp"));
   // Matches the .desktop file, so that the compositor finds the icon
-  setDesktopFileName(QStringLiteral("openscp"));
+  setDesktopFileName(QStringLiteral("linscp"));
   // The icon of the .desktop file, for the platforms that take it from the
   // application (again once the icons are installed)
   setWindowIcon(ApplicationIcon());
   // The captions of the windows are formatted by the windows themselves
   // (FormatMainFormCaption), not suffixed by Qt
   setQuitOnLastWindowClosed(true);
-  ::WakeMainThread = ::rtl::MethodPtr(this, &TOpenScpApplication::WakeMainThread);
+  ::WakeMainThread = ::rtl::MethodPtr(this, &TLinScpApplication::WakeMainThread);
 }
 //---------------------------------------------------------------------------
-TOpenScpApplication::~TOpenScpApplication()
+TLinScpApplication::~TLinScpApplication()
 {
   ::WakeMainThread = NULL;
 }
 //---------------------------------------------------------------------------
-void TOpenScpApplication::WakeMainThread(TObject * /*Sender*/)
+void TLinScpApplication::WakeMainThread(TObject * /*Sender*/)
 {
   // Called by any thread
   QMetaObject::invokeMethod(this, []() { CheckSynchronize(); }, Qt::QueuedConnection);
@@ -59,7 +59,7 @@ void ExecuteHandler(const std::function<void()> & Handler)
   }
 }
 //---------------------------------------------------------------------------
-bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)
+bool TLinScpApplication::notify(QObject * Receiver, QEvent * Event)
 {
   try
   {

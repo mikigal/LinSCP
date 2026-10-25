@@ -1,13 +1,13 @@
-# The package of OpenSCP for Arch Linux, built from the checkout this file is
-# in (OPENSCP_SOURCE overrides it):
+# The package of LinSCP for Arch Linux, built from the checkout this file is
+# in (LINSCP_SOURCE overrides it):
 #   cd packaging/arch && makepkg -si
-pkgname=openscp
+pkgname=linscp
 # The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
 pkgver=6.7.1
 pkgrel=1
 pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP)'
 arch=('x86_64' 'aarch64')
-url='https://github.com/mikigal/openscp'
+url='https://github.com/mikigal/linscp'
 license=('GPL-3.0-or-later')
 depends=('expat' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'openssl' 'qt6-base' 'qt6-svg')
 makedepends=('clang' 'cmake' 'ninja' 'python')
@@ -21,7 +21,7 @@ optdepends=(
 # The core relies on Clang's extensions, the options of LTO differ
 options=('!lto')
 
-_source="${OPENSCP_SOURCE:-$(realpath "${startdir}/../..")}"
+_source="${LINSCP_SOURCE:-$(realpath "${startdir}/../..")}"
 
 build() {
   cmake -S "${_source}" -B build -G Ninja \
@@ -29,11 +29,11 @@ build() {
     -DCMAKE_INSTALL_PREFIX=/usr \
     -DCMAKE_C_COMPILER=clang \
     -DCMAKE_CXX_COMPILER=clang++ \
-    -DOPENSCP_SANITIZE=OFF \
-    -DOPENSCP_BUILD_TESTS=OFF \
-    -DOPENSCP_BUILD_HARNESS=OFF \
-    -DOPENSCP_AUTOMATION=OFF \
-    -DOPENSCP_RELEASE_BUILD=ON
+    -DLINSCP_SANITIZE=OFF \
+    -DLINSCP_BUILD_TESTS=OFF \
+    -DLINSCP_BUILD_HARNESS=OFF \
+    -DLINSCP_AUTOMATION=OFF \
+    -DLINSCP_RELEASE_BUILD=ON
   cmake --build build
 }
 

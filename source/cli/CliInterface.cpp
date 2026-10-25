@@ -1,5 +1,5 @@
 // The parts of the core's front end interface (core/Interface.h) specific
-// to openscp-cli, which has no GUI.
+// to linscp-cli, which has no GUI.
 //---------------------------------------------------------------------------
 #include <AppPCH.h>
 

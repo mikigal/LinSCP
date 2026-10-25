@@ -22,7 +22,7 @@ class DataFormatsTest : public testing::Test
 protected:
   void SetUp() override
   {
-    std::string Pattern = std::string((getenv("TMPDIR") != nullptr) ? getenv("TMPDIR") : "/tmp") + "/openscp-rtl-XXXXXX";
+    std::string Pattern = std::string((getenv("TMPDIR") != nullptr) ? getenv("TMPDIR") : "/tmp") + "/linscp-rtl-XXXXXX";
     std::vector<char> Buffer(Pattern.begin(), Pattern.end());
     Buffer.push_back('\0');
     ASSERT_NE(mkdtemp(Buffer.data()), nullptr);

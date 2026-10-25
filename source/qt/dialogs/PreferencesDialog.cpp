@@ -549,7 +549,7 @@ void TPreferencesDialog::CreateWindowSheet()
     AddCheck(WindowMiscellaneousGroup, "SessionTabCaptionTruncationCheck", tr("&Truncate tab titles when they do not fit to window"));
   SessionSilentDisconnectCheck =
     AddCheck(WindowMiscellaneousGroup, "SessionSilentDisconnectCheck", tr("Do not p&opup error message when idle session is disconnected"));
-  // OpenSCP's own icons are in the style of upstream's
+  // LinSCP's own icons are in the style of upstream's
   DesktopIconsCheck =
     AddCheck(WindowMiscellaneousGroup, "DesktopIconsCheck", tr("Use &icons of the desktop theme (applied on the next start)"));
   static_cast<QVBoxLayout *>(WindowSheet->layout())->addStretch(1);
@@ -1141,7 +1141,7 @@ void TPreferencesDialog::CreateIntegrationSheets()
   ShellIconsGroup->layout()->addWidget(DesktopIconButton);
   connect(DesktopIconButton, &QPushButton::clicked, this, [this]() { ExecuteHandler([this]() { DesktopIconButtonClick(); }); });
   QPushButton * RegisterAsUrlHandlersButton =
-    CreateButton(ShellIconsGroup, "RegisterAsUrlHandlersButton", tr("Make OpenSCP the default handler of &URL addresses"));
+    CreateButton(ShellIconsGroup, "RegisterAsUrlHandlersButton", tr("Make LinSCP the default handler of &URL addresses"));
   ShellIconsGroup->layout()->addWidget(RegisterAsUrlHandlersButton);
   connect(RegisterAsUrlHandlersButton, &QPushButton::clicked, this,
     [this]() { ExecuteHandler([this]() { RegisterAsUrlHandlersButtonClick(); }); });
@@ -1223,7 +1223,7 @@ void TPreferencesDialog::CreateStorageSheet()
 {
   QWidget * StorageSheet = AddSheet("StorageSheet", tr("Storage"), ppStorage, nullptr);
   QGroupBox * StorageGroup = AddGroup(StorageSheet, "StorageGroup", tr("Configuration storage"));
-  // OpenSCP: an INI file only
+  // LinSCP: an INI file only
   QLabel * AutomaticIniFileStorageLabel = new QLabel(ToQString(Configuration->IniFileStorageName), StorageGroup);
   AutomaticIniFileStorageLabel->setObjectName(QStringLiteral("AutomaticIniFileStorageLabel"));
   AutomaticIniFileStorageLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -2729,12 +2729,12 @@ void TPreferencesDialog::DesktopIconButtonClick()
 //---------------------------------------------------------------------------
 void TPreferencesDialog::RegisterAsUrlHandlersButtonClick()
 {
-  // OpenSCP: the desktop entry declares the URL schemes; this makes it their
+  // LinSCP: the desktop entry declares the URL schemes; this makes it their
   // default application
-  QString DesktopEntry = QStringLiteral("openscp.desktop");
+  QString DesktopEntry = QStringLiteral("linscp.desktop");
   if (QStandardPaths::locate(QStandardPaths::ApplicationsLocation, DesktopEntry).isEmpty())
   {
-    throw Exception(MainInstructions(ToUnicodeString(tr("OpenSCP is not installed (its desktop entry %1 was not found).").arg(DesktopEntry))));
+    throw Exception(MainInstructions(ToUnicodeString(tr("LinSCP is not installed (its desktop entry %1 was not found).").arg(DesktopEntry))));
   }
   QStringList Arguments = { QStringLiteral("default"), DesktopEntry };
   for (const wchar_t * Scheme : { L"sftp", L"scp", L"ftp", L"ftps", L"ftpes", L"dav", L"davs", L"s3" })
@@ -2746,10 +2746,10 @@ void TPreferencesDialog::RegisterAsUrlHandlersButtonClick()
   if (!Process.waitForFinished() || (Process.exitStatus() != QProcess::NormalExit) || (Process.exitCode() != 0))
   {
     throw ExtException(
-      ToUnicodeString(tr("Cannot make OpenSCP the default handler of the URL addresses.")),
+      ToUnicodeString(tr("Cannot make LinSCP the default handler of the URL addresses.")),
       ToUnicodeString(Process.errorString() + QLatin1Char('\n') + QString::fromLocal8Bit(Process.readAllStandardError())));
   }
-  MessageDialog(MainInstructions(ToUnicodeString(tr("OpenSCP is now the default handler of the URL addresses."))), qtInformation, qaOK);
+  MessageDialog(MainInstructions(ToUnicodeString(tr("LinSCP is now the default handler of the URL addresses."))), qtInformation, qaOK);
 }
 //---------------------------------------------------------------------------
 } // namespace

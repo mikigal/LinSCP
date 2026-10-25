@@ -8,7 +8,7 @@ of moto 5.1:
   prefixes with spaces) fail to authenticate.
 - The ACL of an object can be set by an access control policy in the body
   of the request (moto takes only the canned ACL of the headers, and the
-  ACL of the bucket otherwise), as OpenSCP sets it.
+  ACL of the bucket otherwise), as LinSCP sets it.
 """
 
 import sys

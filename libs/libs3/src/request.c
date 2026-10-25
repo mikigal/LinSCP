@@ -224,7 +224,7 @@ static ssize_t neon_read_func(void * userdata, char * buf, size_t len)
         return 0;
     }
 
-    // OpenSCP: neon asks for no data (with no buffer) to rewind the body
+    // LinSCP: neon asks for no data (with no buffer) to rewind the body
     if (len == 0) {
         return 0;
     }

@@ -2,7 +2,7 @@
 engine with vsftpd (LIST listings), ProFTPD and Pure-FTPd (MLSD); plain
 FTP, explicit and implicit TLS; passive and active mode.
 
-See vmtests for the VM (OPENSCP_TEST_VM; skipped without it) and the
+See vmtests for the VM (LINSCP_TEST_VM; skipped without it) and the
 matrix of tests that every protocol passes.
 """
 
@@ -16,7 +16,7 @@ from vmtests import FileSystemFiles, TransferTests, VmTestCase, sha256
 
 
 def setUpModule():
-    vmtests.set_up_module('openscp-vsftpd', 'openscp-vsftpd-implicit', 'openscp-proftpd', 'openscp-pureftpd')
+    vmtests.set_up_module('linscp-vsftpd', 'linscp-vsftpd-implicit', 'linscp-proftpd', 'linscp-pureftpd')
 
 
 def tearDownModule():
@@ -213,7 +213,7 @@ class FtpEngineTest(FtpTestCase):
         self.assertEqual(result.returncode, 1, result)
         self.assertIn('Connection refused', result.output)
         result = self.cli.commands(
-            'open ftp://user:password@openscp.invalid/ -rawsettings AddressFamily=1', 'exit', args=('/ini=nul',))
+            'open ftp://user:password@linscp.invalid/ -rawsettings AddressFamily=1', 'exit', args=('/ini=nul',))
         self.assertEqual(result.returncode, 1, result)
         self.assertNotIn('Connection refused', result.output)
 

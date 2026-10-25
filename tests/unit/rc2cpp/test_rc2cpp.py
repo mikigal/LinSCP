@@ -56,8 +56,8 @@ class GenerateTest(unittest.TestCase):
 
     def test_brand(self):
         source = rc2cpp.generate('Texts.rc', 'STRINGTABLE\nBEGIN\n  A, "WinSCP is winscp.com"\nEND\n',
-                                 ('WinSCP', 'OpenSCP'))
-        self.assertIn('  { A, L"OpenSCP is winscp.com" },', source)
+                                 ('WinSCP', 'LinSCP'))
+        self.assertIn('  { A, L"LinSCP is winscp.com" },', source)
 
     def test_project_files(self):
         for name in ['TextsCore1.rc', 'TextsCore2.rc', 'TextsWin1.rc', 'TextsFileZilla.rc']:

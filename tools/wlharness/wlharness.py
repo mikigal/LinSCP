@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Headless KWin (Wayland) session harness for OpenSCP GUI tests.
+"""Headless KWin (Wayland) session harness for LinSCP GUI tests.
 
 Each session is fully isolated from the user's desktop: its own D-Bus session
 bus, its own XDG_RUNTIME_DIR, HOME and XDG config/data/cache directories, and a
@@ -163,9 +163,9 @@ class Session:
             "[KDE]\nLookAndFeelPackage=org.kde.breeze.desktop\nwidgetStyle=Breeze\nAnimationDurationFactor=0\n")
         applications = self.home / ".local/share/applications"
         applications.mkdir(parents=True, exist_ok=True)
-        # Lets the portal resolve the app IDs of the probe and of OpenSCP; it reads them when
+        # Lets the portal resolve the app IDs of the probe and of LinSCP; it reads them when
         # it starts (activated by the first application that uses it)
-        for app_id, name in (("wlh-probe", "wlh-probe"), ("openscp", "OpenSCP")):
+        for app_id, name in (("wlh-probe", "wlh-probe"), ("linscp", "LinSCP")):
             (applications / f"{app_id}.desktop").write_text(
                 f"[Desktop Entry]\nType=Application\nName={name}\nExec={app_id}\nNoDisplay=true\n")
 

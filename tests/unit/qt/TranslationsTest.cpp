@@ -134,7 +134,7 @@ TEST(TranslationsTest, ResourceStrings)
   // The known strings only, branded
   EXPECT_EQ(ApplyResourceTranslations(File), 2);
   EXPECT_EQ(LoadStr(YES_STR), UnicodeString(L"Tak"));
-  EXPECT_EQ(LoadStr(NO_STR), UnicodeString(L"Nie \"teraz\"\nlub \\ OpenSCP"));
+  EXPECT_EQ(LoadStr(NO_STR), UnicodeString(L"Nie \"teraz\"\nlub \\ LinSCP"));
   ResetTranslation();
   EXPECT_EQ(LoadStr(YES_STR), UnicodeString(L"Yes"));
 }

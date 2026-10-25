@@ -307,7 +307,7 @@ void CAsyncSslSocketLayer::OnSend(int nErrorCode)
         memcpy(m_pNetworkSendBuffer + m_nNetworkSendBufferLen, buffer + numsent, numread-numsent);
         m_nNetworkSendBufferLen += numread - numsent;
       }
-      // OpenSCP: after a partial send, the rest waits in the send buffer, so
+      // LinSCP: after a partial send, the rest waits in the send buffer, so
       // sending more now would reorder the data (Linux sends partially often)
       if (numsent < numread)
       {
@@ -846,7 +846,7 @@ int CAsyncSslSocketLayer::InitSSLConnection(bool clientMode,
       // https://github.com/notroj/neon/pull/203/commits/36c918a66691ed1a40ab512821aa8c278081818f
       const unsigned char * P = m_Main->m_sessionidSerialized;
       SSL_SESSION * Session = DebugNotNull(d2i_SSL_SESSION(NULL, &P, m_Main->m_sessionidSerializedLen));
-      // OpenSCP: SSL_set_session takes a reference of its own
+      // LinSCP: SSL_set_session takes a reference of its own
       int SessionSet = SSL_set_session(m_ssl, Session);
       SSL_SESSION_free(Session);
       if (!SessionSet)

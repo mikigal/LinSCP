@@ -2534,7 +2534,7 @@ void __fastcall TSCPFileSystem::SCPSink(const UnicodeString TargetDir,
 
           case L'T':
             unsigned int MTime, ATime;
-            // OpenSCP: the C library's swscanf, where long is not the core's (32-bit) one
+            // LinSCP: the C library's swscanf, where long is not the core's (32-bit) one
             if (swscanf(Line.c_str(), L"%u %*d %u %*d",  &MTime, &ATime) == 2)
             {
               FileData.Modification = UnixToDateTime(MTime, FTerminal->SessionData->DSTMode);

@@ -1,4 +1,4 @@
-// L3 tests of OpenSCP's icon theme (source/qt/icons/openscp, app/QtTools.cpp):
+// L3 tests of LinSCP's icon theme (source/qt/icons/linscp, app/QtTools.cpp):
 // installed over the desktop's, its icons drawn; the images of the dialogs.
 //---------------------------------------------------------------------------
 #include "QtTestTools.h"
@@ -18,7 +18,7 @@ TEST(IconThemeTest, OwnIcons)
   QString DesktopTheme = QIcon::themeName();
   QStringList SearchPaths = QIcon::themeSearchPaths();
   InstallIconTheme();
-  EXPECT_EQ(QIcon::themeName(), QStringLiteral("openscp"));
+  EXPECT_EQ(QIcon::themeName(), QStringLiteral("linscp"));
   // The icons of the toolbars, of the panels and of the application, in
   // the sizes of upstream's toolbars
   for (const char * Name : { "folder", "inode-directory", "go-up", "view-refresh", "cloud-upload", "download", "edit-delete" })

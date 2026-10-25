@@ -437,7 +437,7 @@ void __fastcall TSecureShell::Open()
     sfree(RealHost);
     if (InitError)
     {
-      // OpenSCP: the error is the caller's to free
+      // LinSCP: the error is the caller's to free
       UnicodeString Error(InitError);
       sfree(const_cast<char *>(InitError));
       PuttyFatalError(Error);
@@ -1700,7 +1700,7 @@ void __fastcall TSecureShell::UpdatePortFwdSocket(SOCKET value, bool Enable)
   }
 }
 //---------------------------------------------------------------------------
-// OpenSCP
+// LinSCP
 static bool AnyCallback(void * /*PredicateCtx*/, toplevel_callback_fn_t /*Fn*/, void * /*CallbackCtx*/)
 {
   return true;
@@ -1710,7 +1710,7 @@ void __fastcall TSecureShell::FreeBackend()
 {
   if (FBackendHandle != NULL)
   {
-    // OpenSCP: the callback that an exception interrupted (see below) is not in the queue anymore,
+    // LinSCP: the callback that an exception interrupted (see below) is not in the queue anymore,
     // nothing else frees it (LeakSanitizer); before running other callbacks overwrites it
     sfree(FCallbackSet->cbcurr);
     FCallbackSet->cbcurr = NULL;
@@ -1724,7 +1724,7 @@ void __fastcall TSecureShell::FreeBackend()
       // This releases the callback and should be noop otherwise.
       run_toplevel_callbacks(FCallbackSet);
     }
-    // OpenSCP: after an exception interrupted a callback, other callbacks of the destroyed backend
+    // LinSCP: after an exception interrupted a callback, other callbacks of the destroyed backend
     // may remain, so the freed packets may still wait for ic_pktin_free (LeakSanitizer)
     if (FCallbackSet->pktin_freeq_head != NULL)
     {
@@ -2073,7 +2073,7 @@ bool __fastcall TSecureShell::EventSelectLoop(unsigned int MSec, bool ReadEventR
       LogEvent(L"Looking for network events");
     }
     unsigned int TicksBefore = GetTickCount();
-    // OpenSCP: waits for the descriptors of the session (PuTTY's uxsel, see
+    // LinSCP: waits for the descriptors of the session (PuTTY's uxsel, see
     // putty/unix/uxsel.c), instead of WinSock events and handle waits
     std::vector<pollfd> Fds;
     {

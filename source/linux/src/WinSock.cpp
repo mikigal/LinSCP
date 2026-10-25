@@ -58,7 +58,7 @@ int WSAStartup(WORD VersionRequested, LPWSADATA WSAData)
   memset(WSAData, 0, sizeof(*WSAData));
   WSAData->wVersion = VersionRequested;
   WSAData->wHighVersion = MAKEWORD(2, 2);
-  strcpy(WSAData->szDescription, "OpenSCP WinSock");
+  strcpy(WSAData->szDescription, "LinSCP WinSock");
   strcpy(WSAData->szSystemStatus, "Running");
   return 0;
 }

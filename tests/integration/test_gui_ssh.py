@@ -4,7 +4,7 @@ file operations.
 
 The local sshd runs as the current user, so the remote side is the local
 file system: the results are checked on the disk directly. The binaries are
-taken from OPENSCP_GUI and OPENSCP_CLI (which converts the client key).
+taken from LINSCP_GUI and LINSCP_CLI (which converts the client key).
 """
 
 import hashlib
@@ -20,9 +20,9 @@ from pathlib import Path
 
 from guitests import GuiTestCase
 from local_sshd import LocalSshd
-from openscp_cli import OpenScpCli
+from linscp_cli import LinScpCli
 
-CLI = os.environ.get('OPENSCP_CLI')
+CLI = os.environ.get('LINSCP_CLI')
 SSHD = None
 STATE = None
 W = 'ScpCommanderForm/'
@@ -33,11 +33,11 @@ Q = W + 'QueueView3'
 
 def setUpModule():
     global SSHD, STATE
-    if not CLI or not os.environ.get('OPENSCP_GUI'):
-        raise unittest.SkipTest('OPENSCP_CLI or OPENSCP_GUI is not set')
-    STATE = Path(tempfile.mkdtemp(prefix='openscp-l4-'))
+    if not CLI or not os.environ.get('LINSCP_GUI'):
+        raise unittest.SkipTest('LINSCP_CLI or LINSCP_GUI is not set')
+    STATE = Path(tempfile.mkdtemp(prefix='linscp-l4-'))
     SSHD = LocalSshd(STATE / 'sshd').start()
-    result = OpenScpCli(CLI, STATE / 'keygen').run('/keygen', SSHD.client_key, '/output=%s' % key_file())
+    result = LinScpCli(CLI, STATE / 'keygen').run('/keygen', SSHD.client_key, '/output=%s' % key_file())
     if result.returncode != 0:
         raise RuntimeError('cannot convert the client key: %r' % result)
 
@@ -133,7 +133,7 @@ class GuiSshTest(GuiSshTestCase):
         self.assertIn('PortNumber=%d' % SSHD.port, ini)
 
         self.login(gui, 'agent site')
-        self.assertIn('agent site \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
+        self.assertIn('agent site \u2013 LinSCP', gui.window('ScpCommanderForm')['title'])
         self.assertEqual(gui.get(W + 'SessionStatusLabel')['text'], 'SFTP-3')
 
         # Into a directory by its path, and back
@@ -155,7 +155,7 @@ class GuiSshTest(GuiSshTestCase):
         self.assertTrue(gui.get(W + 'ReconnectItem')['visible'])
         self.assertFalse(gui.get(W + 'RemoteNewSessionButton')['visible'])
         self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['agent site', 'New Tab'])
-        self.assertIn('agent site \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
+        self.assertIn('agent site \u2013 LinSCP', gui.window('ScpCommanderForm')['title'])
         gui.click(W + 'ReconnectItem')
         gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
         self.assertIsNone(gui.window('MessageForm'))
@@ -164,7 +164,7 @@ class GuiSshTest(GuiSshTestCase):
         # session's site
         gui.trigger(W + 'CloseTabAction')
         gui.wait_window('LoginDialog')
-        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'OpenSCP')
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'LinSCP')
         self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['New Tab'])
         selected = [row['cells'][0] for row in gui.get('LoginDialog/SessionTree')['rows'] if row['current']]
         self.assertEqual(selected, ['agent site'])
@@ -1202,7 +1202,7 @@ class GuiSshTest(GuiSshTestCase):
         self.select(gui, 'Remote', 'r.txt')
         gui.trigger(W + 'CurrentEditAction')
         gui.wait_window('EditorForm', 60)
-        self.assertEqual(gui.window('EditorForm')['title'], '%s \u2013 local \u2013 Editor \u2013 OpenSCP' % (remote / 'r.txt'))
+        self.assertEqual(gui.window('EditorForm')['title'], '%s \u2013 local \u2013 Editor \u2013 LinSCP' % (remote / 'r.txt'))
         self.assertEqual(gui.get(E + 'EditorMemo')['text'], 'line one\nline two\n')
         self.assertEqual(gui.get(E + 'EncodingStatus')['text'], 'Encoding: UTF-8')
         gui.focus(E + 'EditorMemo')
@@ -1280,7 +1280,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_idle()
         self.assertEqual(gui.get(tabs)['index'], 1)
         self.assertEqual(gui.get(local_path)['text'], str(local2))
-        self.assertIn('second \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
+        self.assertIn('second \u2013 LinSCP', gui.window('ScpCommanderForm')['title'])
         self.assertIn('%s@127.0.0.1' % SSHD.user, gui.get(tabs)['tooltips'][1])
         # Its directories change
         gui.activate(W + 'RemoteDirView', 'dir')
@@ -1294,7 +1294,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_idle()
         self.assertEqual(gui.get(local_path)['text'], str(local1))
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'a.txt'])
-        self.assertIn('first \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
+        self.assertIn('first \u2013 LinSCP', gui.window('ScpCommanderForm')['title'])
         gui.set(tabs, 1)
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), what='the second session again')
         gui.wait_idle()
@@ -1326,7 +1326,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.click('InputDialog/OKButton')
         gui.wait_no_window('InputDialog')
         gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'renamed', 'New Tab'], what='the renamed tab')
-        self.assertIn('renamed \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
+        self.assertIn('renamed \u2013 LinSCP', gui.window('ScpCommanderForm')['title'])
 
         # Tabs are reordered by dragging them
         gui.drag_real(self.tab_point(gui, 2), self.tab_point(gui, 0))
@@ -1402,7 +1402,7 @@ class GuiSshTest(GuiSshTestCase):
         shortcut = gui.home / 'Desktop' / 'work.desktop'
         entry = shortcut.read_text()
         self.assertIn('Name=work\n', entry)
-        self.assertRegex(entry, r'\nExec="[^"]*openscp" "work"\n')
+        self.assertRegex(entry, r'\nExec="[^"]*linscp" "work"\n')
         self.assertTrue(os.access(shortcut, os.X_OK))
 
         # Once the tabs are closed, the site manager has the workspace
@@ -1473,7 +1473,7 @@ class GuiSshTest(GuiSshTestCase):
         gui = self.start_gui(ini=site_ini(remote=remote, local=local))
         self.login(gui, 'local')
         # The short path in the title by default
-        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'remote \u2013 local \u2013 OpenSCP')
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], 'remote \u2013 local \u2013 LinSCP')
         self.assertEqual(self.row(gui, 'Remote', 'big.bin')[1], '3 KB')
 
         R = 'PreferencesDialog/'
@@ -1496,7 +1496,7 @@ class GuiSshTest(GuiSshTestCase):
             self.assertIn(key, ini)
 
         # The full path in the title, the sizes in bytes
-        self.assertEqual(gui.window('ScpCommanderForm')['title'], '%s \u2013 local \u2013 OpenSCP' % remote)
+        self.assertEqual(gui.window('ScpCommanderForm')['title'], '%s \u2013 local \u2013 LinSCP' % remote)
         self.assertEqual(self.row(gui, 'Remote', 'big.bin')[1], '3,000')
         # A double-click copies, without the copy dialog
         gui.focus(W + 'RemoteDirView')
@@ -2210,7 +2210,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_window('LoginDialog')
         gui.trigger('LoginDialog/AboutAction')
         gui.wait_window('AboutDialog')
-        self.assertEqual(gui.get('AboutDialog/ApplicationLabel')['text'], 'OpenSCP')
+        self.assertEqual(gui.get('AboutDialog/ApplicationLabel')['text'], 'LinSCP')
         self.screenshot('about')
         gui.click('AboutDialog/OKButton')
         gui.wait_no_window('AboutDialog')

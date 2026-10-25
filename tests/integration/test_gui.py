@@ -9,8 +9,8 @@ class StartupTest(GuiTestCase):
     def test_main_window_and_clean_exit(self):
         gui = self.start_gui()
         window = gui.wait_window('ScpCommanderForm')
-        self.assertEqual(window['title'], 'OpenSCP')
-        self.session.wait_for_window('OpenSCP')
+        self.assertEqual(window['title'], 'LinSCP')
+        self.session.wait_for_window('LinSCP')
         self.assertEqual(gui.quit(), 0)
 
 

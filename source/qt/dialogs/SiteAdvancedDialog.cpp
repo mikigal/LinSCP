@@ -986,7 +986,7 @@ void TSiteAdvancedDialog::CreateSshSheets()
     { &BugRekey2Combo, "BugRekey2Combo", tr("Handles SSH &key re-exchange badly:") },
     { &BugMaxPkt2Combo, "BugMaxPkt2Combo", tr("Ignores SSH ma&ximum packet size:") },
     { &BugIgnore2Combo, "BugIgnore2Combo", tr("Chokes on SSH i&gnore messages:") },
-    { &BugWinAdjCombo, "BugWinAdjCombo", tr("Chokes on OpenSCP's SSH '&winadj' requests") },
+    { &BugWinAdjCombo, "BugWinAdjCombo", tr("Chokes on LinSCP's SSH '&winadj' requests") },
   };
   for (auto & Bug : Bugs)
   {

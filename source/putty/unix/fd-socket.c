@@ -2,7 +2,7 @@
  * fd-socket.c: implementation of Socket that just talks to two
  * existing input and output file descriptors.
  *
- * WinSCP (OpenSCP): PuTTY 0.85's unix/fd-socket.c. Descriptors and
+ * WinSCP (LinSCP): PuTTY 0.85's unix/fd-socket.c. Descriptors and
  * callbacks belong to the callback set of the socket's session; the shared
  * trees are guarded by putty_section; do_select tells the session when the
  * connection comes up and goes down, as WinSCP's windows/handle-socket.c.

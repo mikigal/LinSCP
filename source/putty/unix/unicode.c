@@ -1,9 +1,9 @@
 /*
  * unicode.c: character set conversions for WinSCP's PuTTY on Linux
- * (OpenSCP).
+ * (LinSCP).
  *
  * WinSCP passes Windows code page numbers. The default code page (0, as
- * Windows' CP_ACP) and CP_UTF8 are UTF-8, as the rest of OpenSCP treats
+ * Windows' CP_ACP) and CP_UTF8 are UTF-8, as the rest of LinSCP treats
  * them; other code pages convert with iconv ("CP<number>"). PuTTY's own
  * unix/unicode.c needs its terminal character set library instead, which
  * WinSCP does not build.

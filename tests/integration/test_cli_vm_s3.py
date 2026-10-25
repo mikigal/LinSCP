@@ -2,7 +2,7 @@
 server (signatures verified), over HTTP and over HTTPS through nginx; each
 test has a bucket of its own.
 
-See vmtests for the VM (OPENSCP_TEST_VM; skipped without it) and the
+See vmtests for the VM (LINSCP_TEST_VM; skipped without it) and the
 matrix of tests that every protocol passes.
 """
 
@@ -16,8 +16,8 @@ CREDENTIALS = None
 
 def setUpModule():
     global CREDENTIALS
-    vmtests.set_up_module('openscp-s3', 'nginx')
-    CREDENTIALS = vmtests.VM.output('cat /etc/openscp/s3-credentials').split()
+    vmtests.set_up_module('linscp-s3', 'nginx')
+    CREDENTIALS = vmtests.VM.output('cat /etc/linscp/s3-credentials').split()
 
 
 def tearDownModule():
@@ -55,7 +55,7 @@ class S3TransferTests(TransferTests):
     supports_resume_download = False
 
     def test_buckets(self):
-        bucket = 'openscp-%s' % self.remote.strip('/')[5:]
+        bucket = 'linscp-%s' % self.remote.strip('/')[5:]
         self.addCleanup(self.files().remove, '/' + bucket)
         result = self.session('mkdir /%s' % bucket, 'ls /')
         self.assertIn(bucket, result.stdout)

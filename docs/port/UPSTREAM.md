@@ -1,6 +1,6 @@
 # Pulling upstream WinSCP releases
 
-OpenSCP keeps pulling upstream WinSCP (security and protocol fixes). Because the core is
+LinSCP keeps pulling upstream WinSCP (security and protocol fixes). Because the core is
 mechanically converted from the C++Builder dialect (`tools/bcb2clang`, plan section 3.2),
 upstream is never merged into `master` directly. Instead, a vendor branch carries the
 *converted* upstream, so a merge only shows upstream's real changes plus our manual edits.
@@ -11,7 +11,7 @@ upstream is never merged into `master` directly. Instead, a vendor branch carrie
 |---|---|
 | `upstream/master` | pristine WinSCP, remote `upstream` = `https://github.com/winscp/winscp.git` |
 | `upstream-converted` | local branch: each commit's tree is exactly `bcb2clang(upstream at some revision)` |
-| `master` | OpenSCP: merges of `upstream-converted` + our own commits |
+| `master` | LinSCP: merges of `upstream-converted` + our own commits |
 
 Fork point: `master` was created from upstream `3b3f02479` (2026-10-24, Issue 2477 fix).
 

@@ -3,7 +3,7 @@
 
 The VM is reached as root over SSH with a key of its own (vm/state/
 id_ed25519, not the user's ~/.ssh or agent). Its address is taken from
-OPENSCP_TEST_VM; the setup (users, ports) is in vm/testvm.env, shared with
+LINSCP_TEST_VM; the setup (users, ports) is in vm/testvm.env, shared with
 vm/provision.sh, which sets the VM up.
 
 Usable as a module (see TestVm) and as a command line tool:
@@ -38,10 +38,10 @@ def load_settings():
 
 class TestVm:
     def __init__(self, host=None, key=None):
-        self.host = host or os.environ.get('OPENSCP_TEST_VM')
+        self.host = host or os.environ.get('LINSCP_TEST_VM')
         if not self.host:
-            raise TestVmError('OPENSCP_TEST_VM is not set')
-        self.key = Path(key or os.environ.get('OPENSCP_TEST_VM_KEY') or (STATE_DIR / 'id_ed25519'))
+            raise TestVmError('LINSCP_TEST_VM is not set')
+        self.key = Path(key or os.environ.get('LINSCP_TEST_VM_KEY') or (STATE_DIR / 'id_ed25519'))
         self.known_hosts = STATE_DIR / 'known_hosts'
         self.settings = load_settings()
         self.ssh_port = int(self.settings['SSH_PORT'])
@@ -52,7 +52,7 @@ class TestVm:
         key = STATE_DIR / 'client_ed25519'
         if not key.exists():
             STATE_DIR.mkdir(parents=True, exist_ok=True)
-            subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-C', 'openscp-test-client', '-f', str(key)],
+            subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-C', 'linscp-test-client', '-f', str(key)],
                            check=True)
         return key
 
@@ -92,7 +92,7 @@ class TestVm:
         """Uploads vm/provision.sh with the setup and runs it."""
         client_key = self.client_key()
         archive = subprocess.run(
-            ['tar', '-c', '-C', str(VM_DIR), 'provision.sh', 'testvm.env', 's3-server.py', 's3-bootstrap.py', 'openscp-s3',
+            ['tar', '-c', '-C', str(VM_DIR), 'provision.sh', 'testvm.env', 's3-server.py', 's3-bootstrap.py', 'linscp-s3',
              '-C', str(client_key.parent), '%s.pub' % client_key.name],
             capture_output=True, check=True).stdout
         script = 'set -e; D=$(mktemp -d); tar -x -C "$D"; bash "$D/provision.sh" && status=0 || status=$?; rm -r "$D"; exit $status'
@@ -104,7 +104,7 @@ class TestVm:
 
     def host_key_fingerprint(self, key_type='ed25519', algorithm='sha256'):
         """The fingerprint of a host key of the test sshd, as WinSCP takes it."""
-        output = self.output('ssh-keygen -l -E %s -f /etc/ssh/openscp/ssh_host_%s_key.pub' % (algorithm, key_type))
+        output = self.output('ssh-keygen -l -E %s -f /etc/ssh/linscp/ssh_host_%s_key.pub' % (algorithm, key_type))
         fields = output.split()
         bits, checksum = fields[0], fields[1].split(':', 1)[1]
         name = {'ed25519': 'ssh-ed25519', 'ecdsa': 'ecdsa-sha2-nistp256', 'rsa': 'ssh-rsa'}[key_type]
@@ -119,7 +119,7 @@ class TestVm:
     def certificate_fingerprint(self, algorithm='sha256'):
         """The fingerprint of the TLS servers' certificate, as WinSCP takes
         it (colon-separated hexadecimal bytes)."""
-        output = self.output('openssl x509 -noout -fingerprint -%s -in /etc/openscp/tls/cert.pem' % algorithm)
+        output = self.output('openssl x509 -noout -fingerprint -%s -in /etc/linscp/tls/cert.pem' % algorithm)
         return output.split('=', 1)[1].strip().lower()
 
     def services_active(self, *services):
@@ -131,13 +131,13 @@ class TestVm:
 def _main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('command', choices=('provision', 'check'))
-    parser.add_argument('--host', help='the VM (default: OPENSCP_TEST_VM)')
+    parser.add_argument('--host', help='the VM (default: LINSCP_TEST_VM)')
     args = parser.parse_args()
     vm = TestVm(args.host)
     if args.command == 'provision':
         print(vm.provision(), end='')
     else:
-        print(vm.output('. /etc/os-release; echo "$PRETTY_NAME"; systemctl is-active openscp-sshd.service'), end='')
+        print(vm.output('. /etc/os-release; echo "$PRETTY_NAME"; systemctl is-active linscp-sshd.service'), end='')
         print('test sshd: port %d, host key %s' % (vm.ssh_port, vm.host_key_fingerprint()))
     return 0
 

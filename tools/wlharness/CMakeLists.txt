@@ -1,5 +1,5 @@
 # Wayland test harness tools (see docs/port/PLAN.md, section 6.4).
-# These are test infrastructure, not part of OpenSCP itself.
+# These are test infrastructure, not part of LinSCP itself.
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)

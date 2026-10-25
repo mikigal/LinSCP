@@ -19,11 +19,11 @@
 #include <pwd.h>
 #include <unistd.h>
 //---------------------------------------------------------------------------
-#ifndef OPENSCP_CORE_VERSION
-#error OPENSCP_CORE_VERSION must be defined (the version of the upstream WinSCP core)
+#ifndef LINSCP_CORE_VERSION
+#error LINSCP_CORE_VERSION must be defined (the version of the upstream WinSCP core)
 #endif
-#ifndef OPENSCP_RELEASE_TYPE
-#define OPENSCP_RELEASE_TYPE "stable"
+#ifndef LINSCP_RELEASE_TYPE
+#define LINSCP_RELEASE_TYPE "stable"
 #endif
 //---------------------------------------------------------------------------
 namespace
@@ -81,7 +81,7 @@ const std::vector<char> & VersionBlock()
 {
   static const std::vector<char> Block = []()
     {
-      UnicodeString Version = OPENSCP_CORE_VERSION;
+      UnicodeString Version = LINSCP_CORE_VERSION;
       unsigned int Parts[4] = { 0, 0, 0, 0 };
       UnicodeString Rest = Version;
       for (int Index = 0; (Index < 4) && !Rest.IsEmpty(); Index++)
@@ -103,15 +103,15 @@ const std::vector<char> & VersionBlock()
       Header.Translation = 0x04B00409;
 
       const wchar_t * Strings[][2] = {
-        { L"CompanyName", L"OpenSCP" },
-        { L"FileDescription", L"OpenSCP: SFTP, FTP, WebDAV, S3 and SCP client" },
+        { L"CompanyName", L"LinSCP" },
+        { L"FileDescription", L"LinSCP: SFTP, FTP, WebDAV, S3 and SCP client" },
         { L"FileVersion", Version.c_str() },
-        { L"InternalName", L"openscp" },
-        { L"LegalCopyright", L"(c) 2000-2026 Martin Prikryl; OpenSCP contributors" },
-        { L"OriginalFilename", L"openscp" },
-        { L"ProductName", L"OpenSCP" },
+        { L"InternalName", L"linscp" },
+        { L"LegalCopyright", L"(c) 2000-2026 Martin Prikryl; LinSCP contributors" },
+        { L"OriginalFilename", L"linscp" },
+        { L"ProductName", L"LinSCP" },
         { L"ProductVersion", Version.c_str() },
-        { L"ReleaseType", L"" OPENSCP_RELEASE_TYPE },
+        { L"ReleaseType", L"" LINSCP_RELEASE_TYPE },
         { L"WWW", L"https://winscp.net/" },
       };
       std::wstring StringsData;

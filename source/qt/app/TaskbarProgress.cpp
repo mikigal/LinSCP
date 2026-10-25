@@ -7,8 +7,8 @@
 #include <QVariantMap>
 //---------------------------------------------------------------------------
 // The application, by its desktop file
-static const QString ApplicationUri = QStringLiteral("application://openscp.desktop");
-static const QString ObjectPath = QStringLiteral("/org/openscp/LauncherEntry");
+static const QString ApplicationUri = QStringLiteral("application://linscp.desktop");
+static const QString ObjectPath = QStringLiteral("/org/linscp/LauncherEntry");
 static const QString InterfaceName = QStringLiteral("com.canonical.Unity.LauncherEntry");
 // Not shown
 static const int NoProgress = -1;

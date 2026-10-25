@@ -1,7 +1,7 @@
 /*
  * SSH agent client code.
  *
- * WinSCP (OpenSCP): PuTTY 0.85's unix/agent-client.c. Queries take the
+ * WinSCP (LinSCP): PuTTY 0.85's unix/agent-client.c. Queries take the
  * callback set of the session, in which the reply is selected; the pending
  * queries are guarded by putty_section. There is one agent implementation
  * (SSH_AUTH_SOCK), whichever auth_agent_implementation says.

@@ -27,13 +27,13 @@ TEST(SystemTest, TempPath)
 //---------------------------------------------------------------------------
 TEST(SystemTest, ExpandEnvironmentStrings)
 {
-  TEnvironmentScope Variable("OPENSCP_TEST_VAR", "value");
-  TEnvironmentScope Unknown("OPENSCP_TEST_UNKNOWN", nullptr);
-  const wchar_t * Source = L"a %OPENSCP_TEST_VAR%/b %OPENSCP_TEST_UNKNOWN% 100% %";
+  TEnvironmentScope Variable("LINSCP_TEST_VAR", "value");
+  TEnvironmentScope Unknown("LINSCP_TEST_UNKNOWN", nullptr);
+  const wchar_t * Source = L"a %LINSCP_TEST_VAR%/b %LINSCP_TEST_UNKNOWN% 100% %";
   DWORD Size = ExpandEnvironmentStrings(Source, NULL, 0);
   std::vector<wchar_t> Buffer(Size);
   EXPECT_EQ(ExpandEnvironmentStrings(Source, Buffer.data(), Size), Size);
-  EXPECT_STREQ(Buffer.data(), L"a value/b %OPENSCP_TEST_UNKNOWN% 100% %");
+  EXPECT_STREQ(Buffer.data(), L"a value/b %LINSCP_TEST_UNKNOWN% 100% %");
 }
 //---------------------------------------------------------------------------
 TEST(SystemTest, Locale)
@@ -106,7 +106,7 @@ TEST(SystemTest, VersionInformation)
   UnicodeString Version =
     IntToStr(static_cast<int>(HIWORD(Fixed->dwFileVersionMS))) + L"." + IntToStr(static_cast<int>(LOWORD(Fixed->dwFileVersionMS))) + L"." +
     IntToStr(static_cast<int>(HIWORD(Fixed->dwFileVersionLS))) + L"." + IntToStr(static_cast<int>(LOWORD(Fixed->dwFileVersionLS)));
-  EXPECT_EQ(Version, OPENSCP_CORE_VERSION);
+  EXPECT_EQ(Version, LINSCP_CORE_VERSION);
 
   DWORD * Translation;
   ASSERT_TRUE(VerQueryValue(Block.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void **>(&Translation), &Length));
@@ -115,10 +115,11 @@ TEST(SystemTest, VersionInformation)
 
   wchar_t * Value;
   ASSERT_TRUE(VerQueryValue(Block.data(), L"\\StringFileInfo\\040904B0\\ProductName", reinterpret_cast<void **>(&Value), &Length));
-  EXPECT_STREQ(Value, L"OpenSCP");
-  EXPECT_EQ(Length, 8u);
+  EXPECT_STREQ(Value, L"LinSCP");
+  // In characters, with the terminating null
+  EXPECT_EQ(Length, 7u);
   ASSERT_TRUE(VerQueryValue(Block.data(), L"\\StringFileInfo\\040904B0\\ProductVersion", reinterpret_cast<void **>(&Value), &Length));
-  EXPECT_EQ(UnicodeString(Value), OPENSCP_CORE_VERSION);
+  EXPECT_EQ(UnicodeString(Value), LINSCP_CORE_VERSION);
   EXPECT_FALSE(VerQueryValue(Block.data(), L"\\StringFileInfo\\040904B0\\Unknown", reinterpret_cast<void **>(&Value), &Length));
 
   // Other files have no version information
@@ -246,7 +247,7 @@ std::vector<unsigned char> SelfSignedCertificate()
   X509_gmtime_adj(X509_getm_notAfter(Certificate), 3600);
   X509_set_pubkey(Certificate, Key);
   X509_NAME * Name = X509_get_subject_name(Certificate);
-  X509_NAME_add_entry_by_txt(Name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char *>("openscp.test"), -1, -1, 0);
+  X509_NAME_add_entry_by_txt(Name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char *>("linscp.test"), -1, -1, 0);
   X509_set_issuer_name(Certificate, Name);
   X509_sign(Certificate, Key, EVP_sha256());
   unsigned char * Data = nullptr;

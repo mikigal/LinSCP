@@ -43,7 +43,7 @@ private:
   mutable QList<QUrl> FDownloadedUrls;
 };
 //---------------------------------------------------------------------------
-// The data are remote files of OpenSCP (of this process)
+// The data are remote files of LinSCP (of this process)
 bool IsRemoteFilesMimeData(const QMimeData * Data);
 // The local directory of a directory of a file manager (a path or a URL),
 // or an empty string when it is not local

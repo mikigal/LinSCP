@@ -1,6 +1,6 @@
 /*
  * defaults.c: default settings that are specific to the platform, for
- * WinSCP's PuTTY on Linux (OpenSCP). As WinSCP's windows/utils/defaults.c,
+ * WinSCP's PuTTY on Linux (LinSCP). As WinSCP's windows/utils/defaults.c,
  * without the Windows specifics: WinSCP does not use fonts and serial
  * lines.
  */

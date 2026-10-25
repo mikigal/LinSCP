@@ -1,6 +1,6 @@
 /*
  * The registry access of PuTTY's storage, for WinSCP's PuTTY on Linux
- * (OpenSCP).
+ * (LinSCP).
  *
  * Derived from WinSCP's windows/utils/registry.c. There is no registry:
  * keys and values are WinSCP's configuration, through the hooks the core

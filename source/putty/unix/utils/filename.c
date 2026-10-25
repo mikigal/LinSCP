@@ -1,7 +1,7 @@
 /*
  * Implementation of Filename for Unix, including f_open().
  *
- * WinSCP (OpenSCP): PuTTY 0.85's unix/utils/filename.c, plus WinSCP's
+ * WinSCP (LinSCP): PuTTY 0.85's unix/utils/filename.c, plus WinSCP's
  * in-memory keys (a key file name "@" followed by the key in hex) and
  * filename_from_utf8 (file names are bytes, normally UTF-8).
  */

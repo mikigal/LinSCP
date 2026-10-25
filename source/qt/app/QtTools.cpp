@@ -215,7 +215,7 @@ QString ApplicationDataFile(const QString & Installed, const QString & Source)
   QString Result = BinaryDirectory.absoluteFilePath(QStringLiteral("../share/") + Installed);
   if (!QFileInfo::exists(Result))
   {
-    Result = QDir(QStringLiteral(OPENSCP_SOURCE_DIR)).filePath(Source);
+    Result = QDir(QStringLiteral(LINSCP_SOURCE_DIR)).filePath(Source);
   }
   return Result;
 }
@@ -229,16 +229,16 @@ void InstallIconTheme()
     QStringList Paths = QIcon::themeSearchPaths();
     Paths.prepend(QStringLiteral(":/icons"));
     QIcon::setThemeSearchPaths(Paths);
-    if (!DesktopTheme.isEmpty() && (DesktopTheme != QStringLiteral("openscp")))
+    if (!DesktopTheme.isEmpty() && (DesktopTheme != QStringLiteral("linscp")))
     {
       QIcon::setFallbackThemeName(DesktopTheme);
     }
-    QIcon::setThemeName(QStringLiteral("openscp"));
+    QIcon::setThemeName(QStringLiteral("linscp"));
   }
 }
 //---------------------------------------------------------------------------
 QIcon ApplicationIcon()
 {
-  return QIcon::fromTheme(QStringLiteral("openscp"), QIcon(QStringLiteral(":/icons/openscp/openscp.svg")));
+  return QIcon::fromTheme(QStringLiteral("linscp"), QIcon(QStringLiteral(":/icons/linscp/linscp.svg")));
 }
 //---------------------------------------------------------------------------

@@ -579,7 +579,7 @@ void __fastcall TFileMasks::CreateMask(
   Mask.HighModificationMask = TMask::None;
   Mask.LowModificationMask = TMask::None;
 
-  // OpenSCP: the masks of an invalid mask are not leaked
+  // LinSCP: the masks of an invalid mask are not leaked
   bool Added = false;
   ::rtl::TFinally FreeMasks([&]()
   {

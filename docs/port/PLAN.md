@@ -1,4 +1,4 @@
-# OpenSCP — plan for porting WinSCP to Linux (Wayland)
+# LinSCP — plan for porting WinSCP to Linux (Wayland)
 
 Status: accepted · 2026-10-24
 
@@ -125,7 +125,7 @@ in Qt.**
 - FileZilla: `CAsyncSocketEx` + hidden message window → a per-thread `poll()` reactor with a
   message queue (`PostMessage` → queue + `eventfd`). A mini `CString`/`CTime`/`CFile` shim on
   top of `rtl/`.
-- Configuration: `$XDG_CONFIG_HOME/openscp/openscp.ini` (`WinSCP.ini` format). Passwords as in
+- Configuration: `$XDG_CONFIG_HOME/linscp/linscp.ini` (`WinSCP.ini` format). Passwords as in
   WinSCP (optional master password); later optionally Secret Service (KWallet/libsecret) via
   QtKeychain.
 - Resource strings (`TextsCore*.rc`, `TextsWin*.rc`, `TextsFileZilla.rc`) → C++ tables
@@ -150,27 +150,28 @@ in Qt.**
 - **Qt object names = component names from the `.dfm` files** — so the translations in
   `translations/*.ini` (`Copy.dfm` → `OkButton.Caption=…`) can be loaded in their existing
   format, and E2E tests can address controls by stable names.
-- Icons: OpenSCP's own colorful icon set (SVG, drawn from scratch in the style of WinSCP's
+- Icons: LinSCP's own colorful icon set (SVG, drawn from scratch in the style of WinSCP's
   icons), or the freedesktop icon theme of the desktop by a preference. WinSCP's own icons
   (`Glyphs*.dfm`, `source/resource`) are not GPL: their license (`license.txt`, part B) forbids
-  reusing them in other software, so they are never built into OpenSCP (M9).
+  reusing them in other software, so they are never built into LinSCP (M9).
 
 ### 3.5 CLI
 
-A single `openscp-cli` binary (the `winscp.com` equivalent), based on a port of
+A single `linscp-cli` binary (the `winscp.com` equivalent), based on a port of
 `ConsoleRunner.cpp` and `core/Script.cpp`: the same scripting language, switches, exit codes,
 XML log. This is the first fully working product and the main tool for protocol tests.
 
 ### 3.6 Naming
 
-Product/binaries: `openscp`, `openscp-cli` (the "WinSCP" name stays only in history and
-license attribution).
+Product/binaries: `linscp`, `linscp-cli` (the "WinSCP" name stays only in history and
+license attribution). The project was called OpenSCP until 2026-10-25 (section 9); the old
+name stays only in the history.
 
 ## 4. Windows integrations → Linux/Wayland
 
-| Windows (WinSCP) | Linux (OpenSCP) |
+| Windows (WinSCP) | Linux (LinSCP) |
 |---|---|
-| Registry | INI file in `$XDG_CONFIG_HOME/openscp/` |
+| Registry | INI file in `$XDG_CONFIG_HOME/linscp/` |
 | Pageant | `ssh-agent` (`SSH_AUTH_SOCK`), PuTTY and OpenSSH keys as before |
 | PuTTYgen (GUI) | `puttygen` (Unix PuTTY) / `ssh-keygen`; key conversion in the core stays |
 | "Open in PuTTY" | terminal emulator (`xdg-terminal-exec`/configurable) + `ssh` or `putty` |
@@ -184,9 +185,9 @@ license attribution).
 | Taskbar: progress, jump lists | `com.canonical.Unity.LauncherEntry` (Plasma, Dash to Dock), actions in the `.desktop` file |
 | Tray icon | `QSystemTrayIcon` (StatusNotifierItem) |
 | Notifications after transfer | `org.freedesktop.Notifications` / KNotification |
-| Single instance, passing sessions | D-Bus (`org.openscp.OpenSCP`) + xdg-activation token |
+| Single instance, passing sessions | D-Bus (`org.linscp.LinSCP`) + xdg-activation token |
 | Registering `sftp://`, `scp://`… | `x-scheme-handler/*` in the `.desktop` file |
-| Explorer "Send To" | none (the user's decision, 2026-10-25); `openscp /upload FILES` stays |
+| Explorer "Send To" | none (the user's decision, 2026-10-25); `linscp /upload FILES` stays |
 | "Drives" panel (DriveView) | places: `$HOME`, mount points (`QStorageInfo`), bookmarks/`KFilePlacesModel` |
 | Session import (PuTTY from the registry, FileZilla, OpenSSH) | `~/.putty/sessions`, `~/.config/filezilla/sitemanager.xml`, `~/.ssh/config`, `known_hosts`, `WinSCP.ini` |
 | Installer, updates, "Run as administrator" | packages (PKGBUILD, later Flatpak/AppImage); no auto-update and no elevation |
@@ -230,7 +231,7 @@ license attribution).
 | Layer | Tools | What it checks |
 |---|---|---|
 | L1 unit | GoogleTest 1.18 (installed), ASan+UBSan | RTL shim semantics matching Delphi 1:1 (1-based indexes, `Format`, dates, `TStringList`), pure core logic (file masks, listing parsing, session URLs, `CopyParam`) |
-| L2 protocols | `openscp-cli` + pytest + test servers | open/ls/get/put/rm/mv/mkdir/chmod, resume, synchronize, checksums, timestamps, permissions, host keys, authentication — a matrix across protocols |
+| L2 protocols | `linscp-cli` + pytest + test servers | open/ls/get/put/rm/mv/mkdir/chmod, resume, synchronize, checksums, timestamps, permissions, host keys, authentication — a matrix across protocols |
 | L3 GUI components | QTest, `QT_QPA_PLATFORM=offscreen` | dialog and model logic, fast and deterministic |
 | L4 GUI E2E | headless KWin + harness | full scenarios in a real compositor, screenshots reviewed by Claude, D&D with Dolphin |
 | Smoke | the GUI offscreen, own profile and D-Bus (`test_smoke`) | the release build (no automation hook) starts, connects and keeps running: what the debug build hides |
@@ -269,7 +270,7 @@ Harness components:
 3. A small C client of the `org_kde_kwin_fake_input` protocol (the XML ships in
    `plasma-wayland-protocols`, `wayland-scanner` is installed) — real mouse/keyboard events from
    the compositor, needed for D&D and clipboard between applications.
-4. KWin scripts over D-Bus: deterministic window placement (e.g. OpenSCP on the left, Dolphin
+4. KWin scripts over D-Bus: deterministic window placement (e.g. LinSCP on the left, Dolphin
    on the right) and reading their geometry, because on Wayland a client does not know its
    position on screen.
 5. **Automation hook in the application** (test builds only, CMake option): a Unix socket with
@@ -277,7 +278,7 @@ Harness components:
    the queue), "wait until idle", grab a single window. Additionally AT-SPI
    (`gi.repository.Atspi` is installed) as an independent accessibility check.
 
-Example D&D test: the harness starts KWin + OpenSCP + Dolphin (isolated HOME, local sshd),
+Example D&D test: the harness starts KWin + LinSCP + Dolphin (isolated HOME, local sshd),
 places the windows, the input injector drags a file from the remote panel to Dolphin, and the
 test checks that the file appeared in the target directory with correct content.
 
@@ -299,8 +300,8 @@ test checks that the file appeared in the target directory with correct content.
 |---|---|---|
 | M0 | Infrastructure: CMake+Ninja (Clang), `CLAUDE.md`, `tools/testenv`, `tools/wlharness`, test skeleton, upstream workflow | `cmake --build` passes; the harness starts KWin + a Qt probe application and takes a screenshot; injected input reaches the probe; the test sshd starts from a script |
 | M1 | RTL shim (`source/rtl`) + tests | shim L1 tests pass under ASan/UBSan; core headers parse |
-| M2 | `bcb2clang` + core compilation (UI callbacks as stubs), `.rc` string generator | `libopenscp-core` links; L1 tests of core logic pass |
-| M3 | PuTTY `unix/`, `SecureShell` on `poll()`, `openscp-cli` (port of `ConsoleRunner`); test VM provisioning script | L2 tests for SFTP and SCP pass locally and on the VM (including passwords, resume, synchronize, host keys, agent) |
+| M2 | `bcb2clang` + core compilation (UI callbacks as stubs), `.rc` string generator | `liblinscp-core` links; L1 tests of core logic pass |
+| M3 | PuTTY `unix/`, `SecureShell` on `poll()`, `linscp-cli` (port of `ConsoleRunner`); test VM provisioning script | L2 tests for SFTP and SCP pass locally and on the VM (including passwords, resume, synchronize, host keys, agent) |
 | M4 | FTP/FTPS (FileZilla port), WebDAV (neon), S3 (libs3) | the same L2 matrix passes for every protocol against the VM servers |
 | M5 | GUI skeleton: application, site manager (Login), Commander window with panels, navigation, basic operations, progress, authentication prompts | E2E: connect from the site manager, browse, upload/download; screenshots OK |
 | M6 | Queue, copy dialog with options, properties/chmod, rename, find files, synchronization + checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor + external editing | E2E for each feature |
@@ -354,15 +355,15 @@ GUI on top of a verified core.
   server is moto (Debian has no MinIO), with authentication enforced.
 - 2026-10-24: ASCII transfers convert to LF line endings locally.
 - 2026-10-25: the GUI has a single session until the tabs (M8); the E2E tests drive it
-  through an automation hook built only with `OPENSCP_AUTOMATION` (dev preset).
+  through an automation hook built only with `LINSCP_AUTOMATION` (dev preset).
 - 2026-10-25: remote files go to other applications in upstream's two modes (`DDFakeFile`,
   on by default on KDE): Ark's drop protocol and a fake directory found by KIO's
   notifications, else downloads to a temporary directory on demand (see section 5).
 - 2026-10-25: the harness isolates the system bus too; fake desktop services
   (notifications, tray, task manager, logind) run in the session for the tests.
 - 2026-10-25: a session of the command line goes to a running instance (D-Bus,
-  `org.openscp.OpenSCP`) only while it has no session, until the tabs (M8).
-- 2026-10-25: no Dolphin service menu ("Upload with OpenSCP"); the user does not want it.
+  `org.linscp.LinSCP`) only while it has no session, until the tabs (M8).
+- 2026-10-25: no Dolphin service menu ("Upload with LinSCP"); the user does not want it.
 - 2026-10-25: the tabs (M8) hold remote sessions only, no local browser tabs; the sessions
   of the command line and of other instances open in new tabs.
 - 2026-10-25: the GUI is translated by upstream's translations as they are: its texts are
@@ -371,6 +372,12 @@ GUI on top of a verified core.
   GitHub pages; the version is the core's (upstream's).
 - 2026-10-25: the package is a PKGBUILD in `packaging/arch`, built from the checkout.
 - 2026-10-25: M9 makes the main window look and work as upstream's (toolbars, path labels,
-  status bar); the icons are OpenSCP's own (WinSCP's are not free to reuse), the path combo
+  status bar); the icons are LinSCP's own (WinSCP's are not free to reuse), the path combo
   boxes are upstream's (places and the path's hierarchy) but a path can still be typed in.
+- 2026-10-25: the project is renamed from OpenSCP to LinSCP (the user's decision), everywhere in
+  the repository: the binaries (`linscp`, `linscp-cli`), the desktop file, icons and D-Bus names,
+  the configuration (`$XDG_CONFIG_HOME/linscp/linscp.ini`, no migration: nothing was released),
+  the code (`LinSCP:` marks the edits of converted upstream code), the build options and
+  environment variables (`LINSCP_*`) and the servers of the test VM (`provision.sh` removes the
+  former ones). The repository's directory and remote are the user's to rename.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

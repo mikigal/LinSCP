@@ -1,5 +1,5 @@
 // The URL of the session or of files and the script opening the session
-// (upstream's forms/GenerateUrl.dfm). The scripts are for openscp-cli: a
+// (upstream's forms/GenerateUrl.dfm). The scripts are for linscp-cli: a
 // script file, a shell script (in place of upstream's batch file) and the
 // command-line arguments; upstream's PowerShell script and the code of the
 // .NET assembly are not generated.
@@ -200,7 +200,7 @@ TGenerateUrlDialog::TGenerateUrlDialog(TSessionData * Data, TStrings * Paths) :
   PasswordCheck = AddCheck(UrlGrid, 1, 0, "PasswordCheck", tr("&Password"), 2);
   HostKeyCheck = AddCheck(UrlGrid, 2, 0, "HostKeyCheck", tr("SSH &host key"), 4);
   RemoteDirectoryCheck = AddCheck(UrlGrid, 0, 1, "RemoteDirectoryCheck", tr("Initial &directory"), 8);
-  WinSCPSpecificCheck = AddCheck(UrlGrid, 1, 1, "WinSCPSpecificCheck", tr("&OpenSCP-specific"), 16);
+  WinSCPSpecificCheck = AddCheck(UrlGrid, 1, 1, "WinSCPSpecificCheck", tr("&LinSCP-specific"), 16);
   SaveExtensionCheck = AddCheck(UrlGrid, 2, 1, "SaveExtensionCheck", tr("&Save extension"), 32);
   RawSettingsCheck = AddCheck(UrlGrid, 3, 0, "RawSettingsCheck", tr("&Advanced settings"), 64);
   UrlGrid->setRowStretch(4, 1);
@@ -336,8 +336,8 @@ UnicodeString TGenerateUrlDialog::CliExeName()
 {
   // The command-line client next to the GUI, as installed, else from the
   // search path
-  QString Path = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("openscp-cli"));
-  return QFileInfo(Path).isExecutable() ? ToUnicodeString(Path) : UnicodeString(L"openscp-cli");
+  QString Path = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("linscp-cli"));
+  return QFileInfo(Path).isExecutable() ? ToUnicodeString(Path) : UnicodeString(L"linscp-cli");
 }
 //---------------------------------------------------------------------------
 UnicodeString TGenerateUrlDialog::GenerateScript(UnicodeString & ScriptDescription)

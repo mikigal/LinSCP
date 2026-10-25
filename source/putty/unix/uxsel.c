@@ -9,7 +9,7 @@
  * anything else which might have its own means of actually doing
  * those select()-type things.
  *
- * WinSCP (OpenSCP): every descriptor belongs to the callback set of a
+ * WinSCP (LinSCP): every descriptor belongs to the callback set of a
  * session, whose event loop (TSecureShell) enumerates its descriptors and
  * reports their events; there is no front end hook (uxsel_input_add). The
  * tree is shared by the sessions' threads, so it is guarded by

@@ -18,10 +18,10 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "OPENSCP_SANITIZE": "ON",
-        "OPENSCP_BUILD_TESTS": "ON",
-        "OPENSCP_BUILD_HARNESS": "ON",
-        "OPENSCP_AUTOMATION": "ON"
+        "LINSCP_SANITIZE": "ON",
+        "LINSCP_BUILD_TESTS": "ON",
+        "LINSCP_BUILD_HARNESS": "ON",
+        "LINSCP_AUTOMATION": "ON"
       }
     },
     {
@@ -30,10 +30,10 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "OPENSCP_SANITIZE": "OFF",
-        "OPENSCP_BUILD_TESTS": "OFF",
-        "OPENSCP_BUILD_HARNESS": "OFF",
-        "OPENSCP_AUTOMATION": "OFF"
+        "LINSCP_SANITIZE": "OFF",
+        "LINSCP_BUILD_TESTS": "OFF",
+        "LINSCP_BUILD_HARNESS": "OFF",
+        "LINSCP_AUTOMATION": "OFF"
       }
     }
   ],

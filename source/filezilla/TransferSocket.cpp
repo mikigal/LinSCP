@@ -851,7 +851,7 @@ void CTransferSocket::UseGSS(CAsyncGssSocketLayer *pGssLayer)
 
 void CTransferSocket::WriteData(const char * buffer, int len)
 {
-  // OpenSCP: CRLF to LF in ASCII downloads; no buffer writes the last CR
+  // LinSCP: CRLF to LF in ASCII downloads; no buffer writes the last CR
   // that no LF followed
   std::string converted;
   if (m_transferdata.bType)
@@ -887,7 +887,7 @@ void CTransferSocket::WriteData(const char * buffer, int len)
 int CTransferSocket::ReadData(char * buffer, int len)
 {
   int result;
-  // OpenSCP: LF to CRLF in ASCII uploads, through the buffer of what did
+  // LinSCP: LF to CRLF in ASCII uploads, through the buffer of what did
   // not fit
   char * source = buffer;
   int wanted = len;
@@ -972,7 +972,7 @@ void CTransferSocket::EnsureSendClose(int Mode)
 {
   if (!m_bSentClose)
   {
-    // OpenSCP: the last CR of an ASCII download
+    // LinSCP: the last CR of an ASCII download
     if ((Mode == 0) && m_bAsciiPendingCR)
     {
       try

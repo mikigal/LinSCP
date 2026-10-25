@@ -13,7 +13,7 @@ bus of the session (Session.start_system_bus), to suspend and power off
 nothing.
 
 What the services get is logged as JSON lines. The tests act as the user
-through org.openscp.TestDesktop at /org/openscp/TestDesktop: ClickNotification
+through org.linscp.TestDesktop at /org/linscp/TestDesktop: ClickNotification
 (the default action of a notification) and ActivateTrayItem (a click on the
 last registered tray icon).
 
@@ -78,7 +78,7 @@ LOGIND_XML = """
 
 CONTROL_XML = """
 <node>
-  <interface name="org.openscp.TestDesktop">
+  <interface name="org.linscp.TestDesktop">
     <method name="ClickNotification"><arg type="u" direction="in"/></method>
     <method name="ActivateTrayItem"/>
   </interface>
@@ -132,8 +132,8 @@ class DesktopServices:
     def start(self):
         self.register('/org/freedesktop/Notifications', NOTIFICATIONS_XML, self.notifications_call)
         self.register('/StatusNotifierWatcher', WATCHER_XML, self.watcher_call, self.watcher_property)
-        self.register('/org/openscp/TestDesktop', CONTROL_XML, self.control_call)
-        for name in ('org.freedesktop.Notifications', 'org.kde.StatusNotifierWatcher', 'org.openscp.TestDesktop'):
+        self.register('/org/linscp/TestDesktop', CONTROL_XML, self.control_call)
+        for name in ('org.freedesktop.Notifications', 'org.kde.StatusNotifierWatcher', 'org.linscp.TestDesktop'):
             self.own(name)
         self.bus.signal_subscribe(None, 'com.canonical.Unity.LauncherEntry', 'Update', None, None,
                                   Gio.DBusSignalFlags.NONE, self.launcher_update)
@@ -157,7 +157,7 @@ class DesktopServices:
         elif method == 'GetCapabilities':
             invocation.return_value(GLib.Variant('(as)', (['actions', 'body'],)))
         elif method == 'GetServerInformation':
-            invocation.return_value(GLib.Variant('(ssss)', ('desktop_services', 'OpenSCP', '1.0', '1.2')))
+            invocation.return_value(GLib.Variant('(ssss)', ('desktop_services', 'LinSCP', '1.0', '1.2')))
 
     # --- org.kde.StatusNotifierWatcher -------------------------------------
 
@@ -199,7 +199,7 @@ class DesktopServices:
         uri, properties = params.unpack()
         self.log('launcher', uri=uri, properties=properties)
 
-    # --- org.openscp.TestDesktop -------------------------------------------
+    # --- org.linscp.TestDesktop -------------------------------------------
 
     def control_call(self, connection, sender, path, interface, method, params, invocation):
         if method == 'ClickNotification':
@@ -211,7 +211,7 @@ class DesktopServices:
             invocation.return_value(None)
         elif method == 'ActivateTrayItem':
             if not self.items:
-                invocation.return_dbus_error('org.openscp.TestDesktop.NoItem', 'no tray item registered')
+                invocation.return_dbus_error('org.linscp.TestDesktop.NoItem', 'no tray item registered')
                 return
             service, (owner, item_path) = list(self.items.items())[-1]
             connection.call_sync(service, item_path, 'org.kde.StatusNotifierItem', 'Activate',

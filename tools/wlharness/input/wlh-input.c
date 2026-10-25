@@ -270,7 +270,7 @@ int main(int Argc, char ** Argv)
   {
     Fail("%s", "org_kde_kwin_fake_input version 6 or newer is required");
   }
-  org_kde_kwin_fake_input_authenticate(FakeInput, "wlh-input", "OpenSCP test harness");
+  org_kde_kwin_fake_input_authenticate(FakeInput, "wlh-input", "LinSCP test harness");
   Sync(Display);
 
   int Index = 1;

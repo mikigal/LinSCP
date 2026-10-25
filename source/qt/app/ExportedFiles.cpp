@@ -8,8 +8,8 @@
 #include <QStandardPaths>
 #include <QUrl>
 //---------------------------------------------------------------------------
-// The data of a drag are the files of OpenSCP's panel, nothing to read
-static const QString RemoteFilesMimeType = QStringLiteral("application/x-openscp-remote-files");
+// The data of a drag are the files of LinSCP's panel, nothing to read
+static const QString RemoteFilesMimeType = QStringLiteral("application/x-linscp-remote-files");
 static const QString UriListMimeType = QStringLiteral("text/uri-list");
 static const QString ExtractServiceMimeType = QStringLiteral("application/x-kde-ark-dndextract-service");
 static const QString ExtractPathMimeType = QStringLiteral("application/x-kde-ark-dndextract-path");
@@ -161,7 +161,7 @@ TDragExtractObject::TDragExtractObject(QObject * Parent) :
   FRegistered(false)
 {
   static int Counter = 0;
-  FPath = QStringLiteral("/org/openscp/DndExtract/%1").arg(++Counter);
+  FPath = QStringLiteral("/org/linscp/DndExtract/%1").arg(++Counter);
 }
 //---------------------------------------------------------------------------
 TDragExtractObject::~TDragExtractObject()

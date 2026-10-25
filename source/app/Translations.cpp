@@ -130,20 +130,20 @@ UnicodeString Unescape(const UnicodeString & Value)
 //---------------------------------------------------------------------------
 UnicodeString TranslationsDirectory()
 {
-  const char * Environment = getenv("OPENSCP_TRANSLATIONS");
+  const char * Environment = getenv("LINSCP_TRANSLATIONS");
   if ((Environment != NULL) && (*Environment != '\0'))
   {
     return UTF8ToString(Environment);
   }
   UnicodeString BinaryDirectory = ExcludeTrailingBackslash(ExtractFilePath(ParamStr(0)));
   UnicodeString Installed =
-    IncludeTrailingBackslash(ExtractFilePath(BinaryDirectory)) + L"share/openscp/translations";
+    IncludeTrailingBackslash(ExtractFilePath(BinaryDirectory)) + L"share/linscp/translations";
   if (DirectoryExists(ApiPath(Installed)))
   {
     return Installed;
   }
-#ifdef OPENSCP_SOURCE_TRANSLATIONS
-  return UTF8ToString(OPENSCP_SOURCE_TRANSLATIONS);
+#ifdef LINSCP_SOURCE_TRANSLATIONS
+  return UTF8ToString(LINSCP_SOURCE_TRANSLATIONS);
 #else
   return Installed;
 #endif

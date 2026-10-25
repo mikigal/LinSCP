@@ -401,7 +401,7 @@ QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & He
 QIcon DialogImage(const UnicodeString & ImageName)
 {
   QString Name = ToQString(LowerCase(ImageName)).replace(QLatin1Char(' '), QLatin1Char('-'));
-  QString FileName = QStringLiteral(":/icons/openscp/dialogs/%1.svg").arg(Name);
+  QString FileName = QStringLiteral(":/icons/linscp/dialogs/%1.svg").arg(Name);
   DebugAssert(QFileInfo::exists(FileName));
   return QIcon(FileName);
 }

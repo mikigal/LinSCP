@@ -1,4 +1,4 @@
-// The main function of openscp-cli (the counterpart of upstream's
+// The main function of linscp-cli (the counterpart of upstream's
 // winscp.com): initializes the core and runs the console in the mode the
 // switches select, as upstream's WinMain.cpp (Execute) does.
 //---------------------------------------------------------------------------

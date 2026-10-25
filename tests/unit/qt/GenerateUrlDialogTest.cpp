@@ -100,7 +100,7 @@ TEST(GenerateUrlDialogTest, SessionUrlAndScripts)
 
     Format->setCurrentIndex(sfCommandLine);
     Script = Result(Dialog);
-    EXPECT_TRUE(Script.startsWith(QStringLiteral("/log=\"/writable/path/to/log/openscp-cli.log\" /ini=nul /command \"open ")))
+    EXPECT_TRUE(Script.startsWith(QStringLiteral("/log=\"/writable/path/to/log/linscp-cli.log\" /ini=nul /command \"open ")))
       << Script.toStdString();
     EXPECT_EQ(Child<QGroupBox>(Dialog, "ResultGroup")->title(), QStringLiteral("Command-line arguments"));
 

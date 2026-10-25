@@ -438,7 +438,7 @@ void TScpCommanderForm::QueueChanged()
 {
   if (FQueueStatus != NULL)
   {
-    // OpenSCP: the items of the view refer to the status (the view updates
+    // LinSCP: the items of the view refer to the status (the view updates
     // the actions while it is filled with the items of the new status)
     FQueueController->UpdateQueueStatus(NULL);
     // UpdateFileList implementation relies on the status being recreated when session changes

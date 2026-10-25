@@ -1,4 +1,4 @@
-// The console of openscp-cli on a Unix terminal or redirected streams: the
+// The console of linscp-cli on a Unix terminal or redirected streams: the
 // counterpart of upstream's TExternalConsole (ConsoleRunner.cpp) together
 // with winscp.com (console/Main.cpp), which does the actual input and
 // output for it on Windows.

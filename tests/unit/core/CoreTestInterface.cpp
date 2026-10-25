@@ -15,7 +15,7 @@ TTestConfiguration::TTestConfiguration()
 //---------------------------------------------------------------------------
 UnicodeString TTestConfiguration::TemporaryDir(bool Mask)
 {
-  UnicodeString Result = IncludeTrailingBackslash(SystemTemporaryDirectory()) + L"openscp-test";
+  UnicodeString Result = IncludeTrailingBackslash(SystemTemporaryDirectory()) + L"linscp-test";
   if (Mask)
   {
     Result += L"*";
@@ -59,12 +59,12 @@ UnicodeString GetExceptionDebugInfo(Exception *)
 //---------------------------------------------------------------------------
 UnicodeString __fastcall GetCompanyRegistryKey()
 {
-  return L"Software\\OpenSCP";
+  return L"Software\\LinSCP";
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall GetRegistryKey()
 {
-  return GetCompanyRegistryKey() + L"\\OpenSCP Tests";
+  return GetCompanyRegistryKey() + L"\\LinSCP Tests";
 }
 //---------------------------------------------------------------------------
 void * __fastcall BusyStart()
@@ -91,12 +91,12 @@ void SystemRequired()
 //---------------------------------------------------------------------------
 UnicodeString __fastcall AppNameString()
 {
-  return L"OpenSCP";
+  return L"LinSCP";
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall SshVersionString()
 {
-  return FORMAT(L"OpenSCP-test-%s", (Configuration->Version));
+  return FORMAT(L"LinSCP-test-%s", (Configuration->Version));
 }
 //---------------------------------------------------------------------------
 void __fastcall CopyToClipboard(UnicodeString)

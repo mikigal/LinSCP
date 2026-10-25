@@ -1,11 +1,11 @@
 """Common parts of the L2 tests against the test VM (tools/testenv/testvm.py):
-the VM, an isolated openscp-cli per test, the remote files of the tests as
+the VM, an isolated linscp-cli per test, the remote files of the tests as
 seen on the VM, and the matrix of tests that every protocol passes.
 
 A test module calls set_up_module() with the services it needs from its
-setUpModule (the module is skipped without the VM, see OPENSCP_TEST_VM) and
+setUpModule (the module is skipped without the VM, see LINSCP_TEST_VM) and
 tear_down_module() from its tearDownModule. The binary is taken from
-OPENSCP_CLI. Results are checked on the VM, as root.
+LINSCP_CLI. Results are checked on the VM, as root.
 """
 
 import hashlib
@@ -18,10 +18,10 @@ import uuid
 from pathlib import Path
 from urllib.parse import quote
 
-from openscp_cli import OpenScpCli
+from linscp_cli import LinScpCli
 from testvm import TestVm, TestVmError
 
-CLI = os.environ.get('OPENSCP_CLI')
+CLI = os.environ.get('LINSCP_CLI')
 # The VM and a temporary directory of the module
 VM = None
 STATE = None
@@ -30,7 +30,7 @@ STATE = None
 def set_up_module(*services):
     global VM, STATE
     if not CLI:
-        raise unittest.SkipTest('OPENSCP_CLI is not set')
+        raise unittest.SkipTest('LINSCP_CLI is not set')
     try:
         VM = TestVm()
     except TestVmError as error:
@@ -39,7 +39,7 @@ def set_up_module(*services):
         raise unittest.SkipTest('the test VM %s is not reachable' % VM.host)
     if not VM.services_active(*services):
         raise unittest.SkipTest('the test VM is not provisioned (tools/testenv/testvm.py provision)')
-    STATE = Path(tempfile.mkdtemp(prefix='openscp-vm-'))
+    STATE = Path(tempfile.mkdtemp(prefix='linscp-vm-'))
 
 
 def tear_down_module():
@@ -127,7 +127,7 @@ class FileSystemFiles(RemoteFiles):
 
 
 class S3Objects(RemoteFiles):
-    """Objects of the S3 server of the VM (openscp-s3): the first component
+    """Objects of the S3 server of the VM (linscp-s3): the first component
     of a path is the bucket; directories are keys ending with a slash, or
     implied by the keys."""
 
@@ -139,25 +139,25 @@ class S3Objects(RemoteFiles):
     def make_dir(self, path):
         bucket, key = self.split(path)
         if key:
-            VM.run('openscp-s3 put %s %s' % (bucket, shlex.quote(key + '/')), input=b'')
+            VM.run('linscp-s3 put %s %s' % (bucket, shlex.quote(key + '/')), input=b'')
         else:
-            VM.run('openscp-s3 mb %s' % bucket)
+            VM.run('linscp-s3 mb %s' % bucket)
 
     def remove(self, path):
         bucket, key = self.split(path)
         if key:
             raise NotImplementedError('only buckets are removed')
-        VM.run('openscp-s3 rb %s' % bucket, check=False)
+        VM.run('linscp-s3 rb %s' % bucket, check=False)
 
     def write(self, path, data):
         bucket, key = self.split(path)
-        VM.run('openscp-s3 put %s %s' % (bucket, shlex.quote(key)), input=data)
+        VM.run('linscp-s3 put %s %s' % (bucket, shlex.quote(key)), input=data)
 
     def tree(self, path):
         bucket, key = self.split(path)
         prefix = (key + '/') if key else ''
         result = {}
-        for line in VM.output('openscp-s3 tree %s %s' % (bucket, shlex.quote(prefix))).splitlines():
+        for line in VM.output('linscp-s3 tree %s %s' % (bucket, shlex.quote(prefix))).splitlines():
             name, digest = line.rsplit(' ', 1)
             name = name[len(prefix):]
             parts = name.rstrip('/').split('/')
@@ -200,7 +200,7 @@ class VmTestCase(unittest.TestCase):
         self.work = Path(tempfile.mkdtemp(prefix='vm-', dir=STATE))
         self.local = self.work / 'local'
         self.local.mkdir()
-        self.cli = OpenScpCli(CLI, self.work / 'cli')
+        self.cli = LinScpCli(CLI, self.work / 'cli')
         self.remote = '%s/test-%s' % (self.remote_base().rstrip('/'), uuid.uuid4().hex[:8])
         self.files().make_dir(self.remote)
         self.addCleanup(self.files().remove, self.remote)

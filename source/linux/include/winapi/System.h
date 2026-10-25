@@ -135,7 +135,7 @@ BOOL GetProductInfo(DWORD OSMajorVersion, DWORD OSMinorVersion, DWORD SpMajorVer
   PDWORD ReturnedProductType);
 //---------------------------------------------------------------------------
 // Version information of the executable (as in its Windows version
-// resource): the version of the upstream WinSCP core, OpenSCP's names.
+// resource): the version of the upstream WinSCP core, LinSCP's names.
 // Version information of other files is not available.
 DWORD GetFileVersionInfoSize(LPCWSTR FileName, LPDWORD Handle);
 WINAPI_EXTERN_C_END

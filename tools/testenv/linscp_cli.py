@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runs openscp-cli in an isolated environment, for the L2 tests.
+"""Runs linscp-cli in an isolated environment, for the L2 tests.
 
 The process gets its own HOME, XDG base directories and TMPDIR, the "C.UTF-8"
 locale and the UTC time zone, and nothing of the user's session: no SSH
@@ -35,7 +35,7 @@ class CliResult:
         return 'exit code %d\n--- stdout:\n%s--- stderr:\n%s' % (self.returncode, self.stdout, self.stderr)
 
 
-class OpenScpCli:
+class LinScpCli:
     def __init__(self, binary, directory):
         self.binary = str(binary)
         self.dir = Path(directory).resolve()
@@ -47,7 +47,7 @@ class OpenScpCli:
     @property
     def config_file(self):
         """The default configuration file."""
-        return self.home / '.config' / 'openscp' / 'openscp.ini'
+        return self.home / '.config' / 'linscp' / 'linscp.ini'
 
     def environment(self, extra=None):
         env = {

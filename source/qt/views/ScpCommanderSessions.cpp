@@ -159,7 +159,7 @@ void TScpCommanderForm::SessionListChanged()
     SessionsPageControl->addTab(QIcon::fromTheme(QStringLiteral("tab-new"), QIcon::fromTheme(QStringLiteral("list-add"))),
       NewTabCaption);
   SessionsPageControl->setTabData(NewTabIndex, QVariant::fromValue(quintptr(0)));
-  // OpenSCP: without its second line (Shift opens a new window)
+  // LinSCP: without its second line (Shift opens a new window)
   UnicodeString NewTabHint = LoadStr(NEW_REMOTE_TAB_HINT);
   SessionsPageControl->setTabToolTip(NewTabIndex, ToQString(CutToChar(NewTabHint, L'\n', true)));
   for (QTabBar::ButtonPosition Position : { QTabBar::LeftSide, QTabBar::RightSide })
@@ -1204,7 +1204,7 @@ void TScpCommanderForm::CreateWorkspacesMenu(QMenu * Menu)
     UnicodeString Name = Workspaces->Strings[Index];
     QAction * Action = Menu->addAction(ToQString(EscapeHotkey(Name)));
     Action->setObjectName(QStringLiteral("Workspace%1").arg(Index));
-    // OpenSCP: without the second part (Shift opens a new window)
+    // LinSCP: without the second part (Shift opens a new window)
     UnicodeString Hint = FMTLOAD(WORKSPACE_HINT, (Name));
     Action->setToolTip(ToQString(CutToChar(Hint, L'(', true)));
     Action->setEnabled(!IsBusy());
@@ -1262,7 +1262,7 @@ void TScpCommanderForm::CreateSessionListMenuLevel(QMenu * Menu, int Index, int 
     {
       FolderName.Delete(FolderName.Length(), 1);
     }
-    // OpenSCP: without the second part (Shift opens a new window)
+    // LinSCP: without the second part (Shift opens a new window)
     UnicodeString Hint = FMTLOAD(SAVEDSESSIONFOLDER_THIS_HINT, (FolderName));
     Item->setToolTip(ToQString(CutToChar(Hint, L'(', true)));
     Item->setEnabled(!IsBusy());
@@ -1437,7 +1437,7 @@ bool TScpCommanderForm::CanCloseSessions()
     }
   }
 
-  // OpenSCP: the transfers of all the sessions (upstream asks for the
+  // LinSCP: the transfers of all the sessions (upstream asks for the
   // queue of the current one)
   for (int Index = 0; CanClose && (Index < Manager->Count); Index++)
   {

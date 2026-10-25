@@ -78,7 +78,7 @@ void TAppConfiguration::DefaultHistory()
 void __fastcall TAppConfiguration::Default()
 {
   TGUIConfiguration::Default();
-  // OpenSCP: PuTTY is rarely installed, ssh in a terminal emulator then
+  // LinSCP: PuTTY is rarely installed, ssh in a terminal emulator then
   PuttyPath = ::DefaultPuttyPath();
 
   FUseMasterPassword = false;
@@ -105,7 +105,7 @@ void __fastcall TAppConfiguration::Default()
   FUseLocationProfiles = false;
   FUseSharedBookmarks = false;
   FDDTransferConfirmation = asAuto;
-  // OpenSCP: the drop target is known from KDE's protocols only
+  // LinSCP: the drop target is known from KDE's protocols only
   FDDFakeFile = IsKdeDesktop();
   FDDDeleteDelay = 120;
   FExternalSessionInExistingInstance = true;
@@ -244,7 +244,7 @@ void __fastcall TAppConfiguration::Default()
   FEditor.LargeFileSize = 10*1024;
   FEditor.FontColor = TColor(0);
   FEditor.BackgroundColor = TColor(0);
-  // OpenSCP: upstream adds Notepad as an external editor of the list
+  // LinSCP: upstream adds Notepad as an external editor of the list
   FEditorList->Clear();
   FEditorList->Add(new TEditorPreferences());
   FEditorList->Saved();
@@ -270,7 +270,7 @@ void __fastcall TAppConfiguration::DefaultLocalized()
     FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_GREP),
       FORMAT(L"grep \"!?%s?!\" !&", (LoadStr(CUSTOM_COMMAND_GREP_PATTERN))),
       ccShowResults);
-    // OpenSCP: the printing of upstream ("notepad.exe /p") with CUPS
+    // LinSCP: the printing of upstream ("notepad.exe /p") with CUPS
     FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_PRINT), L"lp \"!\"", ccLocal);
     FCustomCommandList->Reset();
     FCustomCommandsDefaults = true;
@@ -347,8 +347,8 @@ void TAppConfiguration::CleanupTemporaryFolders(TStrings * Folders)
 UnicodeString __fastcall TAppConfiguration::DefaultIniFileStorageName()
 {
   return
-    IncludeTrailingBackslash(IncludeTrailingBackslash(GetShellFolderPath(CSIDL_APPDATA)) + L"openscp") +
-    L"openscp.ini";
+    IncludeTrailingBackslash(IncludeTrailingBackslash(GetShellFolderPath(CSIDL_APPDATA)) + L"linscp") +
+    L"linscp.ini";
 }
 //---------------------------------------------------------------------------
 THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)

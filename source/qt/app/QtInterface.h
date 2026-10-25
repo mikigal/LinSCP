@@ -259,7 +259,7 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
 
-// app/OpenScpApplication.cpp: shows an exception that escaped an event
+// app/LinScpApplication.cpp: shows an exception that escaped an event
 // handler (as the VCL's Application->OnException). The handlers that run
 // operations catch their exceptions and pass them here: an exception must
 // not propagate through Qt's code, which keeps state on the stack (guards
@@ -280,7 +280,7 @@ UnicodeString FormHelpKeyword(const UnicodeString & Form, const QString & Compon
 QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const std::function<UnicodeString()> & HelpKeyword);
 QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & HelpKeyword);
 // upstream's 32-pixel pictures of the dialogs (its DialogImages) by their
-// names (L"Upload File"); OpenSCP's own (source/qt/icons/openscp/dialogs)
+// names (L"Upload File"); LinSCP's own (source/qt/icons/linscp/dialogs)
 QIcon DialogImage(const UnicodeString & ImageName);
 void LoadDialogImage(QLabel * Image, const UnicodeString & ImageName);
 // A label with the picture, named Image as upstream's

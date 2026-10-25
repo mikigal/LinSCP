@@ -1,4 +1,4 @@
-// The main function of openscp, the graphical front end: initializes the
+// The main function of linscp, the graphical front end: initializes the
 // core and runs the application, as upstream's WinMain.cpp does.
 //---------------------------------------------------------------------------
 #include "QtTools.h"
@@ -9,11 +9,11 @@
 #include <AppInterface.h>
 
 #include "FormTranslator.h"
-#include "OpenScpApplication.h"
+#include "LinScpApplication.h"
 #include "ScpCommander.h"
 #include "SingleInstance.h"
 #include "TerminalManager.h"
-#ifdef OPENSCP_AUTOMATION
+#ifdef LINSCP_AUTOMATION
 #include "Automation.h"
 #endif
 
@@ -95,11 +95,11 @@ static int Execute()
     return 0;
   }
 
-#ifdef OPENSCP_AUTOMATION
+#ifdef LINSCP_AUTOMATION
   StartAutomation();
 #endif
   TTerminalManager * Manager = TTerminalManager::Instance();
-#ifdef OPENSCP_AUTOMATION
+#ifdef LINSCP_AUTOMATION
   SetAutomationBusyCheck([Manager]()
   {
     return Manager->IsBusy() || ((Manager->ScpExplorer != NULL) && Manager->ScpExplorer->IsBusy());
@@ -127,7 +127,7 @@ static int Execute()
     Manager->ScpExplorer = NULL;
   }
   TTerminalManager::DestroyInstance();
-#ifdef OPENSCP_AUTOMATION
+#ifdef LINSCP_AUTOMATION
   StopAutomation();
 #endif
   return Result;
@@ -138,7 +138,7 @@ int main(int argc, char ** argv)
   // Writes to closed sockets fail with EPIPE instead of ending the process
   signal(SIGPIPE, SIG_IGN);
 
-  TOpenScpApplication Application(argc, argv);
+  TLinScpApplication Application(argc, argv);
 
   int Result = 1;
   try

@@ -1,6 +1,6 @@
 /*
  * unix/platform.h: Unix-specific inter-module stuff, for WinSCP's PuTTY
- * on Linux (OpenSCP).
+ * on Linux (LinSCP).
  *
  * Derived from PuTTY 0.85's unix/platform.h, without the GTK front end,
  * and with WinSCP's additions from windows/platform.h: the per-session

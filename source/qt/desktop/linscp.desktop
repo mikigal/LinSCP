@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=OpenSCP
+Name=LinSCP
 GenericName=File Transfer Client
 Comment=Transfer files with SFTP, SCP, FTP, WebDAV and S3
-Exec=openscp %u
-Icon=openscp
+Exec=linscp %u
+Icon=linscp
 Terminal=false
 Categories=Network;FileTransfer;Qt;
 Keywords=sftp;scp;ftp;ftps;webdav;s3;ssh;
@@ -14,4 +14,4 @@ Actions=NewWindow;
 
 [Desktop Action NewWindow]
 Name=New Window
-Exec=openscp /newinstance
+Exec=linscp /newinstance

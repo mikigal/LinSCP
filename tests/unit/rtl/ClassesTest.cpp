@@ -69,7 +69,7 @@ class TempDir
 public:
   TempDir()
   {
-    std::string Pattern = std::string((getenv("TMPDIR") != nullptr) ? getenv("TMPDIR") : "/tmp") + "/openscp-rtl-XXXXXX";
+    std::string Pattern = std::string((getenv("TMPDIR") != nullptr) ? getenv("TMPDIR") : "/tmp") + "/linscp-rtl-XXXXXX";
     std::vector<char> Buffer(Pattern.begin(), Pattern.end());
     Buffer.push_back('\0');
     FPath = mkdtemp(Buffer.data());

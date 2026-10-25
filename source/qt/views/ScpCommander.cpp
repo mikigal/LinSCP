@@ -1327,7 +1327,7 @@ void TScpCommanderForm::OperationComplete(const TDateTime & StartTime)
   if (GUIConfiguration->BeepOnFinish &&
       (Now() - StartTime > GUIConfiguration->BeepOnFinishAfter))
   {
-    // OpenSCP: the sound of the freedesktop sound theme, or of a file
+    // LinSCP: the sound of the freedesktop sound theme, or of a file
     UnicodeString BeepSound = GUIConfiguration->BeepSound;
     QString Player = QStandardPaths::findExecutable(QStringLiteral("canberra-gtk-play"));
     if (Player.isEmpty())

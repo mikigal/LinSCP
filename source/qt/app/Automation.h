@@ -1,8 +1,8 @@
-// The automation hook of test builds (CMake option OPENSCP_AUTOMATION,
+// The automation hook of test builds (CMake option LINSCP_AUTOMATION,
 // docs/port/PLAN.md section 6.4): the end-to-end tests drive the GUI
-// through a Unix socket with a JSON API (tools/testenv/openscp_gui.py).
+// through a Unix socket with a JSON API (tools/testenv/linscp_gui.py).
 //
-// The server listens on the path in OPENSCP_AUTOMATION_SOCKET. Each request
+// The server listens on the path in LINSCP_AUTOMATION_SOCKET. Each request
 // is a line with a JSON object {"id": N, "cmd": NAME, ...}; each reply is a
 // line {"id": N, "ok": true, "result": ...} or {"id": N, "ok": false,
 // "error": MESSAGE}. Widgets and actions are addressed by object names
@@ -18,7 +18,7 @@
 //---------------------------------------------------------------------------
 #include <functional>
 //---------------------------------------------------------------------------
-// Starts the server if OPENSCP_AUTOMATION_SOCKET is set
+// Starts the server if LINSCP_AUTOMATION_SOCKET is set
 void StartAutomation();
 void StopAutomation();
 // "wait-idle" replies once the application is not busy, as this function

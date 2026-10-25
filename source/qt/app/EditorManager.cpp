@@ -47,7 +47,7 @@ TEditorManager::~TEditorManager()
     }
     else
     {
-      // OpenSCP: still being uploaded (upstream leaves them)
+      // LinSCP: still being uploaded (upstream leaves them)
       if (FileData->UploadCompleteEvent != INVALID_HANDLE_VALUE)
       {
         CloseHandle(FileData->UploadCompleteEvent);
@@ -542,7 +542,7 @@ void TEditorManager::CheckFileChange(int Index, bool Force)
       {
         AppLogFmt(L"Forcing upload of opened/edited file \"%s\".", (FileData->FileName));
       }
-      // OpenSCP: upstream delays the upload of a file locked by its editor;
+      // LinSCP: upstream delays the upload of a file locked by its editor;
       // files are not locked on Linux
       FileData->UploadCompleteEvent = CreateEvent(NULL, false, false, NULL);
 

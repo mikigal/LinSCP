@@ -1,4 +1,4 @@
-// Declarations of openscp-cli: the console interface of the ported
+// Declarations of linscp-cli: the console interface of the ported
 // ConsoleRunner (upstream has it in WinInterface.h and console/Console.h)
 // and the console of a Unix terminal or redirected streams.
 //---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ struct TConsoleCommStruct
 };
 typedef TConsoleCommStruct::TInitEvent::STDINOUT TStdInOutMode;
 //---------------------------------------------------------------------------
-// The console of openscp-cli, which works as upstream's winscp.com: on a
+// The console of linscp-cli, which works as upstream's winscp.com: on a
 // terminal, it is interactive; with redirected input, the input is read
 // line by line (and echoed) and choices are not possible; with redirected
 // output, the output is not rewritten. With /stdout, the messages go to the

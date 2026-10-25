@@ -30,7 +30,7 @@ void __fastcall TConsole::PrintLine(const UnicodeString & Str, bool Error)
   Print(Str + L"\n", false, Error);
 };
 //---------------------------------------------------------------------------
-// OpenSCP: the consoles of Windows (TOwnConsole, the console window of
+// LinSCP: the consoles of Windows (TOwnConsole, the console window of
 // WinSCP.exe, and TExternalConsole, which talks to winscp.com) are replaced
 // by the console of a Unix terminal (UnixConsole.cpp)
 //---------------------------------------------------------------------------
@@ -837,7 +837,7 @@ void __fastcall TConsoleRunner::ScriptSynchronizeStartStop(TScript * /*Script*/,
 
     while (!FSynchronizeAborted && !Aborted(false))
     {
-      // OpenSCP: the changes are reported through TThread::Synchronize
+      // LinSCP: the changes are reported through TThread::Synchronize
       CheckSynchronize(MSecsPerSec);
       FScript->Terminal->Idle();
     }
@@ -1767,7 +1767,7 @@ int __fastcall FingerprintScan(TConsole * Console, TProgramParams * Params)
   return Result;
 }
 //---------------------------------------------------------------------------
-// OpenSCP: no DumpCallstack (the callstack dumps of WinSCP.exe on Windows)
+// LinSCP: no DumpCallstack (the callstack dumps of WinSCP.exe on Windows)
 //---------------------------------------------------------------------------
 void static PrintList(TConsole * Console, const UnicodeString & Caption, TStrings * List)
 {
@@ -1855,7 +1855,7 @@ int __fastcall Console(TConsoleMode Mode)
     delete ScriptParameters;
   }); try
   {
-    // OpenSCP: the console of the terminal, which works as winscp.com
+    // LinSCP: the console of the terminal, which works as winscp.com
     Configuration->Usage->Inc(L"ConsoleExternal");
     TStdInOutMode StdOut = ParseStdInOutMode(Params, STDOUT_SWITCH, true);
     TStdInOutMode StdIn = ParseStdInOutMode(Params, STDIN_SWITCH, false);

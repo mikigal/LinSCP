@@ -10,7 +10,7 @@
 #include "ProgParams.h"
 #include "Translations.h"
 //---------------------------------------------------------------------------
-const UnicodeString AppName = L"OpenSCP";
+const UnicodeString AppName = L"LinSCP";
 //---------------------------------------------------------------------------
 TConfiguration * __fastcall CreateConfiguration()
 {
@@ -58,17 +58,17 @@ UnicodeString __fastcall AppNameString()
 //---------------------------------------------------------------------------
 UnicodeString __fastcall SshVersionString()
 {
-  return FORMAT(L"OpenSCP-release-%s", (Configuration->Version));
+  return FORMAT(L"LinSCP-release-%s", (Configuration->Version));
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall GetCompanyRegistryKey()
 {
-  return L"Software\\OpenSCP";
+  return L"Software\\LinSCP";
 }
 //---------------------------------------------------------------------------
 UnicodeString __fastcall GetRegistryKey()
 {
-  return GetCompanyRegistryKey() + L"\\OpenSCP";
+  return GetCompanyRegistryKey() + L"\\LinSCP";
 }
 //---------------------------------------------------------------------------
 bool AppendExceptionStackTrace(Exception *, TStrings *&)

@@ -33,10 +33,10 @@ HWND CreateTestWindow()
   WNDCLASSEX Class = {};
   Class.cbSize = sizeof(Class);
   Class.lpfnWndProc = RecordingWndProc;
-  Class.lpszClassName = L"OpenSCP Test Window";
+  Class.lpszClassName = L"LinSCP Test Window";
   // (Fails when registered by a previous test)
   RegisterClassEx(&Class);
-  return CreateWindow(L"OpenSCP Test Window", L"", 0, 0, 0, 0, 0, 0, 0, NULL, 0);
+  return CreateWindow(L"LinSCP Test Window", L"", 0, 0, 0, 0, 0, 0, 0, NULL, 0);
 }
 //---------------------------------------------------------------------------
 // Retrieves the next message matching the filter within the timeout
@@ -279,11 +279,11 @@ TEST_F(MessagesTest, Windows)
 //---------------------------------------------------------------------------
 TEST_F(MessagesTest, RegisterWindowMessage)
 {
-  UINT Message = RegisterWindowMessage(L"OpenSCP test message");
+  UINT Message = RegisterWindowMessage(L"LinSCP test message");
   EXPECT_GE(Message, 0xC000u);
   EXPECT_LE(Message, 0xFFFFu);
-  EXPECT_EQ(RegisterWindowMessage(L"OpenSCP test message"), Message);
-  EXPECT_NE(RegisterWindowMessage(L"OpenSCP other message"), Message);
+  EXPECT_EQ(RegisterWindowMessage(L"LinSCP test message"), Message);
+  EXPECT_NE(RegisterWindowMessage(L"LinSCP other message"), Message);
 }
 //---------------------------------------------------------------------------
 TEST_F(MessagesTest, ThreadTimer)

@@ -144,7 +144,7 @@ public:
   TStrings * FindTemporaryFolders();
   void CleanupTemporaryFolders(TStrings * Folders);
 
-  // $XDG_CONFIG_HOME/openscp/openscp.ini, used unless /ini= says otherwise
+  // $XDG_CONFIG_HOME/linscp/linscp.ini, used unless /ini= says otherwise
   static UnicodeString __fastcall DefaultIniFileStorageName();
 
   bool GetUseMasterPassword() const { return FUseMasterPassword; }
@@ -425,7 +425,7 @@ public:
   APP_CONFIG_PROPERTY(bool, LockToolbars)
   APP_CONFIG_PROPERTY(bool, SelectiveToolbarText)
   APP_CONFIG_PROPERTY(int, LargerToolbar)
-  // The icons of the desktop's theme, not OpenSCP's (applied on the next
+  // The icons of the desktop's theme, not LinSCP's (applied on the next
   // start)
   APP_CONFIG_PROPERTY(bool, DesktopIcons)
 

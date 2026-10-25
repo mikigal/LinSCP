@@ -469,7 +469,7 @@ void TScpCommanderForm::DoSynchronize(
       {
         ShowExtendedExceptionEx(Terminal, &E);
         // Do not abort the "keep up to date" when the session was succesfully reconnected.
-        // (OpenSCP: the session may be freed meanwhile, unlike upstream's
+        // (LinSCP: the session may be freed meanwhile, unlike upstream's
         // kept in its tab)
         if ((GetTerminal() != Terminal) || !Terminal->Active)
         {

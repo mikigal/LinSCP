@@ -2504,7 +2504,7 @@ __fastcall TTerminalThread::TTerminalThread(TTerminal * Terminal) :
   FCancel = false;
   FAbandoned = false;
   FAllowAbandon = false;
-  FPendingIdle = false; // OpenSCP: was read uninitialized
+  FPendingIdle = false; // LinSCP: was read uninitialized
   FMainThread = GetCurrentThreadId();
   FSection = new TCriticalSection();
 

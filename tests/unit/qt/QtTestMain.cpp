@@ -1,6 +1,6 @@
 // The main function of the L3 tests of the Qt front end's components: an
 // application on the offscreen platform and the core initialized as by
-// openscp, with the configuration in a temporary directory.
+// linscp, with the configuration in a temporary directory.
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 

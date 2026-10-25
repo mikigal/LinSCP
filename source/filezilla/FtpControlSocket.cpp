@@ -2898,7 +2898,7 @@ void CFtpControlSocket::FileTransfer(t_transferfile *transferfile/*=0*/,BOOL bFi
     else
       pData->bPasv = GetOptionVal(OPTION_PASV);
 
-    // OpenSCP: no invalid characters to replace in local file names
+    // LinSCP: no invalid characters to replace in local file names
 
     pData->transferfile=*transferfile;
     pData->transferdata.transfersize=pData->transferfile.size;

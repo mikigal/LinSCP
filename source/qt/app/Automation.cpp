@@ -265,7 +265,7 @@ QJsonObject Describe(QObject * Object, bool Children)
     Geometry[QStringLiteral("width")] = Widget->width();
     Geometry[QStringLiteral("height")] = Widget->height();
     Result[QStringLiteral("geometry")] = Geometry;
-    // The state of the widgets of OpenSCP's own (the drop-down part of a
+    // The state of the widgets of LinSCP's own (the drop-down part of a
     // split button)
     for (const QByteArray & Property : Widget->dynamicPropertyNames())
     {
@@ -872,11 +872,11 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
 //---------------------------------------------------------------------------
 void StartAutomation()
 {
-  QByteArray Path = qgetenv("OPENSCP_AUTOMATION_SOCKET");
+  QByteArray Path = qgetenv("LINSCP_AUTOMATION_SOCKET");
   if (!Path.isEmpty())
   {
     // Not for the processes the application starts
-    qunsetenv("OPENSCP_AUTOMATION_SOCKET");
+    qunsetenv("LINSCP_AUTOMATION_SOCKET");
     // The file dialogs of Qt, which the tests drive, not the desktop's
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     Server = new TAutomationServer(QString::fromLocal8Bit(Path));

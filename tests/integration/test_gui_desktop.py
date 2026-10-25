@@ -19,7 +19,7 @@ import guitests
 import test_gui_ssh as ssh
 import wlharness
 from dolphin import Dolphin
-from openscp_gui import LSAN_SUPPRESSIONS
+from linscp_gui import LSAN_SUPPRESSIONS
 
 W = 'ScpCommanderForm/'
 # Downloads for other applications go to a temporary directory
@@ -86,8 +86,8 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         return log
 
     def desktop_call(self, method, *args):
-        self.session.run(['gdbus', 'call', '--session', '--dest', 'org.openscp.TestDesktop',
-                          '--object-path', '/org/openscp/TestDesktop', '--method', 'org.openscp.TestDesktop.' + method,
+        self.session.run(['gdbus', 'call', '--session', '--dest', 'org.linscp.TestDesktop',
+                          '--object-path', '/org/linscp/TestDesktop', '--method', 'org.linscp.TestDesktop.' + method,
                           *map(str, args)])
 
     @staticmethod
@@ -307,7 +307,7 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
 
     def run_instance(self, *args, timeout=60):
         """Runs another instance of the application; returns its exit code."""
-        env = {'OPENSCP_AUTOMATION_SOCKET': str(self.session.dir / 'instance.sock'),
+        env = {'LINSCP_AUTOMATION_SOCKET': str(self.session.dir / 'instance.sock'),
                'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS}
         process = self.session.spawn([guitests.GUI, *map(str, args)], log_name='%s-instance' % self.test_name, extra_env=env)
         return process.wait(timeout)
@@ -406,8 +406,8 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         notification = self.probe_events(log, 'notify')[0]
         self.assertEqual(notification['summary'], 'local \u2013 Information')
         self.assertEqual(notification['body'], 'Transfer queue is empty.')
-        self.assertEqual(notification['app_name'], 'OpenSCP')
-        self.assertEqual(notification['hints']['desktop-entry'], 'openscp')
+        self.assertEqual(notification['app_name'], 'LinSCP')
+        self.assertEqual(notification['hints']['desktop-entry'], 'linscp')
         self.assertIn('default', notification['actions'])
         self.assertEqual((remote / 'up.txt').read_text(), 'in the background')
         self.assertFalse(gui.get(W + 'QueuePanel')['visible'])
@@ -430,7 +430,7 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.confirm_copy(gui, "Upload file 'big.bin' to remote directory:")
         self.assertEqual((remote / 'big.bin').stat().st_size, 1024 * 1024)
         updates = [event for event in self.probe_events(log, 'launcher')]
-        self.assertTrue(all(update['uri'] == 'application://openscp.desktop' for update in updates))
+        self.assertTrue(all(update['uri'] == 'application://linscp.desktop' for update in updates))
         shown = [update['properties']['progress'] for update in updates if update['properties']['progress-visible']]
         self.assertTrue(any(0 < progress < 1 for progress in shown), updates)
         self.assertEqual(shown, sorted(shown))

@@ -1,11 +1,11 @@
 """The base of the end-to-end tests of the GUI (L4, docs/port/PLAN.md
-section 6.2): OpenSCP in a headless KWin session (tools/wlharness), driven
-through its automation hook (tools/testenv/openscp_gui.py).
+section 6.2): LinSCP in a headless KWin session (tools/wlharness), driven
+through its automation hook (tools/testenv/linscp_gui.py).
 
-The binary is taken from OPENSCP_GUI. Each test class has a session of its
+The binary is taken from LINSCP_GUI. Each test class has a session of its
 own; each test starts the application. Sessions of failed tests are kept
 for inspection (logs and screenshots in the session directory), all of them
-with OPENSCP_GUI_KEEP set.
+with LINSCP_GUI_KEEP set.
 """
 
 import os
@@ -13,9 +13,9 @@ import shutil
 import unittest
 
 import wlharness
-from openscp_gui import OpenScpGui
+from linscp_gui import LinScpGui
 
-GUI = os.environ.get('OPENSCP_GUI')
+GUI = os.environ.get('LINSCP_GUI')
 
 
 class GuiTestCase(unittest.TestCase):
@@ -25,14 +25,14 @@ class GuiTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not GUI:
-            raise unittest.SkipTest('OPENSCP_GUI is not set')
+            raise unittest.SkipTest('LINSCP_GUI is not set')
         cls.session = wlharness.Session.create(width=cls.width, height=cls.height)
         cls.failed = False
 
     @classmethod
     def tearDownClass(cls):
         cls.session.stop()
-        if cls.failed or os.environ.get('OPENSCP_GUI_KEEP'):
+        if cls.failed or os.environ.get('LINSCP_GUI_KEEP'):
             print('keeping session %s for inspection' % cls.session.dir)
         else:
             shutil.rmtree(cls.session.dir, ignore_errors=True)
@@ -48,7 +48,7 @@ class GuiTestCase(unittest.TestCase):
     def start_gui(self, *args, env=None, ini=None):
         """Starts the application with a configuration of its own (the INI
         file's text, or none); it is ended after the test."""
-        gui = OpenScpGui(self.session, GUI)
+        gui = LinScpGui(self.session, GUI)
         config = gui.config_file.parent
         shutil.rmtree(config, ignore_errors=True)
         if ini is not None:

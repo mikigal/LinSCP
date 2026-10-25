@@ -2,7 +2,7 @@
 local sshd cannot do without root (password, keyboard-interactive and
 password change authentication, chroot), and a real network.
 
-See vmtests for the VM (OPENSCP_TEST_VM; skipped without it) and the
+See vmtests for the VM (LINSCP_TEST_VM; skipped without it) and the
 matrix of tests that every protocol passes.
 """
 
@@ -12,13 +12,13 @@ import unittest
 from pathlib import Path
 
 import vmtests
-from openscp_cli import OpenScpCli
+from linscp_cli import LinScpCli
 from vmtests import FileSystemFiles, TransferTests, VmTestCase, setting
 
 
 def setUpModule():
-    vmtests.set_up_module('openscp-sshd')
-    result = OpenScpCli(vmtests.CLI, vmtests.STATE / 'keygen').run(
+    vmtests.set_up_module('linscp-sshd')
+    result = LinScpCli(vmtests.CLI, vmtests.STATE / 'keygen').run(
         '/keygen', vmtests.VM.client_key(), '/output=%s' % client_ppk())
     if result.returncode != 0:
         raise RuntimeError('cannot convert the client key: %r' % result)
@@ -164,14 +164,14 @@ class ChrootTest(SshTestCase):
         self.work = Path(tempfile.mkdtemp(prefix='vm-', dir=vmtests.STATE))
         self.local = self.work / 'local'
         self.local.mkdir()
-        self.cli = OpenScpCli(vmtests.CLI, self.work / 'cli')
-        self.addCleanup(vmtests.VM.run, 'rm -rf /srv/openscp/chroot/upload/*')
+        self.cli = LinScpCli(vmtests.CLI, self.work / 'cli')
+        self.addCleanup(vmtests.VM.run, 'rm -rf /srv/linscp/chroot/upload/*')
 
     def test_chroot(self):
         source = self.write_local('jailed.txt', b'jailed')
         result = self.session('pwd', 'put "%s" /upload/' % source)
         self.assertIn('/', result.stdout.splitlines())
-        self.assertEqual(vmtests.VM.output('cat /srv/openscp/chroot/upload/jailed.txt'), 'jailed')
+        self.assertEqual(vmtests.VM.output('cat /srv/linscp/chroot/upload/jailed.txt'), 'jailed')
 
     def test_no_shell(self):
         result = self.session('call echo hello', check=False)

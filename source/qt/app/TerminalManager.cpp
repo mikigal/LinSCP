@@ -291,7 +291,7 @@ void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen, bool
     {
       TerminalThread = CreateTerminalThread(Terminal);
     }
-    // OpenSCP: the terminals are never abandoned (left to their threads
+    // LinSCP: the terminals are never abandoned (left to their threads
     // when they do not react to cancelling), as upstream does with the
     // active one: it would have to be replaced in the window and the
     // queue of its session refers to it
@@ -532,7 +532,7 @@ void TTerminalManager::FreeTerminalCleanup(TTerminal * ATerminal, bool IsActiveS
       }
       else
       {
-        // OpenSCP: there are no local browser sessions to replace the last
+        // LinSCP: there are no local browser sessions to replace the last
         // session with (upstream's GetReplacementForLastSession)
         NewActiveTerminal = NULL;
         LastTerminalClosed = true;
@@ -589,7 +589,7 @@ void TTerminalManager::FreeTerminal(TTerminal * Terminal)
     TTerminalThread * TerminalThread = DebugNotNull(ManagedSession->TerminalThread);
     DebugAssert(TerminalThread->AllowAbandon);
     TerminalThread->Cancel();
-    // OpenSCP: also until the reconnect completes (upstream waits for the
+    // LinSCP: also until the reconnect completes (upstream waits for the
     // thread to be abandoned only)
     while (!TerminalThread->Abandoned() && (TerminalThread->IsTerminalReopenComplete() == trrPending))
     {
@@ -1020,7 +1020,7 @@ void TTerminalManager::Idle()
   for (int Index = 0; Index < Count; Index++)
   {
     TManagedTerminal * Terminal = Sessions[Index];
-    // OpenSCP: not the session that opens (its thread processes the events
+    // LinSCP: not the session that opens (its thread processes the events
     // of the GUI, which call this)
     if (Terminal == FOpeningTerminal)
     {

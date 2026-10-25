@@ -165,7 +165,7 @@ void TConsoleDialog::SetTerminal(TTerminal * Value)
 {
   if (FTerminal != Value)
   {
-    // OpenSCP: the session may be freed meanwhile (once its connection is
+    // LinSCP: the session may be freed meanwhile (once its connection is
     // lost and it was never connected)
     TTerminalManager * Manager = TTerminalManager::Instance(false);
     if ((FTerminal != NULL) && (Manager != NULL) && (Manager->IndexOf(FTerminal) < 0))

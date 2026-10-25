@@ -436,10 +436,10 @@ TEST(System, Random)
 //---------------------------------------------------------------------------
 TEST(System, CommandLine)
 {
-  EXPECT_TRUE(ParamStr(0).Pos(L"openscp_rtl_tests") > 0) << ParamStr(0);
+  EXPECT_TRUE(ParamStr(0).Pos(L"linscp_rtl_tests") > 0) << ParamStr(0);
   EXPECT_GE(ParamCount(), 0);
   ASSERT_NE(CmdLine, nullptr);
-  EXPECT_TRUE(UnicodeString(CmdLine).Pos(L"openscp_rtl_tests") > 0);
+  EXPECT_TRUE(UnicodeString(CmdLine).Pos(L"linscp_rtl_tests") > 0);
 
   const char * Args[] = { "/bin/prog", "a b", "c\"d", "" };
   rtl::SetCommandLine(4, Args);

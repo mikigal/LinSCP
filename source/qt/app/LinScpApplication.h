@@ -1,19 +1,19 @@
 // The application object of the Qt front end.
 //---------------------------------------------------------------------------
-#ifndef OpenScpApplicationH
-#define OpenScpApplicationH
+#ifndef LinScpApplicationH
+#define LinScpApplicationH
 //---------------------------------------------------------------------------
 #include <Classes.hpp>
 
 #include <QApplication>
 //---------------------------------------------------------------------------
-class TOpenScpApplication : public QApplication
+class TLinScpApplication : public QApplication
 {
   Q_OBJECT
 
 public:
-  TOpenScpApplication(int & argc, char ** argv);
-  virtual ~TOpenScpApplication();
+  TLinScpApplication(int & argc, char ** argv);
+  virtual ~TLinScpApplication();
 
   // Exceptions that escape an event handler are shown to the user, as the
   // VCL does (Application->OnException); Qt does not support exceptions

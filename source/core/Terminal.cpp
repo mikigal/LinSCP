@@ -91,7 +91,7 @@ TCalculateSizeStats::TCalculateSizeStats()
 TCalculateSizeParams::TCalculateSizeParams()
 {
   memset(this, 0, sizeof(*this));
-  // OpenSCP: UnicodeString is not a pointer that can be zeroed (as in C++Builder)
+  // LinSCP: UnicodeString is not a pointer that can be zeroed (as in C++Builder)
   new (&LastDirPath) UnicodeString();
   Result = true;
   AllowDirs = true;

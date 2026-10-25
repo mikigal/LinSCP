@@ -17,9 +17,9 @@ class FilesTest : public testing::Test
 protected:
   void SetUp() override
   {
-    char Template[] = "/tmp/openscp-rtl-XXXXXX";
+    char Template[] = "/tmp/linscp-rtl-XXXXXX";
     const char * TempRoot = getenv("TMPDIR");
-    std::string Pattern = std::string((TempRoot != nullptr) ? TempRoot : "/tmp") + "/openscp-rtl-XXXXXX";
+    std::string Pattern = std::string((TempRoot != nullptr) ? TempRoot : "/tmp") + "/linscp-rtl-XXXXXX";
     std::vector<char> Buffer(Pattern.begin(), Pattern.end());
     Buffer.push_back('\0');
     ASSERT_NE(mkdtemp(Buffer.data()), nullptr) << Template;
@@ -254,7 +254,7 @@ TEST_F(FilesTest, CurrentDirectory)
 //---------------------------------------------------------------------------
 TEST(Environment, GetEnvironmentVariable)
 {
-  setenv("OPENSCP_RTL_TEST", "za\xC5\xBC", 1);
-  EXPECT_EQ(GetEnvironmentVariable(L"OPENSCP_RTL_TEST"), L"za\u017C");
-  EXPECT_EQ(GetEnvironmentVariable(L"OPENSCP_RTL_TEST_MISSING"), L"");
+  setenv("LINSCP_RTL_TEST", "za\xC5\xBC", 1);
+  EXPECT_EQ(GetEnvironmentVariable(L"LINSCP_RTL_TEST"), L"za\u017C");
+  EXPECT_EQ(GetEnvironmentVariable(L"LINSCP_RTL_TEST_MISSING"), L"");
 }

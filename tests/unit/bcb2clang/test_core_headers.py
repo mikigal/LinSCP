@@ -24,7 +24,7 @@ THIRD_PARTY = {
 class CoreHeadersParseTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp = tempfile.TemporaryDirectory(prefix='openscp-core-headers-')
+        cls.temp = tempfile.TemporaryDirectory(prefix='linscp-core-headers-')
         cls.converted = Path(cls.temp.name) / 'core'
         cls.converted.mkdir()
         for path in sorted(CORE.glob('*.h')):
@@ -40,7 +40,7 @@ class CoreHeadersParseTest(unittest.TestCase):
         unit = Path(self.temp.name) / 'unit.cpp'
         unit.write_text(''.join('#include <%s>\n' % name for name in includes))
         command = [
-            os.environ.get('OPENSCP_CXX', 'clang++'),
+            os.environ.get('LINSCP_CXX', 'clang++'),
             '-std=c++17', '-fdeclspec', '-fsyntax-only',
             '-Wall', '-Wextra', '-Werror',
             # Borland pragmas (#pragma warn); MakeMethod's designated initializers (to be reworked in M2)

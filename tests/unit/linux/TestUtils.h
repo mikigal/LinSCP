@@ -22,7 +22,7 @@ protected:
   void SetUp() override
   {
     const char * TempRoot = getenv("TMPDIR");
-    std::string Pattern = std::string((TempRoot != nullptr) ? TempRoot : "/tmp") + "/openscp-linux-XXXXXX";
+    std::string Pattern = std::string((TempRoot != nullptr) ? TempRoot : "/tmp") + "/linscp-linux-XXXXXX";
     std::vector<char> Buffer(Pattern.begin(), Pattern.end());
     Buffer.push_back('\0');
     ASSERT_NE(mkdtemp(Buffer.data()), nullptr);

@@ -245,7 +245,7 @@ TEST(UtilsTest, EmptyRegistry)
   Registry.RootKey = HKEY_LOCAL_MACHINE;
   EXPECT_EQ(Registry.RootKey, HKEY_LOCAL_MACHINE);
   EXPECT_FALSE(Registry.OpenKey(L"SOFTWARE", false));
-  EXPECT_FALSE(Registry.OpenKey(L"OpenSCP", true));
+  EXPECT_FALSE(Registry.OpenKey(L"LinSCP", true));
   EXPECT_FALSE(Registry.KeyExists(L"SOFTWARE"));
   EXPECT_FALSE(Registry.ValueExists(L"Value"));
   EXPECT_THROW(Registry.ReadString(L"Value"), ERegistryException);

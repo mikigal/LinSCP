@@ -1052,7 +1052,7 @@ typedef enum SeatInteractionContext {
 
 typedef enum SeatOutputType
 #ifdef __cplusplus
-    // OpenSCP: WinSCP passes (SeatOutputType)-1 (ssh/common_p.c), a valid
+    // LinSCP: WinSCP passes (SeatOutputType)-1 (ssh/common_p.c), a valid
     // value in C, not in C++ without a fixed underlying type
     : int
 #endif

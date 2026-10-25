@@ -25,8 +25,8 @@ struct TTranslation
 typedef std::vector<std::pair<UnicodeString, UnicodeString>> TTranslationSection;
 typedef std::map<UnicodeString, TTranslationSection> TTranslationFile;
 //---------------------------------------------------------------------------
-// The directory of the translations: $OPENSCP_TRANSLATIONS, the installed
-// ones (share/openscp/translations next to the binaries) or those of the
+// The directory of the translations: $LINSCP_TRANSLATIONS, the installed
+// ones (share/linscp/translations next to the binaries) or those of the
 // source tree (a build run from its directory)
 UnicodeString TranslationsDirectory();
 // The translations found, of the known codes, by the codes
@@ -53,7 +53,7 @@ void ResetTranslation();
 // [WinSCP_DRC.rc] section, Vcl_Consts_SMsgDlgYes), the English text unless
 // translated
 UnicodeString DelphiResourceString(const char * Name, const UnicodeString & English);
-// The texts of upstream name WinSCP, the texts of OpenSCP name it (the
+// The texts of upstream name WinSCP, the texts of LinSCP name it (the
 // English resource strings are branded by rc2cpp)
 UnicodeString BrandText(const UnicodeString & Text);
 //---------------------------------------------------------------------------

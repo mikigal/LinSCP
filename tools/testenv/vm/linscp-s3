@@ -2,13 +2,13 @@
 """The S3 server of the tests seen from the test VM, for the tests' checks
 (the server keeps its objects in memory, there are no files to look at).
 
-    openscp-s3 mb BUCKET             creates the bucket
-    openscp-s3 rb BUCKET             removes the bucket with its objects
-    openscp-s3 put BUCKET KEY        stores standard input as the object
-    openscp-s3 tree BUCKET [PREFIX]  prints "KEY SHA256" of the objects
-    openscp-s3 acl BUCKET KEY        prints "GRANTEE PERMISSION" of the object's
+    linscp-s3 mb BUCKET             creates the bucket
+    linscp-s3 rb BUCKET             removes the bucket with its objects
+    linscp-s3 put BUCKET KEY        stores standard input as the object
+    linscp-s3 tree BUCKET [PREFIX]  prints "KEY SHA256" of the objects
+    linscp-s3 acl BUCKET KEY        prints "GRANTEE PERMISSION" of the object's
                                      grants (the URI of a group, or the ID)
-    openscp-s3 tags BUCKET KEY       prints "KEY=VALUE" of the object's tags
+    linscp-s3 tags BUCKET KEY       prints "KEY=VALUE" of the object's tags
 """
 
 import hashlib
@@ -18,7 +18,7 @@ import boto3
 from botocore.config import Config
 
 PORT = 9000
-CREDENTIALS = '/etc/openscp/s3-credentials'
+CREDENTIALS = '/etc/linscp/s3-credentials'
 
 
 def client():

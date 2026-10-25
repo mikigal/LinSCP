@@ -3,7 +3,7 @@
  * time_t behaves. (In practice, we've found that platforms such as
  * Windows and Mac have needed their own specialised implementations.)
  *
- * WinSCP (OpenSCP): PuTTY 0.85's utils/ltime.c, with localtime_r, as
+ * WinSCP (LinSCP): PuTTY 0.85's utils/ltime.c, with localtime_r, as
  * WinSCP runs sessions in several threads.
  */
 

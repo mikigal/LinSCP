@@ -78,7 +78,7 @@ class LocalSshd:
         self.root.mkdir(exist_ok=True)
         for key in (self.host_key, self.client_key):
             if not key.exists():
-                subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "openscp-test", "-f", str(key)], check=True)
+                subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "linscp-test", "-f", str(key)], check=True)
         (self.dir / "authorized_keys").write_text(Path(f"{self.client_key}.pub").read_text())
         host_public = Path(f"{self.host_key}.pub").read_text().split()
         self.known_hosts.write_text(f"[{self.host}]:{self.port} {host_public[0]} {host_public[1]}\n")
@@ -147,12 +147,12 @@ class LocalSshd:
 
     def describe(self):
         return {
-            "OPENSCP_TEST_SSH_HOST": self.host,
-            "OPENSCP_TEST_SSH_PORT": str(self.port),
-            "OPENSCP_TEST_SSH_USER": self.user,
-            "OPENSCP_TEST_SSH_KEY": str(self.client_key),
-            "OPENSCP_TEST_SSH_KNOWN_HOSTS": str(self.known_hosts),
-            "OPENSCP_TEST_SSH_ROOT": str(self.root),
+            "LINSCP_TEST_SSH_HOST": self.host,
+            "LINSCP_TEST_SSH_PORT": str(self.port),
+            "LINSCP_TEST_SSH_USER": self.user,
+            "LINSCP_TEST_SSH_KEY": str(self.client_key),
+            "LINSCP_TEST_SSH_KNOWN_HOSTS": str(self.known_hosts),
+            "LINSCP_TEST_SSH_ROOT": str(self.root),
         }
 
     def __enter__(self):
@@ -173,9 +173,9 @@ def _main():
             parser.error("stop requires --dir")
         LocalSshd(args.dir).stop()
         return 0
-    directory = args.dir or tempfile.mkdtemp(prefix="openscp-sshd-")
+    directory = args.dir or tempfile.mkdtemp(prefix="linscp-sshd-")
     server = LocalSshd(directory, args.port).start()
-    print(f"OPENSCP_TEST_SSH_DIR={server.dir}")
+    print(f"LINSCP_TEST_SSH_DIR={server.dir}")
     for name, value in server.describe().items():
         print(f"{name}={value}")
     return 0

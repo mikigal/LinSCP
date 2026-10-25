@@ -9,7 +9,7 @@ import convert
 
 class ConvertTreeTest(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='openscp-convert-')
+        self.temp = tempfile.TemporaryDirectory(prefix='linscp-convert-')
         self.root = Path(self.temp.name)
 
     def tearDown(self):

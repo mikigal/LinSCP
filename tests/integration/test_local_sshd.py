@@ -11,7 +11,7 @@ from local_sshd import LocalSshd
 
 class LocalSshdTest(unittest.TestCase):
     def setUp(self):
-        self.dir = Path(tempfile.mkdtemp(prefix="openscp-sshd-test-"))
+        self.dir = Path(tempfile.mkdtemp(prefix="linscp-sshd-test-"))
         self.server = LocalSshd(self.dir).start()
 
     def run(self, result=None):
@@ -28,9 +28,9 @@ class LocalSshdTest(unittest.TestCase):
         self.server.stop()
 
     def test_shell_command(self):
-        result = self.server.ssh("echo", "openscp")
+        result = self.server.ssh("echo", "linscp")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "openscp")
+        self.assertEqual(result.stdout.strip(), "linscp")
 
     def test_sftp_round_trip(self):
         source = self.dir / "source.bin"

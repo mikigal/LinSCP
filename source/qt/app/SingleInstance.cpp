@@ -7,9 +7,9 @@
 #include <QDBusMessage>
 #include <QDBusReply>
 //---------------------------------------------------------------------------
-static const QString ServiceName = QStringLiteral("org.openscp.OpenSCP");
-static const QString ObjectPath = QStringLiteral("/org/openscp/OpenSCP");
-static const QString InterfaceName = QStringLiteral("org.openscp.OpenSCP");
+static const QString ServiceName = QStringLiteral("org.linscp.LinSCP");
+static const QString ObjectPath = QStringLiteral("/org/linscp/LinSCP");
+static const QString InterfaceName = QStringLiteral("org.linscp.LinSCP");
 // Opening a session may ask the user (a host key), the reply comes first
 static const int CallTimeout = 10000;
 //---------------------------------------------------------------------------

@@ -1,12 +1,12 @@
-add_executable(openscp_toolchain_tests
+add_executable(linscp_toolchain_tests
   ToolchainTest.cpp)
-target_link_libraries(openscp_toolchain_tests PRIVATE
-  openscp::options
+target_link_libraries(linscp_toolchain_tests PRIVATE
+  linscp::options
   GTest::gtest_main)
-gtest_discover_tests(openscp_toolchain_tests
+gtest_discover_tests(linscp_toolchain_tests
   PROPERTIES LABELS unit)
 
-add_executable(openscp_rtl_tests
+add_executable(linscp_rtl_tests
   rtl/ClassesTest.cpp
   rtl/DataFormatsTest.cpp
   rtl/DateTimeTest.cpp
@@ -16,15 +16,15 @@ add_executable(openscp_rtl_tests
   rtl/SystemTest.cpp
   rtl/SysUtilsTest.cpp
   rtl/UtilsTest.cpp)
-target_link_libraries(openscp_rtl_tests PRIVATE
-  openscp::rtl
-  openscp::options
+target_link_libraries(linscp_rtl_tests PRIVATE
+  linscp::rtl
+  linscp::options
   GTest::gtest_main)
 # Locale and time zone independent results; tests needing others set them
-gtest_discover_tests(openscp_rtl_tests
+gtest_discover_tests(linscp_rtl_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
-add_executable(openscp_linux_tests
+add_executable(linscp_linux_tests
   linux/CrtTest.cpp
   linux/FileApiTest.cpp
   linux/HandlesTest.cpp
@@ -32,16 +32,16 @@ add_executable(openscp_linux_tests
   linux/ShellTest.cpp
   linux/SystemTest.cpp
   linux/TimeApiTest.cpp)
-target_compile_definitions(openscp_linux_tests PRIVATE OPENSCP_CORE_VERSION="${OPENSCP_CORE_VERSION}")
-target_link_libraries(openscp_linux_tests PRIVATE
-  openscp::linux
-  openscp::options
+target_compile_definitions(linscp_linux_tests PRIVATE LINSCP_CORE_VERSION="${LINSCP_CORE_VERSION}")
+target_link_libraries(linscp_linux_tests PRIVATE
+  linscp::linux
+  linscp::options
   OpenSSL::Crypto
   GTest::gtest_main)
-gtest_discover_tests(openscp_linux_tests
+gtest_discover_tests(linscp_linux_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
-add_executable(openscp_core_tests
+add_executable(linscp_core_tests
   core/CommonTest.cpp
   core/CopyParamTest.cpp
   core/CoreTestInterface.cpp
@@ -50,11 +50,11 @@ add_executable(openscp_core_tests
   core/RemoteFilesTest.cpp
   core/ResourceStringsTest.cpp
   core/SessionDataTest.cpp)
-target_link_libraries(openscp_core_tests PRIVATE
-  openscp::core
-  openscp::options
+target_link_libraries(linscp_core_tests PRIVATE
+  linscp::core
+  linscp::options
   GTest::gtest)
-gtest_discover_tests(openscp_core_tests
+gtest_discover_tests(linscp_core_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C;TZ=UTC")
 
 # .rc string table generator
@@ -80,12 +80,12 @@ foreach(BCB2CLANG_TEST test_bcb2clang test_convert test_core_headers)
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/bcb2clang")
   set_tests_properties(unit.bcb2clang.${BCB2CLANG_TEST} PROPERTIES
     LABELS unit
-    ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/bcb2clang;PYTHONDONTWRITEBYTECODE=1;OPENSCP_CXX=${CMAKE_CXX_COMPILER}"
+    ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/bcb2clang;PYTHONDONTWRITEBYTECODE=1;LINSCP_CXX=${CMAKE_CXX_COMPILER}"
     TIMEOUT 300)
 endforeach()
 
 # L3: components of the Qt front end on the offscreen platform
-add_executable(openscp_qt_tests
+add_executable(linscp_qt_tests
   qt/AboutDialogTest.cpp
   qt/BookmarksTest.cpp
   qt/CleanupDialogTest.cpp
@@ -112,18 +112,18 @@ add_executable(openscp_qt_tests
   qt/ToolbarsTest.cpp
   qt/TranslationsTest.cpp)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
-target_link_libraries(openscp_qt_tests PRIVATE
-  openscp_qt
+target_link_libraries(linscp_qt_tests PRIVATE
+  linscp_qt
   Qt6::Test
-  openscp::options
+  linscp::options
   GTest::gtest)
-gtest_discover_tests(openscp_qt_tests
+gtest_discover_tests(linscp_qt_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C.UTF-8;TZ=UTC;QT_QPA_PLATFORM=offscreen")
 
 # The files of the desktop integration follow the freedesktop specifications
 find_program(DESKTOP_FILE_VALIDATE desktop-file-validate)
 if(DESKTOP_FILE_VALIDATE)
   add_test(NAME unit.desktop_files
-    COMMAND "${DESKTOP_FILE_VALIDATE}" "${PROJECT_SOURCE_DIR}/source/qt/desktop/openscp.desktop")
+    COMMAND "${DESKTOP_FILE_VALIDATE}" "${PROJECT_SOURCE_DIR}/source/qt/desktop/linscp.desktop")
   set_tests_properties(unit.desktop_files PROPERTIES LABELS unit)
 endif()

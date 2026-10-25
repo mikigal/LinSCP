@@ -1,28 +1,28 @@
-# Common compile options for OpenSCP's own targets.
-# Link openscp::options to opt a target in; third-party code (PuTTY, neon, ...)
+# Common compile options for LinSCP's own targets.
+# Link linscp::options to opt a target in; third-party code (PuTTY, neon, ...)
 # and test harness tools deliberately do not (third-party code links
-# openscp::sanitize, the sanitizers only).
+# linscp::sanitize, the sanitizers only).
 
-add_library(openscp_options INTERFACE)
-add_library(openscp::options ALIAS openscp_options)
+add_library(linscp_options INTERFACE)
+add_library(linscp::options ALIAS linscp_options)
 
-target_compile_options(openscp_options INTERFACE
+target_compile_options(linscp_options INTERFACE
   -Wall
   -Wextra
   # C++Builder-style properties, see docs/port/PLAN.md section 3.2
   $<$<COMPILE_LANGUAGE:CXX>:-fdeclspec>)
 
 # Sanitizers only, also for third-party code (PuTTY, neon, ...)
-add_library(openscp_sanitize INTERFACE)
-add_library(openscp::sanitize ALIAS openscp_sanitize)
-target_link_libraries(openscp_options INTERFACE openscp_sanitize)
+add_library(linscp_sanitize INTERFACE)
+add_library(linscp::sanitize ALIAS linscp_sanitize)
+target_link_libraries(linscp_options INTERFACE linscp_sanitize)
 
-if(OPENSCP_SANITIZE)
-  target_compile_options(openscp_sanitize INTERFACE
+if(LINSCP_SANITIZE)
+  target_compile_options(linscp_sanitize INTERFACE
     -fsanitize=address,undefined
     -fno-omit-frame-pointer
     -fno-sanitize-recover=undefined)
-  target_link_options(openscp_sanitize INTERFACE
+  target_link_options(linscp_sanitize INTERFACE
     -fsanitize=address,undefined)
 endif()
 
@@ -32,9 +32,9 @@ endif()
 # enumerators, signedness, casts of GetProcAddress results, memset/memcpy
 # of C++ objects, NULL for reserved DWORD arguments and compared with bools,
 # variable length arrays). An interface library
-# linked after openscp::options, so that the flags follow -Wall.
-add_library(openscp_upstream_warnings INTERFACE)
-target_compile_options(openscp_upstream_warnings INTERFACE
+# linked after linscp::options, so that the flags follow -Wall.
+add_library(linscp_upstream_warnings INTERFACE)
+target_compile_options(linscp_upstream_warnings INTERFACE
   -Wno-unknown-pragmas
   -Wno-reorder-init-list
   -Wno-switch

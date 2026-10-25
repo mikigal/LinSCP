@@ -58,7 +58,7 @@ void TNotifications::Notify(const QString & Title, const QString & Message, TQue
   }
   QVariantMap Hints;
   // The server shows the icon and the name of the application of the file
-  Hints[QStringLiteral("desktop-entry")] = QStringLiteral("openscp");
+  Hints[QStringLiteral("desktop-entry")] = QStringLiteral("linscp");
   // Low, normal, critical
   Hints[QStringLiteral("urgency")] = QVariant::fromValue<uchar>((Type == qtError) ? 2 : 1);
   if (FBodyMarkup < 0)
@@ -72,7 +72,7 @@ void TNotifications::Notify(const QString & Title, const QString & Message, TQue
   QDBusMessage Call = QDBusMessage::createMethodCall(ServiceName, ObjectPath, InterfaceName, QStringLiteral("Notify"));
   Call.setAutoStartService(false);
   Call
-    << QStringLiteral("OpenSCP") << uint(0) << QString() << Title << ((FBodyMarkup > 0) ? Message.toHtmlEscaped() : Message)
+    << QStringLiteral("LinSCP") << uint(0) << QString() << Title << ((FBodyMarkup > 0) ? Message.toHtmlEscaped() : Message)
     << Actions << Hints << int(Seconds * 1000);
   QDBusPendingCallWatcher * Watcher = new QDBusPendingCallWatcher(Bus.asyncCall(Call), this);
   connect(Watcher, &QDBusPendingCallWatcher::finished, this, [this, OnClick](QDBusPendingCallWatcher * AWatcher)

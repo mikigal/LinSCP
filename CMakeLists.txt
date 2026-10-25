@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
-project(OpenSCP
+project(LinSCP
   VERSION 0.1.0
   DESCRIPTION "Native Linux port of WinSCP"
   LANGUAGES C CXX)
@@ -9,7 +9,7 @@ project(OpenSCP
 # to keep C++Builder property use sites unchanged, see docs/port/PLAN.md.
 if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR NOT CMAKE_C_COMPILER_ID MATCHES "Clang")
   message(FATAL_ERROR
-    "OpenSCP must be built with Clang (found C: ${CMAKE_C_COMPILER_ID}, C++: ${CMAKE_CXX_COMPILER_ID}). "
+    "LinSCP must be built with Clang (found C: ${CMAKE_C_COMPILER_ID}, C++: ${CMAKE_CXX_COMPILER_ID}). "
     "Use one of the presets: cmake --preset dev")
 endif()
 
@@ -22,15 +22,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(OPENSCP_BUILD_TESTS "Build unit and integration tests" ON)
-option(OPENSCP_BUILD_HARNESS "Build the Wayland test harness tools" ON)
-option(OPENSCP_AUTOMATION "Build the GUI with the automation hook of the end-to-end tests" OFF)
-option(OPENSCP_SANITIZE "Build OpenSCP targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(OPENSCP_RELEASE_BUILD "A build for distribution (packages): the version is not a development build's" OFF)
+option(LINSCP_BUILD_TESTS "Build unit and integration tests" ON)
+option(LINSCP_BUILD_HARNESS "Build the Wayland test harness tools" ON)
+option(LINSCP_AUTOMATION "Build the GUI with the automation hook of the end-to-end tests" OFF)
+option(LINSCP_SANITIZE "Build LinSCP targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(LINSCP_RELEASE_BUILD "A build for distribution (packages): the version is not a development build's" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(OpenSCPOptions)
-include(OpenSCPStrings)
+include(LinSCPOptions)
+include(LinSCPStrings)
 
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 find_package(EXPAT 2.5 REQUIRED)
@@ -47,11 +47,11 @@ add_subdirectory(source/app)
 add_subdirectory(source/cli)
 add_subdirectory(source/qt)
 
-if(OPENSCP_BUILD_TESTS)
+if(LINSCP_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
 
-if(OPENSCP_BUILD_HARNESS)
+if(LINSCP_BUILD_HARNESS)
   add_subdirectory(tools/wlharness)
 endif()

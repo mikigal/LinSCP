@@ -14,7 +14,7 @@ import boto3
 
 ENDPOINT = 'http://127.0.0.1:%s' % sys.argv[1]
 CREDENTIALS = sys.argv[2]
-USER = 'openscp-tests'
+USER = 'linscp-tests'
 
 
 def wait_for_server():

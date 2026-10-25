@@ -1,5 +1,5 @@
 /*
- * The configuration of WinSCP's neon (libs/neon) on Linux (OpenSCP), what
+ * The configuration of WinSCP's neon (libs/neon) on Linux (LinSCP), what
  * neon's configure script would detect with glibc, OpenSSL 3 and expat.
  * libs/neon/src/config.h includes it on platforms other than Windows; the
  * rest of the configuration is defined by the build (source/libneon), as
