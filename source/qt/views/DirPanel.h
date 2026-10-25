@@ -68,6 +68,8 @@ Q_SIGNALS:
   void Entered(TDirPanel * Panel);
   // Another directory is shown
   void DirectoryChanged(TDirPanel * Panel);
+  // A file (not a directory) was double-clicked or entered
+  void FileActivated(TDirPanel * Panel);
   // The commands on the bookmarks, done by the main window
   void OpenDirectoryRequested(TDirPanel * Panel);
   void AddBookmarkRequested(TDirPanel * Panel);
@@ -131,9 +133,6 @@ public:
   virtual void ChangeDirectory(const UnicodeString & Path) override;
   virtual void Reload() override;
   virtual void HomeDirectory() override;
-
-protected:
-  virtual void ItemActivated(int Row) override;
 
 private:
   TLocalDirModel * FLocalModel;

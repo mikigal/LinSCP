@@ -1076,6 +1076,73 @@ class GuiSshTest(GuiTestCase):
         self.assertIn('Lines=wc%20-l%20"!"', config)
         self.assertIn('Lines=16434', config)
 
+    def test_edit(self):
+        remote = self.work_dir('remote')
+        (remote / 'r.txt').write_text('line one\nline two\n')
+        (remote / 'x.ext').write_text('external\n')
+        local = self.work_dir('local')
+        (local / 'l.txt').write_text('local\n')
+        # An external editor of *.ext files: changes the file, stays a while
+        editor = self.work_dir('editor') / 'editor.sh'
+        editor.write_text('#!/bin/sh\nsleep 1\necho changed >> "$1"\nsleep 3\n')
+        editor.chmod(0o755)
+        ini = site_ini(remote=remote, local=local) + (
+            '[Configuration\\Interface\\Editor\\0]\nFileMask=*.ext\nEditor=1\n'
+            'ExternalEditor=%s !.!\nSDIExternalEditor=1\n'
+            '[Configuration\\Interface\\Editor\\1]\nFileMask=*.*\nEditor=0\n' % editor)
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local')
+        E = 'EditorForm/'
+
+        # The internal editor of a remote file, uploaded once saved
+        self.select(gui, 'Remote', 'r.txt')
+        gui.trigger(W + 'CurrentEditAction')
+        gui.wait_window('EditorForm', 60)
+        self.assertEqual(gui.window('EditorForm')['title'], '%s \u2013 local \u2013 Editor \u2013 OpenSCP' % (remote / 'r.txt'))
+        self.assertEqual(gui.get(E + 'EditorMemo')['text'], 'line one\nline two\n')
+        self.assertEqual(gui.get(E + 'EncodingStatus')['text'], 'Encoding: UTF-8')
+        gui.focus(E + 'EditorMemo')
+        self.session.input('key', 'ctrl+end', 'type', 'line three', 'key', 'ctrl+s')
+        gui.wait_for(lambda: (remote / 'r.txt').read_text() == 'line one\nline two\nline three', 60, 'the upload')
+        gui.wait_for(lambda: gui.get(E + 'ModifiedStatus')['text'] == '', 30, 'the saved state')
+        self.screenshot('editor')
+        gui.key('Escape', E + 'EditorMemo')
+        gui.wait_no_window('EditorForm')
+
+        # An external editor, watched while it runs
+        self.select(gui, 'Remote', 'x.ext')
+        gui.trigger(W + 'CurrentEditAction')
+        gui.wait_for(lambda: (remote / 'x.ext').read_text() == 'external\nchanged\n', 60, 'the external change')
+
+        # A local file opens in the internal editor too, saved directly
+        gui.focus(W + 'LocalDirView')
+        gui.activate(W + 'LocalDirView', 'l.txt')
+        gui.wait_window('EditorForm', 60)
+        gui.focus(E + 'EditorMemo')
+        self.session.input('key', 'ctrl+end', 'type', 'more', 'key', 'ctrl+s')
+        gui.wait_for(lambda: (local / 'l.txt').read_text() == 'local\nmore', 30, 'the local save')
+        gui.key('Escape', E + 'EditorMemo')
+        gui.wait_no_window('EditorForm')
+
+        # A new remote file
+        gui.focus(W + 'RemoteDirView')
+        gui.wait_idle()
+        gui.trigger(W + 'NewFileAction')
+        gui.wait_window('InputDialog')
+        # The focused file is offered
+        self.assertEqual(gui.get('InputDialog/HistoryCombo')['text'], 'x.ext')
+        gui.set('InputDialog/HistoryCombo', 'new.txt')
+        gui.click('InputDialog/OKButton')
+        gui.wait_window('EditorForm', 60)
+        self.assertEqual(gui.get(E + 'ModifiedStatus')['text'], 'New')
+        gui.focus(E + 'EditorMemo')
+        self.session.input('type', 'brand new', 'key', 'ctrl+s')
+        gui.wait_for(lambda: (remote / 'new.txt').exists() and (remote / 'new.txt').read_text() == 'brand new',
+                     60, 'the new file')
+        gui.key('Escape', E + 'EditorMemo')
+        gui.wait_no_window('EditorForm')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

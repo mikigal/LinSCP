@@ -9,6 +9,7 @@
 
 #include "AppConfiguration.h"
 #include "CustomCommands.h"
+#include "EditorPreferences.h"
 //---------------------------------------------------------------------------
 TAppConfiguration * AppConfiguration = NULL;
 //---------------------------------------------------------------------------
@@ -33,6 +34,7 @@ __fastcall TAppConfiguration::TAppConfiguration() :
   FBookmarks = new TBookmarks();
   FCustomCommandList = new TCustomCommandList();
   FCustomCommandsDefaults = true;
+  FEditorList = new TEditorList();
   Default();
 }
 //---------------------------------------------------------------------------
@@ -45,6 +47,7 @@ __fastcall TAppConfiguration::~TAppConfiguration()
   delete FEmptyHistory;
   delete FBookmarks;
   delete FCustomCommandList;
+  delete FEditorList;
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::ClearHistory()
@@ -98,6 +101,28 @@ void __fastcall TAppConfiguration::Default()
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
+
+  FEditor.FontName = L"";
+  FEditor.FontSize = 0;
+  FEditor.WordWrap = false;
+  FEditor.FindText = L"";
+  FEditor.ReplaceText = L"";
+  FEditor.FindMatchCase = false;
+  FEditor.FindWholeWord = false;
+  FEditor.FindDown = true;
+  FEditor.TabSize = 8;
+  FEditor.MaxEditors = 500;
+  FEditor.EarlyClose = 2; // seconds
+  FEditor.SDIShellEditor = false;
+  FEditor.Encoding = CP_UTF8;
+  FEditor.WarnOnEncodingFallback = true;
+  FEditor.WarnOrLargeFileSize = true;
+  FEditor.LargeFileSize = 10*1024;
+  // OpenSCP: upstream adds Notepad as an external editor of the list
+  FEditorList->Clear();
+  FEditorList->Add(new TEditorPreferences());
+  FEditorList->Saved();
+
   DefaultHistory();
 }
 //---------------------------------------------------------------------------
@@ -172,6 +197,24 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FUseLocationProfiles); \
     KEY(Bool,    FUseSharedBookmarks); \
   ); \
+  BLOCK(L"Interface\\Editor", CANCREATE, \
+    KEYEX(String,  FEditor.FontName, L"FontName2"); \
+    KEY(Integer,   FEditor.FontSize); \
+    KEY(Bool,      FEditor.WordWrap); \
+    KEY(String,    FEditor.FindText); \
+    KEY(String,    FEditor.ReplaceText); \
+    KEY(Bool,      FEditor.FindMatchCase); \
+    KEY(Bool,      FEditor.FindWholeWord); \
+    KEY(Bool,      FEditor.FindDown); \
+    KEY(Integer,   FEditor.TabSize); \
+    KEY(Integer,   FEditor.MaxEditors); \
+    KEY(Integer,   FEditor.EarlyClose); \
+    KEY(Bool,      FEditor.SDIShellEditor); \
+    KEY(Integer,   FEditor.Encoding); \
+    KEY(Bool,      FEditor.WarnOnEncodingFallback); \
+    KEY(Bool,      FEditor.WarnOrLargeFileSize); \
+    KEY(Integer,   FEditor.LargeFileSize); \
+  ); \
   BLOCK(L"Interface\\QueueView", CANCREATE, \
     KEYEX(Integer, FQueueViewHeight, L"Height"); \
     KEYEX(Integer, FQueueViewShow, L"Show"); \
@@ -193,6 +236,12 @@ void __fastcall TAppConfiguration::SaveData(THierarchicalStorage * Storage, bool
   {
     ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
     FBookmarks->Save(Storage, All);
+  }
+  if ((All || FEditorList->Modified) &&
+      Storage->OpenSubKeyPath(L"Interface\\Editor", true))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKeyPath(); });
+    FEditorList->Save(Storage);
   }
   if ((All && !FCustomCommandsDefaults) || FCustomCommandList->Modified)
   {
@@ -237,6 +286,16 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
     ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
     FBookmarks->Load(Storage);
   }
+  if (Storage->OpenSubKeyPath(L"Interface\\Editor", false))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKeyPath(); });
+    // The defaults stay, unless there are any editors
+    if (Storage->KeyExists(L"0"))
+    {
+      FEditorList->Clear();
+      FEditorList->Load(Storage);
+    }
+  }
   if (Storage->KeyExists(L"CustomCommands") ||
       Storage->ReadBool(L"CustomCommandsNone", false))
   {
@@ -277,6 +336,7 @@ void __fastcall TAppConfiguration::Saved()
   TGUIConfiguration::Saved();
   FBookmarks->ModifyAll(false);
   FCustomCommandList->Reset();
+  FEditorList->Saved();
 }
 //---------------------------------------------------------------------------
 RawByteString __fastcall TAppConfiguration::StronglyRecryptPassword(RawByteString Password, UnicodeString Key)
@@ -539,4 +599,35 @@ UnicodeString TAppConfiguration::GetValidHistoryKey(UnicodeString Key)
   }
 
   return Key;
+}
+//---------------------------------------------------------------------------
+bool TEditorConfiguration::operator !=(const TEditorConfiguration & rhc) const
+{
+  #define C(Property) (Property != rhc.Property) ||
+  return
+    C(FontName) C(FontSize) C(WordWrap) C(FindText) C(ReplaceText)
+    C(FindMatchCase) C(FindWholeWord) C(FindDown) C(TabSize)
+    C(MaxEditors) C(EarlyClose) C(SDIShellEditor)
+    C(Encoding) C(WarnOnEncodingFallback) C(WarnOrLargeFileSize) C(LargeFileSize) false;
+  #undef C
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetEditor(const TEditorConfiguration & value)
+{
+  SET_CONFIG_PROPERTY(Editor);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetEditorList(const TEditorList * value)
+{
+  if (!(*FEditorList == *value))
+  {
+    *FEditorList = *value;
+    Changed();
+  }
+}
+//---------------------------------------------------------------------------
+const TEditorPreferences * TAppConfiguration::DefaultEditorForFile(
+  const UnicodeString & FileName, bool Local, const TFileMasks::TParams & MaskParams)
+{
+  return FEditorList->Find(FileName, Local, MaskParams);
 }

@@ -11,7 +11,6 @@
 #include <QAbstractItemDelegate>
 #include <QAction>
 #include <QComboBox>
-#include <QDesktopServices>
 #include <QDir>
 #include <QEvent>
 #include <QFileSystemWatcher>
@@ -26,7 +25,6 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeView>
-#include <QUrl>
 #include <QVBoxLayout>
 //---------------------------------------------------------------------------
 // The editor of the names of the files, named for the end-to-end tests
@@ -240,6 +238,10 @@ void TDirPanel::ItemActivated(int Row)
     else if (Item.IsDirectory)
     {
       ChangeDirectory(Item.FileName);
+    }
+    else
+    {
+      Q_EMIT FileActivated(this);
     }
   }
 }
@@ -526,20 +528,6 @@ void TLocalDirPanel::Reload()
 void TLocalDirPanel::HomeDirectory()
 {
   ChangeDirectory(ToUnicodeString(QDir::homePath()));
-}
-//---------------------------------------------------------------------------
-void TLocalDirPanel::ItemActivated(int Row)
-{
-  if ((Row >= 0) && (Row < FModel->Count()) && !FModel->Item(Row).IsDirectory)
-  {
-    // As upstream's local panel: the file opens in its application
-    UnicodeString FileName = UnixIncludeTrailingBackslash(GetPath()) + FModel->Item(Row).FileName;
-    QDesktopServices::openUrl(QUrl::fromLocalFile(ToQString(FileName)));
-  }
-  else
-  {
-    TDirPanel::ItemActivated(Row);
-  }
 }
 //---------------------------------------------------------------------------
 TRemoteDirPanel::TRemoteDirPanel(QWidget * Parent) :

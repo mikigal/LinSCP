@@ -11,6 +11,7 @@ add_library(openscp_app STATIC
   AppInterface.cpp
   AppTools.cpp
   CustomCommands.cpp
+  EditorPreferences.cpp
   DiscMon.cpp
   GUIConfiguration.cpp
   ProgParams.cpp

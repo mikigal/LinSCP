@@ -57,6 +57,14 @@ Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit
   Remote commands run in the shell of the session (results in the console or the
   clipboard); local commands on local files, or on remote files downloaded to a temporary
   directory and uploaded back once changed.
+- Editing (`views/ScpCommanderEditor.cpp`): F4 edits the selected files with the editor of
+  the list of editors (`app/EditorPreferences.cpp`, under upstream's `Interface\Editor`
+  keys) that matches them, Open opens them in the application of the desktop, Shift+F4
+  creates a new file, double-click edits (upstream's default). The internal editor
+  (`TEditorForm`: find, replace, go to line, UTF-8 or ISO-8859-1, the BOM and the line
+  endings of the file kept); the remote files are edited in temporary copies, which the
+  editor manager (`app/EditorManager.cpp`) uploads (through the queue) once saved or
+  changed by an external editor, and deletes once the editor is closed.
 
 Decisions:
 
@@ -80,6 +88,12 @@ Decisions:
   extensions (`.WinSCPextension`, PowerShell scripts) are not supported. Until the
   preferences (M8), Commands > Custom Commands > Customize opens their list in a dialog of
   its own (`TCustomCommandsDialog`, the "Commands" page of upstream's preferences).
+- External editors are started detached (they survive OpenSCP, as on Windows) and watched
+  by their process ID. The other encoding of the internal editor is ISO-8859-1 (upstream's
+  is the ANSI code page of Windows). Not ported yet: the editor color and window placement,
+  "Edit With" with other editors (needs the editors page of the preferences, M8), the
+  automatic configuration of a detected editor, the check that the remote file did not
+  change meanwhile (upstream's preference, off by default).
 
 Manual edits in upstream directories since M5:
 

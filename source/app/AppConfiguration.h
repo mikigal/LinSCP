@@ -11,9 +11,38 @@
 class TBookmarks;
 class TBookmarkList;
 class TCustomCommandList;
+class TEditorList;
+class TEditorPreferences;
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
 // When the queue list is shown (upstream's WinConfiguration.h)
 enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
+// The settings of the editors (upstream's TEditorConfiguration, without the
+// colors and the window placement)
+struct TEditorConfiguration
+{
+  // The fixed width font of the desktop when empty
+  UnicodeString FontName;
+  int FontSize;
+  bool WordWrap;
+  UnicodeString FindText;
+  UnicodeString ReplaceText;
+  bool FindMatchCase;
+  bool FindWholeWord;
+  bool FindDown;
+  int TabSize;
+  int MaxEditors;
+  // Seconds; an external editor closed sooner is probably not the one that edits the file
+  int EarlyClose;
+  bool SDIShellEditor;
+  // CP_UTF8 or CP_ACP (the other encoding)
+  int Encoding;
+  bool WarnOnEncodingFallback;
+  bool WarnOrLargeFileSize;
+  // KiB
+  int LargeFileSize;
+
+  bool operator !=(const TEditorConfiguration & rhc) const;
+};
 //---------------------------------------------------------------------------
 class TAppConfiguration : public TGUIConfiguration
 {
@@ -65,6 +94,12 @@ public:
   TBookmarkList * GetSharedBookmarks();
   void SetSharedBookmarks(TBookmarkList * value);
   TCustomCommandList * GetCustomCommandList() const { return FCustomCommandList; }
+  const TEditorConfiguration & GetEditor() const { return FEditor; }
+  void SetEditor(const TEditorConfiguration & value);
+  const TEditorList * GetEditorList() const { return FEditorList; }
+  void SetEditorList(const TEditorList * value);
+  const TEditorPreferences * DefaultEditorForFile(
+    const UnicodeString & FileName, bool Local, const TFileMasks::TParams & MaskParams);
   void SetCustomCommandList(TCustomCommandList * value);
   // The shortcuts used by the custom commands
   void CustomCommandShortCuts(TShortCuts & ShortCuts) const;
@@ -111,6 +146,9 @@ public:
   __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
   // Copied when set
   __declspec(property(get = GetCustomCommandList, put = SetCustomCommandList)) TCustomCommandList * CustomCommandList;
+  __declspec(property(get = GetEditor, put = SetEditor)) TEditorConfiguration Editor;
+  // Copied when set
+  __declspec(property(get = GetEditorList, put = SetEditorList)) const TEditorList * EditorList;
   __declspec(property(get = GetOnMasterPasswordPrompt, put = SetOnMasterPasswordPrompt))
     TMasterPasswordPromptEvent OnMasterPasswordPrompt;
 
@@ -150,6 +188,8 @@ private:
   bool FUseSharedBookmarks;
   TBookmarks * FBookmarks;
   TCustomCommandList * FCustomCommandList;
+  TEditorConfiguration FEditor;
+  TEditorList * FEditorList;
   // The default commands, not stored
   bool FCustomCommandsDefaults;
 

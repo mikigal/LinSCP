@@ -29,6 +29,9 @@ class QTimer;
 class QToolBar;
 class QTreeWidget;
 class TBookmark;
+class TEditorManager;
+struct TEditedFileData;
+struct TEditorData;
 class TBookmarkList;
 class TDirPanel;
 class TLocalDirPanel;
@@ -60,6 +63,8 @@ public:
   void ConfigurationChanged();
   // An event of the queue of the session (TTerminalManager::Idle)
   void QueueEvent(TTerminal * Terminal, TTerminalQueue * Queue, TQueueEvent Event);
+  // A file of the editors was uploaded by the queue (called by its thread)
+  void EditedFileUploaded(TTerminal * ATerminal, HANDLE UploadCompleteEvent);
   // The queries of the sessions; the errors are only logged when keeping
   // the remote directory up to date continues on errors
   unsigned int MoreMessageDialog(const UnicodeString & Message, TStrings * MoreMessages,
@@ -105,6 +110,9 @@ private:
   TCustomCommandType FLastCustomCommand;
   std::unique_ptr<TStrings> FCapturedLog;
   std::vector<QAction *> FCustomCommandShortCutActions;
+  // The opened and edited files
+  std::unique_ptr<TEditorManager> FEditorManager;
+  std::vector<QWidget *> FLocalEditors;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -140,6 +148,10 @@ private:
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
   QAction * ConsoleAction;
+  QAction * CurrentEditAction;
+  QAction * CurrentEditInternalAction;
+  QAction * CurrentOpenAction;
+  QAction * NewFileAction;
   QAction * CustomCommandsEnterAction;
   QAction * CustomCommandsLastAction;
   QAction * CustomCommandsCustomizeAction;
@@ -302,6 +314,40 @@ private:
   void CustomCommandsCustomize();
   void CreateCustomCommandsMenu(QMenu * Menu);
   void UpdateCustomCommandShortCuts();
+  // The opening and editing of files (ScpCommanderEditor.cpp)
+  enum TExecuteFileBy { efShell, efInternalEditor, efExternalEditor, efDefaultEditor };
+  void CreateEditorManager();
+  bool RemoteExecuteForceText(TExecuteFileBy ExecuteFileBy, const TEditorData * ExternalEditor);
+  void TemporaryDirectoryForRemoteFiles(const UnicodeString & RemoteDirectory, const TCopyParamType & CopyParam,
+    UnicodeString & Result, UnicodeString & RootDirectory);
+  void ExecuteFileNormalize(TExecuteFileBy & ExecuteFileBy, const TEditorData *& ExternalEditor,
+    const UnicodeString & FileName, bool Local, const TFileMasks::TParams & MaskParams);
+  void CustomExecuteFile(TOperationSide Side, TExecuteFileBy ExecuteFileBy, UnicodeString FileName,
+    UnicodeString OriginalFileName, const TEditorData * ExternalEditor, UnicodeString LocalRootDirectory,
+    UnicodeString RemoteDirectory, bool NewFile, const TDateTime & SourceTimestamp);
+  void ExecuteFile(TOperationSide Side, TExecuteFileBy ExecuteFileBy, const TEditorData * ExternalEditor,
+    UnicodeString FullFileName, TRemoteFile * File, const TFileMasks::TParams & MaskParams);
+  // The selected files (or the focused one) of the panel
+  void ExecuteFile(TOperationSide Side, TExecuteFileBy ExecuteFileBy, const TEditorData * ExternalEditor,
+    bool AllSelected);
+  void EditNew(TOperationSide Side);
+  void ExecutedFileChanged(const UnicodeString & FileName, const TDateTime & Timestamp, TEditedFileData * Data,
+    HANDLE UploadCompleteEvent, bool & Retry);
+  void ExecutedFileReload(const UnicodeString & FileName, TEditedFileData * Data);
+  void ExecutedFileEarlyClosed(const TEditedFileData * Data, bool & KeepOpen);
+  void SaveAllInternalEditors();
+  void AnyInternalEditorModified(bool & Modified);
+  void LocalEditorClosed(QWidget * Editor);
+  // The editors are closed before the window is (asked to save their files)
+  bool CloseEditors();
+  void ForceCloseEditors();
+  void EditedFilesTerminalChanged(TTerminal * ActiveTerminal);
+  void FileActivated(TDirPanel * APanel);
+  void DoEditFoundFiles(TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished);
+  void CurrentEditActionExecute();
+  void CurrentEditInternalActionExecute();
+  void CurrentOpenActionExecute();
+  void NewFileActionExecute();
   void DeleteFiles(bool Alternative);
   bool DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative);
   void ExecuteCopyMoveFileOperation(TFileOperation Operation);

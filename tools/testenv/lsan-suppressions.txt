@@ -16,3 +16,5 @@ leak:ssh2kex_coroutine
 # Qt's Wayland platform plugin leaves proxies of compositor objects at exit
 # (libwayland-client has no frame pointers, the stacks end there)
 leak:libwayland-client.so
+# The same for the compose tables of xkbcommon, created once text is typed
+leak:libxkbcommon.so

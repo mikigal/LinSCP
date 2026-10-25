@@ -3,6 +3,7 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <EditorManager.h>
 #include <FileSystems.h>
 #include <LocalFiles.h>
 #include <TerminalManager.h>
@@ -54,6 +55,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FQueueItemInvalidated = false;
   FQueueStatusUpdating = false;
   FPendingQueueActionItem = NULL;
+  CreateEditorManager();
 
   // The file panels, the queue below them
   FQueueSplitter = new QSplitter(Qt::Vertical, this);
@@ -79,6 +81,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     connect(Panel, &TDirPanel::Entered, this, [this](TDirPanel * APanel) { SetCurrentPanel(APanel); });
     connect(Panel, &TDirPanel::DirectoryChanged, this, [this]() { TransferPresetAutoSelect(); });
     connect(Panel, &TDirPanel::OpenDirectoryRequested, this, [this](TDirPanel * APanel) { OpenDirectory(APanel->GetSide()); });
+    connect(Panel, &TDirPanel::FileActivated, this, [this](TDirPanel * APanel) { FileActivated(APanel); });
     connect(Panel, &TDirPanel::AddBookmarkRequested, this, [this](TDirPanel * APanel) { AddBookmark(APanel->GetSide()); });
     connect(Panel, &TDirPanel::BookmarksMenuRequested, this,
       [this](TDirPanel * APanel, QMenu * Menu) { CreateOpenDirMenu(APanel, Menu); });
@@ -108,6 +111,14 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::SHIFT | Qt::Key_F5) }, &TScpCommanderForm::RemoteCopyToActionExecute);
   RemoteMoveToAction = CreateAction("RemoteMoveToAction", tr("Mo&ve To..."), QStringLiteral("go-jump"),
     { QKeySequence(Qt::SHIFT | Qt::Key_F6) }, &TScpCommanderForm::RemoteMoveToActionExecute);
+  CurrentEditAction = CreateAction("CurrentEditAction", tr("&Edit"), QStringLiteral("document-edit"),
+    { QKeySequence(Qt::Key_F4) }, &TScpCommanderForm::CurrentEditActionExecute);
+  CurrentEditInternalAction = CreateAction("CurrentEditInternalAction", tr("&Internal editor"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_F4) }, &TScpCommanderForm::CurrentEditInternalActionExecute);
+  CurrentOpenAction = CreateAction("CurrentOpenAction", tr("&Open"), QStringLiteral("document-open"),
+    {}, &TScpCommanderForm::CurrentOpenActionExecute);
+  NewFileAction = CreateAction("NewFileAction", tr("&File..."), QStringLiteral("document-new"),
+    { QKeySequence(Qt::SHIFT | Qt::Key_F4) }, &TScpCommanderForm::NewFileActionExecute);
   CurrentRenameAction = CreateAction("CurrentRenameAction", tr("&Rename"), QStringLiteral("edit-rename"),
     { QKeySequence(Qt::Key_F2) }, &TScpCommanderForm::CurrentRenameActionExecute);
   CurrentDeleteAction = CreateAction("CurrentDeleteAction", tr("&Delete"), QStringLiteral("edit-delete"),
@@ -166,6 +177,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  ForceCloseEditors();
   HideFileFindDialog();
   DestroyProgressForm();
   SetQueue(NULL);
@@ -182,6 +194,15 @@ void TScpCommanderForm::Idle()
     return;
   }
   TAutoFlag ExecutingFlag(Executing);
+
+  try
+  {
+    FEditorManager->Check();
+  }
+  catch (Exception & E)
+  {
+    ShowExtendedException(&E);
+  }
 
   // make sure that Idle is called before update queue, as it may invoke QueueEvent
   // that needs to know if queue view is visible (and it may be closed after queue update)
@@ -239,6 +260,16 @@ void TScpCommanderForm::CreateMenus()
 
   QMenu * FilesMenu = Menu->addMenu(tr("&Files"));
   FilesMenu->setObjectName(QStringLiteral("FilesMenu"));
+  QMenu * NewMenu = FilesMenu->addMenu(tr("&New"));
+  NewMenu->setObjectName(QStringLiteral("NewMenu"));
+  NewMenu->addAction(NewFileAction);
+  FilesMenu->addSeparator();
+  FilesMenu->addAction(CurrentOpenAction);
+  FilesMenu->addAction(CurrentEditAction);
+  QMenu * EditWithMenu = FilesMenu->addMenu(tr("Edi&t With"));
+  EditWithMenu->setObjectName(QStringLiteral("CurrentEditWithMenu"));
+  EditWithMenu->addAction(CurrentEditInternalAction);
+  FilesMenu->addSeparator();
   FilesMenu->addAction(CurrentCopyAction);
   FilesMenu->addAction(CurrentMoveAction);
   FilesMenu->addAction(RemoteCopyToAction);
@@ -324,7 +355,7 @@ void TScpCommanderForm::CreateToolbars()
   Hotkeys->setToolButtonStyle(Qt::ToolButtonTextOnly);
   addToolBar(Qt::BottomToolBarArea, Hotkeys);
   for (QAction * Action :
-         { CurrentRenameAction, CurrentCopyAction, CurrentMoveAction, CurrentCreateDirAction, CurrentDeleteAction,
+         { CurrentRenameAction, CurrentEditAction, CurrentCopyAction, CurrentMoveAction, CurrentCreateDirAction, CurrentDeleteAction,
            CurrentPropertiesAction, CloseApplicationAction })
   {
     QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
@@ -393,6 +424,11 @@ void TScpCommanderForm::UpdateActions()
   RemoteCopyToAction->setEnabled(RemoteSelection);
   RemoteMoveToAction->setEnabled(RemoteSelection);
   CurrentRenameAction->setEnabled(!Busy && HasSelection);
+  bool CanEdit = !Busy && HasSelection && ((FCurrentPanel == FLocalPanel) || Connected);
+  CurrentEditAction->setEnabled(CanEdit);
+  CurrentEditInternalAction->setEnabled(CanEdit);
+  CurrentOpenAction->setEnabled(CanEdit);
+  NewFileAction->setEnabled(!Busy && CurrentReady);
   CurrentDeleteAction->setEnabled(!Busy && HasSelection);
   CurrentDeleteAlternativeAction->setEnabled(!Busy && HasSelection);
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
@@ -562,6 +598,7 @@ void TScpCommanderForm::TerminalChanged()
     FFileFindTerminal = NULL;
     HideFileFindDialog();
   }
+  EditedFilesTerminalChanged(Terminal);
   // Keeping the remote directory of a session that is gone up to date
   if ((FOnSynchronizeAbort != nullptr) && (FSynchronizeTerminal != Terminal))
   {
@@ -649,7 +686,7 @@ void TScpCommanderForm::CloseApplicationActionExecute()
 void TScpCommanderForm::closeEvent(QCloseEvent * Event)
 {
   // The operation in progress is to be cancelled first
-  if (IsBusy() || !CanCloseQueue())
+  if (IsBusy() || !CanCloseQueue() || !CloseEditors())
   {
     Event->ignore();
   }
@@ -889,13 +926,15 @@ void TScpCommanderForm::TemporarilyDownloadFiles(TStrings * FileList, bool Force
   TTerminal * Terminal = GetTerminal();
   TCopyParamType CopyParam = TemporaryFileCopyParam(ForceText);
 
-  // Upstream's preferences may make the directory deterministic (by the
-  // session and the path); not yet
-  RootTempDir = IncludeTrailingBackslash(AppConfiguration->TemporaryDir());
-  TempDir = RootTempDir;
-  if (!ForceDirectories(ApiPath(TempDir)))
+  // A new temporary directory, unless given
+  if (TempDir.IsEmpty())
   {
-    throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (TempDir)));
+    RootTempDir = IncludeTrailingBackslash(AppConfiguration->TemporaryDir());
+    TempDir = RootTempDir;
+    if (!ForceDirectories(ApiPath(TempDir)))
+    {
+      throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (TempDir)));
+    }
   }
 
   DebugAssert(!FAutoOperation);
@@ -1191,7 +1230,10 @@ void TScpCommanderForm::RemoteFindFilesActionExecute()
           ExecuteCopyMoveFileOperation(foCopy, osRemote, FileList);
         }
       },
-      nullptr);
+      [this](TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished)
+      {
+        DoEditFoundFiles(ATerminal, FileList, OnFileOperationFinished);
+      });
   }
 }
 //---------------------------------------------------------------------------

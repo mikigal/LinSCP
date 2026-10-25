@@ -193,6 +193,20 @@ private:
 // Which of the custom commands are listed
 enum TCustomCommandListType { ccltAll, ccltFile, ccltNonFile, ccltBoth };
 
+// dialogs/EditorForm.cpp
+typedef std::function<void(QWidget * Editor)> TEditorEvent;
+typedef std::function<void(QWidget * Editor, bool Forced)> TEditorClosedEvent;
+typedef std::function<void(QWidget * Editor, bool & Modified)> TAnyModifiedEvent;
+// The internal editor, a window of its own; saving is disabled without
+// OnSaveAll, a save is announced by OnFileChanged
+QWidget * ShowEditorForm(const UnicodeString & FileName, QWidget * ParentForm,
+  TEditorEvent OnFileChanged, TEditorEvent OnFileReload, TEditorClosedEvent OnClose,
+  TEditorEvent OnSaveAll, TAnyModifiedEvent OnAnyModified,
+  const UnicodeString & Caption, bool NewFile);
+void EditorFormFileUploadComplete(QWidget * Form);
+void EditorFormFileSave(QWidget * Form);
+bool IsEditorFormModified(QWidget * Form);
+
 // dialogs/OpenDirectoryDialog.cpp
 enum TOpenDirectoryMode { odBrowse, odAddBookmark };
 bool DoOpenDirectoryDialog(TOpenDirectoryMode Mode, TOperationSide Side, UnicodeString & Directory,

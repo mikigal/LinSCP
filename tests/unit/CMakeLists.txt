@@ -81,6 +81,7 @@ add_executable(openscp_qt_tests
   qt/BookmarksTest.cpp
   qt/CopyDialogTest.cpp
   qt/CustomCommandsTest.cpp
+  qt/EditorTest.cpp
   qt/MessageDialogTest.cpp
   qt/ProgressFormTest.cpp
   qt/PropertiesDialogTest.cpp
