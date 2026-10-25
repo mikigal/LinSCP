@@ -78,6 +78,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   {
     connect(Panel, &TDirPanel::Entered, this, [this](TDirPanel * APanel) { SetCurrentPanel(APanel); });
     connect(Panel, &TDirPanel::DirectoryChanged, this, [this]() { TransferPresetAutoSelect(); });
+    connect(Panel, &TDirPanel::OpenDirectoryRequested, this, [this](TDirPanel * APanel) { OpenDirectory(APanel->GetSide()); });
+    connect(Panel, &TDirPanel::AddBookmarkRequested, this, [this](TDirPanel * APanel) { AddBookmark(APanel->GetSide()); });
+    connect(Panel, &TDirPanel::BookmarksMenuRequested, this,
+      [this](TDirPanel * APanel, QMenu * Menu) { CreateOpenDirMenu(APanel, Menu); });
     Panel->OnRename = [this](TDirPanel * APanel, const UnicodeString & FileName, const UnicodeString & NewName)
     {
       RenameFile(APanel, FileName, NewName);
@@ -129,6 +133,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 
   CreateMenus();
   CreateToolbars();
+  UpdateBookmarkShortCuts();
 
   FSessionStatusLabel = new QLabel(statusBar());
   FSessionStatusLabel->setObjectName(QStringLiteral("SessionStatusLabel"));
@@ -381,6 +386,7 @@ void TScpCommanderForm::UpdateActions()
 void TScpCommanderForm::ConfigurationChanged()
 {
   UpdateTransferList();
+  UpdateBookmarkShortCuts();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()

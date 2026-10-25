@@ -22,10 +22,13 @@ class QAction;
 class QActionGroup;
 class QComboBox;
 class QLabel;
+class QMenu;
 class QSplitter;
 class QTimer;
 class QToolBar;
 class QTreeWidget;
+class TBookmark;
+class TBookmarkList;
 class TDirPanel;
 class TLocalDirPanel;
 class TProgressForm;
@@ -95,6 +98,8 @@ private:
   TTerminal * FSynchronizeTerminal;
   TFeedSynchronizeError FOnFeedSynchronizeError;
   std::function<void()> FOnSynchronizeAbort;
+  // The shortcuts of the shared bookmarks
+  std::vector<QAction *> FBookmarkShortCutActions;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -161,6 +166,7 @@ private:
   void TransferPresetAutoSelect();
   void SetCurrentPanel(TDirPanel * Panel);
   TDirPanel * OtherPanel(TDirPanel * Panel) const;
+  TDirPanel * Panel(TOperationSide Side) const;
   TTerminal * GetTerminal() const;
   // The selected files of the panel: full paths (and the remote files)
   TStrings * CreateFileList(TDirPanel * Panel);
@@ -249,6 +255,19 @@ private:
   void DoFocusRemotePath(TTerminal * ATerminal, const UnicodeString & Path);
   bool CanOperateOnFoundFiles(TTerminal * ATerminal);
   void ShowHiddenFilesActionExecute();
+  // The bookmarks and location profiles (ScpCommanderBookmarks.cpp)
+  void OpenDirectory(TOperationSide Side);
+  void AddBookmark(TOperationSide Side);
+  TStrings * CreateVisitedDirectories(TOperationSide Side);
+  void DoOpenDirectoryDialog(TOpenDirectoryMode Mode, TOperationSide Side);
+  void DoOpenDirectoryDialogBookmarks(TOpenDirectoryMode Mode, TOperationSide Side);
+  bool TryOpenDirectory(TOperationSide Side, const UnicodeString & Path);
+  void DoOpenBookmark(UnicodeString Local, UnicodeString Remote);
+  bool OpenBookmark(TOperationSide Side, TBookmark * Bookmark);
+  void OpenBookmarkByKey(TOperationSide Side, bool Shared, const UnicodeString & Node, const UnicodeString & Name);
+  void CreateOpenDirMenuList(QMenu * Menu, TOperationSide Side, TBookmarkList * BookmarkList, bool Shared);
+  void CreateOpenDirMenu(TDirPanel * APanel, QMenu * Menu);
+  void UpdateBookmarkShortCuts();
   void DeleteFiles(bool Alternative);
   bool DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative);
   void ExecuteCopyMoveFileOperation(TFileOperation Operation);

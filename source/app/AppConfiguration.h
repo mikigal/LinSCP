@@ -8,6 +8,8 @@
 //---------------------------------------------------------------------------
 #include "GUIConfiguration.h"
 //---------------------------------------------------------------------------
+class TBookmarks;
+class TBookmarkList;
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
 // When the queue list is shown (upstream's WinConfiguration.h)
 enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
@@ -53,6 +55,14 @@ public:
   void SetLastStoredSession(UnicodeString value);
   UnicodeString GetOpenedStoredSessionFolders() const { return FOpenedStoredSessionFolders; }
   void SetOpenedStoredSessionFolders(UnicodeString value);
+  bool GetUseLocationProfiles() const { return FUseLocationProfiles; }
+  void SetUseLocationProfiles(bool value);
+  bool GetUseSharedBookmarks() const { return FUseSharedBookmarks; }
+  void SetUseSharedBookmarks(bool value);
+  TBookmarkList * GetBookmarks(UnicodeString Key);
+  void SetBookmarks(UnicodeString Key, TBookmarkList * value);
+  TBookmarkList * GetSharedBookmarks();
+  void SetSharedBookmarks(TBookmarkList * value);
   // The history of a combo box (upstream's TCustomWinConfiguration::History)
   TStrings * GetHistory(const UnicodeString Index);
   void SetHistory(const UnicodeString Index, TStrings * value);
@@ -84,12 +94,21 @@ public:
   // The expanded site folders of the site manager (comma text)
   __declspec(property(get = GetOpenedStoredSessionFolders, put = SetOpenedStoredSessionFolders))
     UnicodeString OpenedStoredSessionFolders;
+  // The location profiles are opened instead of the bookmarks (both
+  // directories at once)
+  __declspec(property(get = GetUseLocationProfiles, put = SetUseLocationProfiles)) bool UseLocationProfiles;
+  // The shared bookmarks page was the last one selected
+  __declspec(property(get = GetUseSharedBookmarks, put = SetUseSharedBookmarks)) bool UseSharedBookmarks;
+  // The bookmarks of a site (by its session key), copied when set
+  __declspec(property(get = GetBookmarks, put = SetBookmarks)) TBookmarkList * Bookmarks[];
+  __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
   __declspec(property(get = GetOnMasterPasswordPrompt, put = SetOnMasterPasswordPrompt))
     TMasterPasswordPromptEvent OnMasterPasswordPrompt;
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);
   virtual void __fastcall LoadData(THierarchicalStorage * Storage);
+  virtual void __fastcall Saved();
   virtual THierarchicalStorage * CreateScpStorage(bool & SessionList);
   virtual UnicodeString __fastcall DecryptPassword(RawByteString Password, UnicodeString Key);
   virtual RawByteString __fastcall StronglyRecryptPassword(RawByteString Password, UnicodeString Key);
@@ -117,6 +136,9 @@ private:
   TStringList * FEmptyHistory;
   UnicodeString FLastStoredSession;
   UnicodeString FOpenedStoredSessionFolders;
+  bool FUseLocationProfiles;
+  bool FUseSharedBookmarks;
+  TBookmarks * FBookmarks;
 
   void __fastcall AskForMasterPassword();
   void ClearHistory();

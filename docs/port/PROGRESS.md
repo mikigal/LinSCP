@@ -39,6 +39,14 @@ Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit
   the changes, the full synchronization first (asked by default), errors only logged when
   continuing on errors. The requests of threads to the main thread (`TThread::Synchronize`)
   are run from the Qt event loop (`WakeMainThread`).
+- Bookmarks and location profiles: the open directory dialog (`TOpenDirectoryDialog`,
+  Ctrl+O; Ctrl+B adds the current directory) with the bookmarks of the site and the shared
+  ones, the location profiles (`TLocationProfilesDialog`: both directories at once, in
+  folders, renamed in place, moved by drag and drop or to a folder), switching between the
+  two, the bookmarks in the drop down menu of the panels' button, the shortcuts of the
+  shared bookmarks (Ctrl+0..9, Shift+Ctrl+Alt+A..Z; `app/ShortCuts.cpp` converts the VCL's
+  `TShortCut`). Stored as upstream (`Bookmarks`, `Interface\UseLocationProfiles`,
+  `Interface\UseSharedBookmarks`).
 
 Decisions:
 

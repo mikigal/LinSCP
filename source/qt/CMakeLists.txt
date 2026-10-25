@@ -9,6 +9,7 @@ add_library(openscp_qt STATIC
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
+  app/ShortCuts.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
   dialogs/CopyDialog.cpp
@@ -19,8 +20,10 @@ add_library(openscp_qt STATIC
   dialogs/FileFindDialog.cpp
   dialogs/FullSynchronizeDialog.cpp
   dialogs/HistoryComboBox.cpp
+  dialogs/LocationProfilesDialog.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
+  dialogs/OpenDirectoryDialog.cpp
   dialogs/ProgressForm.cpp
   dialogs/PropertiesDialog.cpp
   dialogs/RemoteTransferDialog.cpp
@@ -32,6 +35,7 @@ add_library(openscp_qt STATIC
   views/DirPanel.cpp
   views/QueueController.cpp
   views/ScpCommander.cpp
+  views/ScpCommanderBookmarks.cpp
   views/ScpCommanderQueue.cpp
   views/ScpCommanderSynchronize.cpp)
 

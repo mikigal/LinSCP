@@ -8,6 +8,7 @@
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
+#include "ShortCuts.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -678,5 +679,46 @@ bool DoRemoteMoveDialog(
 {
   TRemoteMoveDialog Dialog(Multi, OnDirectoryExists);
   return Dialog.Execute(Target, FileMask);
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+class TShortCutDialog : public TCustomDialog
+{
+public:
+  explicit TShortCutDialog(const TShortCuts & ShortCuts);
+
+  bool Execute(TShortCut & ShortCut);
+
+private:
+  QComboBox * ShortCutCombo;
+};
+//---------------------------------------------------------------------------
+TShortCutDialog::TShortCutDialog(const TShortCuts & ShortCuts)
+{
+  setObjectName(QStringLiteral("ShortCutDialog"));
+  setWindowTitle(ToQString(LoadStr(SHORTCUT_CAPTION)));
+
+  ShortCutCombo = new QComboBox(this);
+  ShortCutCombo->setObjectName(QStringLiteral("ShortCutCombo"));
+  InitializeShortCutCombo(ShortCutCombo, ShortCuts);
+  ShortCutCombo->setMaxVisibleItems(std::max(ShortCutCombo->maxVisibleItems(), 15));
+  AddEditLikeControl(ShortCutCombo, CreateLabel(LoadStr(SHORTCUT_LABEL)));
+}
+//---------------------------------------------------------------------------
+bool TShortCutDialog::Execute(TShortCut & ShortCut)
+{
+  SetShortCutCombo(ShortCutCombo, ShortCut);
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    ShortCut = GetShortCutCombo(ShortCutCombo);
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool DoShortCutDialog(TShortCut & ShortCut, const TShortCuts & ShortCuts)
+{
+  TShortCutDialog Dialog(ShortCuts);
+  return Dialog.Execute(ShortCut);
 }
 //---------------------------------------------------------------------------

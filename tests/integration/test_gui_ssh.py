@@ -856,6 +856,112 @@ class GuiSshTest(GuiTestCase):
         gui.wait_no_window('SynchronizeDialog')
         self.assertEqual(gui.quit(), 0)
 
+    def test_bookmarks(self):
+        remote = self.work_dir('remote')
+        (remote / 'deep').mkdir()
+        local = self.work_dir('local')
+        gui = self.start_gui(ini=site_ini(remote=remote / 'deep', local=local))
+        self.login(gui, 'local')
+
+        def path(side):
+            return gui.get(W + side + 'PathComboBox')['text']
+
+        def wait_path(side, expected):
+            gui.wait_for(lambda: path(side) == str(expected), 30, 'the %s directory %s' % (side, expected))
+
+        # A bookmark of the site
+        O = 'OpenDirectoryDialog/'
+        gui.focus(W + 'RemoteDirView')
+        gui.wait_idle()
+        gui.trigger(W + 'RemoteAddBookmarkAction2')
+        gui.wait_window('MessageForm')
+        self.assertEqual(gui.get('MessageForm/MainMessage')['text'],
+                         "Add directory '%s' to bookmarks?" % (remote / 'deep'))
+        gui.click('MessageForm/OK')
+        gui.wait_window('OpenDirectoryDialog')
+        self.assertEqual(gui.names(O + 'SessionBookmarksList'), [str(remote / 'deep')])
+        gui.click(O + 'OKBtn')
+        gui.wait_no_window('OpenDirectoryDialog')
+
+        # Elsewhere, then back by the bookmark
+        gui.trigger(W + 'RemoteParentDirAction')
+        wait_path('Remote', remote)
+        gui.trigger(W + 'RemoteOpenDirAction')
+        gui.wait_window('OpenDirectoryDialog')
+        self.assertEqual(gui.get(O + 'RemoteDirectoryEdit')['text'], str(remote))
+        gui.select(O + 'SessionBookmarksList', [str(remote / 'deep')])
+        self.assertEqual(gui.get(O + 'RemoteDirectoryEdit')['text'], str(remote / 'deep'))
+        gui.click(O + 'OKBtn')
+        gui.wait_no_window('OpenDirectoryDialog')
+        wait_path('Remote', remote / 'deep')
+
+        # A shared bookmark with a shortcut
+        gui.focus(W + 'LocalDirView')
+        gui.wait_idle()
+        gui.trigger(W + 'LocalAddBookmarkAction2')
+        gui.wait_window('MessageForm')
+        self.assertEqual(gui.get('MessageForm/NeverAskAgainCheck')['text'], 'Add to &shared bookmarks')
+        gui.set('MessageForm/NeverAskAgainCheck', True)
+        gui.click('MessageForm/OK')
+        gui.wait_window('OpenDirectoryDialog')
+        self.assertEqual(gui.names(O + 'SharedBookmarksList'), [str(local)])
+        gui.click(O + 'ShortCutSharedBookmarkButton')
+        gui.wait_window('ShortCutDialog')
+        gui.set('ShortCutDialog/ShortCutCombo', 'Ctrl+1')
+        gui.click('ShortCutDialog/OKButton')
+        gui.wait_no_window('ShortCutDialog')
+        self.assertEqual(gui.names(O + 'SharedBookmarksList'), ['%s (Ctrl+1)' % local])
+        self.screenshot('bookmarks')
+        gui.click(O + 'OKBtn')
+        gui.wait_no_window('OpenDirectoryDialog')
+        gui.trigger(W + 'LocalParentDirAction')
+        wait_path('Local', local.parent)
+        gui.focus(W + 'LocalDirView')
+        gui.wait_idle()
+        self.session.input('key', 'ctrl+1')
+        wait_path('Local', local)
+
+        # Location profiles: both directories at once
+        L = 'LocationProfilesDialog/'
+        gui.trigger(W + 'LocalOpenDirAction')
+        gui.wait_window('OpenDirectoryDialog')
+        gui.click(O + 'SwitchButton')
+        gui.wait_window('LocationProfilesDialog')
+        self.assertEqual(gui.get(L + 'LocalDirectoryEdit')['text'], str(local))
+        self.assertEqual(gui.get(L + 'RemoteDirectoryEdit')['text'], str(remote / 'deep'))
+        # The shared page was the last one used
+        self.assertEqual(gui.get(L + 'PageControl')['text'], 'Shared Location profiles')
+        gui.set(L + 'PageControl', 'Site Location profiles')
+        gui.click(L + 'AddSessionBookmarkButton')
+        gui.wait_window('BookmarkNameDialog')
+        gui.set('BookmarkNameDialog/NameCombo', 'both')
+        gui.click('BookmarkNameDialog/OKButton')
+        gui.wait_no_window('BookmarkNameDialog')
+        # The bookmark of the site is a profile too
+        self.assertEqual(gui.names(L + 'SessionProfilesView'), [str(remote / 'deep'), 'both'])
+        self.screenshot('location_profiles')
+        gui.click(L + 'OKBtn')
+        gui.wait_no_window('LocationProfilesDialog')
+        gui.trigger(W + 'LocalParentDirAction')
+        wait_path('Local', local.parent)
+        gui.trigger(W + 'RemoteParentDirAction')
+        wait_path('Remote', remote)
+        gui.trigger(W + 'RemoteOpenDirAction')
+        gui.wait_window('LocationProfilesDialog')
+        gui.select(L + 'SessionProfilesView', 'both')
+        self.assertEqual(gui.get(L + 'LocalDirectoryEdit')['text'], str(local))
+        gui.click(L + 'OKBtn')
+        gui.wait_no_window('LocationProfilesDialog')
+        wait_path('Local', local)
+        wait_path('Remote', remote / 'deep')
+        self.assertEqual(gui.quit(), 0)
+
+        # Kept in the configuration
+        config = gui.config_file.read_text()
+        self.assertIn('UseLocationProfiles=1', config)
+        self.assertIn('Bookmarks', config)
+        self.assertIn('both', config)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

@@ -145,6 +145,16 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
 
+// dialogs/OpenDirectoryDialog.cpp
+enum TOpenDirectoryMode { odBrowse, odAddBookmark };
+bool DoOpenDirectoryDialog(TOpenDirectoryMode Mode, TOperationSide Side, UnicodeString & Directory,
+  TStrings * Directories, TTerminal * Terminal, bool AllowSwitch);
+
+// dialogs/LocationProfilesDialog.cpp
+bool LocationProfilesDialog(TOpenDirectoryMode Mode, TOperationSide Side,
+  UnicodeString & LocalDirectory, UnicodeString & RemoteDirectory,
+  TStrings * LocalDirectories, TStrings * RemoteDirectories, TTerminal * Terminal);
+
 // dialogs/SynchronizeDialog.cpp
 const int soDoNotUsePresets =  0x01;
 const int soNoMinimize =       0x02;
@@ -185,6 +195,7 @@ bool DoRemoteCopyDialog(
 bool DoRemoteMoveDialog(
   bool Multi, UnicodeString & Target, UnicodeString & FileMask, TDirectoryExistsEvent OnDirectoryExists);
 
+bool DoShortCutDialog(TShortCut & ShortCut, const TShortCuts & ShortCuts);
 bool DoTagDialog(bool Add, TStrings * Tags, UnicodeString & Key, UnicodeString & Value);
 
 // dialogs/PropertiesDialog.cpp

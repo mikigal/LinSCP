@@ -78,6 +78,7 @@ endforeach()
 
 # L3: components of the Qt front end on the offscreen platform
 add_executable(openscp_qt_tests
+  qt/BookmarksTest.cpp
   qt/CopyDialogTest.cpp
   qt/MessageDialogTest.cpp
   qt/ProgressFormTest.cpp

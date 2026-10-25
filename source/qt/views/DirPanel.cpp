@@ -18,11 +18,13 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 #include <QTreeView>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -84,6 +86,24 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
     QKeySequence(Qt::CTRL | Qt::Key_H), &TDirPanel::HomeDirActionExecute);
   RefreshAction = CreateAction(Prefix + QStringLiteral("RefreshAction"), tr("&Refresh"), QStringLiteral("view-refresh"),
     QKeySequence(Qt::CTRL | Qt::Key_R), &TDirPanel::RefreshActionExecute);
+  OpenDirAction = CreateAction(Prefix + QStringLiteral("OpenDirAction"), tr("&Open Directory/Bookmark..."),
+    QStringLiteral("document-open-folder"), QKeySequence(Qt::CTRL | Qt::Key_O), &TDirPanel::OpenDirActionExecute);
+  // The bookmarks, in the drop down menu of the button
+  OpenDirMenu = new QMenu(this);
+  OpenDirMenu->setObjectName(Prefix + QStringLiteral("OpenDirMenu"));
+  connect(OpenDirMenu, &QMenu::aboutToShow, this, [this]()
+  {
+    qDeleteAll(OpenDirMenu->findChildren<QMenu *>(QString(), Qt::FindDirectChildrenOnly));
+    OpenDirMenu->clear();
+    Q_EMIT BookmarksMenuRequested(this, OpenDirMenu);
+  });
+  if (QToolButton * OpenDirButton = qobject_cast<QToolButton *>(PathToolbar->widgetForAction(OpenDirAction)))
+  {
+    OpenDirButton->setMenu(OpenDirMenu);
+    OpenDirButton->setPopupMode(QToolButton::MenuButtonPopup);
+  }
+  AddBookmarkAction2 = CreateAction(Prefix + QStringLiteral("AddBookmarkAction2"), tr("&Add Path to Bookmarks"),
+    QStringLiteral("bookmark-new"), QKeySequence(Qt::CTRL | Qt::Key_B), &TDirPanel::AddBookmarkActionExecute);
 
   DirView = new QTreeView(this);
   DirView->setObjectName(Prefix + QStringLiteral("DirView"));
@@ -421,6 +441,8 @@ void TDirPanel::UpdateActions()
   RootDirAction->setEnabled(Ready);
   HomeDirAction->setEnabled(Ready);
   RefreshAction->setEnabled(Ready);
+  OpenDirAction->setEnabled(Ready);
+  AddBookmarkAction2->setEnabled(Ready);
   PathComboBox->setEnabled(Ready);
 }
 //---------------------------------------------------------------------------

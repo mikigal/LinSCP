@@ -2,6 +2,7 @@
 //---------------------------------------------------------------------------
 #include "AppPCH.h"
 
+#include <Bookmarks.h>
 #include <Cryptography.h>
 #include <Security.h>
 
@@ -27,6 +28,7 @@ __fastcall TAppConfiguration::TAppConfiguration() :
   FOnMasterPasswordPrompt = NULL;
   FHistory = new TStringList();
   FEmptyHistory = new TStringList();
+  FBookmarks = new TBookmarks();
   Default();
 }
 //---------------------------------------------------------------------------
@@ -37,6 +39,7 @@ __fastcall TAppConfiguration::~TAppConfiguration()
   ClearHistory();
   delete FHistory;
   delete FEmptyHistory;
+  delete FBookmarks;
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::ClearHistory()
@@ -85,7 +88,10 @@ void __fastcall TAppConfiguration::Default()
   FShowHiddenFiles = false;
   FLastStoredSession = L"";
   FOpenedStoredSessionFolders = L"";
+  FUseLocationProfiles = false;
+  FUseSharedBookmarks = false;
 
+  FBookmarks->Clear();
   DefaultHistory();
 }
 //---------------------------------------------------------------------------
@@ -132,6 +138,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FShowHiddenFiles); \
     KEY(String,  FLastStoredSession); \
     KEY(String,  FOpenedStoredSessionFolders); \
+    KEY(Bool,    FUseLocationProfiles); \
+    KEY(Bool,    FUseSharedBookmarks); \
   ); \
   BLOCK(L"Interface\\QueueView", CANCREATE, \
     KEYEX(Integer, FQueueViewHeight, L"Height"); \
@@ -149,6 +157,12 @@ void __fastcall TAppConfiguration::SaveData(THierarchicalStorage * Storage, bool
   #define KEYEX(TYPE, VAR, NAME) Storage->Write ## TYPE(NAME, VAR)
   REGCONFIG(true);
   #undef KEYEX
+
+  if (Storage->OpenSubKey(L"Bookmarks", true))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
+    FBookmarks->Save(Storage, All);
+  }
 
   // As upstream's TCustomWinConfiguration
   if ((FHistory->Count > 0) && Storage->OpenSubKey(L"History", true))
@@ -173,6 +187,12 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
   #define KEYEX(TYPE, VAR, NAME) VAR = Storage->Read ## TYPE(NAME, VAR)
   REGCONFIG(false);
   #undef KEYEX
+
+  if (Storage->OpenSubKey(L"Bookmarks", false))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
+    FBookmarks->Load(Storage);
+  }
 
   DefaultHistory();
   if (Storage->OpenSubKey(L"History", false))
@@ -199,6 +219,12 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
       }
     }
   }
+}
+//---------------------------------------------------------------------------
+void __fastcall TAppConfiguration::Saved()
+{
+  TGUIConfiguration::Saved();
+  FBookmarks->ModifyAll(false);
 }
 //---------------------------------------------------------------------------
 RawByteString __fastcall TAppConfiguration::StronglyRecryptPassword(RawByteString Password, UnicodeString Key)
@@ -386,3 +412,35 @@ void TAppConfiguration::SetOpenedStoredSessionFolders(UnicodeString value)
   SET_CONFIG_PROPERTY(OpenedStoredSessionFolders);
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetUseLocationProfiles(bool value)
+{
+  SET_CONFIG_PROPERTY(UseLocationProfiles);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetUseSharedBookmarks(bool value)
+{
+  SET_CONFIG_PROPERTY(UseSharedBookmarks);
+}
+//---------------------------------------------------------------------------
+TBookmarkList * TAppConfiguration::GetBookmarks(UnicodeString Key)
+{
+  return FBookmarks->Bookmarks[Key];
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetBookmarks(UnicodeString Key, TBookmarkList * value)
+{
+  FBookmarks->Bookmarks[Key] = value;
+  Changed();
+}
+//---------------------------------------------------------------------------
+TBookmarkList * TAppConfiguration::GetSharedBookmarks()
+{
+  return FBookmarks->SharedBookmarks;
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetSharedBookmarks(TBookmarkList * value)
+{
+  FBookmarks->SharedBookmarks = value;
+  Changed();
+}

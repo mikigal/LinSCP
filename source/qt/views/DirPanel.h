@@ -18,6 +18,7 @@ class QAction;
 class QComboBox;
 class QFileSystemWatcher;
 class QLabel;
+class QMenu;
 class QModelIndex;
 class QStackedWidget;
 class QTimer;
@@ -59,12 +60,19 @@ public:
   std::function<void(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName)> OnRename;
   void SetShowHiddenFiles(bool Value);
   void UpdateStatusBar();
+  // The visited directories
+  const std::vector<UnicodeString> & GetHistory() const { return FHistory; }
 
 Q_SIGNALS:
   // The panel got the focus (it is the current panel)
   void Entered(TDirPanel * Panel);
   // Another directory is shown
   void DirectoryChanged(TDirPanel * Panel);
+  // The commands on the bookmarks, done by the main window
+  void OpenDirectoryRequested(TDirPanel * Panel);
+  void AddBookmarkRequested(TDirPanel * Panel);
+  // The menu of the bookmarks is about to show (to be filled)
+  void BookmarksMenuRequested(TDirPanel * Panel, QMenu * Menu);
 
 protected:
   QToolBar * PathToolbar;
@@ -77,6 +85,9 @@ protected:
   QAction * RootDirAction;
   QAction * HomeDirAction;
   QAction * RefreshAction;
+  QAction * OpenDirAction;
+  QAction * AddBookmarkAction2;
+  QMenu * OpenDirMenu;
   TDirModel * FModel;
   bool FShowHiddenFiles;
 
@@ -104,6 +115,8 @@ private:
   void PathComboActivated();
   void RefreshActionExecute() { Reload(); }
   void HomeDirActionExecute() { HomeDirectory(); }
+  void OpenDirActionExecute() { Q_EMIT OpenDirectoryRequested(this); }
+  void AddBookmarkActionExecute() { Q_EMIT AddBookmarkRequested(this); }
 };
 //---------------------------------------------------------------------------
 class TLocalDirPanel : public TDirPanel
