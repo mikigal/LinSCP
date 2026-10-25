@@ -81,6 +81,12 @@ without warnings.
   `FileListHeight`). The height of the queue is kept when the splitter is moved.
 - The tests allocate `TSessionData` on the heap: Delphi-style classes rely on the zero-filled
   memory of `TObject`'s allocation (a garbage `bool` on the stack, which UBSan reported).
+- A smoke test of the release build (`test_smoke`, `integration.smoke_release`; also of the
+  debug build, `integration.smoke`): the GUI offscreen, with its own profile, runtime directory
+  and D-Bus, starts, connects to the local sshd (its host key pinned) and keeps running. The
+  release build crashed at the start once (the queue's popup menu listed actions not created
+  yet: null pointers in the debug build, which Qt skipped), which no test saw. For it the GUI
+  takes upstream's `/log` and `/xmllog` for the session opened at the start.
 
 Decisions:
 

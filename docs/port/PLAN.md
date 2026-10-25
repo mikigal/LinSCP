@@ -233,6 +233,7 @@ license attribution).
 | L2 protocols | `openscp-cli` + pytest + test servers | open/ls/get/put/rm/mv/mkdir/chmod, resume, synchronize, checksums, timestamps, permissions, host keys, authentication — a matrix across protocols |
 | L3 GUI components | QTest, `QT_QPA_PLATFORM=offscreen` | dialog and model logic, fast and deterministic |
 | L4 GUI E2E | headless KWin + harness | full scenarios in a real compositor, screenshots reviewed by Claude, D&D with Dolphin |
+| Smoke | the GUI offscreen, own profile and D-Bus (`test_smoke`) | the release build (no automation hook) starts, connects and keeps running: what the debug build hides |
 
 Sanitizers matter a lot here: typical porting bugs (`wchar_t` size, object lifetime under the
 changed exception model) show up in ASan/UBSan immediately.

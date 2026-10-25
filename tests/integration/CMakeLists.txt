@@ -34,6 +34,27 @@ foreach(VM_TEST cli_vm cli_vm_ftp cli_vm_webdav cli_vm_s3)
     TIMEOUT 1200)
 endforeach()
 
+# Startup smoke tests of the GUI, offscreen (test_smoke): of this build, and
+# of the release build of OPENSCP_RELEASE_DIR, skipped when it is not built;
+# build the release preset before
+set(OPENSCP_RELEASE_DIR "${PROJECT_SOURCE_DIR}/build/release" CACHE PATH
+  "The release build whose GUI the smoke test starts")
+foreach(SMOKE_TEST smoke smoke_release)
+  if(SMOKE_TEST STREQUAL "smoke")
+    set(SMOKE_GUI "$<TARGET_FILE:openscp>")
+  else()
+    set(SMOKE_GUI "${OPENSCP_RELEASE_DIR}/source/qt/openscp")
+  endif()
+  add_test(NAME integration.${SMOKE_TEST}
+    COMMAND Python3::Interpreter -m unittest -v test_smoke
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+  set_tests_properties(integration.${SMOKE_TEST} PROPERTIES
+    LABELS "integration;ssh;smoke"
+    ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;OPENSCP_SMOKE_GUI=${SMOKE_GUI};OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+    SKIP_REGULAR_EXPRESSION "skipped 'no GUI binary"
+    TIMEOUT 180)
+endforeach()
+
 if(OPENSCP_BUILD_HARNESS)
   add_test(NAME integration.wlharness
     COMMAND Python3::Interpreter -m unittest -v test_wlharness

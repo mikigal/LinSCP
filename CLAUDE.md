@@ -34,6 +34,9 @@ ctest --preset dev -L gui           # labels: unit, integration, ssh, gui
 Build the `release` preset too before finishing larger changes (`cmake --preset release &&
 cmake --build --preset release`): optimizations expose problems the debug build hides. The L2
 tests take another binary through `OPENSCP_CLI` (see `tests/integration/CMakeLists.txt`).
+`integration.smoke_release` (label `smoke`) starts the GUI of `build/release` offscreen and
+connects it to the local sshd: build the release preset before `ctest`, it is skipped when the
+release build does not exist and tests a stale one as it is.
 
 `WLH_TMPDIR` sets where harness sessions live; the path must be short (Wayland socket path
 limit, 108 bytes). In Claude's sandbox use `WLH_TMPDIR=/tmp/claude-1000`.
