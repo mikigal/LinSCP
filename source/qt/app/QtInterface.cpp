@@ -431,7 +431,9 @@ void __fastcall CopyToClipboard(UnicodeString Text)
 bool __fastcall TextFromClipboard(UnicodeString & Text, bool Trim)
 {
   QClipboard * Clipboard = QGuiApplication::clipboard();
-  bool Result = Clipboard->mimeData()->hasText();
+  // No data while the clipboard is not available
+  const QMimeData * MimeData = Clipboard->mimeData();
+  bool Result = (MimeData != nullptr) && MimeData->hasText();
   if (Result)
   {
     // As upstream: large enough for all uses (URLs, keys, fingerprints,
