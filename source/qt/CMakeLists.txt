@@ -13,6 +13,7 @@ add_library(openscp_qt STATIC
   app/QtInterface.cpp
   app/QtTools.cpp
   app/ShortCuts.cpp
+  app/SingleInstance.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
   dialogs/ConsoleDialog.cpp
@@ -43,6 +44,7 @@ add_library(openscp_qt STATIC
   views/ScpCommander.cpp
   views/ScpCommanderBookmarks.cpp
   views/ScpCommanderClipboard.cpp
+  views/ScpCommanderCommandLine.cpp
   views/ScpCommanderCustomCommands.cpp
   views/ScpCommanderDragDrop.cpp
   views/ScpCommanderEditor.cpp
@@ -73,3 +75,8 @@ endif()
 
 add_executable(openscp app/Main.cpp)
 target_link_libraries(openscp PRIVATE openscp_qt openscp::options)
+
+# The application of the desktop (the URLs of the protocols open with it)
+include(GNUInstallDirs)
+install(TARGETS openscp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(FILES desktop/openscp.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")

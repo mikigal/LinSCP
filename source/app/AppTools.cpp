@@ -6,10 +6,11 @@
 
 #include <HierarchicalStorage.h>
 
+#include "AppConfiguration.h"
 #include "GUIConfiguration.h"
 #include "ProgParams.h"
 //---------------------------------------------------------------------------
-bool __fastcall CheckSafe(TProgramParams * Params)
+bool __fastcall CheckSafe(TOptions * Params)
 {
   // Originally we warned when the test didn't pass,
   // but it would actually be helping hackers, so let's be silent.
@@ -96,6 +97,12 @@ void __fastcall ApplyCommandLineConfiguration(TProgramParams * Params)
       Configuration->TemporaryLogMaxCount(LogMaxCount);
       Configuration->TemporaryLogMaxSize(LogMaxSize);
     }
+  }
+
+  UnicodeString KeyFile;
+  if (Params->FindSwitch(PRIVATEKEY_SWITCH, KeyFile))
+  {
+    AppConfiguration->SetDefaultKeyFile(KeyFile);
   }
 
   std::unique_ptr<TStrings> RawSettings(new TStringList());

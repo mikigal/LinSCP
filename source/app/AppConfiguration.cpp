@@ -102,6 +102,7 @@ void __fastcall TAppConfiguration::Default()
   // OpenSCP: the drop target is known from KDE's protocols only
   FDDFakeFile = IsKdeDesktop();
   FDDDeleteDelay = 120;
+  FExternalSessionInExistingInstance = true;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -202,6 +203,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FUseSharedBookmarks); \
     KEYEX(Enum,  FDDTransferConfirmation, L"DDTransferConfirmation2"); \
     KEY(Bool,    FDDFakeFile); \
+    KEY(Bool,    FExternalSessionInExistingInstance); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \
@@ -549,6 +551,16 @@ void TAppConfiguration::SetDDTransferConfirmation(TAutoSwitch value)
 void TAppConfiguration::SetDDFakeFile(bool value)
 {
   SET_CONFIG_PROPERTY(DDFakeFile);
+}
+//---------------------------------------------------------------------------
+UnicodeString __fastcall TAppConfiguration::GetDefaultKeyFile()
+{
+  return FDefaultKeyFile;
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetExternalSessionInExistingInstance(bool value)
+{
+  SET_CONFIG_PROPERTY(ExternalSessionInExistingInstance);
 }
 //---------------------------------------------------------------------------
 TBookmarkList * TAppConfiguration::GetBookmarks(UnicodeString Key)

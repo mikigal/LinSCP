@@ -16,6 +16,7 @@
 #include "QueueController.h"
 
 #include <QMainWindow>
+#include <QStringList>
 
 #include <mutex>
 //---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ class TBookmarkList;
 class TDirPanel;
 struct TDropParams;
 class TLocalDirPanel;
+class TOptions;
 class TPasteWatcher;
 class TProgressForm;
 class TRemoteDirPanel;
@@ -64,6 +66,13 @@ public:
   void UpdateCaption();
   // Opens a session selected in the site manager
   void NewSession();
+  // The startup by the command line (upstream's Execute of WinMain.cpp):
+  // opens its session (a site, a URL, a folder of sites) and runs its
+  // operation, else the site manager (ScpCommanderCommandLine.cpp)
+  void ExecuteCommandLine(TOptions * Params);
+  // The command line of another instance: false when it cannot be taken
+  // now, its session is opened later
+  bool CommandLineFromAnotherInstance(const QStringList & Arguments, const QString & ActivationToken);
   // The active session changed (opened, closed)
   void TerminalChanged();
   void OperationProgress(TFileOperationProgressType & ProgressData);
@@ -418,6 +427,15 @@ private:
   QList<QUrl> TemporarilyDownloadForOtherApplication(TStrings * FileList);
   void AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay);
   void DoDelayedDeletion();
+  // The command line (ScpCommanderCommandLine.cpp)
+  // Opens the session of the command line (upstream's GetLoginData), with
+  // the site manager when it is not complete; false when not opened
+  bool OpenCommandLineSession(
+    const UnicodeString & SessionName, TOptions * Options, bool NeedTerminal, UnicodeString & DownloadFile);
+  void CommandLineUpload(TStrings * FileList, int UseDefaults);
+  // The file of the URL
+  void CommandLineDownload(const UnicodeString & FileName, int UseDefaults);
+  bool CanCommandLineFromAnotherInstance();
   // The clipboard (ScpCommanderClipboard.cpp)
   void CopyFilesToClipboard();
   void ClipboardStop();

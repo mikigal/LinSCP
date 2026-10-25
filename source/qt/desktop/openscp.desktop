@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=OpenSCP
+GenericName=File Transfer Client
+Comment=Transfer files with SFTP, SCP, FTP, WebDAV and S3
+Exec=openscp %u
+Icon=folder-remote
+Terminal=false
+Categories=Network;FileTransfer;Qt;
+Keywords=sftp;scp;ftp;ftps;webdav;s3;ssh;
+MimeType=x-scheme-handler/sftp;x-scheme-handler/scp;x-scheme-handler/ftp;x-scheme-handler/ftps;x-scheme-handler/ftpes;x-scheme-handler/dav;x-scheme-handler/davs;x-scheme-handler/s3;
+StartupNotify=true
+Actions=NewWindow;
+
+[Desktop Action NewWindow]
+Name=New Window
+Exec=openscp /newinstance

@@ -96,3 +96,11 @@ target_link_libraries(openscp_qt_tests PRIVATE
   GTest::gtest)
 gtest_discover_tests(openscp_qt_tests
   PROPERTIES LABELS unit ENVIRONMENT "LC_ALL=C.UTF-8;TZ=UTC;QT_QPA_PLATFORM=offscreen")
+
+# The files of the desktop integration follow the freedesktop specifications
+find_program(DESKTOP_FILE_VALIDATE desktop-file-validate)
+if(DESKTOP_FILE_VALIDATE)
+  add_test(NAME unit.desktop_files
+    COMMAND "${DESKTOP_FILE_VALIDATE}" "${PROJECT_SOURCE_DIR}/source/qt/desktop/openscp.desktop")
+  set_tests_properties(unit.desktop_files PROPERTIES LABELS unit)
+endif()

@@ -12,13 +12,25 @@ import unittest
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+import guitests
 import test_gui_ssh as ssh
 import wlharness
 from dolphin import Dolphin
+from openscp_gui import LSAN_SUPPRESSIONS
 
 W = 'ScpCommanderForm/'
 # Downloads for other applications go to a temporary directory
 TEMPORARY_MODE_INI = '[Configuration\\Interface]\nDDFakeFile=0\n'
+# The application closes once the operation of its command line is done
+EXIT_ON_COMPLETION_INI = '[Configuration\\Interface]\nConfirmExitOnCompletion=0\n'
+
+
+def session_url(path=''):
+    return 'sftp://%s@127.0.0.1:%d%s' % (ssh.SSHD.user, ssh.SSHD.port, path)
+
+
+def key_switch():
+    return '/privatekey=%s' % ssh.key_file()
 
 
 def setUpModule():
@@ -43,10 +55,10 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.login(gui, 'local')
         return gui
 
-    def start_probe(self, title):
+    def start_probe(self, title, *args):
         """wlh-probe, a Qt application that logs what is dropped on it."""
         log = self.session.logs / ('%s.events' % title)
-        self.session.spawn([wlharness._default_tool('wlh-probe'), '--title', title, '--log', str(log)], log_name=title)
+        self.session.spawn([wlharness._default_tool('wlh-probe'), '--title', title, '--log', str(log), *args], log_name=title)
         self.session.wait_for_window(title)
         return log
 
@@ -247,6 +259,93 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
         self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+bracketright')
         self.assertEqual(paste()['text'], str(remote))
+        self.assertEqual(gui.quit(), 0)
+
+    def accept_host_key(self, gui):
+        gui.wait_window('MessageForm')
+        self.assertIn('unknown server', gui.get('MessageForm/MainMessage')['text'])
+        gui.click('MessageForm/Yes')
+
+    def wait_remote_directory(self, gui, path):
+        gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(path), what='the remote directory')
+        gui.wait_idle()
+
+    def run_instance(self, *args, timeout=60):
+        """Runs another instance of the application; returns its exit code."""
+        env = {'OPENSCP_AUTOMATION_SOCKET': str(self.session.dir / 'instance.sock'),
+               'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS}
+        process = self.session.spawn([guitests.GUI, *map(str, args)], log_name='%s-instance' % self.test_name, extra_env=env)
+        return process.wait(timeout)
+
+    def test_session_url(self):
+        remote = self.work_dir('remote')
+        (remote / 'file.txt').write_text('listed')
+        gui = self.start_gui(session_url(str(remote) + '/'), key_switch(), ini='')
+        self.accept_host_key(gui)
+        self.wait_remote_directory(gui, remote)
+        self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'file.txt'])
+        self.assertIsNone(gui.window('LoginDialog'))
+        self.assertEqual(gui.quit(), 0)
+
+    def test_session_to_running_instance(self):
+        remote = self.work_dir('remote')
+        gui = self.start_gui(ini='')
+        gui.wait_window('LoginDialog')
+        # Not while the site manager shows: the other instance opens its own
+        # window then; the session goes to the running one once it is closed
+        gui.click('LoginDialog/CloseButton')
+        gui.wait_no_window('LoginDialog')
+
+        self.assertEqual(self.run_instance(session_url(str(remote) + '/'), key_switch()), 0)
+        self.accept_host_key(gui)
+        self.wait_remote_directory(gui, remote)
+        self.assertEqual(gui.quit(), 0)
+
+    def test_upload_command_line(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'one.txt').write_text('one')
+        (local / 'two.txt').write_text('two')
+        gui = self.start_gui(session_url(str(remote) + '/'), key_switch(), '/upload', '--', local / 'one.txt', local / 'two.txt',
+                             ini=EXIT_ON_COMPLETION_INI)
+        self.accept_host_key(gui)
+        gui.wait_window('CopyDialog')
+        self.assertEqual(gui.get('CopyDialog/DirectoryLabel')['text'], 'Upload 2 files to remote directory:')
+        gui.click('CopyDialog/OkButton')
+        # The application closes once done
+        self.assertEqual(gui.process.wait(60), 0)
+        self.assertEqual((remote / 'one.txt').read_text(), 'one')
+        self.assertEqual((remote / 'two.txt').read_text(), 'two')
+
+    def test_download_url(self):
+        remote = self.work_dir('remote')
+        (remote / 'file.txt').write_text('downloaded by its URL')
+        gui = self.start_gui(session_url(str(remote / 'file.txt')), key_switch(), ini=EXIT_ON_COMPLETION_INI)
+        self.accept_host_key(gui)
+        gui.wait_window('CopyDialog')
+        self.assertEqual(gui.get('CopyDialog/LocalDirectoryEdit')['text'], str(self.session.home) + '/*.*')
+        gui.click('CopyDialog/OkButton')
+        self.assertEqual(gui.process.wait(60), 0)
+        self.assertEqual((self.session.home / 'file.txt').read_text(), 'downloaded by its URL')
+
+    def test_paste_session_url(self):
+        remote = self.work_dir('remote')
+        # The key for the sessions of URLs
+        gui = self.start_gui(key_switch(), ini='')
+        gui.wait_window('LoginDialog')
+        gui.click('LoginDialog/CloseButton')
+        gui.wait_no_window('LoginDialog')
+        self.place_commander(gui, 0, 0, 800, 860)
+        log = self.start_probe('probe-copy', '--clipboard-text', session_url(str(remote) + '/'))
+        probe = self.session.place_window('probe-copy', 900, 100, 500, 400)['client']
+        self.session.input('move', probe['x'] + 100, probe['y'] + 100, 'click', 'sleep', 300, 'type', 'c')
+        gui.wait_for(lambda: self.probe_events(log, 'copy'), what='the copy')
+
+        x, y = gui.screen_point(W + 'LocalDirView')
+        self.session.input('move', x, y, 'click', 'sleep', 300, 'key', 'ctrl+v')
+        self.accept_host_key(gui)
+        self.wait_remote_directory(gui, remote)
         self.assertEqual(gui.quit(), 0)
 
 

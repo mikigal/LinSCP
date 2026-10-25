@@ -94,6 +94,10 @@ public:
   bool GetDDFakeFile() const { return FDDFakeFile; }
   void SetDDFakeFile(bool value);
   int GetDDDeleteDelay() const { return FDDDeleteDelay; }
+  // The key of the sessions without one (/privatekey), not stored
+  void SetDefaultKeyFile(const UnicodeString & value) { FDefaultKeyFile = value; }
+  bool GetExternalSessionInExistingInstance() const { return FExternalSessionInExistingInstance; }
+  void SetExternalSessionInExistingInstance(bool value);
   TBookmarkList * GetBookmarks(UnicodeString Key);
   void SetBookmarks(UnicodeString Key, TBookmarkList * value);
   TBookmarkList * GetSharedBookmarks();
@@ -158,6 +162,10 @@ public:
   __declspec(property(get = GetDDFakeFile, put = SetDDFakeFile)) bool DDFakeFile;
   // Seconds before the temporary directory of a drag and drop is deleted
   __declspec(property(get = GetDDDeleteDelay)) int DDDeleteDelay;
+  // A session of the command line is opened by an instance that runs
+  // already, if it can
+  __declspec(property(get = GetExternalSessionInExistingInstance, put = SetExternalSessionInExistingInstance))
+    bool ExternalSessionInExistingInstance;
   // The bookmarks of a site (by its session key), copied when set
   __declspec(property(get = GetBookmarks, put = SetBookmarks)) TBookmarkList * Bookmarks[];
   __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
@@ -174,6 +182,7 @@ protected:
   virtual void __fastcall LoadData(THierarchicalStorage * Storage);
   virtual void __fastcall Saved();
   virtual void __fastcall DefaultLocalized();
+  virtual UnicodeString __fastcall GetDefaultKeyFile();
   virtual THierarchicalStorage * CreateScpStorage(bool & SessionList);
   virtual UnicodeString __fastcall DecryptPassword(RawByteString Password, UnicodeString Key);
   virtual RawByteString __fastcall StronglyRecryptPassword(RawByteString Password, UnicodeString Key);
@@ -206,6 +215,8 @@ private:
   TAutoSwitch FDDTransferConfirmation;
   bool FDDFakeFile;
   int FDDDeleteDelay;
+  bool FExternalSessionInExistingInstance;
+  UnicodeString FDefaultKeyFile;
   TBookmarks * FBookmarks;
   TCustomCommandList * FCustomCommandList;
   TEditorConfiguration FEditor;

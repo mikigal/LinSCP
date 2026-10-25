@@ -5,8 +5,12 @@
 
 #include <ProgParams.h>
 
+#include <AppConfiguration.h>
+#include <AppInterface.h>
+
 #include "OpenScpApplication.h"
 #include "ScpCommander.h"
+#include "SingleInstance.h"
 #include "TerminalManager.h"
 #ifdef OPENSCP_AUTOMATION
 #include "Automation.h"
@@ -18,6 +22,25 @@
 //---------------------------------------------------------------------------
 static int Execute()
 {
+  TProgramParams * Params = TProgramParams::Instance();
+  // A session (without an operation) goes to an instance that runs
+  // already, if any takes it
+  bool CommandLineOperation =
+    Params->FindSwitch(UPLOAD_SWITCH) || Params->FindSwitch(UPLOAD_IF_ANY_SWITCH);
+  bool TrySendToAnotherInstance =
+    (Params->ParamCount > 0) &&
+    !CommandLineOperation &&
+    AppConfiguration->ExternalSessionInExistingInstance &&
+    !Params->FindSwitch(NEWINSTANCE_SWICH) &&
+    // With /rawconfig before session url, parsing commandline does not work correctly,
+    // when opening session in the other instance.
+    !Params->FindSwitch(RAW_CONFIG_SWITCH);
+  if (TrySendToAnotherInstance && SendToAnotherInstance(QCoreApplication::arguments().mid(1)))
+  {
+    Configuration->Usage->Inc(L"SendToAnotherInstance");
+    return 0;
+  }
+
 #ifdef OPENSCP_AUTOMATION
   StartAutomation();
 #endif
@@ -32,9 +55,15 @@ static int Execute()
   {
     TScpCommanderForm ScpCommander;
     Manager->ScpExplorer = &ScpCommander;
+    TInstanceService InstanceService(nullptr);
+    InstanceService.OnCommandLine = [&ScpCommander](const QStringList & Arguments, const QString & ActivationToken)
+    {
+      return ScpCommander.CommandLineFromAnotherInstance(Arguments, ActivationToken);
+    };
+    InstanceService.Register();
     ScpCommander.show();
-    // The site manager on startup
-    QTimer::singleShot(0, &ScpCommander, [&ScpCommander]() { ScpCommander.NewSession(); });
+    // The session of the command line, else the site manager
+    QTimer::singleShot(0, &ScpCommander, [&ScpCommander, Params]() { ScpCommander.ExecuteCommandLine(Params); });
     Result = QApplication::exec();
     Manager->ScpExplorer = NULL;
   }

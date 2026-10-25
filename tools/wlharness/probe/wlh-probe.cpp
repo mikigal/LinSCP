@@ -8,6 +8,8 @@
 //   --drag-source FILE   offer FILE (repeatable) as a drag source: pressing the
 //                        mouse and moving it starts a drag with the files' URIs
 //
+//   --clipboard-text T   typing "c" in the window copies T to the clipboard
+//
 // Typing "v" in the window reads the clipboard and logs its content ("paste").
 
 #include <QApplication>
@@ -96,9 +98,10 @@ QString ButtonName(Qt::MouseButton Button)
 class TProbeWindow : public QWidget
 {
 public:
-  TProbeWindow(TEventLog & Log, const QStringList & DragFiles) :
+  TProbeWindow(TEventLog & Log, const QStringList & DragFiles, const QString & ClipboardText) :
     FLog(Log),
-    FDragFiles(DragFiles)
+    FDragFiles(DragFiles),
+    FClipboardText(ClipboardText)
   {
     setObjectName(QStringLiteral("ProbeWindow"));
     setAcceptDrops(true);
@@ -165,6 +168,11 @@ protected:
       { QStringLiteral("key"), Event->key() },
       { QStringLiteral("text"), Event->text() },
       { QStringLiteral("modifiers"), static_cast<int>(Event->modifiers()) } });
+    if ((Event->text() == QLatin1String("c")) && !FClipboardText.isEmpty())
+    {
+      QApplication::clipboard()->setText(FClipboardText);
+      FLog.Write(QStringLiteral("copy"), { { QStringLiteral("text"), FClipboardText } });
+    }
     // "v" pastes: the content of the clipboard is read and logged
     if (Event->text() == QLatin1String("v"))
     {
@@ -206,6 +214,7 @@ private:
 
   TEventLog & FLog;
   QStringList FDragFiles;
+  QString FClipboardText;
   QPoint FPressPosition;
   bool FShown = false;
 };
@@ -226,10 +235,12 @@ int main(int Argc, char ** Argv)
   Parser.addOption(TitleOption);
   Parser.addOption(LogOption);
   Parser.addOption(DragSourceOption);
+  QCommandLineOption ClipboardTextOption(QStringLiteral("clipboard-text"), QStringLiteral("Text to copy when \"c\" is typed."), QStringLiteral("text"));
+  Parser.addOption(ClipboardTextOption);
   Parser.process(Application);
 
   TEventLog Log(Parser.value(LogOption));
-  TProbeWindow Window(Log, Parser.values(DragSourceOption));
+  TProbeWindow Window(Log, Parser.values(DragSourceOption), Parser.value(ClipboardTextOption));
   Window.setWindowTitle(Parser.value(TitleOption));
 
   QObject::connect(QApplication::clipboard(), &QClipboard::dataChanged, [&Log]()

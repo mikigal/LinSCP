@@ -7,6 +7,7 @@
 
 #include <AppConfiguration.h>
 #include <ExportedFiles.h>
+#include <Option.h>
 #include <TerminalManager.h>
 
 #include "DirPanel.h"
@@ -173,13 +174,13 @@ bool TScpCommanderForm::CanPasteFromClipboard()
 {
   bool Result = false;
   const QMimeData * Data = QApplication::clipboard()->mimeData();
-  if (IsBusy() || !FCurrentPanel->IsReady() || (Data == nullptr))
+  if (IsBusy() || (Data == nullptr))
   {
     // noop
   }
   else if (DoesClipboardContainOurFiles())
   {
-    Result = true;
+    Result = FCurrentPanel->IsReady();
   }
   else if (IsRemoteFilesMimeData(Data))
   {
@@ -188,12 +189,14 @@ bool TScpCommanderForm::CanPasteFromClipboard()
   // Files of other applications are uploaded
   else if (Data->hasUrls())
   {
-    Result = (FCurrentPanel == FRemotePanel);
+    Result = (FCurrentPanel == FRemotePanel) && FRemotePanel->IsReady();
   }
   else if (Data->hasText())
   {
     UnicodeString Text = ToUnicodeString(Data->text()).Trim();
-    Result = !Text.IsEmpty() && (Text.Pos(L"\n") == 0);
+    Result =
+      !Text.IsEmpty() && (Text.Pos(L"\n") == 0) &&
+      (FLAGSET(StoredSessions->GetUrlInfo(Text), piProtocolDefined) || FCurrentPanel->IsReady());
   }
   return Result;
 }
@@ -228,9 +231,24 @@ void TScpCommanderForm::PasteFromClipboard()
   }
   else
   {
-    // A path to open in the current panel
     UnicodeString Text = ToUnicodeString(Data->text()).Trim();
-    FCurrentPanel->ChangeDirectory(Text);
+    int ParsedInfo = StoredSessions->GetUrlInfo(Text);
+    // A session URL replaces the session (there are no tabs yet)
+    if (FLAGSET(ParsedInfo, piProtocolDefined))
+    {
+      if (!FLAGSET(ParsedInfo, piUnsafeSettings) ||
+          (MessageDialog(LoadStr(UNSAFE_SESSION), qtConfirmation, qaOK | qaCancel) == qaOK))
+      {
+        TOptions Options;
+        UnicodeString DownloadFile;
+        OpenCommandLineSession(Text, &Options, false, DownloadFile);
+      }
+    }
+    // A path to open in the current panel
+    else
+    {
+      FCurrentPanel->ChangeDirectory(Text);
+    }
   }
 }
 //---------------------------------------------------------------------------

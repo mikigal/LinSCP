@@ -12,3 +12,6 @@ target_link_libraries(openscp-cli PRIVATE
   openscp::app
   openscp::options
   openscp_upstream_warnings)
+
+include(GNUInstallDirs)
+install(TARGETS openscp-cli RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")

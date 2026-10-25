@@ -40,8 +40,9 @@
 //---------------------------------------------------------------------------
 extern const UnicodeString AppName;
 //---------------------------------------------------------------------------
+class TOptions;
 class TProgramParams;
-bool __fastcall CheckSafe(TProgramParams * Params);
+bool __fastcall CheckSafe(TOptions * Params);
 void __fastcall CheckLogParam(TProgramParams * Params);
 bool __fastcall CheckXmlLogParam(TProgramParams * Params);
 // Applies the switches that configure logging and the default transfer
