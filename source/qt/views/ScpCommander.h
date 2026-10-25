@@ -13,6 +13,7 @@
 #include <QMainWindow>
 //---------------------------------------------------------------------------
 class QAction;
+class QComboBox;
 class QLabel;
 class QSplitter;
 class TDirPanel;
@@ -40,6 +41,8 @@ public:
     TOnceDoneOperation & OnceDoneOperation);
   // An operation on files runs
   bool IsBusy() const { return (FBusy > 0); }
+  // The configuration changed (the presets, ...)
+  void ConfigurationChanged();
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -52,7 +55,12 @@ private:
   TDirPanel * FCurrentPanel;
   TProgressForm * FProgressForm;
   QLabel * FSessionStatusLabel;
+  QComboBox * FTransferList;
   int FBusy;
+  int FUpdatingTransferList;
+  // The preset selected by the user, and the one selected by its rule
+  UnicodeString FCopyParamDefault;
+  UnicodeString FCopyParamAutoSelected;
   // The session whose local directory the local panel went to
   TTerminal * FLocalDirectoryTerminal;
 
@@ -60,6 +68,9 @@ private:
   QAction * DisconnectSessionAction;
   QAction * CloseApplicationAction;
   QAction * CurrentCopyAction;
+  QAction * CurrentMoveAction;
+  QAction * RemoteCopyToAction;
+  QAction * RemoteMoveToAction;
   QAction * CurrentRenameAction;
   QAction * CurrentDeleteAction;
   QAction * CurrentDeleteAlternativeAction;
@@ -72,6 +83,9 @@ private:
   void CreateMenus();
   void CreateToolbars();
   void UpdateActions();
+  void UpdateTransferList();
+  void TransferListChange();
+  void TransferPresetAutoSelect();
   void SetCurrentPanel(TDirPanel * Panel);
   TDirPanel * OtherPanel(TDirPanel * Panel) const;
   TTerminal * GetTerminal() const;
@@ -82,7 +96,10 @@ private:
   void NewSessionActionExecute() { NewSession(); }
   void DisconnectSessionActionExecute();
   void CloseApplicationActionExecute();
-  void CurrentCopyActionExecute();
+  void CurrentCopyActionExecute() { ExecuteCopyMoveFileOperation(foCopy); }
+  void CurrentMoveActionExecute() { ExecuteCopyMoveFileOperation(foMove); }
+  void RemoteCopyToActionExecute() { ExecuteRemoteTransfer(false); }
+  void RemoteMoveToActionExecute() { ExecuteRemoteTransfer(true); }
   void CurrentRenameActionExecute();
   void CurrentDeleteActionExecute() { DeleteFiles(false); }
   void CurrentDeleteAlternativeActionExecute() { DeleteFiles(true); }
@@ -90,6 +107,19 @@ private:
   void CurrentPropertiesActionExecute();
   void ShowHiddenFilesActionExecute();
   void DeleteFiles(bool Alternative);
+  void ExecuteCopyMoveFileOperation(TFileOperation Operation);
+  bool CopyParamDialog(TTransferDirection Direction, TTransferType Type,
+    TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm);
+  void ExecuteRemoteTransfer(bool Move);
+  bool RemoteTransferDialog(TStrings * FileList, UnicodeString & Target, UnicodeString & FileMask,
+    bool & DirectCopy, bool Move);
+  bool RemoteTransferFiles(TStrings * FileList, bool Move);
+  bool DoDirectoryExists(void * Session, const UnicodeString & Directory);
+  bool NeedSecondarySessionForRemoteCopy(TStrings * FileList);
+  TCopyParamType TemporaryFileCopyParam(bool ForceText);
+  // Downloads the files to a new temporary directory
+  void TemporarilyDownloadFiles(TStrings * FileList, bool ForceText, UnicodeString & RootTempDir,
+    UnicodeString & TempDir);
   void RenameFile(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName);
   bool SetProperties(TDirPanel * Panel, TStrings * FileList);
   void CalculateSize(TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close);

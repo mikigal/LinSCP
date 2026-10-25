@@ -12,6 +12,7 @@ class QCheckBox;
 class QComboBox;
 class QLabel;
 class QLineEdit;
+class QPlainTextEdit;
 class QPushButton;
 class QVBoxLayout;
 //---------------------------------------------------------------------------
@@ -47,5 +48,10 @@ private:
 // The history of a combo box: the value goes first, without duplicates
 // (upstream's THistoryComboBox::SaveToHistory)
 void SaveToHistory(QComboBox * Combo);
+// Validates a file mask; an error is shown, the edit focused with the
+// error selected, and EAbort thrown (upstream's ValidateMaskEdit)
+void ValidateMaskEdit(QComboBox * Edit, int ForceDirectoryMasks = -1);
+void ValidateMaskEdit(QLineEdit * Edit, int ForceDirectoryMasks = -1);
+void ValidateMaskEdit(QPlainTextEdit * Edit, bool Directory);
 //---------------------------------------------------------------------------
 #endif

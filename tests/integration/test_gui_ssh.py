@@ -26,6 +26,7 @@ SSHD = None
 STATE = None
 W = 'ScpCommanderForm/'
 P = 'PropertiesDialog/'
+C = 'CopyDialog/'
 
 
 def setUpModule():
@@ -319,6 +320,229 @@ class GuiSshTest(GuiTestCase):
         self.submit_properties(gui)
         self.assertEqual(mode(local / 'local.txt'), 0o600)
         self.assertIn('rw-------', self.row(gui, 'Local', 'local.txt'))
+        self.assertEqual(gui.quit(), 0)
+
+    def open_copy(self, gui, side, *names, move=False):
+        self.select(gui, side, *names)
+        gui.trigger(W + ('CurrentMoveAction' if move else 'CurrentCopyAction'))
+        gui.wait_window('CopyDialog')
+
+    def submit_copy(self, gui):
+        gui.click(C + 'OkButton')
+        gui.wait_no_window('CopyDialog')
+        gui.wait_idle()
+
+    def test_transfer_settings(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'a.txt').write_text('a')
+        (local / 'b.bin').write_bytes(b'b')
+        (local / 'sub').mkdir()
+        (local / 'sub' / 'c.txt').write_text('c')
+        old = 1000000000
+        for path in (local / 'a.txt', local / 'sub' / 'c.txt'):
+            os.utime(path, (old, old))
+
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        # A file mask and no timestamps, in the transfer settings
+        self.open_copy(gui, 'Local', 'a.txt', 'b.bin', 'sub')
+        self.assertEqual(gui.get(C + 'RemoteDirectoryEdit')['text'], str(remote) + '/*.*')
+        self.assertFalse(gui.get(C + 'QueueCheck2')['enabled'])
+        gui.click(C + 'TransferSettingsButton')
+        gui.wait_window('CopyParamCustomDialog')
+        T = 'CopyParamCustomDialog/'
+        self.assertTrue(gui.get(T + 'PreserveTimeCheck')['checked'])
+        gui.set(T + 'IncludeFileMaskCombo', '*.txt')
+        gui.set(T + 'PreserveTimeCheck', False)
+        self.assertFalse(gui.get(T + 'PreserveTimeDirsCheck')['enabled'])
+        self.screenshot('transfer-settings')
+        gui.click(T + 'OkButton')
+        gui.wait_no_window('CopyParamCustomDialog')
+        info = gui.get(C + 'CopyParamLabel')['text']
+        self.assertIn('*.txt', info)
+        self.assertIn('Do not preserve timestamp', info)
+        self.screenshot('copy')
+        self.submit_copy(gui)
+        self.assertEqual((remote / 'a.txt').read_text(), 'a')
+        self.assertEqual((remote / 'sub' / 'c.txt').read_text(), 'c')
+        self.assertFalse((remote / 'b.bin').exists())
+        self.assertGreater((remote / 'a.txt').stat().st_mtime, old + 1000)
+
+        # The settings were for that transfer only: a new name, timestamps
+        self.open_copy(gui, 'Local', 'b.bin')
+        self.assertNotIn('*.txt', gui.get(C + 'CopyParamLabel')['text'])
+        gui.set(C + 'RemoteDirectoryEdit', str(remote) + '/renamed.bin')
+        self.submit_copy(gui)
+        self.assertEqual((remote / 'renamed.bin').read_bytes(), b'b')
+        self.assertFalse((remote / 'b.bin').exists())
+
+        # Multiple files to a single name are confirmed
+        self.open_copy(gui, 'Local', 'a.txt', 'b.bin')
+        gui.set(C + 'RemoteDirectoryEdit', str(remote) + '/one.txt')
+        gui.click(C + 'OkButton')
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/Cancel')
+        gui.wait_no_window('MessageForm')
+        self.assertIsNotNone(gui.window('CopyDialog'))
+        gui.click(C + 'CancelButton')
+        gui.wait_no_window('CopyDialog')
+
+        # Download and delete (F6) into a new local directory
+        (remote / 'moved.txt').write_text('moved')
+        gui.trigger(W + 'RemoteRefreshAction')
+        gui.wait_idle()
+        self.open_copy(gui, 'Remote', 'moved.txt', move=True)
+        self.assertEqual(gui.window('CopyDialog')['title'], 'Download and Delete')
+        self.assertEqual(gui.get(C + 'DirectoryLabel')['text'],
+                         "Download file 'moved.txt' to local directory and delete original:")
+        gui.set(C + 'LocalDirectoryEdit', str(local / 'new') + '/*.*')
+        gui.click(C + 'OkButton')
+        gui.wait_window('MessageForm')
+        self.assertIn("doesn't exist", gui.get('MessageForm/MainMessage')['text'])
+        gui.click('MessageForm/OK')
+        gui.wait_no_window('CopyDialog')
+        gui.wait_idle()
+        self.assertEqual((local / 'new' / 'moved.txt').read_text(), 'moved')
+        self.assertFalse((remote / 'moved.txt').exists())
+        gui.wait_for(lambda: 'moved.txt' not in gui.names(W + 'RemoteDirView'), what='the moved file')
+
+        # Do not show the dialog again
+        self.open_copy(gui, 'Local', 'b.bin')
+        gui.set(C + 'NeverShowAgainCheck', True)
+        self.submit_copy(gui)
+        self.assertEqual((remote / 'b.bin').read_bytes(), b'b')
+        (local / 'd.txt').write_text('d')
+        gui.trigger(W + 'LocalRefreshAction')
+        gui.wait_idle()
+        self.select(gui, 'Local', 'd.txt')
+        gui.trigger(W + 'CurrentCopyAction')
+        gui.wait_idle()
+        self.assertIsNone(gui.window('CopyDialog'))
+        self.assertEqual((remote / 'd.txt').read_text(), 'd')
+        self.assertEqual(gui.quit(), 0)
+        self.assertIn('ConfirmTransferring=0', gui.config_file.read_text())
+
+    def test_transfer_presets(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'a.txt').write_text('a')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        # A preset saved from the copy dialog
+        self.open_copy(gui, 'Local', 'a.txt')
+        # Popup menus need the real input
+        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.wait_window('CopyParamListMenu')
+        self.assertTrue(gui.get('CopyParamListMenu/CustomItem')['checked'] is False)
+        self.assertTrue(gui.get('CopyParamListMenu/DefaultItem')['checked'])
+        gui.trigger('CopyParamListMenu/SavePresetItem')
+        gui.wait_window('CopyParamPresetDialog')
+        R = 'CopyParamPresetDialog/'
+        self.assertFalse(gui.get(R + 'OkButton')['enabled'])
+        gui.set(R + 'DescriptionEdit', 'No time')
+        gui.set(R + 'PreserveTimeCheck', False)
+        gui.set(R + 'HasRuleCheck', True)
+        gui.set(R + 'HostNameEdit', '127.0.0.1')
+        gui.click(R + 'OkButton')
+        gui.wait_no_window('CopyParamPresetDialog')
+        # The settings of the dialog are not the preset's
+        self.assertNotIn('timestamp', gui.get(C + 'CopyParamLabel')['text'])
+
+        # The preset selected
+        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.wait_window('CopyParamListMenu')
+        items = gui.get('CopyParamListMenu', children=True)['children']
+        preset = 'CopyParamListMenu/' + next(item['name'] for item in items if item.get('text') == 'No time')
+        self.assertFalse(gui.get(preset)['checked'])
+        gui.trigger(preset)
+        gui.wait_no_window('CopyParamListMenu')
+        self.assertIn('Do not preserve timestamp', gui.get(C + 'CopyParamLabel')['text'])
+        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.wait_window('CopyParamListMenu')
+        self.assertTrue(gui.get(preset)['checked'])
+        gui.key('Escape', 'CopyParamListMenu')
+        gui.wait_no_window('CopyParamListMenu')
+        self.submit_copy(gui)
+        self.assertEqual((remote / 'a.txt').read_text(), 'a')
+
+        # The preset is selected by its rule (the host) once a directory
+        # changes
+        self.assertEqual(gui.get(W + 'TransferList')['text'], 'Default')
+        gui.activate(W + 'RemoteDirView', '..')
+        gui.wait_window('MessageForm')
+        self.assertEqual(gui.get('MessageForm/MainMessage')['text'],
+                         "Transfer settings preset 'No time' was automatically selected.")
+        gui.click('MessageForm/OK')
+        gui.wait_no_window('MessageForm')
+        self.assertEqual(gui.get(W + 'TransferList')['text'], 'No time')
+        self.assertIn('No time', gui.get(W + 'TransferList')['items'])
+        self.assertEqual(gui.quit(), 0)
+        ini = gui.config_file.read_text()
+        preset = ini[ini.index('Name=No%20time'):]
+        self.assertIn('PreserveTime=0', preset)
+        self.assertIn('HostName=127.0.0.1', preset)
+
+    def test_remote_transfer(self):
+        remote = self.work_dir('remote')
+        (remote / 'file.txt').write_text('file')
+        (remote / 'dir').mkdir()
+        (remote / 'dir' / 'nested.txt').write_text('nested')
+        (remote / 'target').mkdir()
+        gui = self.start_gui(ini=site_ini(remote=remote))
+        self.login(gui, 'local')
+
+        # A file duplicated directly (copy-data of the SFTP server)
+        self.select(gui, 'Remote', 'file.txt')
+        gui.trigger(W + 'RemoteCopyToAction')
+        gui.wait_window('RemoteTransferDialog')
+        D = 'RemoteTransferDialog/'
+        self.assertEqual(gui.get(D + 'DirectoryEdit')['text'], str(remote) + '/file.txt')
+        self.assertFalse(gui.get(D + 'NotDirectCopyCheck')['checked'])
+        gui.set(D + 'DirectoryEdit', str(remote) + '/copy.txt')
+        gui.click(D + 'OkButton')
+        gui.wait_no_window('RemoteTransferDialog')
+        gui.wait_idle()
+        self.assertEqual((remote / 'copy.txt').read_text(), 'file')
+        self.assertIn('copy.txt', gui.names(W + 'RemoteDirView'))
+
+        # Via a local temporary copy
+        self.select(gui, 'Remote', 'file.txt')
+        gui.trigger(W + 'RemoteCopyToAction')
+        gui.wait_window('RemoteTransferDialog')
+        gui.set(D + 'DirectoryEdit', str(remote / 'target') + '/')
+        gui.set(D + 'NotDirectCopyCheck', True)
+        gui.click(D + 'OkButton')
+        gui.wait_no_window('RemoteTransferDialog')
+        gui.wait_idle()
+        self.assertEqual((remote / 'target' / 'file.txt').read_text(), 'file')
+
+        # A directory needs the separate shell session
+        self.select(gui, 'Remote', 'dir')
+        gui.trigger(W + 'RemoteCopyToAction')
+        gui.wait_window('RemoteTransferDialog')
+        gui.set(D + 'DirectoryEdit', str(remote) + '/dircopy')
+        gui.click(D + 'OkButton')
+        gui.wait_window('MessageForm')
+        self.assertIn('separate shell session', gui.get('MessageForm/MainMessage')['text'])
+        gui.click('MessageForm/OK')
+        gui.wait_no_window('RemoteTransferDialog')
+        gui.wait_idle()
+        gui.wait_for(lambda: (remote / 'dircopy' / 'nested.txt').exists(), 60, 'the duplicated directory')
+        self.assertEqual((remote / 'dircopy' / 'nested.txt').read_text(), 'nested')
+
+        # Moved into a directory (an existing directory is the target)
+        self.select(gui, 'Remote', 'copy.txt')
+        gui.trigger(W + 'RemoteMoveToAction')
+        gui.wait_window('RemoteMoveDialog')
+        gui.set('RemoteMoveDialog/Combo', str(remote / 'target'))
+        gui.click('RemoteMoveDialog/OKButton')
+        gui.wait_no_window('RemoteMoveDialog')
+        gui.wait_idle()
+        self.assertEqual((remote / 'target' / 'copy.txt').read_text(), 'file')
+        self.assertFalse((remote / 'copy.txt').exists())
         self.assertEqual(gui.quit(), 0)
 
     def test_connection_refused(self):

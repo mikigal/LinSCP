@@ -305,6 +305,7 @@ void TDirPanel::PathChanged()
   // The focus of the new directory is set when its files are loaded
   DirView->selectionModel()->clear();
   UpdateActions();
+  Q_EMIT DirectoryChanged(this);
 }
 //---------------------------------------------------------------------------
 void TDirPanel::SaveFocus()

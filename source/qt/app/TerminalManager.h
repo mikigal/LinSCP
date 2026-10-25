@@ -82,6 +82,7 @@ private:
   void AuthenticatingDone();
   void AuthenticateFormCancel(TAuthenticateForm * Form);
   void MasterPasswordPrompt();
+  void ConfigurationChange(TObject * Sender);
 
   void TerminalQueryUser(TObject * Sender,
     const UnicodeString Query, TStrings * MoreMessages, unsigned int Answers,

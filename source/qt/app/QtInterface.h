@@ -10,9 +10,13 @@
 
 #include <functional>
 //---------------------------------------------------------------------------
+class TCopyParamList;
+class TFileMasks;
 class TRemoteTokenList;
 class TTerminal;
+class QPoint;
 class QWidget;
+struct TCopyParamRuleData;
 struct TCalculateSizeStats;
 class TRemoteProperties;
 //---------------------------------------------------------------------------
@@ -76,10 +80,51 @@ void SessionNameValidate(const UnicodeString & Text, const UnicodeString & Origi
 // Asks for the current master password
 bool DoMasterPasswordDialog();
 
+enum TTransferDirection { tdToRemote, tdToLocal };
+enum TTransferType { ttCopy, ttMove };
+
 // dialogs/CopyDialog.cpp
-// Confirms a transfer of the files to the target directory
-bool DoCopyDialog(bool ToRemote, TStrings * FileList, UnicodeString & TargetDirectory);
+const int coTemp                = 0x001;
+const int coDisableQueue        = 0x002;
+const int coDoNotShowAgain      = 0x020;
+const int coAllFiles            = 0x1000;
+const int cooDoNotShowAgain     = 0x01;
+const int cooSaveSettings       = 0x04;
+// Confirms a transfer of the files to the target directory, with the
+// transfer settings
+bool DoCopyDialog(
+  bool ToRemote, bool Move, TStrings * FileList, UnicodeString & TargetDirectory,
+  TGUICopyParamType * Params, int Options, int CopyParamAttrs, int * OutputOptions);
 bool DoCreateDirectoryDialog(UnicodeString & Directory);
+
+// dialogs/CopyParamDialogs.cpp
+bool DoCopyParamCustomDialog(TCopyParamType & CopyParam, int CopyParamAttrs);
+enum TCopyParamPresetMode { cpmAdd, cpmAddCurrent, cpmEdit, cpmDuplicate };
+bool DoCopyParamPresetDialog(TCopyParamList * CopyParamList,
+  int & Index, TCopyParamPresetMode Mode, TCopyParamRuleData * CurrentRuleData,
+  const TCopyParamType & DefaultCopyParams);
+const int cplNone =             0x00;
+const int cplCustomizeDefault = 0x02;
+const int cplSaveSettings =     0x04;
+// The menu of the transfer settings presets at the position (upstream's
+// CopyParamListPopup and CopyParamListPopupClick); returns 1 when the
+// settings changed (a preset was selected or the settings customized)
+int CopyParamListPopup(const QPoint & Pos, TCopyParamType & Param, UnicodeString & Preset,
+  int Options, int CopyParamAttrs, bool * SaveSettings);
+
+// dialogs/EditMaskDialog.cpp
+bool DoEditMaskDialog(TFileMasks & Mask);
+
+// dialogs/RemoteTransferDialog.cpp
+enum TDirectRemoteCopy { drcDisallow, drcAllow, drcConfirmCommandSession, drcConfirmCommandSessionDirs };
+typedef std::function<bool(void * Session, const UnicodeString & Directory)> TDirectoryExistsEvent;
+bool DoRemoteCopyDialog(
+  TStrings * Sessions, TStrings * Directories,
+  TDirectRemoteCopy AllowDirectCopy, bool Multi, void *& Session, UnicodeString & Target, UnicodeString & FileMask,
+  bool & DirectCopy, void * CurrentSession, TDirectoryExistsEvent OnDirectoryExists, bool TargetConfirmed);
+// dialogs/CustomDialog.cpp
+bool DoRemoteMoveDialog(
+  bool Multi, UnicodeString & Target, UnicodeString & FileMask, TDirectoryExistsEvent OnDirectoryExists);
 
 bool DoTagDialog(bool Add, TStrings * Tags, UnicodeString & Key, UnicodeString & Value);
 

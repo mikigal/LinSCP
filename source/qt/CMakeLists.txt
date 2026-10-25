@@ -12,11 +12,16 @@ add_library(openscp_qt STATIC
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
   dialogs/CopyDialog.cpp
+  dialogs/CopyParamDialogs.cpp
+  dialogs/CopyParamsFrame.cpp
   dialogs/CustomDialog.cpp
+  dialogs/EditMaskDialog.cpp
+  dialogs/HistoryComboBox.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
   dialogs/ProgressForm.cpp
   dialogs/PropertiesDialog.cpp
+  dialogs/RemoteTransferDialog.cpp
   dialogs/RightsFrame.cpp
   models/DirModel.cpp
   views/DirPanel.cpp

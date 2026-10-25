@@ -182,6 +182,24 @@ class OpenScpGui:
         """The texts of the first column of the top-level rows of an item view."""
         return [cells[0] for cells in self.rows(target)]
 
+    def screen_point(self, target):
+        """The center of a widget on the screen, from the geometry of its window
+        in the compositor."""
+        window_name = target.split('/')[0]
+        title = self.wait_window(window_name)['title']
+        geometry = self.get(target)['geometry']
+        windows = self.wait_for(lambda: [w for w in self.session.windows() if w['caption'] == title],
+                                what='the window %s in the compositor' % title)
+        client = windows[0]['client']
+        return (client['x'] + geometry['x'] + geometry['width'] // 2,
+                client['y'] + geometry['y'] + geometry['height'] // 2)
+
+    def click_real(self, target):
+        """Clicks a widget with the real input of the compositor (popups and
+        shortcuts need it)."""
+        x, y = self.screen_point(target)
+        self.session.input('move', x, y, 'click')
+
     def quit(self, timeout=60):
         """Quits the application; returns its exit code."""
         self.call('quit')

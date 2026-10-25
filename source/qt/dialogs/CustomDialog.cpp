@@ -4,8 +4,10 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <FileMasks.h>
 
 #include "CustomDialog.h"
+#include "HistoryComboBox.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -13,7 +15,9 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QPlainTextEdit>
 #include <QPushButton>
+#include <QTextBlock>
 #include <QVBoxLayout>
 //---------------------------------------------------------------------------
 // As upstream's THistoryComboBox
@@ -126,6 +130,45 @@ void SaveToHistory(QComboBox * Combo)
     }
     Combo->setCurrentIndex(0);
   }
+}
+//---------------------------------------------------------------------------
+static void ValidateMaskEditT(const UnicodeString & Mask, QWidget * Edit, int ForceDirectoryMasks,
+  std::function<void(int Start, int Length)> Select)
+{
+  try
+  {
+    TFileMasks Masks(ForceDirectoryMasks);
+    Masks = Mask;
+  }
+  catch (EFileMasksException & E)
+  {
+    ShowExtendedException(&E);
+    Edit->setFocus();
+    Select(E.ErrorStart - 1, E.ErrorLen);
+    Abort();
+  }
+}
+//---------------------------------------------------------------------------
+void ValidateMaskEdit(QComboBox * Edit, int ForceDirectoryMasks)
+{
+  ValidateMaskEditT(ToUnicodeString(Edit->currentText()), Edit, ForceDirectoryMasks,
+    [Edit](int Start, int Length) { Edit->lineEdit()->setSelection(Start, Length); });
+}
+//---------------------------------------------------------------------------
+void ValidateMaskEdit(QLineEdit * Edit, int ForceDirectoryMasks)
+{
+  ValidateMaskEditT(ToUnicodeString(Edit->text()), Edit, ForceDirectoryMasks,
+    [Edit](int Start, int Length) { Edit->setSelection(Start, Length); });
+}
+//---------------------------------------------------------------------------
+void ValidateMaskEdit(QPlainTextEdit * Edit, bool Directory)
+{
+  std::unique_ptr<TStrings> Lines(TextToStringList(ToUnicodeString(Edit->toPlainText())));
+  UnicodeString Mask = TFileMasks::ComposeMaskStr(Lines.get(), Directory);
+  // The position is in the composed mask, which is not the text of the
+  // edit; the whole text is selected
+  ValidateMaskEditT(Mask, Edit, Directory ? 1 : 0,
+    [Edit](int, int) { Edit->selectAll(); });
 }
 //---------------------------------------------------------------------------
 class TInputDialog : public TCustomDialog
@@ -549,5 +592,91 @@ bool DoTagDialog(bool Add, TStrings * Tags, UnicodeString & Key, UnicodeString &
 {
   TTagDialog Dialog(Add, Tags);
   return Dialog.Execute(Key, Value);
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+class TRemoteMoveDialog : public TCustomDialog
+{
+public:
+  TRemoteMoveDialog(bool Multi, TDirectoryExistsEvent OnDirectoryExists);
+
+  bool Execute(UnicodeString & Target, UnicodeString & FileMask);
+
+protected:
+  virtual void DoValidate() override;
+  virtual void DoChange(bool & CanSubmit) override;
+
+private:
+  THistoryComboBox * Combo;
+  bool FMulti;
+  TDirectoryExistsEvent FOnDirectoryExists;
+
+  UnicodeString GetFileMask();
+};
+//---------------------------------------------------------------------------
+TRemoteMoveDialog::TRemoteMoveDialog(bool Multi, TDirectoryExistsEvent OnDirectoryExists)
+{
+  setObjectName(QStringLiteral("RemoteMoveDialog"));
+  setWindowTitle(ToQString(LoadStr(REMOTE_MOVE_TITLE)));
+  FMulti = Multi;
+  FOnDirectoryExists = OnDirectoryExists;
+
+  Combo = new THistoryComboBox(this);
+  Combo->setObjectName(QStringLiteral("Combo"));
+  AddEditLikeControl(Combo, CreateLabel(LoadStr(REMOTE_TRANSFER_PROMPT2)));
+  // The same as TRemoteTransferDialog
+  setMinimumWidth(fontMetrics().averageCharWidth() * 70);
+}
+//---------------------------------------------------------------------------
+bool TRemoteMoveDialog::Execute(UnicodeString & Target, UnicodeString & FileMask)
+{
+  Combo->SetHistoryKey(L"RemoteTarget");
+  Combo->SetText(UnixIncludeTrailingBackslash(Target) + FileMask);
+  Combo->lineEdit()->selectAll();
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    Target = UnixExtractFilePath(Combo->GetText());
+    FileMask = GetFileMask();
+    Combo->SaveToHistory();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+UnicodeString TRemoteMoveDialog::GetFileMask()
+{
+  return UnixExtractFileName(Combo->GetText());
+}
+//---------------------------------------------------------------------------
+void TRemoteMoveDialog::DoChange(bool & CanSubmit)
+{
+  CanSubmit = !Combo->currentText().isEmpty();
+}
+//---------------------------------------------------------------------------
+void TRemoteMoveDialog::DoValidate()
+{
+  if (FOnDirectoryExists(NULL, Combo->GetText()))
+  {
+    Combo->SetText(UnixCombinePaths(Combo->GetText(), AnyMask));
+  }
+
+  if (!IsFileNameMask(GetFileMask()) && FMulti)
+  {
+    UnicodeString Message =
+      FormatMultiFilesToOneConfirmation(Combo->GetText(), true);
+    if (MessageDialog(Message, qtConfirmation, qaOK | qaCancel) == qaCancel)
+    {
+      Abort();
+    }
+  }
+
+  TCustomDialog::DoValidate();
+}
+//---------------------------------------------------------------------------
+bool DoRemoteMoveDialog(
+  bool Multi, UnicodeString & Target, UnicodeString & FileMask, TDirectoryExistsEvent OnDirectoryExists)
+{
+  TRemoteMoveDialog Dialog(Multi, OnDirectoryExists);
+  return Dialog.Execute(Target, FileMask);
 }
 //---------------------------------------------------------------------------

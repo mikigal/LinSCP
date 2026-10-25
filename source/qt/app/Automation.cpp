@@ -15,6 +15,7 @@
 #include <QLineEdit>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QMenu>
 #include <QPixmap>
 #include <QPlainTextEdit>
 #include <QPointer>
@@ -236,6 +237,15 @@ QJsonObject Describe(QObject * Object, bool Children)
     {
       Result[QStringLiteral("focus")] = true;
     }
+    // In the client area of the window, for the real input of the
+    // compositor (wlh-input)
+    QPoint Position = Widget->isWindow() ? QPoint(0, 0) : Widget->mapTo(Widget->window(), QPoint(0, 0));
+    QJsonObject Geometry;
+    Geometry[QStringLiteral("x")] = Position.x();
+    Geometry[QStringLiteral("y")] = Position.y();
+    Geometry[QStringLiteral("width")] = Widget->width();
+    Geometry[QStringLiteral("height")] = Widget->height();
+    Result[QStringLiteral("geometry")] = Geometry;
   }
 
   if (QLineEdit * Edit = qobject_cast<QLineEdit *>(Object))
@@ -591,8 +601,35 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
       {
         throw EAutomation(QStringLiteral("%1 is not enabled").arg(Name(TheAction)));
       }
+      // An item of a popup menu is activated by the menu, so that its
+      // exec() returns it
+      QMenu * Menu = nullptr;
+      for (QObject * Object : TheAction->associatedObjects())
+      {
+        QMenu * AMenu = qobject_cast<QMenu *>(Object);
+        if ((AMenu != nullptr) && AMenu->isVisible())
+        {
+          Menu = AMenu;
+        }
+      }
       QPointer<QAction> Pointer(TheAction);
-      Action = [Pointer]() { if (Pointer) Pointer->trigger(); };
+      if (Menu != nullptr)
+      {
+        QPointer<QMenu> MenuPointer(Menu);
+        Action = [Pointer, MenuPointer]()
+        {
+          if (Pointer && MenuPointer)
+          {
+            MenuPointer->setActiveAction(Pointer);
+            QKeyEvent Press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+            QCoreApplication::sendEvent(MenuPointer, &Press);
+          }
+        };
+      }
+      else
+      {
+        Action = [Pointer]() { if (Pointer) Pointer->trigger(); };
+      }
     }
     else
     {

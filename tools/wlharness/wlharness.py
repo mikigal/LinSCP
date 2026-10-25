@@ -337,11 +337,11 @@ class Session:
             script_file.unlink(missing_ok=True)
 
     def windows(self):
-        """Returns normal windows with their frame and client geometry (logical pixels)."""
+        """Returns normal windows and dialogs with their frame and client geometry (logical pixels)."""
         values = self.kwin_script("""
             const result = [];
             for (const w of workspace.windowList()) {
-                if (!w.normalWindow) continue;
+                if (!w.normalWindow && !w.dialog) continue;
                 const f = w.frameGeometry, c = w.clientGeometry;
                 result.push({caption: w.caption, resourceClass: w.resourceClass, pid: w.pid, active: w.active,
                              frame: {x: f.x, y: f.y, width: f.width, height: f.height},

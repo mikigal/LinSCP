@@ -51,6 +51,8 @@ TTerminalManager::TTerminalManager()
 
   DebugAssert(AppConfiguration->OnMasterPasswordPrompt == NULL);
   AppConfiguration->OnMasterPasswordPrompt = ::rtl::MethodPtr(this, &TTerminalManager::MasterPasswordPrompt);
+  DebugAssert(Configuration->OnChange == NULL);
+  Configuration->OnChange = ::rtl::MethodPtr(this, &TTerminalManager::ConfigurationChange);
 }
 //---------------------------------------------------------------------------
 TTerminalManager::~TTerminalManager()
@@ -63,6 +65,21 @@ TTerminalManager::~TTerminalManager()
   }
   CloseAuthenticateForm();
   AppConfiguration->OnMasterPasswordPrompt = NULL;
+  Configuration->OnChange = NULL;
+}
+//---------------------------------------------------------------------------
+void TTerminalManager::ConfigurationChange(TObject * /*Sender*/)
+{
+  // The configuration changes in the threads of the terminals too (the
+  // host keys, ...)
+  if (!IsMainThread())
+  {
+    QMetaObject::invokeMethod(QCoreApplication::instance(), [this]() { ConfigurationChange(NULL); }, Qt::QueuedConnection);
+  }
+  else if (FScpExplorer != NULL)
+  {
+    FScpExplorer->ConfigurationChanged();
+  }
 }
 //---------------------------------------------------------------------------
 void TTerminalManager::SetScpExplorer(TScpCommanderForm * Value)

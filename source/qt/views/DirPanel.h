@@ -63,6 +63,8 @@ public:
 Q_SIGNALS:
   // The panel got the focus (it is the current panel)
   void Entered(TDirPanel * Panel);
+  // Another directory is shown
+  void DirectoryChanged(TDirPanel * Panel);
 
 protected:
   QToolBar * PathToolbar;

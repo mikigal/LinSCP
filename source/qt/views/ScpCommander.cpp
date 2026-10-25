@@ -14,6 +14,7 @@
 
 #include <QAction>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QDir>
 #include <QKeyEvent>
 #include <QLabel>
@@ -34,6 +35,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   resize(1100, 720);
   FProgressForm = nullptr;
   FBusy = 0;
+  FUpdatingTransferList = 0;
   FLocalDirectoryTerminal = NULL;
 
   FPanelSplitter = new QSplitter(Qt::Horizontal, this);
@@ -48,6 +50,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
   {
     connect(Panel, &TDirPanel::Entered, this, [this](TDirPanel * APanel) { SetCurrentPanel(APanel); });
+    connect(Panel, &TDirPanel::DirectoryChanged, this, [this]() { TransferPresetAutoSelect(); });
     Panel->OnRename = [this](TDirPanel * APanel, const UnicodeString & FileName, const UnicodeString & NewName)
     {
       RenameFile(APanel, FileName, NewName);
@@ -68,6 +71,12 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Q) }, &TScpCommanderForm::CloseApplicationActionExecute);
   CurrentCopyAction = CreateAction("CurrentCopyAction", tr("&Copy..."), QStringLiteral("edit-copy"),
     { QKeySequence(Qt::Key_F5) }, &TScpCommanderForm::CurrentCopyActionExecute);
+  CurrentMoveAction = CreateAction("CurrentMoveAction", tr("&Move..."), QStringLiteral("edit-cut"),
+    { QKeySequence(Qt::Key_F6) }, &TScpCommanderForm::CurrentMoveActionExecute);
+  RemoteCopyToAction = CreateAction("RemoteCopyToAction", tr("&Duplicate..."), QStringLiteral("edit-copy"),
+    { QKeySequence(Qt::SHIFT | Qt::Key_F5) }, &TScpCommanderForm::RemoteCopyToActionExecute);
+  RemoteMoveToAction = CreateAction("RemoteMoveToAction", tr("Mo&ve To..."), QStringLiteral("go-jump"),
+    { QKeySequence(Qt::SHIFT | Qt::Key_F6) }, &TScpCommanderForm::RemoteMoveToActionExecute);
   CurrentRenameAction = CreateAction("CurrentRenameAction", tr("&Rename"), QStringLiteral("edit-rename"),
     { QKeySequence(Qt::Key_F2) }, &TScpCommanderForm::CurrentRenameActionExecute);
   CurrentDeleteAction = CreateAction("CurrentDeleteAction", tr("&Delete"), QStringLiteral("edit-delete"),
@@ -132,6 +141,9 @@ void TScpCommanderForm::CreateMenus()
   QMenu * FilesMenu = Menu->addMenu(tr("&Files"));
   FilesMenu->setObjectName(QStringLiteral("FilesMenu"));
   FilesMenu->addAction(CurrentCopyAction);
+  FilesMenu->addAction(CurrentMoveAction);
+  FilesMenu->addAction(RemoteCopyToAction);
+  FilesMenu->addAction(RemoteMoveToAction);
   FilesMenu->addAction(CurrentRenameAction);
   FilesMenu->addAction(CurrentDeleteAction);
   FilesMenu->addAction(CurrentDeleteAlternativeAction);
@@ -167,10 +179,26 @@ void TScpCommanderForm::CreateToolbars()
   Toolbar->addAction(DisconnectSessionAction);
   Toolbar->addSeparator();
   Toolbar->addAction(CurrentCopyAction);
+  Toolbar->addAction(CurrentMoveAction);
   Toolbar->addAction(CurrentRenameAction);
   Toolbar->addAction(CurrentDeleteAction);
   Toolbar->addAction(CurrentCreateDirAction);
   Toolbar->addAction(CurrentPropertiesAction);
+
+  // The transfer settings presets (upstream's TransferDropDown)
+  QToolBar * TransferToolbar = addToolBar(tr("Transfer Settings"));
+  TransferToolbar->setObjectName(QStringLiteral("TransferToolbar"));
+  QLabel * TransferLabel = new QLabel(tr("Transfer Settings"), TransferToolbar);
+  TransferLabel->setObjectName(QStringLiteral("TransferLabel"));
+  TransferLabel->setContentsMargins(4, 0, 4, 0);
+  TransferToolbar->addWidget(TransferLabel);
+  FTransferList = new QComboBox(TransferToolbar);
+  FTransferList->setObjectName(QStringLiteral("TransferList"));
+  FTransferList->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+  TransferLabel->setBuddy(FTransferList);
+  TransferToolbar->addWidget(FTransferList);
+  connect(FTransferList, &QComboBox::currentIndexChanged, this, [this]() { TransferListChange(); });
+  UpdateTransferList();
 
   // The keys of the commands, at the bottom, as in upstream's Commander
   QToolBar * Hotkeys = new QToolBar(tr("Hotkeys"), this);
@@ -178,8 +206,8 @@ void TScpCommanderForm::CreateToolbars()
   Hotkeys->setToolButtonStyle(Qt::ToolButtonTextOnly);
   addToolBar(Qt::BottomToolBarArea, Hotkeys);
   for (QAction * Action :
-         { CurrentRenameAction, CurrentCopyAction, CurrentCreateDirAction, CurrentDeleteAction, CurrentPropertiesAction,
-           CloseApplicationAction })
+         { CurrentRenameAction, CurrentCopyAction, CurrentMoveAction, CurrentCreateDirAction, CurrentDeleteAction,
+           CurrentPropertiesAction, CloseApplicationAction })
   {
     QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
     QAction * Proxy = Hotkeys->addAction(Action->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(' ') + Caption);
@@ -240,12 +268,139 @@ void TScpCommanderForm::UpdateActions()
 
   NewSessionAction->setEnabled(!Busy);
   DisconnectSessionAction->setEnabled(!Busy && (Terminal != NULL));
-  CurrentCopyAction->setEnabled(!Busy && HasSelection && Connected && OtherPanel(FCurrentPanel)->IsReady());
+  bool CanTransfer = !Busy && HasSelection && Connected && OtherPanel(FCurrentPanel)->IsReady();
+  CurrentCopyAction->setEnabled(CanTransfer);
+  CurrentMoveAction->setEnabled(CanTransfer);
+  bool RemoteSelection = !Busy && HasSelection && Connected && (FCurrentPanel == FRemotePanel);
+  RemoteCopyToAction->setEnabled(RemoteSelection);
+  RemoteMoveToAction->setEnabled(RemoteSelection);
   CurrentRenameAction->setEnabled(!Busy && HasSelection);
   CurrentDeleteAction->setEnabled(!Busy && HasSelection);
   CurrentDeleteAlternativeAction->setEnabled(!Busy && HasSelection);
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
   CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ConfigurationChanged()
+{
+  UpdateTransferList();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::UpdateTransferList()
+{
+  TAutoNestingCounter UpdatingCounter(FUpdatingTransferList);
+  FTransferList->clear();
+  FTransferList->addItem(ToQString(StripHotkey(LoadStr(COPY_PARAM_DEFAULT))));
+  const TCopyParamList * CopyParamList = GUIConfiguration->CopyParamList;
+  for (int Index = 0; Index < CopyParamList->Count; Index++)
+  {
+    FTransferList->addItem(ToQString(StripHotkey(CopyParamList->Names[Index])));
+  }
+  FTransferList->setCurrentIndex(GUIConfiguration->CopyParamIndex + 1);
+  TTerminal * Terminal = GetTerminal();
+  int CopyParamAttrs = ((Terminal != NULL) && Terminal->Active) ? Terminal->UsableCopyParamAttrs(0).General : 0;
+  FTransferList->setToolTip(
+    ToQString(FORMAT(L"%s:\n%s",
+      (StripHotkey(ToUnicodeString(FTransferList->currentText())),
+       GUIConfiguration->CurrentCopyParam.GetInfoStr(L"; ", CopyParamAttrs)))));
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::TransferListChange()
+{
+  if (FUpdatingTransferList == 0)
+  {
+    int Index = FTransferList->currentIndex();
+    UnicodeString Name;
+    if (Index > 0)
+    {
+      Name = GUIConfiguration->CopyParamList->Names[Index - 1];
+    }
+    if (FCopyParamAutoSelected.IsEmpty())
+    {
+      // if previous preset was not autoselected, make new preset the "default"
+      FCopyParamDefault = Name;
+    }
+    GUIConfiguration->CopyParamCurrent = Name;
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::TransferPresetAutoSelect()
+{
+  // Terminal can be null when we are changing local directory implicitly,
+  // because it has been deleted, while no session is connected
+  // (Login dialog is open)
+  TTerminal * Terminal = GetTerminal();
+  if ((Terminal == NULL) || !Terminal->Active || !FRemotePanel->IsReady())
+  {
+    return;
+  }
+
+  TCopyParamRuleData Data;
+  Data.HostName = Terminal->SessionData->HostNameExpanded;
+  Data.UserName = Terminal->SessionData->UserNameExpanded;
+  Data.RemoteDirectory = FRemotePanel->GetPath();
+  Data.LocalDirectory = FLocalPanel->GetPath();
+
+  int CopyParamIndex = GUIConfiguration->CopyParamList->Find(Data);
+  UnicodeString CopyParamCurrent = GUIConfiguration->CopyParamCurrent;
+
+  if (CopyParamIndex < 0)
+  {
+    // there is no preset that matches autoselection
+    // set preset that we consider "default"
+    FCopyParamAutoSelected = L""; // forget last autoselected preset
+    GUIConfiguration->CopyParamCurrent = FCopyParamDefault;
+  }
+  else
+  {
+    // there is preset matching autoselection
+    UnicodeString CopyParamName = GUIConfiguration->CopyParamList->Names[CopyParamIndex];
+    if (CopyParamName == FCopyParamAutoSelected)
+    {
+      // autoselected the same preset as the last time
+      // make no change (i.e. preserve custom user preset, if any)
+    }
+    else
+    {
+      // autoselected the different preset then the last time (or there
+      // was default preset set)
+      FCopyParamAutoSelected = CopyParamName; // remember autoselection
+      GUIConfiguration->CopyParamCurrent = CopyParamName;
+    }
+  }
+
+  if ((GUIConfiguration->CopyParamCurrent != CopyParamCurrent) && AppConfiguration->CopyParamAutoSelectNotice)
+  {
+    if (CopyParamIndex >= 0)
+    {
+      Configuration->Usage->Inc(L"CopyParamAutoSelects");
+    }
+
+    int Fmt =
+      (CopyParamIndex < 0) ?
+        (GUIConfiguration->CopyParamIndex < 0 ? COPY_PARAM_DEFAULT_NORM : COPY_PARAM_DEFAULT_CUSTOM) :
+        COPY_PARAM_AUTOSELECTED;
+    UnicodeString Message = MainInstructions(FMTLOAD(Fmt, (StripHotkey(GUIConfiguration->CopyParamCurrent))));
+
+    int CopyParamAttrs = Terminal->UsableCopyParamAttrs(0).General;
+    UnicodeString Info = GUIConfiguration->CurrentCopyParam.GetInfoStr(L"\n", CopyParamAttrs);
+    if (CopyParamIndex >= 0)
+    {
+      DebugAssert(GUIConfiguration->CopyParamList->Rules[CopyParamIndex] != NULL);
+      Info = FORMAT(L"%s\n \n%s", (Info,
+        FMTLOAD(COPY_PARAM_RULE,
+          (GUIConfiguration->CopyParamList->Rules[CopyParamIndex]->GetInfoStr(L"\n")))));
+    }
+    Message += L"\n\n" + Info;
+
+    // Upstream also offers the preferences of the presets (not ported yet)
+    TMessageParams Params(mpNeverAskAgainCheck);
+    unsigned int Answer = MoreMessageDialog(Message, NULL, qtInformation, qaOK, &Params);
+    if (Answer == qaNeverAskAgain)
+    {
+      AppConfiguration->CopyParamAutoSelectNotice = false;
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateCaption()
@@ -293,6 +448,7 @@ void TScpCommanderForm::TerminalChanged()
   }
   FSessionStatusLabel->setText(ToQString(Status));
   FSessionStatusLabel->setToolTip(ToQString(Hint));
+  UpdateTransferList();
   if (!FRemotePanel->IsReady() && (FCurrentPanel == FRemotePanel))
   {
     FLocalPanel->GetDirView()->setFocus();
@@ -374,7 +530,39 @@ TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel)
   return Result.release();
 }
 //---------------------------------------------------------------------------
-void TScpCommanderForm::CurrentCopyActionExecute()
+bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferType Type,
+  TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm)
+{
+  bool Result = true;
+  TTerminal * Terminal = GetTerminal();
+
+  // these parameters are known in advance
+  int Params =
+    FLAGMASK(Type == ttMove, cpDelete);
+  if (Result && Confirm && AppConfiguration->ConfirmTransferring)
+  {
+    bool DisableNewerOnly =
+      (!Terminal->IsCapable[fcNewerOnlyUpload] && (Direction == tdToRemote));
+    // The queue is not there yet
+    int Options = coDisableQueue | coDoNotShowAgain;
+    TUsableCopyParamAttrs UsableCopyParamAttrs = Terminal->UsableCopyParamAttrs(Params);
+    int CopyParamAttrs = (Direction == tdToRemote ?
+      UsableCopyParamAttrs.Upload : UsableCopyParamAttrs.Download) |
+      FLAGMASK(DisableNewerOnly, cpaNoNewerOnly);
+    int OutputOptions = 0;
+    Result = DoCopyDialog(Direction == tdToRemote, Type == ttMove,
+      FileList, TargetDirectory, &CopyParam, Options, CopyParamAttrs, &OutputOptions);
+
+    if (Result && FLAGSET(OutputOptions, cooDoNotShowAgain))
+    {
+      AppConfiguration->ConfirmTransferring = false;
+    }
+  }
+
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation)
 {
   TTerminal * Terminal = GetTerminal();
   TDirPanel * Source = FCurrentPanel;
@@ -391,33 +579,235 @@ void TScpCommanderForm::CurrentCopyActionExecute()
   }
 
   bool ToRemote = (Source == FLocalPanel);
+  TTransferDirection Direction = (ToRemote ? tdToRemote : tdToLocal);
+  TTransferType Type = (Operation == foCopy ? ttCopy : ttMove);
   UnicodeString TargetDirectory = Target->GetPath();
-  if (DoCopyDialog(ToRemote, FileList.get(), TargetDirectory))
+  TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+  if (CopyParamDialog(Direction, Type, FileList.get(), TargetDirectory, CopyParam, true))
   {
-    TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+    int Params = FLAGMASK(Operation == foMove, cpDelete);
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
     TAutoNestingCounter BusyCounter(FBusy);
     UpdateActions();
     ::rtl::TFinally Finally([&]()
     {
       DestroyProgressForm();
-      if (!ToRemote)
-      {
-        FLocalPanel->Reload();
-      }
+      // The sources of an upload that moved, the target of a download
+      FLocalPanel->Reload();
     });
     if (ToRemote)
     {
       UnicodeString TargetDir = UnixIncludeTrailingBackslash(TargetDirectory);
       CopyParam.IncludeFileMask.SetRoots(FileList.get(), TargetDir);
-      Terminal->CopyToRemote(FileList.get(), TargetDir, &CopyParam, 0, NULL);
+      Terminal->CopyToRemote(FileList.get(), TargetDir, &CopyParam, Params, NULL);
     }
     else
     {
       UnicodeString TargetDir = IncludeTrailingBackslash(TargetDirectory);
       CopyParam.IncludeFileMask.SetRoots(TargetDir, FileList.get());
-      Terminal->CopyToLocal(FileList.get(), TargetDir, &CopyParam, 0, NULL);
+      Terminal->CopyToLocal(FileList.get(), TargetDir, &CopyParam, Params, NULL);
     }
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::DoDirectoryExists(void * Session, const UnicodeString & Directory)
+{
+  TTerminal * ATerminal = (Session == NULL) ? GetTerminal() : reinterpret_cast<TTerminal *>(Session);
+  TAutoNestingCounter BusyCounter(FBusy);
+  return (ATerminal != NULL) && ATerminal->Active && ATerminal->DirectoryExists(Directory);
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::NeedSecondarySessionForRemoteCopy(TStrings * FileList)
+{
+  TTerminal * Terminal = GetTerminal();
+  bool CopyDirsOnSecondarySession = Terminal->IsCapable[fcSecondaryShell];
+  return
+    !Terminal->IsCapable[fcRemoteCopy] ||
+    (CopyDirsOnSecondarySession && TRemoteFileList::AnyDirectory(FileList));
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::RemoteTransferDialog(TStrings * FileList, UnicodeString & Target, UnicodeString & FileMask,
+  bool & DirectCopy, bool Move)
+{
+  TTerminal * Terminal = GetTerminal();
+  // A single session: it is the target
+  void * Session = Terminal;
+  Target = UnixIncludeTrailingBackslash(FRemotePanel->GetPath());
+  if (FileList->Count == 1)
+  {
+    FileMask = DelimitFileNameMask(UnixExtractFileName(FileList->Strings[0]));
+  }
+  else
+  {
+    FileMask = AnyMask;
+  }
+  DirectCopy = Terminal->IsCapable[fcRemoteCopy] || Terminal->IsCapable[fcSecondaryShell];
+  bool Multi = (FileList->Count > 1);
+  TDirectoryExistsEvent DirectoryExistsEvent =
+    [this](void * ASession, const UnicodeString & Directory) { return DoDirectoryExists(ASession, Directory); };
+
+  bool Result;
+  if (Move)
+  {
+    Result = DoRemoteMoveDialog(Multi, Target, FileMask, DirectoryExistsEvent);
+  }
+  else
+  {
+    std::unique_ptr<TStrings> Sessions(new TStringList);
+    std::unique_ptr<TStrings> Directories(new TStringList);
+    Sessions->AddObject(Terminal->SessionData->SessionName, reinterpret_cast<TObject *>(Terminal));
+    Directories->Add(FRemotePanel->GetPath());
+
+    TDirectRemoteCopy AllowDirectCopy;
+    if (Terminal->CommandSessionOpened || !NeedSecondarySessionForRemoteCopy(FileList))
+    {
+      DebugAssert(DirectCopy);
+      AllowDirectCopy = drcAllow;
+    }
+    else if (Terminal->IsCapable[fcSecondaryShell])
+    {
+      DebugAssert(DirectCopy);
+      AllowDirectCopy = Terminal->IsCapable[fcRemoteCopy] ? drcConfirmCommandSessionDirs : drcConfirmCommandSession;
+    }
+    else
+    {
+      DebugAssert(!DirectCopy);
+      AllowDirectCopy = drcDisallow;
+    }
+    Result = DoRemoteCopyDialog(
+      Sessions.get(), Directories.get(), AllowDirectCopy, Multi, Session, Target, FileMask, DirectCopy, Terminal,
+      DirectoryExistsEvent, false);
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+TCopyParamType TScpCommanderForm::TemporaryFileCopyParam(bool ForceText)
+{
+  TCopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+  CopyParam.FileNameCase = ncNoChange;
+  CopyParam.PreserveRights = false;
+  CopyParam.PreserveReadOnly = false;
+  CopyParam.ReplaceInvalidChars = true;
+  CopyParam.IncludeFileMask = TFileMasks();
+  CopyParam.NewerOnly = false;
+  CopyParam.FileMask = L"";
+  if (ForceText)
+  {
+    CopyParam.TransferMode = tmAscii;
+  }
+  return CopyParam;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::TemporarilyDownloadFiles(TStrings * FileList, bool ForceText, UnicodeString & RootTempDir,
+  UnicodeString & TempDir)
+{
+  TTerminal * Terminal = GetTerminal();
+  TCopyParamType CopyParam = TemporaryFileCopyParam(ForceText);
+
+  // Upstream's preferences may make the directory deterministic (by the
+  // session and the path); not yet
+  RootTempDir = IncludeTrailingBackslash(AppConfiguration->TemporaryDir());
+  TempDir = RootTempDir;
+  if (!ForceDirectories(ApiPath(TempDir)))
+  {
+    throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (TempDir)));
+  }
+
+  Terminal->ExceptionOnFail = true;
+  ::rtl::TFinally Finally([&]() { Terminal->ExceptionOnFail = false; });
+  try
+  {
+    // turn off confirmations, as for MDI editors we may possibly download
+    // the same file over
+    Terminal->CopyToLocal(FileList, TempDir, &CopyParam, cpNoConfirmation | cpTemporary, NULL);
+  }
+  catch (...)
+  {
+    if (!RootTempDir.IsEmpty())
+    {
+      RecursiveDeleteFile(ExcludeTrailingBackslash(RootTempDir));
+    }
+    throw;
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::RemoteTransferFiles(TStrings * FileList, bool Move)
+{
+  TTerminal * Terminal = GetTerminal();
+  bool DirectCopy;
+  UnicodeString Target, FileMask;
+  bool Result = RemoteTransferDialog(FileList, Target, FileMask, DirectCopy, Move);
+  if (Result)
+  {
+    ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+    TAutoNestingCounter BusyCounter(FBusy);
+    UpdateActions();
+    ::rtl::TFinally Finally([&]() { DestroyProgressForm(); });
+    if (!Move && !DirectCopy)
+    {
+      Configuration->Usage->Inc("RemoteCopyTemp");
+
+      UnicodeString RootTempDir;
+      UnicodeString TempDir;
+
+      TemporarilyDownloadFiles(FileList, false, RootTempDir, TempDir);
+
+      ::rtl::TFinally TempFinally([&]()
+      {
+        if (!RootTempDir.IsEmpty())
+        {
+          RecursiveDeleteFile(ExcludeTrailingBackslash(RootTempDir));
+        }
+      });
+      std::unique_ptr<TStrings> TemporaryFilesList(new TStringList());
+      TMakeLocalFileListParams MakeFileListParam;
+      MakeFileListParam.FileList = TemporaryFilesList.get();
+      MakeFileListParam.FileTimes = NULL;
+      MakeFileListParam.IncludeDirs = true;
+      MakeFileListParam.Recursive = false;
+
+      ProcessLocalDirectory(TempDir, ::rtl::MethodPtr(Terminal, &TTerminal::MakeLocalFileList), &MakeFileListParam);
+
+      if (TemporaryFilesList->Count > 0)
+      {
+        TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+        CopyParam.FileMask = FileMask;
+
+        Terminal->CopyToRemote(TemporaryFilesList.get(), Target, &CopyParam, cpTemporary, NULL);
+      }
+    }
+    else if (Move)
+    {
+      Configuration->Usage->Inc("RemoteMove");
+
+      Terminal->MoveFiles(FileList, Target, FileMask, false);
+    }
+    else
+    {
+      Configuration->Usage->Inc("RemoteCopyDirect");
+
+      DebugAssert(DirectCopy);
+      if (!NeedSecondarySessionForRemoteCopy(FileList) ||
+          Terminal->CommandSessionOpened ||
+          TTerminalManager::Instance()->ConnectTerminal(Terminal->CommandSession))
+      {
+        Terminal->CopyFiles(FileList, Target, FileMask, false);
+      }
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ExecuteRemoteTransfer(bool Move)
+{
+  if (IsBusy() || (FCurrentPanel != FRemotePanel) || !FRemotePanel->IsReady())
+  {
+    return;
+  }
+  std::unique_ptr<TStrings> FileList(CreateFileList(FRemotePanel));
+  if (FileList->Count > 0)
+  {
+    RemoteTransferFiles(FileList.get(), Move);
   }
 }
 //---------------------------------------------------------------------------

@@ -9,11 +9,24 @@
 //---------------------------------------------------------------------------
 TAppConfiguration * AppConfiguration = NULL;
 //---------------------------------------------------------------------------
+class THistoryStrings : public TStringList
+{
+public:
+  THistoryStrings() : TStringList()
+  {
+    Modified = false;
+  }
+
+  bool Modified;
+};
+//---------------------------------------------------------------------------
 __fastcall TAppConfiguration::TAppConfiguration() :
   TGUIConfiguration()
 {
   FUseMasterPassword = false;
   FOnMasterPasswordPrompt = NULL;
+  FHistory = new TStringList();
+  FEmptyHistory = new TStringList();
   Default();
 }
 //---------------------------------------------------------------------------
@@ -21,6 +34,34 @@ __fastcall TAppConfiguration::~TAppConfiguration()
 {
   Shred(FPlainMasterPasswordEncrypt);
   Shred(FPlainMasterPasswordDecrypt);
+  ClearHistory();
+  delete FHistory;
+  delete FEmptyHistory;
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::ClearHistory()
+{
+  for (int Index = 0; Index < FHistory->Count; Index++)
+  {
+    delete FHistory->Objects[Index];
+  }
+  FHistory->Clear();
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::DefaultHistory()
+{
+  ClearHistory();
+
+  // Defaults for speed limits.
+  std::unique_ptr<THistoryStrings> Strings(new THistoryStrings());
+  Strings->Add(LoadStr(SPEED_UNLIMITED));
+  unsigned long Speed = MaxSpeed;
+  while (Speed >= MinSpeed)
+  {
+    Strings->Add(SetSpeedLimit(Speed));
+    Speed = Speed / 2;
+  }
+  FHistory->AddObject(L"SpeedLimit", Strings.release());
 }
 //---------------------------------------------------------------------------
 void __fastcall TAppConfiguration::Default()
@@ -33,9 +74,13 @@ void __fastcall TAppConfiguration::Default()
   FMasterPasswordVerifier = L"";
 
   FConfirmDeleting = true;
+  FConfirmTransferring = true;
+  FCopyParamAutoSelectNotice = true;
   FShowHiddenFiles = false;
   FLastStoredSession = L"";
   FOpenedStoredSessionFolders = L"";
+
+  DefaultHistory();
 }
 //---------------------------------------------------------------------------
 UnicodeString TAppConfiguration::TemporaryDir(bool Mask)
@@ -72,6 +117,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
 #define REGCONFIG(CANCREATE) \
   BLOCK(L"Interface", CANCREATE, \
     KEY(Bool,    FConfirmDeleting); \
+    KEY(Bool,    FConfirmTransferring); \
+    KEY(Bool,    FCopyParamAutoSelectNotice); \
     KEY(Bool,    FShowHiddenFiles); \
     KEY(String,  FLastStoredSession); \
     KEY(String,  FOpenedStoredSessionFolders); \
@@ -88,6 +135,21 @@ void __fastcall TAppConfiguration::SaveData(THierarchicalStorage * Storage, bool
   #define KEYEX(TYPE, VAR, NAME) Storage->Write ## TYPE(NAME, VAR)
   REGCONFIG(true);
   #undef KEYEX
+
+  // As upstream's TCustomWinConfiguration
+  if ((FHistory->Count > 0) && Storage->OpenSubKey(L"History", true))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
+    for (int Index = 0; Index < FHistory->Count; Index++)
+    {
+      THistoryStrings * HistoryStrings = DebugNotNull(dynamic_cast<THistoryStrings *>(FHistory->Objects[Index]));
+      if ((All || HistoryStrings->Modified) && Storage->OpenSubKey(FHistory->Strings[Index], true))
+      {
+        ::rtl::TFinally SubKeyFinally([&]() { Storage->CloseSubKey(); });
+        Storage->WriteValues(HistoryStrings);
+      }
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
@@ -97,6 +159,32 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
   #define KEYEX(TYPE, VAR, NAME) VAR = Storage->Read ## TYPE(NAME, VAR)
   REGCONFIG(false);
   #undef KEYEX
+
+  DefaultHistory();
+  if (Storage->OpenSubKey(L"History", false))
+  {
+    ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
+    std::unique_ptr<TStrings> Names(new TStringList());
+    Storage->GetSubKeyNames(Names.get());
+    for (int Index = 0; Index < Names->Count; Index++)
+    {
+      if (Storage->OpenSubKey(Names->Strings[Index], false))
+      {
+        ::rtl::TFinally SubKeyFinally([&]() { Storage->CloseSubKey(); });
+        // remove defaults, if any
+        int HIndex = FHistory->IndexOf(Names->Strings[Index]);
+        if (HIndex >= 0)
+        {
+          delete FHistory->Objects[HIndex];
+          FHistory->Delete(HIndex);
+        }
+
+        std::unique_ptr<THistoryStrings> HistoryStrings(new THistoryStrings());
+        Storage->ReadValues(HistoryStrings.get());
+        FHistory->AddObject(Names->Strings[Index], HistoryStrings.release());
+      }
+    }
+  }
 }
 //---------------------------------------------------------------------------
 RawByteString __fastcall TAppConfiguration::StronglyRecryptPassword(RawByteString Password, UnicodeString Key)
@@ -192,6 +280,51 @@ void __fastcall TAppConfiguration::AskForMasterPasswordIfNotSet()
 void TAppConfiguration::SetConfirmDeleting(bool value)
 {
   SET_CONFIG_PROPERTY(ConfirmDeleting);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetConfirmTransferring(bool value)
+{
+  SET_CONFIG_PROPERTY(ConfirmTransferring);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetCopyParamAutoSelectNotice(bool value)
+{
+  SET_CONFIG_PROPERTY(CopyParamAutoSelectNotice);
+}
+//---------------------------------------------------------------------------
+TStrings * TAppConfiguration::GetHistory(const UnicodeString Index)
+{
+  int I = FHistory->IndexOf(Index);
+  return (I >= 0) ? dynamic_cast<TStrings *>(FHistory->Objects[I]) : FEmptyHistory;
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetHistory(const UnicodeString Index, TStrings * value)
+{
+  int I = FHistory->IndexOf(Index);
+  bool NonDefaultChange;
+  if (I >= 0)
+  {
+    THistoryStrings * HistoryStrings = dynamic_cast<THistoryStrings *>(FHistory->Objects[I]);
+    NonDefaultChange = !HistoryStrings->Equals(value);
+    if (NonDefaultChange)
+    {
+      HistoryStrings->Assign(value);
+    }
+  }
+  else
+  {
+    THistoryStrings * HistoryStrings = new THistoryStrings();
+    HistoryStrings->Assign(value);
+    FHistory->AddObject(Index, HistoryStrings);
+    I = FHistory->Count - 1;
+    NonDefaultChange = true;
+  }
+
+  if (NonDefaultChange)
+  {
+    dynamic_cast<THistoryStrings *>(FHistory->Objects[I])->Modified = true;
+    Changed();
+  }
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::SetShowHiddenFiles(bool value)

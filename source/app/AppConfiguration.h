@@ -29,17 +29,30 @@ public:
   bool GetUseMasterPassword() const { return FUseMasterPassword; }
   bool GetConfirmDeleting() const { return FConfirmDeleting; }
   void SetConfirmDeleting(bool value);
+  bool GetConfirmTransferring() const { return FConfirmTransferring; }
+  void SetConfirmTransferring(bool value);
+  bool GetCopyParamAutoSelectNotice() const { return FCopyParamAutoSelectNotice; }
+  void SetCopyParamAutoSelectNotice(bool value);
   bool GetShowHiddenFiles() const { return FShowHiddenFiles; }
   void SetShowHiddenFiles(bool value);
   UnicodeString GetLastStoredSession() const { return FLastStoredSession; }
   void SetLastStoredSession(UnicodeString value);
   UnicodeString GetOpenedStoredSessionFolders() const { return FOpenedStoredSessionFolders; }
   void SetOpenedStoredSessionFolders(UnicodeString value);
+  // The history of a combo box (upstream's TCustomWinConfiguration::History)
+  TStrings * GetHistory(const UnicodeString Index);
+  void SetHistory(const UnicodeString Index, TStrings * value);
   TMasterPasswordPromptEvent GetOnMasterPasswordPrompt() const { return FOnMasterPasswordPrompt; }
   void SetOnMasterPasswordPrompt(TMasterPasswordPromptEvent Value) { FOnMasterPasswordPrompt = Value; }
 
   __declspec(property(get = GetUseMasterPassword)) bool UseMasterPassword;
   __declspec(property(get = GetConfirmDeleting, put = SetConfirmDeleting)) bool ConfirmDeleting;
+  // The copy dialog is shown before transfers
+  __declspec(property(get = GetConfirmTransferring, put = SetConfirmTransferring)) bool ConfirmTransferring;
+  __declspec(property(get = GetHistory, put = SetHistory)) TStrings * History[];
+  // A transfer settings preset selected by its rule is announced
+  __declspec(property(get = GetCopyParamAutoSelectNotice, put = SetCopyParamAutoSelectNotice))
+    bool CopyParamAutoSelectNotice;
   __declspec(property(get = GetShowHiddenFiles, put = SetShowHiddenFiles)) bool ShowHiddenFiles;
   // The site or site folder (with a trailing slash) last selected in the
   // site manager
@@ -64,11 +77,19 @@ private:
   UnicodeString FMasterPasswordVerifier;
   TMasterPasswordPromptEvent FOnMasterPasswordPrompt;
   bool FConfirmDeleting;
+  bool FConfirmTransferring;
+  bool FCopyParamAutoSelectNotice;
   bool FShowHiddenFiles;
+  // The histories (their names, the strings with the "modified" flag as the
+  // objects of the names)
+  TStringList * FHistory;
+  TStringList * FEmptyHistory;
   UnicodeString FLastStoredSession;
   UnicodeString FOpenedStoredSessionFolders;
 
   void __fastcall AskForMasterPassword();
+  void ClearHistory();
+  void DefaultHistory();
 };
 //---------------------------------------------------------------------------
 extern TAppConfiguration * AppConfiguration;
