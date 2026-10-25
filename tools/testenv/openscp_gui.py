@@ -195,6 +195,36 @@ class OpenScpGui:
         return (client['x'] + geometry['x'] + geometry['width'] // 2,
                 client['y'] + geometry['y'] + geometry['height'] // 2)
 
+    def client_origin(self, window_name):
+        """The position of the client area of a window on the screen."""
+        title = self.wait_window(window_name)['title']
+        windows = self.wait_for(lambda: [w for w in self.session.windows() if w['caption'] == title],
+                                what='the window %s in the compositor' % title)
+        client = windows[0]['client']
+        return client['x'], client['y']
+
+    def row_point(self, view, name):
+        """The center of the first cell of the row of an item view on the
+        screen."""
+        rows = [row for row in self.get(view)['rows'] if row['cells'][0] == name]
+        if not rows or 'rect' not in rows[0]:
+            raise AutomationError('no visible row %s in %s' % (name, view))
+        rect = rows[0]['rect']
+        x, y = self.client_origin(view.split('/')[0])
+        return x + rect['x'] + min(rect['width'] // 2, 60), y + rect['y'] + rect['height'] // 2
+
+    def drag_real(self, start, end, steps=20):
+        """Drags with the real input of the compositor from start to end
+        (screen points): crosses the drag threshold at start, moves gradually
+        and drops."""
+        (x1, y1), (x2, y2) = start, end
+        commands = ['move', x1, y1, 'down', 'sleep', 100, 'rmove', 6, 6, 'sleep', 100, 'rmove', 6, 6, 'sleep', 400]
+        for step in range(1, steps + 1):
+            t = step / steps
+            commands += ['move', round(x1 + (x2 - x1) * t), round(y1 + (y2 - y1) * t), 'sleep', 30]
+        commands += ['sleep', 500, 'up']
+        self.session.input(*commands)
+
     def click_real(self, target):
         """Clicks a widget with the real input of the compositor (popups and
         shortcuts need it)."""

@@ -19,6 +19,24 @@ UnicodeString ToUnicodeString(const QString & Str)
   return UnicodeString(Wide.c_str(), static_cast<int>(Wide.size()));
 }
 //---------------------------------------------------------------------------
+UnicodeString UrlToLocalPath(const QUrl & Url)
+{
+  // QUrl keeps percent-encoded bytes that are not valid UTF-8
+  QByteArray Bytes = QByteArray::fromPercentEncoding(Url.path(QUrl::FullyEncoded).toLatin1());
+  UnicodeString Result = UTF8ToString(RawByteString(Bytes.constData(), Bytes.size()));
+  if ((Result.Length() > 1) && EndsStr(L"/", Result))
+  {
+    Result.SetLength(Result.Length() - 1);
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+QUrl LocalPathToUrl(const UnicodeString & Path)
+{
+  UTF8String Bytes = UTF8Encode(Path);
+  return QUrl::fromEncoded(QByteArray("file://") + QByteArray(Bytes.c_str(), Bytes.Length()).toPercentEncoding("/"));
+}
+//---------------------------------------------------------------------------
 bool IsMainThread()
 {
   QCoreApplication * Application = QCoreApplication::instance();

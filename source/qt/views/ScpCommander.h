@@ -24,6 +24,7 @@ class QActionGroup;
 class QComboBox;
 class QLabel;
 class QMenu;
+class QMimeData;
 class QSplitter;
 class QTimer;
 class QToolBar;
@@ -34,11 +35,21 @@ struct TEditedFileData;
 struct TEditorData;
 class TBookmarkList;
 class TDirPanel;
+struct TDropParams;
 class TLocalDirPanel;
 class TProgressForm;
 class TRemoteDirPanel;
 class TSynchronizeProgressForm;
 class TTerminal;
+//---------------------------------------------------------------------------
+// How a transfer was started (upstream's TTransferOperationParam)
+struct TTransferOperationParam
+{
+  // The target, else the directory of the other panel
+  UnicodeString TargetDirectory;
+  // By drag and drop or by pasting (DDTransferConfirmation)
+  bool DragDrop = false;
+};
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
 {
@@ -113,6 +124,13 @@ private:
   // The opened and edited files
   std::unique_ptr<TEditorManager> FEditorManager;
   std::vector<QWidget *> FLocalEditors;
+  // The files of the drag from a panel (full paths, the remote files with
+  // their TRemoteFile objects), while it may be dropped
+  std::unique_ptr<TStrings> FDragFileList;
+  TDirPanel * FDragSourcePanel;
+  bool FDragging;
+  // A drop on a panel during a drag of ours, done once the drag ends
+  std::function<void()> FPendingDropOperation;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -351,13 +369,27 @@ private:
   void DeleteFiles(bool Alternative);
   bool DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative);
   void ExecuteCopyMoveFileOperation(TFileOperation Operation);
-  bool ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList);
+  bool ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList,
+    const TTransferOperationParam & Param = TTransferOperationParam());
   bool CopyParamDialog(TTransferDirection Direction, TTransferType Type,
-    TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm);
+    TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm,
+    bool DragDrop = false);
+  // The "do not show again" of the copy dialog (upstream's
+  // HandleDoNotShowCopyDialogAgain)
+  void HandleDoNotShowCopyDialogAgain(bool DragDrop, bool DoNotShowAgain);
   void ExecuteRemoteTransfer(bool Move);
   bool RemoteTransferDialog(TStrings * FileList, UnicodeString & Target, UnicodeString & FileMask,
     bool & DirectCopy, bool Move);
-  bool RemoteTransferFiles(TStrings * FileList, bool Move);
+  // To the target directory (else the one of the remote panel), with the
+  // dialog unless NoConfirmation
+  bool RemoteTransferFiles(TStrings * FileList, bool Move,
+    const UnicodeString & TargetDirectory = UnicodeString(), bool NoConfirmation = false);
+  // Drag and drop (ScpCommanderDragDrop.cpp)
+  void PanelStartDrag(TDirPanel * APanel);
+  Qt::DropAction PanelDragOver(TDirPanel * APanel, const TDropParams & Params);
+  void PanelDrop(TDirPanel * APanel, const TDropParams & Params, Qt::DropAction Action);
+  // The local files of the data of a drag or of the clipboard, or NULL
+  TStrings * LocalFileListFromMimeData(const QMimeData * Data);
   bool DoDirectoryExists(void * Session, const UnicodeString & Directory);
   bool NeedSecondarySessionForRemoteCopy(TStrings * FileList);
   TCopyParamType TemporaryFileCopyParam(bool ForceText);

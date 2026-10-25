@@ -7,6 +7,7 @@
 #include <AppPCH.h>
 
 #include <QString>
+#include <QUrl>
 //---------------------------------------------------------------------------
 // The core's strings are UTF-32 (wchar_t); names that are not valid UTF-8
 // map their bytes to lone surrogates, which QString does not keep. Use
@@ -14,6 +15,9 @@
 // names that go back to the core.
 QString ToQString(const UnicodeString & Str);
 UnicodeString ToUnicodeString(const QString & Str);
+// file:// URLs of local paths and back, with the bytes of the names
+UnicodeString UrlToLocalPath(const QUrl & Url);
+QUrl LocalPathToUrl(const UnicodeString & Path);
 //---------------------------------------------------------------------------
 bool IsMainThread();
 //---------------------------------------------------------------------------

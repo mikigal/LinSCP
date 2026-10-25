@@ -89,6 +89,11 @@ public:
   void SetUseLocationProfiles(bool value);
   bool GetUseSharedBookmarks() const { return FUseSharedBookmarks; }
   void SetUseSharedBookmarks(bool value);
+  TAutoSwitch GetDDTransferConfirmation() const { return FDDTransferConfirmation; }
+  void SetDDTransferConfirmation(TAutoSwitch value);
+  bool GetDDFakeFile() const { return FDDFakeFile; }
+  void SetDDFakeFile(bool value);
+  int GetDDDeleteDelay() const { return FDDDeleteDelay; }
   TBookmarkList * GetBookmarks(UnicodeString Key);
   void SetBookmarks(UnicodeString Key, TBookmarkList * value);
   TBookmarkList * GetSharedBookmarks();
@@ -141,6 +146,18 @@ public:
   __declspec(property(get = GetUseLocationProfiles, put = SetUseLocationProfiles)) bool UseLocationProfiles;
   // The shared bookmarks page was the last one selected
   __declspec(property(get = GetUseSharedBookmarks, put = SetUseSharedBookmarks)) bool UseSharedBookmarks;
+  // The copy dialog is shown before transfers by drag and drop (asAuto:
+  // shown with "do not show again" checked)
+  __declspec(property(get = GetDDTransferConfirmation, put = SetDDTransferConfirmation))
+    TAutoSwitch DDTransferConfirmation;
+  // Files dragged or copied from the remote panel to the file manager are
+  // downloaded to the directory they are dropped or pasted to, which the
+  // file manager tells (KDE: Ark's drop protocol, the notifications of
+  // KIO); otherwise they are downloaded to a temporary directory once the
+  // file manager asks for them. On by default on KDE Plasma.
+  __declspec(property(get = GetDDFakeFile, put = SetDDFakeFile)) bool DDFakeFile;
+  // Seconds before the temporary directory of a drag and drop is deleted
+  __declspec(property(get = GetDDDeleteDelay)) int DDDeleteDelay;
   // The bookmarks of a site (by its session key), copied when set
   __declspec(property(get = GetBookmarks, put = SetBookmarks)) TBookmarkList * Bookmarks[];
   __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
@@ -186,6 +203,9 @@ private:
   UnicodeString FOpenedStoredSessionFolders;
   bool FUseLocationProfiles;
   bool FUseSharedBookmarks;
+  TAutoSwitch FDDTransferConfirmation;
+  bool FDDFakeFile;
+  int FDDDeleteDelay;
   TBookmarks * FBookmarks;
   TCustomCommandList * FCustomCommandList;
   TEditorConfiguration FEditor;

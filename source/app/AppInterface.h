@@ -53,6 +53,8 @@ UnicodeString __fastcall FormatMainFormCaption(
   const UnicodeString & Caption, const UnicodeString & SessionName = UnicodeString());
 UnicodeString __fastcall UniqTempDir(const UnicodeString BaseDir,
   const UnicodeString Identity, bool Mask = false);
+// The desktop session is KDE Plasma (XDG_CURRENT_DESKTOP)
+bool IsKdeDesktop();
 typedef int __fastcall (*TCalculateWidth)(UnicodeString Text, void * Arg);
 // Aligns the parts of lines after a tab
 void __fastcall ApplyTabs(

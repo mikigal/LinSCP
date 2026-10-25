@@ -98,6 +98,10 @@ void __fastcall TAppConfiguration::Default()
   FOpenedStoredSessionFolders = L"";
   FUseLocationProfiles = false;
   FUseSharedBookmarks = false;
+  FDDTransferConfirmation = asAuto;
+  // OpenSCP: the drop target is known from KDE's protocols only
+  FDDFakeFile = IsKdeDesktop();
+  FDDDeleteDelay = 120;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -196,6 +200,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(String,  FOpenedStoredSessionFolders); \
     KEY(Bool,    FUseLocationProfiles); \
     KEY(Bool,    FUseSharedBookmarks); \
+    KEYEX(Enum,  FDDTransferConfirmation, L"DDTransferConfirmation2"); \
+    KEY(Bool,    FDDFakeFile); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \
@@ -533,6 +539,16 @@ void TAppConfiguration::SetUseLocationProfiles(bool value)
 void TAppConfiguration::SetUseSharedBookmarks(bool value)
 {
   SET_CONFIG_PROPERTY(UseSharedBookmarks);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetDDTransferConfirmation(TAutoSwitch value)
+{
+  SET_CONFIG_PROPERTY(DDTransferConfirmation);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetDDFakeFile(bool value)
+{
+  SET_CONFIG_PROPERTY(DDFakeFile);
 }
 //---------------------------------------------------------------------------
 TBookmarkList * TAppConfiguration::GetBookmarks(UnicodeString Key)

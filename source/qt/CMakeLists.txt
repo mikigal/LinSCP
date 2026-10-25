@@ -42,6 +42,7 @@ add_library(openscp_qt STATIC
   views/ScpCommander.cpp
   views/ScpCommanderBookmarks.cpp
   views/ScpCommanderCustomCommands.cpp
+  views/ScpCommanderDragDrop.cpp
   views/ScpCommanderEditor.cpp
   views/ScpCommanderQueue.cpp
   views/ScpCommanderSynchronize.cpp)

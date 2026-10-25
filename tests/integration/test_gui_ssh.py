@@ -63,7 +63,9 @@ def site_ini(name='local', port=None, remote=None, local=None):
     return '\n'.join(lines) + '\n'
 
 
-class GuiSshTest(GuiTestCase):
+class GuiSshTestCase(GuiTestCase):
+    """The helpers of the tests with the local sshd (also of other modules)."""
+
     def login(self, gui, site, accept_host_key=True):
         gui.wait_window('LoginDialog')
         gui.select('LoginDialog/SessionTree', site)
@@ -89,6 +91,8 @@ class GuiSshTest(GuiTestCase):
         gui.wait_no_window('CopyDialog')
         gui.wait_idle()
 
+
+class GuiSshTest(GuiSshTestCase):
     def test_new_site_with_agent(self):
         socket = self.session.dir / 'agent.sock'
         agent = subprocess.run(['ssh-agent', '-a', str(socket), '-s'], capture_output=True, text=True, check=True)

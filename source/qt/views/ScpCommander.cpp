@@ -55,6 +55,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FQueueItemInvalidated = false;
   FQueueStatusUpdating = false;
   FPendingQueueActionItem = NULL;
+  FDragSourcePanel = NULL;
+  FDragging = false;
   CreateEditorManager();
 
   // The file panels, the queue below them
@@ -88,6 +90,12 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     Panel->OnRename = [this](TDirPanel * APanel, const UnicodeString & FileName, const UnicodeString & NewName)
     {
       RenameFile(APanel, FileName, NewName);
+    };
+    Panel->OnStartDrag = [this](TDirPanel * APanel) { PanelStartDrag(APanel); };
+    Panel->OnDragOver = [this](TDirPanel * APanel, const TDropParams & Params) { return PanelDragOver(APanel, Params); };
+    Panel->OnDrop = [this](TDirPanel * APanel, const TDropParams & Params, Qt::DropAction Action)
+    {
+      PanelDrop(APanel, Params, Action);
     };
     QTreeView * DirView = Panel->GetDirView();
     DirView->installEventFilter(this);
@@ -720,8 +728,30 @@ TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel, bool FullPath)
   return Result.release();
 }
 //---------------------------------------------------------------------------
+void TScpCommanderForm::HandleDoNotShowCopyDialogAgain(bool DragDrop, bool DoNotShowAgain)
+{
+  if (DoNotShowAgain)
+  {
+    if (DragDrop)
+    {
+      AppConfiguration->DDTransferConfirmation = asOff;
+    }
+    else
+    {
+      AppConfiguration->ConfirmTransferring = false;
+    }
+  }
+  // User explicitly unchecked "do not show again",
+  // so show him the dialog the next time
+  else if (DragDrop && (AppConfiguration->DDTransferConfirmation == asAuto))
+  {
+    AppConfiguration->DDTransferConfirmation = asOn;
+  }
+}
+//---------------------------------------------------------------------------
 bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferType Type,
-  TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm)
+  TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm,
+  bool DragDrop)
 {
   bool Result = true;
   TTerminal * Terminal = GetTerminal();
@@ -740,13 +770,14 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
     int CopyParamAttrs = (Direction == tdToRemote ?
       UsableCopyParamAttrs.Upload : UsableCopyParamAttrs.Download) |
       FLAGMASK(DisableNewerOnly, cpaNoNewerOnly);
-    int OutputOptions = 0;
+    int OutputOptions =
+      FLAGMASK(DragDrop && (AppConfiguration->DDTransferConfirmation == asAuto), cooDoNotShowAgain);
     Result = DoCopyDialog(Direction == tdToRemote, Type == ttMove,
       FileList, TargetDirectory, &CopyParam, Options, CopyParamAttrs, &OutputOptions);
 
-    if (Result && FLAGSET(OutputOptions, cooDoNotShowAgain))
+    if (Result)
     {
-      AppConfiguration->ConfirmTransferring = false;
+      HandleDoNotShowCopyDialogAgain(DragDrop, FLAGSET(OutputOptions, cooDoNotShowAgain));
     }
   }
 
@@ -794,16 +825,18 @@ void TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation)
   }
 }
 //---------------------------------------------------------------------------
-bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList)
+bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList,
+  const TTransferOperationParam & Param)
 {
   TTerminal * Terminal = GetTerminal();
   bool ToRemote = (Side == osLocal);
   TDirPanel * Target = ToRemote ? static_cast<TDirPanel *>(FRemotePanel) : static_cast<TDirPanel *>(FLocalPanel);
   TTransferDirection Direction = (ToRemote ? tdToRemote : tdToLocal);
   TTransferType Type = (Operation == foCopy ? ttCopy : ttMove);
-  UnicodeString TargetDirectory = Target->GetPath();
+  UnicodeString TargetDirectory = Param.TargetDirectory.IsEmpty() ? Target->GetPath() : Param.TargetDirectory;
   TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
-  bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, true);
+  bool Confirm = !Param.DragDrop || (AppConfiguration->DDTransferConfirmation != asOff);
+  bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, Confirm, Param.DragDrop);
   if (Result)
   {
     int Params = FLAGMASK(Operation == foMove, cpDelete);
@@ -854,7 +887,6 @@ bool TScpCommanderForm::RemoteTransferDialog(TStrings * FileList, UnicodeString 
   TTerminal * Terminal = GetTerminal();
   // A single session: it is the target
   void * Session = Terminal;
-  Target = UnixIncludeTrailingBackslash(FRemotePanel->GetPath());
   if (FileList->Count == 1)
   {
     FileMask = DelimitFileNameMask(UnixExtractFileName(FileList->Strings[0]));
@@ -961,12 +993,15 @@ void TScpCommanderForm::TemporarilyDownloadFiles(TStrings * FileList, bool Force
   }
 }
 //---------------------------------------------------------------------------
-bool TScpCommanderForm::RemoteTransferFiles(TStrings * FileList, bool Move)
+bool TScpCommanderForm::RemoteTransferFiles(TStrings * FileList, bool Move,
+  const UnicodeString & TargetDirectory, bool NoConfirmation)
 {
   TTerminal * Terminal = GetTerminal();
-  bool DirectCopy;
-  UnicodeString Target, FileMask;
-  bool Result = RemoteTransferDialog(FileList, Target, FileMask, DirectCopy, Move);
+  UnicodeString Target =
+    UnixIncludeTrailingBackslash(TargetDirectory.IsEmpty() ? FRemotePanel->GetPath() : TargetDirectory);
+  UnicodeString FileMask = AnyMask;
+  bool DirectCopy = Terminal->IsCapable[fcRemoteCopy] || Terminal->IsCapable[fcSecondaryShell];
+  bool Result = NoConfirmation || RemoteTransferDialog(FileList, Target, FileMask, DirectCopy, Move);
   if (Result)
   {
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });

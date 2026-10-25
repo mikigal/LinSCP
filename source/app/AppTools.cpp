@@ -151,6 +151,17 @@ UnicodeString __fastcall UniqTempDir(const UnicodeString BaseDir, const UnicodeS
   return TempDir;
 }
 //---------------------------------------------------------------------------
+bool IsKdeDesktop()
+{
+  // A colon-separated list, e.g. "KDE" or "ubuntu:GNOME"
+  const char * Desktops = getenv("XDG_CURRENT_DESKTOP");
+  std::unique_ptr<TStringList> List(new TStringList());
+  List->Delimiter = L':';
+  List->StrictDelimiter = true;
+  List->DelimitedText = UnicodeString((Desktops != NULL) ? Desktops : "");
+  return (List->IndexOf(L"KDE") >= 0);
+}
+//---------------------------------------------------------------------------
 static bool __fastcall IsEligibleForApplyingTabs(
   UnicodeString Line, int & TabPos, UnicodeString & Start, UnicodeString & Remaining)
 {

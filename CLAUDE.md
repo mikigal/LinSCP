@@ -57,7 +57,10 @@ tools/wlharness/wlharness.py -s "$S" stop
 Logs of every process are in `$S/logs/`. `wlh-input` injects real compositor input through
 `org_kde_kwin_fake_input` (required for drag & drop); `wlh-probe` is a peer window that logs
 mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tests use
-`wlharness.Session` directly (see `tests/integration/test_wlharness.py`).
+`wlharness.Session` directly (see `tests/integration/test_wlharness.py`). Other applications
+are inspected over AT-SPI: `Session.start_accessibility()`, then start them with
+`wlharness.ACCESSIBILITY_ENV` and find their widgets with `Session.accessibles` (window
+coordinates); `tools/testenv/dolphin.py` drives Dolphin this way.
 
 ## Test servers (`tools/testenv`)
 

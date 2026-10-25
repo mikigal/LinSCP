@@ -9,6 +9,7 @@
 
 #include <CopyParam.h>
 
+#include <QTreeView>
 #include <QWidget>
 
 #include <functional>
@@ -16,19 +17,64 @@
 //---------------------------------------------------------------------------
 class QAction;
 class QComboBox;
+class QDropEvent;
 class QFileSystemWatcher;
 class QLabel;
 class QMenu;
+class QMimeData;
 class QModelIndex;
 class QStackedWidget;
 class QTimer;
 class QToolBar;
-class QTreeView;
 class TDirModel;
+class TDirPanel;
 class TLocalDirModel;
 class TRemoteDirModel;
 class TRemoteFile;
 class TTerminal;
+//---------------------------------------------------------------------------
+// The files of a panel: dragging the selected files, dropping on the view
+// or on its directories (the target, highlighted)
+class TDirView : public QTreeView
+{
+  Q_OBJECT
+
+public:
+  explicit TDirView(TDirPanel * Panel);
+
+  TDirPanel * GetPanel() const { return FPanel; }
+
+protected:
+  virtual void startDrag(Qt::DropActions SupportedActions) override;
+  virtual void dragEnterEvent(QDragEnterEvent * Event) override;
+  virtual void dragMoveEvent(QDragMoveEvent * Event) override;
+  virtual void dragLeaveEvent(QDragLeaveEvent * Event) override;
+  virtual void dropEvent(QDropEvent * Event) override;
+  virtual void drawRow(QPainter * Painter, const QStyleOptionViewItem & Option, const QModelIndex & Index) const override;
+
+private:
+  TDirPanel * FPanel;
+  int FDropTargetRow;
+
+  // The directory the files would be dropped to (the parent directory or
+  // a directory under the pointer, else the panel's), with its row
+  UnicodeString DropTarget(QDropEvent * Event, int & Row);
+  void SetDropTargetRow(int Row);
+};
+//---------------------------------------------------------------------------
+// What a drop on a panel would do; the action is Qt::IgnoreAction when the
+// files cannot be dropped there
+struct TDropParams
+{
+  const QMimeData * Data;
+  // The panel the files are dragged from, or NULL (another application)
+  TDirPanel * SourcePanel;
+  Qt::DropActions PossibleActions;
+  Qt::DropAction ProposedAction;
+  Qt::KeyboardModifiers Modifiers;
+  UnicodeString TargetDirectory;
+  bool OnDirectory;
+};
 //---------------------------------------------------------------------------
 class TDirPanel : public QWidget
 {
@@ -62,6 +108,15 @@ public:
   void UpdateStatusBar();
   // The visited directories
   const std::vector<UnicodeString> & GetHistory() const { return FHistory; }
+  // The full path of the directory of a row (".." is the parent directory)
+  UnicodeString RowDirectory(int Row) const;
+
+  // Drag and drop, done by the main window: a drag of the selected files
+  // starts; the action of a drop of the data on the panel; the files are
+  // dropped
+  std::function<void(TDirPanel * Panel)> OnStartDrag;
+  std::function<Qt::DropAction(TDirPanel * Panel, const TDropParams & Params)> OnDragOver;
+  std::function<void(TDirPanel * Panel, const TDropParams & Params, Qt::DropAction Action)> OnDrop;
 
 Q_SIGNALS:
   // The panel got the focus (it is the current panel)
@@ -79,7 +134,7 @@ Q_SIGNALS:
 protected:
   QToolBar * PathToolbar;
   QComboBox * PathComboBox;
-  QTreeView * DirView;
+  TDirView * DirView;
   QLabel * StatusBar;
   QAction * BackAction;
   QAction * ForwardAction;

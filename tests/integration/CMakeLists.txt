@@ -65,6 +65,16 @@ if(OPENSCP_BUILD_HARNESS)
       RUN_SERIAL TRUE
       TIMEOUT 600)
 
+    # The desktop integration: drag and drop, the clipboard, with Dolphin
+    add_test(NAME integration.gui_desktop
+      COMMAND Python3::Interpreter -m unittest -v test_gui_desktop
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(integration.gui_desktop PROPERTIES
+      LABELS "integration;gui;ssh"
+      ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;WLH_PROBE=$<TARGET_FILE:wlh-probe>;OPENSCP_GUI=$<TARGET_FILE:openscp>;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+      RUN_SERIAL TRUE
+      TIMEOUT 600)
+
     # The GUI against the test VM (skipped without OPENSCP_TEST_VM)
     add_test(NAME integration.gui_vm
       COMMAND Python3::Interpreter -m unittest -v test_gui_vm

@@ -84,6 +84,12 @@ Qt::ItemFlags TDirModel::flags(const QModelIndex & Index) const
   {
     Result |= Qt::ItemIsEditable;
   }
+  // The files can be dragged (the view drags the selected files), the
+  // parent directory cannot
+  if (Index.isValid() && (Index.row() < Count()) && !FItems[Index.row()].IsParentDirectory)
+  {
+    Result |= Qt::ItemIsDragEnabled;
+  }
   return Result;
 }
 //---------------------------------------------------------------------------

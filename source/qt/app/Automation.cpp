@@ -209,6 +209,18 @@ QJsonArray DescribeRows(QAbstractItemView * View, const QModelIndex & Parent, in
     {
       Item[QStringLiteral("hidden")] = true;
     }
+    // Of the first column, in the client area of the window, when shown
+    QRect Rect = View->visualRect(Index);
+    if (Rect.isValid() && Rect.intersects(View->viewport()->rect()))
+    {
+      QPoint Position = View->viewport()->mapTo(View->window(), Rect.topLeft());
+      QJsonObject Geometry;
+      Geometry[QStringLiteral("x")] = Position.x();
+      Geometry[QStringLiteral("y")] = Position.y();
+      Geometry[QStringLiteral("width")] = Rect.width();
+      Geometry[QStringLiteral("height")] = Rect.height();
+      Item[QStringLiteral("rect")] = Geometry;
+    }
     if (Model->hasChildren(Index))
     {
       if (Tree != nullptr)

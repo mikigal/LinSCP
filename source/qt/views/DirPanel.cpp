@@ -12,6 +12,10 @@
 #include <QAction>
 #include <QComboBox>
 #include <QDir>
+#include <QDragEnterEvent>
+#include <QDragLeaveEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 #include <QEvent>
 #include <QFileSystemWatcher>
 #include <QHeaderView>
@@ -40,6 +44,142 @@ public:
     return Editor;
   }
 };
+//---------------------------------------------------------------------------
+TDirView::TDirView(TDirPanel * Panel) :
+  QTreeView(Panel),
+  FPanel(Panel),
+  FDropTargetRow(-1)
+{
+  setDragEnabled(true);
+  setAcceptDrops(true);
+  setDragDropMode(QAbstractItemView::DragDrop);
+  setDropIndicatorShown(false);
+}
+//---------------------------------------------------------------------------
+void TDirView::startDrag(Qt::DropActions /*SupportedActions*/)
+{
+  if (FPanel->OnStartDrag)
+  {
+    FPanel->OnStartDrag(FPanel);
+  }
+}
+//---------------------------------------------------------------------------
+UnicodeString TDirView::DropTarget(QDropEvent * Event, int & Row)
+{
+  Row = -1;
+  QModelIndex Index = indexAt(Event->position().toPoint());
+  const TDirModel * Model = FPanel->GetModel();
+  if (Index.isValid() && (Index.row() < Model->Count()) && Model->Item(Index.row()).IsDirectory)
+  {
+    Row = Index.row();
+    return FPanel->RowDirectory(Row);
+  }
+  return FPanel->GetPath();
+}
+//---------------------------------------------------------------------------
+static TDropParams DropParams(QDropEvent * Event, const UnicodeString & TargetDirectory, bool OnDirectory)
+{
+  TDropParams Result;
+  Result.Data = Event->mimeData();
+  TDirView * SourceView = qobject_cast<TDirView *>(Event->source());
+  Result.SourcePanel = (SourceView != nullptr) ? SourceView->GetPanel() : nullptr;
+  Result.PossibleActions = Event->possibleActions();
+  Result.ProposedAction = Event->proposedAction();
+  Result.Modifiers = Event->modifiers();
+  Result.TargetDirectory = TargetDirectory;
+  Result.OnDirectory = OnDirectory;
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TDirView::dragEnterEvent(QDragEnterEvent * Event)
+{
+  dragMoveEvent(Event);
+  // A widget that ignores the enter gets no moves, while the files may be
+  // dropped elsewhere on the view (a drag starts over its own files)
+  if (!Event->isAccepted() && FPanel->IsReady() && FPanel->OnDragOver)
+  {
+    Event->setDropAction(Qt::IgnoreAction);
+    Event->accept();
+  }
+}
+//---------------------------------------------------------------------------
+void TDirView::dragMoveEvent(QDragMoveEvent * Event)
+{
+  // Scrolls near the edges
+  QTreeView::dragMoveEvent(Event);
+  int Row;
+  UnicodeString TargetDirectory = DropTarget(Event, Row);
+  Qt::DropAction Action = Qt::IgnoreAction;
+  if (FPanel->IsReady() && FPanel->OnDragOver)
+  {
+    Action = FPanel->OnDragOver(FPanel, DropParams(Event, TargetDirectory, (Row >= 0)));
+  }
+  if (Action != Qt::IgnoreAction)
+  {
+    Event->setDropAction(Action);
+    Event->accept();
+    SetDropTargetRow(Row);
+  }
+  else
+  {
+    Event->ignore();
+    SetDropTargetRow(-1);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirView::dragLeaveEvent(QDragLeaveEvent * Event)
+{
+  QTreeView::dragLeaveEvent(Event);
+  SetDropTargetRow(-1);
+}
+//---------------------------------------------------------------------------
+void TDirView::dropEvent(QDropEvent * Event)
+{
+  SetDropTargetRow(-1);
+  int Row;
+  UnicodeString TargetDirectory = DropTarget(Event, Row);
+  TDropParams Params = DropParams(Event, TargetDirectory, (Row >= 0));
+  Qt::DropAction Action = Qt::IgnoreAction;
+  if (FPanel->IsReady() && FPanel->OnDragOver)
+  {
+    Action = FPanel->OnDragOver(FPanel, Params);
+  }
+  if ((Action != Qt::IgnoreAction) && FPanel->OnDrop)
+  {
+    Event->setDropAction(Action);
+    Event->accept();
+    FPanel->OnDrop(FPanel, Params, Action);
+  }
+  else
+  {
+    Event->ignore();
+  }
+  stopAutoScroll();
+  setState(NoState);
+}
+//---------------------------------------------------------------------------
+void TDirView::SetDropTargetRow(int Row)
+{
+  if (FDropTargetRow != Row)
+  {
+    FDropTargetRow = Row;
+    viewport()->update();
+  }
+}
+//---------------------------------------------------------------------------
+void TDirView::drawRow(QPainter * Painter, const QStyleOptionViewItem & Option, const QModelIndex & Index) const
+{
+  if (Index.row() == FDropTargetRow)
+  {
+    QStyleOptionViewItem DropOption(Option);
+    DropOption.state |= QStyle::State_Selected;
+    QTreeView::drawRow(Painter, DropOption, Index);
+  }
+  else
+  {
+    QTreeView::drawRow(Painter, Option, Index);
+  }
+}
 //---------------------------------------------------------------------------
 TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   QWidget(Parent),
@@ -103,7 +243,7 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   AddBookmarkAction2 = CreateAction(Prefix + QStringLiteral("AddBookmarkAction2"), tr("&Add Path to Bookmarks"),
     QStringLiteral("bookmark-new"), QKeySequence(Qt::CTRL | Qt::Key_B), &TDirPanel::AddBookmarkActionExecute);
 
-  DirView = new QTreeView(this);
+  DirView = new TDirView(this);
   DirView->setObjectName(Prefix + QStringLiteral("DirView"));
   DirView->setRootIsDecorated(false);
   DirView->setItemsExpandable(false);
@@ -394,6 +534,18 @@ std::vector<int> TDirPanel::GetSelectedRows() const
     std::sort(Result.begin(), Result.end());
   }
   return Result;
+}
+//---------------------------------------------------------------------------
+UnicodeString TDirPanel::RowDirectory(int Row) const
+{
+  const TDirViewItem & Item = FModel->Item(Row);
+  UnicodeString Path = GetPath();
+  if (Item.IsParentDirectory)
+  {
+    UnicodeString Parent = UnixExtractFileDir(Path);
+    return Parent.IsEmpty() ? UnicodeString(L"/") : Parent;
+  }
+  return UnixIncludeTrailingBackslash(Path) + Item.FileName;
 }
 //---------------------------------------------------------------------------
 void TDirPanel::SetShowHiddenFiles(bool Value)
