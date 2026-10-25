@@ -155,6 +155,27 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   SaveCurrentSessionAction2 = CreateAction("SaveCurrentSessionAction2", tr("&Save Session as Site..."),
     QStringLiteral("document-save"), {}, &TScpCommanderForm::SaveCurrentSessionActionExecute);
   SaveCurrentSessionAction2->setToolTip(tr("Save current session as site"));
+  SaveWorkspaceAction = CreateAction("SaveWorkspaceAction", tr("Save Wor&kspace..."), QStringLiteral("document-save-all"),
+    {}, &TScpCommanderForm::SaveWorkspaceActionExecute);
+  SaveWorkspaceAction->setToolTip(tr("Save workspace"));
+  SiteManagerAction = CreateAction("SiteManagerAction", tr("Site &Manager..."), QString(),
+    {}, &TScpCommanderForm::NewSessionActionExecute);
+  SiteManagerAction->setToolTip(tr("Opens site manager"));
+  SessionsTabsAction2 = CreateAction("SessionsTabsAction2", tr("T&abs"), QString(),
+    {}, &TScpCommanderForm::SessionsTabsActionExecute);
+  SessionsTabsAction2->setToolTip(tr("Hide/show tabs"));
+  SessionsTabsAction2->setCheckable(true);
+  SessionsTabsAction2->setChecked(AppConfiguration->SessionsTabs);
+  SessionsPageControl->setVisible(AppConfiguration->SessionsTabs);
+  for (int Index = 0; Index < 10; Index++)
+  {
+    QAction * Action = new QAction(this);
+    Action->setObjectName(QStringLiteral("OpenedTabAction%1").arg(Index + 1));
+    Action->setShortcut(QKeySequence(Qt::ALT | static_cast<Qt::Key>((Index < 9) ? (Qt::Key_1 + Index) : Qt::Key_0)));
+    addAction(Action);
+    connect(Action, &QAction::triggered, this, [this, Index]() { ExecuteHandler([this, Index]() { OpenedTabActionExecute(Index); }); });
+    FOpenedTabActions.push_back(Action);
+  }
   CloseApplicationAction = CreateAction("CloseApplicationAction", tr("&Quit"), QStringLiteral("application-exit"),
     { QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Q) }, &TScpCommanderForm::CloseApplicationActionExecute);
   CurrentCopyAction = CreateAction("CurrentCopyAction", tr("&Copy..."), QStringLiteral("edit-copy"),
@@ -405,10 +426,30 @@ void TScpCommanderForm::CreateMenus()
     OpenedTabsMenu->clear();
     CreateOpenedTabsMenu(OpenedTabsMenu);
   });
+  QMenu * WorkspacesMenu = TabsMenu->addMenu(tr("&Workspaces"));
+  WorkspacesMenu->setObjectName(QStringLiteral("WorkspacesMenu"));
+  connect(WorkspacesMenu, &QMenu::aboutToShow, this, [this, WorkspacesMenu]()
+  {
+    WorkspacesMenu->clear();
+    ExecuteHandler([this, WorkspacesMenu]() { CreateWorkspacesMenu(WorkspacesMenu); });
+  });
+  TabsMenu->addAction(SaveWorkspaceAction);
+  TabsMenu->addSeparator();
+  QMenu * SavedSessionsMenu = TabsMenu->addMenu(tr("Si&tes"));
+  SavedSessionsMenu->setObjectName(QStringLiteral("SavedSessionsMenu"));
+  connect(SavedSessionsMenu, &QMenu::aboutToShow, this, [this, SavedSessionsMenu]()
+  {
+    ExecuteHandler([this, SavedSessionsMenu]()
+    {
+      StoredSessions->Reload();
+      CreateSessionListMenuLevel(SavedSessionsMenu, 0, 0);
+    });
+  });
 
   QMenu * OptionsMenu = Menu->addMenu(tr("&Options"));
   OptionsMenu->setObjectName(QStringLiteral("OptionsMenu"));
   OptionsMenu->addAction(ShowHiddenFilesAction);
+  OptionsMenu->addAction(SessionsTabsAction2);
   QMenu * QueueViewMenu = OptionsMenu->addMenu(tr("&Queue"));
   QueueViewMenu->setObjectName(QStringLiteral("QueueViewMenu"));
   QueueViewMenu->addActions(FQueueShowGroup->actions());
@@ -529,6 +570,8 @@ void TScpCommanderForm::UpdateActions()
   ReconnectSessionAction->setEnabled(!Busy && HasSession && !Connected);
   ReconnectSessionAction->setVisible(HasSession && !Connected);
   SaveCurrentSessionAction2->setEnabled(!Busy && HasSession);
+  SaveWorkspaceAction->setEnabled(!Busy && HasSession);
+  SiteManagerAction->setEnabled(!Busy);
   bool CanTransfer = !Busy && HasSelection && Connected && OtherPanel(FCurrentPanel)->IsReady();
   CurrentCopyAction->setEnabled(CanTransfer);
   CurrentMoveAction->setEnabled(CanTransfer);
@@ -724,7 +767,16 @@ void TScpCommanderForm::CloseApplicationActionExecute()
 void TScpCommanderForm::closeEvent(QCloseEvent * Event)
 {
   // The operation in progress is to be cancelled first
-  if (IsBusy() || !CanCloseQueue() || !CloseEditors())
+  bool CanClose = false;
+  ExecuteHandler([&]()
+  {
+    CanClose = !IsBusy() && CanCloseSessions() && CloseEditors();
+    if (CanClose)
+    {
+      SessionsClosing();
+    }
+  });
+  if (!CanClose)
   {
     Event->ignore();
   }

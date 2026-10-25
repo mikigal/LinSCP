@@ -233,6 +233,11 @@ private:
   QAction * DisconnectSessionAction;
   QAction * ReconnectSessionAction;
   QAction * SaveCurrentSessionAction2;
+  QAction * SaveWorkspaceAction;
+  QAction * SiteManagerAction;
+  QAction * SessionsTabsAction2;
+  // Alt+1..9, Alt+0 activate the tabs (upstream's OpenSessionShortCut)
+  std::vector<QAction *> FOpenedTabActions;
   QAction * CloseApplicationAction;
   QAction * CurrentCopyAction;
   QAction * CurrentMoveAction;
@@ -354,6 +359,26 @@ private:
   void DetachTerminal(TTerminal * ATerminal);
   TSessionData * CloneCurrentSessionData();
   void CreateOpenedTabsMenu(QMenu * Menu);
+  // The workspaces and the sites (ScpCommanderSessions.cpp)
+  UnicodeString WorkspaceName();
+  TObjectList * DoCollectWorkspace();
+  void DoSaveWorkspace(const UnicodeString & Name, TObjectList * DataList, bool SavePasswords, bool Explicit);
+  bool SaveWorkspace(bool EnableAutoSave);
+  void OpenStoredSession(TSessionData * Data);
+  void OpenFolderOrWorkspace(const UnicodeString & Name);
+  void DoOpenFolderOrWorkspace(const UnicodeString & Name, bool ConnectFirstTerminal, bool CheckMaxSessions);
+  void CreateWorkspacesMenu(QMenu * Menu);
+  // The sites of a folder (the index of its first site and its level),
+  // the folders in submenus
+  void CreateSessionListMenuLevel(QMenu * Menu, int Index, int Level);
+  // The sessions can be closed with the application (confirmed, their
+  // queues abandoned), upstream's FormCloseQuery
+  bool CanCloseSessions();
+  // The workspace is saved automatically (upstream's FormClose)
+  void SessionsClosing();
+  void SaveWorkspaceActionExecute();
+  void SessionsTabsActionExecute();
+  void OpenedTabActionExecute(int Index);
   void NewSessionActionExecute() { NewSession(); }
   void CloseTabActionExecute();
   void DuplicateTabActionExecute();

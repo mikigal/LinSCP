@@ -448,6 +448,121 @@ TSessionData * DoSaveSession(TSessionData * SessionData,
   return NewSession;
 }
 //---------------------------------------------------------------------------
+class TSaveWorkspaceDialog : public TCustomDialog
+{
+public:
+  TSaveWorkspaceDialog(bool CanSavePasswords, bool NotRecommendedSavingPasswords);
+
+  bool Execute(
+    UnicodeString & WorkspaceName, bool & SavePasswords, bool & CreateShortcut,
+    bool & EnableAutoSave);
+
+protected:
+  virtual void DoValidate() override;
+  virtual void DoChange(bool & CanSubmit) override;
+
+private:
+  QComboBox * WorkspaceNameCombo;
+  QCheckBox * SavePasswordsCheck;
+  QCheckBox * CreateShortcutCheck;
+  QCheckBox * EnableAutoSaveCheck;
+};
+//---------------------------------------------------------------------------
+TSaveWorkspaceDialog::TSaveWorkspaceDialog(
+    bool CanSavePasswords, bool NotRecommendedSavingPasswords)
+{
+  setObjectName(QStringLiteral("SaveWorkspaceDialog"));
+  setWindowTitle(ToQString(LoadStr(SAVE_WORKSPACE_CAPTION)));
+
+  WorkspaceNameCombo = new QComboBox(this);
+  WorkspaceNameCombo->setObjectName(QStringLiteral("WorkspaceNameCombo"));
+  WorkspaceNameCombo->setEditable(true);
+  WorkspaceNameCombo->setInsertPolicy(QComboBox::NoInsert);
+  WorkspaceNameCombo->setCompleter(nullptr);
+  AddEditLikeControl(WorkspaceNameCombo, CreateLabel(LoadStr(SAVE_WORKSPACE_PROMPT)));
+
+  std::unique_ptr<TStrings> Workspaces(StoredSessions->GetWorkspaces());
+  for (int Index = 0; Index < Workspaces->Count; Index++)
+  {
+    WorkspaceNameCombo->addItem(ToQString(Workspaces->Strings[Index]));
+  }
+
+  SavePasswordsCheck = CreateAndAddCheckBox(
+    LoadStr(NotRecommendedSavingPasswords ? SAVE_WORKSPACE_PASSWORDS :
+      (AppConfiguration->UseMasterPassword ?
+        SAVE_WORKSPACE_PASSWORDS_MASTER : SAVE_WORKSPACE_PASSWORDS_RECOMMENDED)));
+  SavePasswordsCheck->setObjectName(QStringLiteral("SavePasswordsCheck"));
+  SavePasswordsCheck->setEnabled(CanSavePasswords);
+
+  CreateShortcutCheck = CreateAndAddCheckBox(LoadStr(SAVE_SITE_WORKSPACE_SHORTCUT));
+  CreateShortcutCheck->setObjectName(QStringLiteral("CreateShortcutCheck"));
+
+  EnableAutoSaveCheck = CreateAndAddCheckBox(LoadStr(SAVE_WORKSPACE_AUTO));
+  EnableAutoSaveCheck->setObjectName(QStringLiteral("EnableAutoSaveCheck"));
+  setMinimumWidth(fontMetrics().averageCharWidth() * 50);
+}
+//---------------------------------------------------------------------------
+bool TSaveWorkspaceDialog::Execute(
+  UnicodeString & WorkspaceName, bool & SavePasswords, bool & CreateShortcut,
+  bool & EnableAutoSave)
+{
+  WorkspaceNameCombo->setEditText(ToQString(WorkspaceName));
+  SavePasswordsCheck->setChecked(SavePasswords);
+  CreateShortcutCheck->setChecked(CreateShortcut);
+  EnableAutoSaveCheck->setChecked(EnableAutoSave);
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    WorkspaceName = ToUnicodeString(WorkspaceNameCombo->currentText());
+    SavePasswords = SavePasswordsCheck->isChecked();
+    CreateShortcut = CreateShortcutCheck->isChecked();
+    EnableAutoSave = EnableAutoSaveCheck->isChecked();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TSaveWorkspaceDialog::DoValidate()
+{
+  UnicodeString Name = ToUnicodeString(WorkspaceNameCombo->currentText());
+  TSessionData::ValidateName(Name);
+
+  if (StoredSessions->IsFolder(Name))
+  {
+    throw Exception(FMTLOAD(FOLDER_NOT_WORKSPACE, (Name)));
+  }
+
+  if (SavePasswordsCheck->isEnabled() && SavePasswordsCheck->isChecked() &&
+      AppConfiguration->UseMasterPassword)
+  {
+    AppConfiguration->AskForMasterPasswordIfNotSet();
+  }
+
+  TCustomDialog::DoValidate();
+}
+//---------------------------------------------------------------------------
+void TSaveWorkspaceDialog::DoChange(bool & CanSubmit)
+{
+  CanSubmit = !WorkspaceNameCombo->currentText().isEmpty();
+
+  TCustomDialog::DoChange(CanSubmit);
+}
+//---------------------------------------------------------------------------
+bool DoSaveWorkspaceDialog(UnicodeString & WorkspaceName,
+  bool * SavePasswords, bool NotRecommendedSavingPasswords,
+  bool & CreateShortcut, bool & EnableAutoSave)
+{
+  TSaveWorkspaceDialog Dialog((SavePasswords != NULL), NotRecommendedSavingPasswords);
+
+  bool Dummy = false;
+  if (SavePasswords == NULL)
+  {
+    SavePasswords = &Dummy;
+  }
+  return
+    Dialog.Execute(
+      WorkspaceName, *SavePasswords, CreateShortcut, EnableAutoSave);
+}
+//---------------------------------------------------------------------------
 void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName)
 {
   TSessionData::ValidatePath(Text);

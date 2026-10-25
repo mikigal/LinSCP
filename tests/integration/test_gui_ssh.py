@@ -1268,6 +1268,115 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the remaining session')
         self.assertEqual(gui.quit(), 0)
 
+    def open_menu(self, gui, menu):
+        """Opens a menu of the menu bar with the real input."""
+        menus = gui.get(W + 'MenuToolbar')['menus']
+        rect = next(item['rect'] for item in menus if item['name'] == menu)
+        x, y = gui.client_origin('ScpCommanderForm')
+        self.session.input('move', x + rect['x'] + rect['width'] // 2, y + rect['y'] + rect['height'] // 2, 'click')
+        gui.wait_window(menu)
+
+    def message_text(self, gui):
+        return ' '.join(child.get('text', '') for child in gui.get('MessageForm', children=True)['children'])
+
+    def test_workspaces(self):
+        one = self.work_dir('one')
+        two = self.work_dir('two')
+        (two / 'dir').mkdir()
+        gui = self.start_gui(ini=site_ini('first', remote=one) + site_ini('second', remote=two))
+        tabs = W + 'SessionsPageControl'
+        remote_path = W + 'RemotePathComboBox'
+        self.login(gui, 'first')
+        gui.trigger(W + 'NewSessionAction')
+        gui.wait_window('LoginDialog')
+        gui.select('LoginDialog/SessionTree', 'second')
+        gui.click('LoginDialog/LoginButton')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), 60, 'the second session')
+        gui.wait_idle()
+        gui.activate(W + 'RemoteDirView', 'dir')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), what='the subdirectory')
+
+        # The sessions saved as a workspace, with a desktop shortcut
+        gui.trigger(W + 'SaveWorkspaceAction')
+        gui.wait_window('SaveWorkspaceDialog')
+        D = 'SaveWorkspaceDialog/'
+        self.assertEqual(gui.get(D + 'WorkspaceNameCombo')['text'], 'My Workspace')
+        self.assertFalse(gui.get(D + 'EnableAutoSaveCheck')['checked'])
+        gui.set(D + 'WorkspaceNameCombo', 'work')
+        gui.set(D + 'CreateShortcutCheck', True)
+        gui.click(D + 'OKButton')
+        gui.wait_no_window('SaveWorkspaceDialog')
+        ini = gui.config_file.read_text()
+        self.assertIn('[Sessions\\work/0000]', ini)
+        self.assertIn('[Sessions\\work/0001]', ini)
+        self.assertIn('RemoteDirectory=%s' % (two / 'dir'), ini)
+        shortcut = gui.home / 'Desktop' / 'work.desktop'
+        entry = shortcut.read_text()
+        self.assertIn('Name=work\n', entry)
+        self.assertRegex(entry, r'\nExec="[^"]*openscp" "work"\n')
+        self.assertTrue(os.access(shortcut, os.X_OK))
+
+        # Once the tabs are closed, the site manager has the workspace
+        gui.trigger(W + 'CloseTabAction')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', ''], what='the closed tab')
+        gui.trigger(W + 'CloseTabAction')
+        gui.wait_window('LoginDialog')
+        self.assertIn('work', gui.names('LoginDialog/SessionTree'))
+        gui.click('LoginDialog/CloseButton')
+        gui.wait_no_window('LoginDialog')
+
+        # Opened from the menu: the first session connects, the other one
+        # once its tab is shown, in its directory
+        self.open_menu(gui, 'TabsMenu')
+        gui.trigger('TabsMenu/WorkspacesMenu')
+        gui.wait_window('WorkspacesMenu')
+        gui.trigger('WorkspacesMenu/Workspace0')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], 60, 'the workspace')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), 60, 'its first session')
+        gui.wait_idle()
+        self.assertEqual(gui.get(tabs)['index'], 0)
+        gui.set(tabs, 1)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), 60, 'its second session')
+        gui.wait_idle()
+
+        # A site from the menu opens in a new tab
+        self.open_menu(gui, 'TabsMenu')
+        gui.trigger('TabsMenu/SavedSessionsMenu')
+        gui.wait_window('SavedSessionsMenu')
+        items = gui.get('SavedSessionsMenu', children=True)['children']
+        site = next(item['name'] for item in items if item.get('text') == 'second')
+        gui.trigger('SavedSessionsMenu/' + site)
+        # The site remembers its last directory (of its closed session)
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second (dir)', 'second (dir)', ''], 60,
+                     'the site in a new tab')
+        self.assertEqual(gui.get(tabs)['index'], 2)
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), 60, 'the site')
+
+        # Closing the application with the sessions is confirmed, the
+        # workspace can be saved automatically
+        gui.trigger(W + 'CloseApplicationAction')
+        gui.wait_window('MessageForm')
+        self.assertIn('Terminate all sessions and close application without saving a workspace?',
+                      self.message_text(gui))
+        gui.click('MessageForm/No')
+        gui.wait_window('SaveWorkspaceDialog')
+        self.assertEqual(gui.get(D + 'WorkspaceNameCombo')['text'], 'work')
+        self.assertTrue(gui.get(D + 'EnableAutoSaveCheck')['checked'])
+        gui.click(D + 'OKButton')
+        self.assertEqual(gui.process.wait(timeout=60), 0)
+        ini = gui.config_file.read_text()
+        self.assertIn('AutoSaveWorkspace=1', ini)
+        self.assertIn('AutoWorkspace=work', ini)
+        self.assertIn('LastStoredSession=work', ini)
+        self.assertIn('[Sessions\\work/0002]', ini)
+
+        # The site manager selects the workspace
+        gui = self.start_gui(ini=ini)
+        gui.wait_window('LoginDialog')
+        selected = [row['cells'][0] for row in gui.get('LoginDialog/SessionTree')['rows'] if row['current']]
+        self.assertEqual(selected, ['work'])
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

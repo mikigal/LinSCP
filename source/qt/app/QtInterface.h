@@ -82,6 +82,12 @@ bool InputDialog(const UnicodeString & ACaption,
 // returns the new site or NULL when cancelled
 TSessionData * DoSaveSession(TSessionData * SessionData,
   TSessionData * OriginalSession, bool ForceDialog, TStrings * AdditionalFolders);
+// Asks for the name of a workspace to save the sessions as, whether to
+// save their passwords (unless SavePasswords is NULL), to create a desktop
+// shortcut and to save it automatically
+bool DoSaveWorkspaceDialog(UnicodeString & WorkspaceName,
+  bool * SavePasswords, bool NotRecommendedSavingPasswords,
+  bool & CreateShortcut, bool & EnableAutoSave);
 // Checks that a site can be saved under the name (or overwrite a site)
 void SessionNameValidate(const UnicodeString & Text, const UnicodeString & OriginalName);
 // Asks for the current master password

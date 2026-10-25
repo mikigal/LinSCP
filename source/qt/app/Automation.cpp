@@ -17,6 +17,7 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QMenu>
+#include <QMenuBar>
 #include <QPixmap>
 #include <QPlainTextEdit>
 #include <QPointer>
@@ -326,6 +327,27 @@ QJsonObject Describe(QObject * Object, bool Children)
     Result[QStringLiteral("items")] = Items;
     Result[QStringLiteral("index")] = Pages->currentIndex();
     Result[QStringLiteral("text")] = Pages->tabText(Pages->currentIndex()).remove(QLatin1Char('&'));
+  }
+  else if (QMenuBar * MenuBar = qobject_cast<QMenuBar *>(Object))
+  {
+    // The menus, in the client area of the window (real input opens them)
+    QJsonArray Items;
+    for (QAction * Action : MenuBar->actions())
+    {
+      QJsonObject Item;
+      Item[QStringLiteral("name")] = (Action->menu() != nullptr) ? Action->menu()->objectName() : Action->objectName();
+      Item[QStringLiteral("text")] = Action->text().remove(QLatin1Char('&'));
+      QRect Rect = MenuBar->actionGeometry(Action);
+      QPoint Position = MenuBar->mapTo(MenuBar->window(), Rect.topLeft());
+      QJsonObject Geometry;
+      Geometry[QStringLiteral("x")] = Position.x();
+      Geometry[QStringLiteral("y")] = Position.y();
+      Geometry[QStringLiteral("width")] = Rect.width();
+      Geometry[QStringLiteral("height")] = Rect.height();
+      Item[QStringLiteral("rect")] = Geometry;
+      Items.append(Item);
+    }
+    Result[QStringLiteral("menus")] = Items;
   }
   else if (QTabBar * Tabs = qobject_cast<QTabBar *>(Object))
   {
@@ -658,8 +680,10 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
       QPointer<QAbstractButton> Pointer(Button);
       Action = [Pointer]() { if (Pointer) Pointer->click(); };
     }
-    else if (QAction * TheAction = qobject_cast<QAction *>(Target))
+    else if (QAction * TheAction =
+               (qobject_cast<QMenu *>(Target) != nullptr) ? qobject_cast<QMenu *>(Target)->menuAction() : qobject_cast<QAction *>(Target))
     {
+      // A submenu is opened by its item of the menu
       if (!TheAction->isEnabled())
       {
         throw EAutomation(QStringLiteral("%1 is not enabled").arg(Name(TheAction)));

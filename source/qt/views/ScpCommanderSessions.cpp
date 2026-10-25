@@ -7,6 +7,7 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <DesktopShortcut.h>
 #include <TerminalManager.h>
 
 #include "DirPanel.h"
@@ -763,5 +764,465 @@ void TScpCommanderForm::InactiveTerminalNotify(
     }
   }
   TerminalStatusChanged(Terminal);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::OpenedTabActionExecute(int Index)
+{
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  if (!IsBusy() && (Index < Manager->Count))
+  {
+    Manager->ActiveSessionIndex = Index;
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SessionsTabsActionExecute()
+{
+  AppConfiguration->SessionsTabs = SessionsTabsAction2->isChecked();
+  SessionsPageControl->setVisible(AppConfiguration->SessionsTabs);
+}
+//---------------------------------------------------------------------------
+UnicodeString TScpCommanderForm::WorkspaceName()
+{
+  return
+    DefaultStr(AppConfiguration->LastWorkspace,
+      DefaultStr(AppConfiguration->AutoWorkspace, LoadStr(NEW_WORKSPACE)));
+}
+//---------------------------------------------------------------------------
+TObjectList * TScpCommanderForm::DoCollectWorkspace()
+{
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  std::unique_ptr<TObjectList> DataList(new TObjectList());
+
+  if (DebugAlwaysTrue(FManagedSession != NULL))
+  {
+    // Update ManagedSession->StateData
+    UpdateSession(FManagedSession);
+  }
+  Manager->SaveWorkspace(DataList.get());
+
+  return DataList.release();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoSaveWorkspace(
+  const UnicodeString & Name, TObjectList * DataList, bool SavePasswords, bool Explicit)
+{
+  AppConfiguration->LastWorkspace = Name;
+
+  if (!SavePasswords)
+  {
+    for (int Index = 0; Index < DataList->Count; Index++)
+    {
+      TSessionData * SessionData = dynamic_cast<TSessionData *>(DataList->Items[Index]);
+
+      if (SessionData->Link.IsEmpty())
+      {
+        SessionData->ClearSessionPasswords();
+      }
+    }
+  }
+
+  StoredSessions->NewWorkspace(Name, DataList);
+  // modified only
+  StoredSessions->Save(false, Explicit);
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::SaveWorkspace(bool EnableAutoSave)
+{
+  std::unique_ptr<TObjectList> DataList(DoCollectWorkspace());
+
+  bool AnyNonStoredSessionWithPassword = false;
+  bool AnyNonStoredNonWorkspaceSessionWithPassword = false;
+  bool AllNonStoredSessionsAnonymous = true;
+
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  for (int Index = 0; Index < DataList->Count; Index++)
+  {
+    TSessionData * SessionData = dynamic_cast<TSessionData *>(DataList->Items[Index]);
+
+    if (SessionData->Link.IsEmpty())
+    {
+      if (SessionData->HasAnySessionPassword())
+      {
+        AnyNonStoredSessionWithPassword = true;
+        if (!Manager->Sessions[Index]->SessionData->IsWorkspace)
+        {
+          AnyNonStoredNonWorkspaceSessionWithPassword = true;
+        }
+      }
+
+      if (!SameText(SessionData->UserName, AnonymousUserName))
+      {
+        AllNonStoredSessionsAnonymous = false;
+      }
+    }
+  }
+
+  bool SavePasswords;
+  bool * PSavePasswords;
+  bool NotRecommendedSavingPasswords =
+    !AppConfiguration->UseMasterPassword &&
+    !AllNonStoredSessionsAnonymous;
+
+  if (Configuration->DisablePasswordStoring ||
+      !AnyNonStoredSessionWithPassword)
+  {
+    PSavePasswords = NULL;
+    SavePasswords = false;
+  }
+  else
+  {
+    PSavePasswords = &SavePasswords;
+    SavePasswords =
+      !AnyNonStoredNonWorkspaceSessionWithPassword ||
+      !NotRecommendedSavingPasswords;
+  }
+
+  UnicodeString Name = WorkspaceName();
+  bool CreateShortcut = false;
+
+  bool Result =
+    DoSaveWorkspaceDialog(
+      Name, PSavePasswords, NotRecommendedSavingPasswords, CreateShortcut,
+      EnableAutoSave);
+
+  if (Result)
+  {
+    DoSaveWorkspace(Name, DataList.get(), SavePasswords, true);
+
+    if (CreateShortcut)
+    {
+      CreateDesktopSessionShortCut(Name);
+    }
+
+    if (EnableAutoSave)
+    {
+      AppConfiguration->AutoSaveWorkspace = true;
+      AppConfiguration->AutoWorkspace = Name;
+      if (PSavePasswords != NULL)
+      {
+        AppConfiguration->AutoSaveWorkspacePasswords = SavePasswords;
+      }
+    }
+  }
+
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SaveWorkspaceActionExecute()
+{
+  if (!IsBusy() && (FManagedSession != NULL))
+  {
+    SaveWorkspace(false);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::OpenStoredSession(TSessionData * Data)
+{
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  TManagedTerminal * Terminal = Manager->NewManagedTerminal(Data);
+  Manager->ActiveSession = Terminal;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoOpenFolderOrWorkspace(
+  const UnicodeString & Name, bool ConnectFirstTerminal, bool CheckMaxSessions)
+{
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  std::unique_ptr<TObjectList> DataList(new TObjectList());
+  // This asks for a master password. Maybe we should postpone asking until a connection is actually opened.
+  StoredSessions->GetFolderOrWorkspace(Name, DataList.get());
+  if (!CheckMaxSessions || (DataList->Count <= AppConfiguration->MaxSessions))
+  {
+    TManagedTerminal * FirstSession = Manager->NewSessions(DataList.get());
+    // FirstSession can be null, if none of the workspace sites exist anymore
+    if (FirstSession != NULL)
+    {
+      if (!ConnectFirstTerminal)
+      {
+        FirstSession->Disconnected = true;
+        FirstSession->DisconnectedTemporarily = true;
+      }
+      Manager->ActiveSession = FirstSession;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::OpenFolderOrWorkspace(const UnicodeString & Name)
+{
+  DoOpenFolderOrWorkspace(Name, true, false);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CreateWorkspacesMenu(QMenu * Menu)
+{
+  StoredSessions->Reload();
+  std::unique_ptr<TStrings> Workspaces(StoredSessions->GetWorkspaces());
+  for (int Index = 0; Index < Workspaces->Count; Index++)
+  {
+    UnicodeString Name = Workspaces->Strings[Index];
+    QAction * Action = Menu->addAction(ToQString(EscapeHotkey(Name)));
+    Action->setObjectName(QStringLiteral("Workspace%1").arg(Index));
+    // OpenSCP: without the second part (Shift opens a new window)
+    UnicodeString Hint = FMTLOAD(WORKSPACE_HINT, (Name));
+    Action->setToolTip(ToQString(CutToChar(Hint, L'(', true)));
+    Action->setEnabled(!IsBusy());
+    connect(Action, &QAction::triggered, this, [this, Name]()
+    {
+      ExecuteHandler([this, Name]()
+      {
+        if (!IsBusy())
+        {
+          OpenFolderOrWorkspace(Name);
+        }
+      });
+    });
+  }
+  // Upstream does not show the menu without workspaces
+  if (Workspaces->Count == 0)
+  {
+    QAction * Action = Menu->addAction(tr("(none)"));
+    Action->setEnabled(false);
+  }
+}
+//---------------------------------------------------------------------------
+static UnicodeString GetSessionFolderRoot(TSessionData * Data, int Level)
+{
+  UnicodeString Path = Data->Name;
+  UnicodeString Root;
+  for (int ALevel = 0; ALevel < Level; ALevel++)
+  {
+    Root.Insert(CutToChar(Path, L'/', false) + L'/', Root.Length() + 1);
+  }
+  return Root;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CreateSessionListMenuLevel(QMenu * Menu, int Index, int Level)
+{
+  Menu->clear();
+
+  UnicodeString Root;
+  if (Level == 0)
+  {
+    Menu->addAction(SiteManagerAction);
+    Root = L"";
+  }
+  else
+  {
+    DebugAssert(Index < StoredSessions->Count);
+    TSessionData * Data = StoredSessions->Sessions[Index];
+
+    Root = GetSessionFolderRoot(Data, Level);
+
+    QAction * Item = Menu->addAction(ToQString(LoadStr(SAVEDSESSIONFOLDER_THIS_OPEN)));
+    Item->setObjectName(QStringLiteral("SessionFolderThisItem"));
+    UnicodeString FolderName = Root;
+    if (DebugAlwaysTrue(!FolderName.IsEmpty() && FolderName[FolderName.Length()] == L'/'))
+    {
+      FolderName.Delete(FolderName.Length(), 1);
+    }
+    // OpenSCP: without the second part (Shift opens a new window)
+    UnicodeString Hint = FMTLOAD(SAVEDSESSIONFOLDER_THIS_HINT, (FolderName));
+    Item->setToolTip(ToQString(CutToChar(Hint, L'(', true)));
+    Item->setEnabled(!IsBusy());
+    connect(Item, &QAction::triggered, this, [this, FolderName]()
+    {
+      ExecuteHandler([this, FolderName]()
+      {
+        if (!IsBusy())
+        {
+          OpenFolderOrWorkspace(FolderName);
+        }
+      });
+    });
+  }
+
+  Menu->addSeparator();
+
+  QAction * FirstSession = nullptr;
+  UnicodeString PrevName;
+  while (Index < StoredSessions->Count)
+  {
+    TSessionData * Data = StoredSessions->Sessions[Index];
+    if (!AnsiSameText(Data->Name.SubString(1, Root.Length()), Root))
+    {
+      // Sessions are sorted, so no chance further sessions may match
+      break;
+    }
+    else if (!Data->IsWorkspace)
+    {
+      UnicodeString Name = Data->Name.SubString(Root.Length() + 1, Data->Name.Length() - Root.Length());
+      int P = Name.Pos(L'/');
+      if (P > 0)
+      {
+        Name.SetLength(P - 1);
+      }
+
+      if (Name != PrevName)
+      {
+        if (P > 0)
+        {
+          // The folders before the sites
+          QMenu * Submenu = new QMenu(ToQString(EscapeHotkey(Name)), Menu);
+          Submenu->setIcon(QIcon::fromTheme(QStringLiteral("folder")));
+          Submenu->setObjectName(QStringLiteral("SessionFolder%1").arg(Index));
+          int SubIndex = Index;
+          connect(Submenu, &QMenu::aboutToShow, this, [this, Submenu, SubIndex, Level]()
+          {
+            ExecuteHandler([this, Submenu, SubIndex, Level]() { CreateSessionListMenuLevel(Submenu, SubIndex, Level + 1); });
+          });
+          Menu->insertMenu(FirstSession, Submenu);
+        }
+        else
+        {
+          QAction * Item = Menu->addAction(ToQString(EscapeHotkey(Name)));
+          Item->setObjectName(QStringLiteral("Session%1").arg(Index));
+          UnicodeString Hint = FMTLOAD(SAVEDSESSION_HINT, (Data->Name));
+          Item->setToolTip(ToQString(CutToChar(Hint, L'(', true)));
+          Item->setEnabled(!IsBusy());
+          if (FirstSession == nullptr)
+          {
+            FirstSession = Item;
+          }
+          UnicodeString SessionName = Data->Name;
+          connect(Item, &QAction::triggered, this, [this, SessionName]()
+          {
+            ExecuteHandler([this, SessionName]()
+            {
+              // The sites may have been reloaded meanwhile
+              TSessionData * AData = static_cast<TSessionData *>(StoredSessions->FindByName(SessionName));
+              if (!IsBusy() && (AData != NULL))
+              {
+                OpenStoredSession(AData);
+              }
+            });
+          });
+        }
+
+        PrevName = Name;
+      }
+    }
+    Index++;
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanCloseSessions()
+{
+  bool CanClose = true;
+  TTerminalManager * Manager = TTerminalManager::Instance();
+
+  int ActiveSessions = 0;
+  for (int Index = 0; Index < Manager->Count; Index++)
+  {
+    if (Manager->Sessions[Index]->Active)
+    {
+      ActiveSessions++;
+    }
+  }
+  // Confirm, when there's at least one active remote session or
+  // when there are multiple (inactive or local) sessions and auto workspace saving is not enabled.
+  if (((ActiveSessions > 0) || ((Manager->Count > 1) && !AppConfiguration->AutoSaveWorkspace)) &&
+      AppConfiguration->ConfirmClosingSession)
+  {
+    unsigned int Result;
+    TMessageParams Params(mpNeverAskAgainCheck);
+    UnicodeString Message;
+    int Answers = qaOK | qaCancel;
+    TTerminal * Terminal = GetTerminal();
+    // The current session is the only active session
+    if ((ActiveSessions == 1) && (Terminal != NULL) && Terminal->Active)
+    {
+      if (!AppConfiguration->AutoSaveWorkspace)
+      {
+        Message = LoadStr(CLOSE_SESSION_WORKSPACE);
+      }
+      else
+      {
+        Message = LoadStr(CLOSE_SESSION);
+      }
+      Message = FORMAT(Message, (Terminal->SessionData->SessionName));
+    }
+    // Multiple active sessions or one active session, but it's not the current one
+    else if (ActiveSessions > 0)
+    {
+      if (!AppConfiguration->AutoSaveWorkspace)
+      {
+        Message = LoadStr(CLOSE_SESSIONS_WORKSPACE3);
+      }
+      else
+      {
+        Message = LoadStr(CLOSE_SESSIONS);
+      }
+    }
+    // Multiple tabs, but all are inactive or local, and saving of worspace is not enabled
+    else
+    {
+      DebugAssert(Manager->Count > 1);
+      DebugAssert(!AppConfiguration->AutoSaveWorkspace);
+      Message = LoadStr(CLOSE_WORKSPACE);
+    }
+
+    UnicodeString Note;
+    if (AppConfiguration->AutoSaveWorkspace)
+    {
+      Note = FMTLOAD(AUTO_WORKSPACE, (WorkspaceName()));
+    }
+    else
+    {
+      Note = LoadStr(AUTO_WORKSPACE_ENABLE);
+      Answers = qaYes | qaNo | qaCancel;
+    }
+    Message = FORMAT("%s\n\n%s", (MainInstructions(Message), Note));
+
+    activateWindow();
+    Result = MessageDialog(Message, qtConfirmation, Answers, &Params);
+
+    if (Result == qaNeverAskAgain)
+    {
+      AppConfiguration->ConfirmClosingSession = false;
+    }
+
+    if (Result == qaNo)
+    {
+      CanClose = SaveWorkspace(true);
+      // note that the workspace will be saved redundatly again from FormClose
+    }
+    else
+    {
+      CanClose =
+        (Result == qaOK) ||
+        (Result == qaYes) || // CLOSE_SESSIONS_WORKSPACE variant
+        (Result == qaNeverAskAgain);
+    }
+  }
+
+  // OpenSCP: the transfers of all the sessions (upstream asks for the
+  // queue of the current one)
+  for (int Index = 0; CanClose && (Index < Manager->Count); Index++)
+  {
+    TManagedTerminal * Session = Manager->Sessions[Index];
+    TTerminalQueue * Queue = Manager->FindQueueForTerminal(Session);
+    if (Manager->IsAvailableTerminal(Session) && !Queue->IsEmpty)
+    {
+      CanClose = CanCloseQueue(Queue);
+      break;
+    }
+  }
+
+  return CanClose;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SessionsClosing()
+{
+  // Do not save empty workspace
+  if (AppConfiguration->AutoSaveWorkspace && (FManagedSession != NULL))
+  {
+    std::unique_ptr<TObjectList> DataList(DoCollectWorkspace());
+    UnicodeString Name = WorkspaceName();
+    DoSaveWorkspace(
+      Name, DataList.get(),
+      !Configuration->DisablePasswordStoring &&
+      AppConfiguration->AutoSaveWorkspacePasswords, false);
+    AppConfiguration->LastStoredSession = Name;
+  }
+
+  AppLog(L"Closing main window");
 }
 //---------------------------------------------------------------------------

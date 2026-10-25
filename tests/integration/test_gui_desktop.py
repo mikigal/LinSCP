@@ -334,6 +334,12 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.assertEqual(self.run_instance(session_url(str(remote) + '/'), key_switch()), 0)
         self.accept_host_key(gui)
         self.wait_remote_directory(gui, remote)
+        # Another session goes to a new tab
+        other = self.work_dir('other')
+        self.assertEqual(self.run_instance(session_url(str(other) + '/'), key_switch()), 0)
+        self.wait_remote_directory(gui, other)
+        self.assertEqual(len(gui.get(W + 'SessionsPageControl')['items']), 3)
+        self.assertEqual(gui.get(W + 'SessionsPageControl')['index'], 1)
         self.assertEqual(gui.quit(), 0)
 
     def test_upload_command_line(self):

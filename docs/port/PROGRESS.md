@@ -22,6 +22,15 @@ packaging (PLAN.md, section 7).
   also in the background); the edited files of inactive sessions are uploaded through their
   queues, their sessions reconnected when asked. Sessions of the command line and of other
   instances open in new tabs.
+- Workspaces: Save Workspace (`TSaveWorkspaceDialog`: passwords, a desktop shortcut, the
+  automatic saving), the Workspaces and Sites menus (folders as submenus), Alt+1..0 activate
+  the tabs. Closing the application with sessions is confirmed as upstream (`ConfirmClosingSession`,
+  pressing No saves the workspace automatically from then on) and the workspace is saved on
+  close (`AutoSaveWorkspace`, the site manager selects it next time); transfers of any session
+  in the queue are confirmed (upstream asks for the current session's only). Sites remember
+  their last directories when their sessions close (`UpdateDirectories`, as upstream).
+- Desktop shortcuts (`app/DesktopShortcut.cpp`, upstream's `CreateDesktopSessionShortCut`): a
+  desktop entry in the desktop directory that opens the site or workspace.
 
 Decisions:
 
