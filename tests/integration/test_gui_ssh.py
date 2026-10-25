@@ -141,7 +141,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_for(lambda: gui.get(W + 'RemoteNoSessionPage')['visible'], what='the disconnected panel')
         self.assertTrue(gui.get(W + 'ReconnectItem')['visible'])
         self.assertFalse(gui.get(W + 'RemoteNewSessionButton')['visible'])
-        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['agent site', ''])
+        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['agent site', 'New Tab'])
         self.assertIn('agent site \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
         gui.click(W + 'ReconnectItem')
         gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
@@ -152,7 +152,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.trigger(W + 'CloseTabAction')
         gui.wait_window('LoginDialog')
         self.assertEqual(gui.window('ScpCommanderForm')['title'], 'OpenSCP')
-        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], [''])
+        self.assertEqual(gui.get(W + 'SessionsPageControl')['items'], ['New Tab'])
         selected = [row['cells'][0] for row in gui.get('LoginDialog/SessionTree')['rows'] if row['current']]
         self.assertEqual(selected, ['agent site'])
         gui.click('LoginDialog/LoginButton')
@@ -1183,7 +1183,7 @@ class GuiSshTest(GuiSshTestCase):
         remote_path = W + 'RemotePathLabel'
         local_path = W + 'LocalPathLabel'
         self.login(gui, 'first')
-        self.assertEqual(gui.get(tabs)['items'], ['first', ''])
+        self.assertEqual(gui.get(tabs)['items'], ['first', 'New Tab'])
         self.assertEqual(gui.get(tabs)['index'], 0)
 
         # Another session in a new tab (the host key is known already)
@@ -1191,7 +1191,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_window('LoginDialog')
         gui.select('LoginDialog/SessionTree', 'second')
         gui.click('LoginDialog/LoginButton')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], 60, 'the second tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'New Tab'], 60, 'the second tab')
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), 60, 'the second session')
         gui.wait_idle()
         self.assertEqual(gui.get(tabs)['index'], 1)
@@ -1230,7 +1230,7 @@ class GuiSshTest(GuiSshTestCase):
         # A duplicate opens the same directory, the tabs of the same name
         # tell their directories
         gui.trigger(W + 'DuplicateTabAction')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first (one)', 'second', 'first (one)', ''], 60,
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first (one)', 'second', 'first (one)', 'New Tab'], 60,
                      'the duplicate tab')
         self.assertEqual(gui.get(tabs)['index'], 2)
         gui.wait_idle()
@@ -1241,12 +1241,12 @@ class GuiSshTest(GuiSshTestCase):
         gui.set('InputDialog/Edit', 'renamed')
         gui.click('InputDialog/OKButton')
         gui.wait_no_window('InputDialog')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'renamed', ''], what='the renamed tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'renamed', 'New Tab'], what='the renamed tab')
         self.assertIn('renamed \u2013 OpenSCP', gui.window('ScpCommanderForm')['title'])
 
         # Tabs are reordered by dragging them
         gui.drag_real(self.tab_point(gui, 2), self.tab_point(gui, 0))
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['renamed', 'first', 'second', ''], what='the moved tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['renamed', 'first', 'second', 'New Tab'], what='the moved tab')
         self.assertEqual(gui.get(tabs)['index'], 0)
         gui.set(tabs, 2)
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two), what='the second session after the move')
@@ -1254,7 +1254,7 @@ class GuiSshTest(GuiSshTestCase):
         # A disconnected session stays disconnected when its tab is shown again
         gui.trigger(W + 'DisconnectSessionAction')
         gui.wait_for(lambda: gui.get(W + 'ReconnectItem')['visible'], what='the disconnected session')
-        self.assertEqual(gui.get(tabs)['items'], ['renamed', 'first', 'second', ''])
+        self.assertEqual(gui.get(tabs)['items'], ['renamed', 'first', 'second', 'New Tab'])
         gui.set(tabs, 1)
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the first session again')
         gui.set(tabs, 2)
@@ -1266,10 +1266,10 @@ class GuiSshTest(GuiSshTestCase):
         # one shows its neighbour
         x, y = self.tab_point(gui, 0)
         self.session.input('move', x, y, 'click', 'middle')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], what='the closed tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'New Tab'], what='the closed tab')
         self.assertEqual(gui.get(tabs)['index'], 1)
         gui.trigger(W + 'CloseTabAction')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', ''], what='the closed active tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'New Tab'], what='the closed active tab')
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), what='the remaining session')
         self.assertEqual(gui.quit(), 0)
 
@@ -1323,7 +1323,7 @@ class GuiSshTest(GuiSshTestCase):
 
         # Once the tabs are closed, the site manager has the workspace
         gui.trigger(W + 'CloseTabAction')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', ''], what='the closed tab')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'New Tab'], what='the closed tab')
         gui.trigger(W + 'CloseTabAction')
         gui.wait_window('LoginDialog')
         self.assertIn('work', gui.names('LoginDialog/SessionTree'))
@@ -1336,7 +1336,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.trigger('TabsMenu/WorkspacesMenu')
         gui.wait_window('WorkspacesMenu')
         gui.trigger('WorkspacesMenu/Workspace0')
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', ''], 60, 'the workspace')
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second', 'New Tab'], 60, 'the workspace')
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(one), 60, 'its first session')
         gui.wait_idle()
         self.assertEqual(gui.get(tabs)['index'], 0)
@@ -1352,7 +1352,7 @@ class GuiSshTest(GuiSshTestCase):
         site = next(item['name'] for item in items if item.get('text') == 'second')
         gui.trigger('SavedSessionsMenu/' + site)
         # The site remembers its last directory (of its closed session)
-        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second (dir)', 'second (dir)', ''], 60,
+        gui.wait_for(lambda: gui.get(tabs)['items'] == ['first', 'second (dir)', 'second (dir)', 'New Tab'], 60,
                      'the site in a new tab')
         self.assertEqual(gui.get(tabs)['index'], 2)
         gui.wait_for(lambda: gui.get(remote_path)['text'] == str(two / 'dir'), 60, 'the site')
@@ -1694,6 +1694,8 @@ class GuiSshTest(GuiSshTestCase):
         self.assertIn('Toolbar2=1:BottomDock:', ini)
         self.assertIn('ToolbarsButtons=Commands=Console:0,Putty:0', ini)
         self.assertIn('LockToolbars=1', ini)
+        # The size of the window (the compositor places it)
+        self.assertRegex(ini, r'WindowParams=-1;-1;\d+;\d+;0;96')
 
         # And restored
         gui = self.start_gui(ini=ini)
@@ -1851,6 +1853,19 @@ class GuiSshTest(GuiSshTestCase):
                      what='the space available')
         self.assertEqual(gui.get(F + 'SpaceAvailablePathEdit')['text'], str(remote))
         self.screenshot('fsinfo')
+        gui.click(F + 'CloseButton')
+        gui.wait_no_window('FileSystemInfoDialog')
+
+        # upstream's panels of the session in the status bar: the protocol,
+        # the security, the time connected; a double-click shows the
+        # information too
+        self.assertEqual(gui.get(W + 'SessionStatusLabel')['text'], 'SFTP-3')
+        self.assertTrue(gui.get(W + 'SecurityStatusLabel')['visible'])
+        self.assertTrue(gui.get(W + 'SecurityStatusLabel')['enabled'])
+        self.assertRegex(gui.get(W + 'DurationStatusLabel')['text'], r'^\d+:\d\d:\d\d$')
+        x, y = gui.screen_point(W + 'SecurityStatusLabel')
+        gui.session.input('move', x, y, 'click', 'sleep', 50, 'click')
+        gui.wait_window('FileSystemInfoDialog')
         gui.click(F + 'CloseButton')
         gui.wait_no_window('FileSystemInfoDialog')
 

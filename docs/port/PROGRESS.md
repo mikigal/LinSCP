@@ -22,6 +22,18 @@ upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
   shown and hidden in Options > Toolbars, Left Panel and Right Panel (as upstream's, swapped
   with the panels) and in upstream's popup menu of the toolbars (with Customize Toolbar). The
   Edit With menu lists the external editors (and Edit With..., Configure...), as upstream's.
+- Path labels (`views/PathLabel.cpp`, upstream's `TPathLabel`): the full path above the files of
+  each panel, in the colors of an active caption for the panel with the focus, its directories
+  clicked to go to them, the filter mask clicked to change it (`*.*` under the mouse without a
+  filter), shortened with "..." to fit; a double-click opens a directory. The path combo boxes
+  are upstream's: the drives of the local panel (the documents, the desktop, the home, the root
+  and the mounted media of `/media`, `/run/media` and `/mnt`) with the one of the directory
+  selected, the directories of the remote path indented; a path can still be typed into them
+  (they show the whole path for it). The Explorer keeps its address bar.
+- The status bar of upstream: the notes, the protocol, the security (a lock, enabled when
+  encrypted, with the cipher in its hint) and the time of the session; a double-click shows the
+  server and protocol information. The "new tab" tab has upstream's caption. The size of the
+  window and its maximized state are kept (`WindowParams`; the compositor places it).
 
 Decisions:
 
@@ -31,6 +43,9 @@ Decisions:
   buttons of the toolbars have upstream's narrower drop-down arrows and separators (a proxy
   of the desktop's style). The window is 1200 pixels wide by default (upstream's 1090 for the
   wider fonts of the desktops), so that the panels' toolbars fit.
+- The local path combo box has the drives of Linux, not all the mount points: the root and the
+  media mounted for the user; the home and the documents and desktop folders are upstream's
+  special folders.
 
 ## M8 — completeness (done, 2026-10-25)
 

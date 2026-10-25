@@ -413,6 +413,9 @@ public:
   APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsLayout)
   APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsButtons)
   APP_CONFIG_PROPERTY(bool, CommanderStatusBar)
+  // The size of the window and whether maximized (upstream's WindowParams:
+  // Left;Top;Width;Height;State;PixelsPerInch, Wayland places the windows)
+  APP_CONFIG_PROPERTY(UnicodeString, CommanderWindowParams)
   // The toolbars of both interfaces (Interface): fixed in their places,
   // the text of the important buttons shown, the size of the icons
   // (0 normal, 1 large, 2 very large)
@@ -429,6 +432,7 @@ public:
   APP_CONFIG_PROPERTY(bool, ExplorerSessionsTabs)
   APP_CONFIG_PROPERTY(UnicodeString, ExplorerToolbarsLayout)
   APP_CONFIG_PROPERTY(UnicodeString, ExplorerToolbarsButtons)
+  APP_CONFIG_PROPERTY(UnicodeString, ExplorerWindowParams)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

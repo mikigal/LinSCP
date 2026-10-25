@@ -200,6 +200,7 @@ void __fastcall TAppConfiguration::Default()
      "PixelsPerInch=96";
   FCommanderToolbarsButtons = L"";
   FCommanderStatusBar = true;
+  FCommanderWindowParams = L"";
   FExplorerToolbarsLayout =
     L"Queue=1::0+-1,"
      "Menu=1:TopDock:0+0,"
@@ -214,6 +215,7 @@ void __fastcall TAppConfiguration::Default()
      "CustomCommands=0:TopDock:7+0,"
      "PixelsPerInch=96";
   FExplorerToolbarsButtons = L"";
+  FExplorerWindowParams = L"";
   FLockToolbars = false;
   FSelectiveToolbarText = true;
   FLargerToolbar = 1;
@@ -451,6 +453,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(String, FCommanderToolbarsLayout, L"ToolbarsLayout2"); \
     KEYEX(String, FCommanderToolbarsButtons, L"ToolbarsButtons"); \
     KEYEX(Bool,  FCommanderStatusBar, L"StatusBar"); \
+    KEYEX(String, FCommanderWindowParams, L"WindowParams"); \
   ); \
   BLOCK(L"Interface\\Explorer", CANCREATE, \
     KEYEX(String,  FExplorerPanel.DirViewParams, L"DirViewParams"); \
@@ -462,6 +465,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(Bool,    FExplorerSessionsTabs, L"SessionsTabs"); \
     KEYEX(String,  FExplorerToolbarsLayout, L"ToolbarsLayout2"); \
     KEYEX(String,  FExplorerToolbarsButtons, L"ToolbarsButtons"); \
+    KEYEX(String,  FExplorerWindowParams, L"WindowParams"); \
   ); \
   BLOCK(L"Interface\\Commander\\LocalPanel", CANCREATE, \
     KEYEX(String,  FLocalPanel.DirViewParams, L"DirViewParams"); \

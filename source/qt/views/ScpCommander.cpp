@@ -325,14 +325,32 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   UpdateBookmarkShortCuts();
   UpdateCustomCommandShortCuts();
 
+  // upstream's status bar: the notes, the protocol, the security and the
+  // time of the session; a double-click shows the server information
   FSessionStatusLabel = new QLabel(statusBar());
   FSessionStatusLabel->setObjectName(QStringLiteral("SessionStatusLabel"));
-  statusBar()->addPermanentWidget(FSessionStatusLabel);
+  FSecurityStatusLabel = new QLabel(statusBar());
+  FSecurityStatusLabel->setObjectName(QStringLiteral("SecurityStatusLabel"));
+  FDurationStatusLabel = new QLabel(statusBar());
+  FDurationStatusLabel->setObjectName(QStringLiteral("DurationStatusLabel"));
+  for (QLabel * Label : { FSessionStatusLabel, FSecurityStatusLabel, FDurationStatusLabel })
+  {
+    Label->setAlignment(Qt::AlignCenter);
+    Label->setContentsMargins(6, 0, 6, 0);
+    Label->installEventFilter(this);
+    statusBar()->addPermanentWidget(Label);
+  }
+  int SecurityIconSize = style()->pixelMetric(QStyle::PM_SmallIconSize);
+  FSecurityStatusLabel->setPixmap(QIcon::fromTheme(QStringLiteral("object-locked")).pixmap(SecurityIconSize));
+  FSecurityStatusLabel->setVisible(false);
+  FDurationStatusLabel->setVisible(false);
+  FDurationStatusLabel->setMinimumWidth(fontMetrics().horizontalAdvance(QStringLiteral("00:00:00")) + 16);
 
   FLocalPanel->ApplyConfiguration();
   FRemotePanel->ApplyConfiguration();
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
   FInterface = AppConfiguration->Interface;
+  RestoreWindowParams();
   ApplyInterface();
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
@@ -422,6 +440,7 @@ void TScpCommanderForm::Idle()
   }
 
   RefreshQueueItems();
+  UpdateDurationStatus();
 }
 //---------------------------------------------------------------------------
 QAction * TScpCommanderForm::CreateAction(const char * Name, const QString & Caption, const QString & IconName,
@@ -988,6 +1007,46 @@ void TScpCommanderForm::StorePanelsParams()
     AppConfiguration->ExplorerSessionsTabs = SessionsTabsAction2->isChecked();
   }
   StoreToolbarsLayout();
+  StoreWindowParams();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::RestoreWindowParams()
+{
+  // upstream's RestoreFormSize: the size and the maximized state (the
+  // compositor places the window)
+  UnicodeString Params = IsExplorer() ? AppConfiguration->ExplorerWindowParams : AppConfiguration->CommanderWindowParams;
+  if (!Params.IsEmpty())
+  {
+    CutToChar(Params, L';', true);
+    CutToChar(Params, L';', true);
+    int Width = StrToIntDef(CutToChar(Params, L';', true), 0);
+    int Height = StrToIntDef(CutToChar(Params, L';', true), 0);
+    int State = StrToIntDef(CutToChar(Params, L';', true), 0);
+    if ((Width > 0) && (Height > 0))
+    {
+      resize(Width, Height);
+    }
+    // wsMaximized
+    if (State == 2)
+    {
+      setWindowState(windowState() | Qt::WindowMaximized);
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::StoreWindowParams()
+{
+  bool Maximized = isMaximized();
+  QSize Size = (Maximized && normalGeometry().isValid()) ? normalGeometry().size() : size();
+  UnicodeString Params = FORMAT(L"-1;-1;%d;%d;%d;96", (Size.width(), Size.height(), (Maximized ? 2 : 0)));
+  if (IsExplorer())
+  {
+    AppConfiguration->ExplorerWindowParams = Params;
+  }
+  else
+  {
+    AppConfiguration->CommanderWindowParams = Params;
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdatePanelsLayout()

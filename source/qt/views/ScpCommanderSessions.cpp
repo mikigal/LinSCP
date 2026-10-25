@@ -152,8 +152,11 @@ void TScpCommanderForm::SessionListChanged()
     UpdateSessionTab(Index);
   }
 
+  // upstream's GetNewTabTabCaption
+  QString NewTabCaption = NewSessionAction->text().remove(QLatin1Char('&'));
   int NewTabIndex =
-    SessionsPageControl->addTab(QIcon::fromTheme(QStringLiteral("tab-new"), QIcon::fromTheme(QStringLiteral("list-add"))), QString());
+    SessionsPageControl->addTab(QIcon::fromTheme(QStringLiteral("tab-new"), QIcon::fromTheme(QStringLiteral("list-add"))),
+      NewTabCaption);
   SessionsPageControl->setTabData(NewTabIndex, QVariant::fromValue(quintptr(0)));
   // OpenSCP: without its second line (Shift opens a new window)
   UnicodeString NewTabHint = LoadStr(NEW_REMOTE_TAB_HINT);
@@ -289,6 +292,14 @@ bool TScpCommanderForm::eventFilter(QObject * Object, QEvent * Event)
         });
       }
     }
+  }
+  // upstream's StatusBarPanelDblClick on the panels of the session
+  if ((Event->type() == QEvent::MouseButtonDblClick) &&
+      ((Object == FSessionStatusLabel) || (Object == FSecurityStatusLabel) || (Object == FDurationStatusLabel)) &&
+      FileSystemInfoAction->isEnabled())
+  {
+    QTimer::singleShot(0, this, [this]() { FileSystemInfoAction->trigger(); });
+    return true;
   }
   return EventFilterPanels(Object, Event) || QMainWindow::eventFilter(Object, Event);
 }
@@ -442,22 +453,61 @@ void TScpCommanderForm::SessionReady()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateSessionStatus()
 {
+  // upstream's InitStatusBar: the protocol of the file system (SFTP-3),
+  // else of the session, whether secure, how long connected
   TTerminal * Terminal = GetTerminal();
-  UnicodeString Status;
-  UnicodeString Hint;
-  if ((Terminal != NULL) && Terminal->Active)
+  bool Opened = false;
+  UnicodeString ProtocolName;
+  UnicodeString ProtocolNameHint;
+  UnicodeString SecurityProtocolName;
+  if (Terminal != NULL)
   {
-    // As upstream's status bar: the protocol of the file system (SFTP-3),
-    // else of the session; the encryption in the hint
-    const TSessionInfo & SessionInfo = Terminal->GetSessionInfo();
-    const TFileSystemInfo & FileSystemInfo = Terminal->GetFileSystemInfo();
-    Status = FileSystemInfo.ProtocolName.IsEmpty() ? SessionInfo.ProtocolName : FileSystemInfo.ProtocolName;
-    Hint = SessionInfo.SecurityProtocolName;
+    if (Terminal->Status == ssOpened)
+    {
+      const TSessionInfo & SessionInfo = Terminal->GetSessionInfo();
+      const TFileSystemInfo & FileSystemInfo = Terminal->GetFileSystemInfo();
+      ProtocolName = FileSystemInfo.ProtocolName.IsEmpty() ? SessionInfo.ProtocolName : FileSystemInfo.ProtocolName;
+      ProtocolNameHint = LoadStr(STATUS_PROTOCOL_HINT);
+      SecurityProtocolName = SessionInfo.SecurityProtocolName;
+      Opened = true;
+    }
+    else if (Terminal->Status > ssClosed)
+    {
+      ProtocolName = LoadStr(STATUS_CONNECTING);
+    }
+    else
+    {
+      ProtocolName = LoadStr(STATUS_NOT_CONNECTED2);
+    }
   }
-  FSessionStatusLabel->setText(ToQString(Status));
-  FSessionStatusLabel->setToolTip(ToQString(Hint));
+  FSessionStatusLabel->setText(ToQString(ProtocolName));
+  FSessionStatusLabel->setToolTip(ToQString(ProtocolNameHint));
+  bool Secure = !SecurityProtocolName.IsEmpty();
+  FSecurityStatusLabel->setVisible(Opened);
+  FSecurityStatusLabel->setEnabled(Secure);
+  FSecurityStatusLabel->setToolTip(
+    ToQString(Secure ? FMTLOAD(STATUS_SECURE, (SecurityProtocolName)) : LoadStr(STATUS_INSECURE)));
+  FDurationStatusLabel->setVisible(Opened);
+  FDurationStatusLabel->setToolTip(ToQString(LoadStr(STATUS_DURATION_HINT)));
+  UpdateDurationStatus();
   FRemotePanel->SetDisconnectMessage(
     (FManagedSession != NULL) ? UnformatMessage(FManagedSession->DisconnectMessage) : UnicodeString());
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::UpdateDurationStatus()
+{
+  // upstream's UpdateStatusBar: the time since the login
+  UnicodeString LoginTimeStr;
+  TTerminal * Terminal = GetTerminal();
+  if ((Terminal != NULL) && (Terminal->Status == ssOpened))
+  {
+    LoginTimeStr = FormatDateTimeSpan(Now() - Terminal->GetSessionInfo().LoginTime);
+  }
+  QString Text = ToQString(LoginTimeStr);
+  if (FDurationStatusLabel->text() != Text)
+  {
+    FDurationStatusLabel->setText(Text);
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::DetachTerminal(TTerminal * ATerminal)

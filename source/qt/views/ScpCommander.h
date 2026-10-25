@@ -187,7 +187,11 @@ private:
   TDirPanel * FCurrentPanel;
   TProgressForm * FProgressForm;
   TSynchronizeProgressForm * FSynchronizeProgressForm;
+  // upstream's panels of the session in the status bar: the protocol, the
+  // security, the duration
   QLabel * FSessionStatusLabel;
+  QLabel * FSecurityStatusLabel;
+  QLabel * FDurationStatusLabel;
   QComboBox * FTransferList;
   int FBusy;
   int FUpdatingTransferList;
@@ -482,6 +486,10 @@ private:
   // The protocol of the session in the status bar, the reason of its
   // disconnection in the remote panel
   void UpdateSessionStatus();
+  void UpdateDurationStatus();
+  // The size of the window (upstream's WindowParams)
+  void RestoreWindowParams();
+  void StoreWindowParams();
   // Tab switches the panels
   bool EventFilterPanels(QObject * Object, QEvent * Event);
   void SessionChanging();
