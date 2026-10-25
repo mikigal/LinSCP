@@ -282,7 +282,7 @@ QAction * TDirPanel::CreateAction(const QString & Name, const QString & Caption,
   Action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
   addAction(Action);
   PathToolbar->addAction(Action);
-  connect(Action, &QAction::triggered, this, [this, Method]() { (this->*Method)(); });
+  connect(Action, &QAction::triggered, this, [this, Method]() { ExecuteHandler([this, Method]() { (this->*Method)(); }); });
   return Action;
 }
 //---------------------------------------------------------------------------

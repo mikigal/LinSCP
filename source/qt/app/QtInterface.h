@@ -150,6 +150,16 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
 
+// app/OpenScpApplication.cpp: shows an exception that escaped an event
+// handler (as the VCL's Application->OnException). The handlers that run
+// operations catch their exceptions and pass them here: an exception must
+// not propagate through Qt's code, which keeps state on the stack (guards
+// of the objects of the signals), Qt is not built for exceptions
+void HandleApplicationException(Exception & E);
+// Runs a handler of an event (an action, a button), its exception goes to
+// HandleApplicationException
+void ExecuteHandler(const std::function<void()> & Handler);
+
 // app/QtInterface.cpp: minimizing the whole application (upstream's
 // ApplicationMinimize and ApplicationRestore), to the system tray when
 // asked or configured; done by the main window

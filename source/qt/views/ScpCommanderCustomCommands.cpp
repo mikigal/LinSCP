@@ -749,12 +749,15 @@ void TScpCommanderForm::CreateCustomCommandsMenu(QMenu * Menu)
       UnicodeString Name = Command->Name;
       connect(Item, &QAction::triggered, this, [this, Name]()
       {
-        const TCustomCommandType * ACommand = AppConfiguration->CustomCommandList->Find(Name);
-        if (ACommand != NULL)
+        ExecuteHandler([this, Name]()
         {
-          TCustomCommandType CommandCopy = *ACommand;
-          ExecuteCustomCommand(CommandCopy);
-        }
+          const TCustomCommandType * ACommand = AppConfiguration->CustomCommandList->Find(Name);
+          if (ACommand != NULL)
+          {
+            TCustomCommandType CommandCopy = *ACommand;
+            ExecuteCustomCommand(CommandCopy);
+          }
+        });
       });
     }
   }
@@ -804,12 +807,15 @@ void TScpCommanderForm::UpdateCustomCommandShortCuts()
       UnicodeString Name = Command->Name;
       connect(Action, &QAction::triggered, this, [this, Name]()
       {
-        const TCustomCommandType * ACommand = AppConfiguration->CustomCommandList->Find(Name);
-        if ((ACommand != NULL) && !IsBusy() && (CustomCommandState(*ACommand, ccltAll) > 0))
+        ExecuteHandler([this, Name]()
         {
-          TCustomCommandType CommandCopy = *ACommand;
-          ExecuteCustomCommand(CommandCopy);
-        }
+          const TCustomCommandType * ACommand = AppConfiguration->CustomCommandList->Find(Name);
+          if ((ACommand != NULL) && !IsBusy() && (CustomCommandState(*ACommand, ccltAll) > 0))
+          {
+            TCustomCommandType CommandCopy = *ACommand;
+            ExecuteCustomCommand(CommandCopy);
+          }
+        });
       });
       FCustomCommandShortCutActions.push_back(Action);
     }

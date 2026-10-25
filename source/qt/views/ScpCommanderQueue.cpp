@@ -37,7 +37,10 @@ void TScpCommanderForm::CreateQueueActions()
       Action->setIcon(QIcon::fromTheme(IconName));
     }
     addAction(Action);
-    connect(Action, &QAction::triggered, this, [this, Operation]() { ExecuteQueueOperation(Operation); });
+    connect(Action, &QAction::triggered, this, [this, Operation]()
+    {
+      ExecuteHandler([this, Operation]() { ExecuteQueueOperation(Operation); });
+    });
     return Action;
   };
 

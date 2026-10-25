@@ -29,6 +29,31 @@ void TOpenScpApplication::WakeMainThread(TObject * /*Sender*/)
   QMetaObject::invokeMethod(this, []() { CheckSynchronize(); }, Qt::QueuedConnection);
 }
 //---------------------------------------------------------------------------
+void HandleApplicationException(Exception & E)
+{
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  if (Manager != NULL)
+  {
+    Manager->HandleException(&E);
+  }
+  else
+  {
+    ShowExtendedException(&E);
+  }
+}
+//---------------------------------------------------------------------------
+void ExecuteHandler(const std::function<void()> & Handler)
+{
+  try
+  {
+    Handler();
+  }
+  catch (Exception & E)
+  {
+    HandleApplicationException(E);
+  }
+}
+//---------------------------------------------------------------------------
 bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)
 {
   try
@@ -37,15 +62,7 @@ bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)
   }
   catch (Exception & E)
   {
-    TTerminalManager * Manager = TTerminalManager::Instance(false);
-    if (Manager != NULL)
-    {
-      Manager->HandleException(&E);
-    }
-    else
-    {
-      ShowExtendedException(&E);
-    }
+    HandleApplicationException(E);
   }
   catch (std::exception & E)
   {

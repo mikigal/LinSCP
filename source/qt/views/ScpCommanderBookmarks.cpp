@@ -245,7 +245,7 @@ void TScpCommanderForm::CreateOpenDirMenuList(QMenu * Menu, TOperationSide Side,
     UnicodeString Name = Bookmark->Name;
     connect(Item, &QAction::triggered, this, [this, Side, Shared, Node, Name]()
     {
-      OpenBookmarkByKey(Side, Shared, Node, Name);
+      ExecuteHandler([this, Side, Shared, Node, Name]() { OpenBookmarkByKey(Side, Shared, Node, Name); });
     });
     return Item;
   };
@@ -356,7 +356,7 @@ void TScpCommanderForm::UpdateBookmarkShortCuts()
         UnicodeString Name = Bookmark->Name;
         connect(Action, &QAction::triggered, this, [this, Node, Name]()
         {
-          OpenBookmarkByKey(FCurrentPanel->GetSide(), true, Node, Name);
+          ExecuteHandler([this, Node, Name]() { OpenBookmarkByKey(FCurrentPanel->GetSide(), true, Node, Name); });
         });
         FBookmarkShortCutActions.push_back(Action);
       }
