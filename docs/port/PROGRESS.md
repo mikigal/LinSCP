@@ -9,7 +9,7 @@ upstream's layout (their `.dfm` files and the screenshots of upstream's document
 `ui_commander`, `ui_explorer`, `ui_login`, `ui_copy`, `ui_properties`, `ui_synchronize`), checked
 in screenshots of the headless KWin; the new controls have their L3 and E2E tests (`test_toolbars`,
 `test_command_line`, `test_explorer`, `ToolbarsTest`, `PathLabelTest`, `HelpButtonTest`,
-`IconThemeTest`). All tests pass under ASan/UBSan, with the VM; the release build compiles
+`IconThemeTest`, `test_queue_file_list`). All tests pass under ASan/UBSan, with the VM; the release build compiles
 without warnings.
 
 - Toolbars (`views/Toolbars.cpp`, `views/ScpCommanderToolbars.cpp`): upstream's toolbars of the
@@ -66,6 +66,21 @@ without warnings.
   the others OpenSCP has not); the desktop's icons by a preference (Window > Use icons of the
   desktop theme, `DesktopIcons`). The application has an icon of its own (`openscp`, installed
   to the hicolor theme) instead of the theme's `folder-remote`.
+- The images of upstream's dialogs (its `DialogImages`, `LoadDialogImage`): OpenSCP's own
+  32-pixel pictures (`source/qt/icons/openscp/dialogs`, by the same generator, not a part of the
+  theme) left of the controls of the copy (by the direction, and for moving), synchronization,
+  keep up to date, console, duplicate, move to, open directory and location profiles dialogs, of
+  several files in the properties, of the interfaces in the preferences; the message dialog has
+  upstream's images of the types (and "Delete file" for the delete confirmations) instead of the
+  style's icons. The console has upstream's layout (Close and Help right of the command).
+- The file list of the queue (upstream's `QueueFileList`, Options > Queue > File List, also in
+  the Queue drop-down of the toolbar, the Queue submenu of the toolbars' popup menu and the
+  Options of the queue's popup menu): the files of the selected item (of a transfer in
+  parallel connections), the processed ones grayed, below the queue with its own splitter
+  (double-clicked to hide), its visibility and height kept (`QueueView\FileList`,
+  `FileListHeight`). The height of the queue is kept when the splitter is moved.
+- The tests allocate `TSessionData` on the heap: Delphi-style classes rely on the zero-filled
+  memory of `TObject`'s allocation (a garbage `bool` on the stack, which UBSan reported).
 
 Decisions:
 
@@ -78,8 +93,8 @@ Decisions:
 - Help buttons are right of the other buttons, as upstream's, not where the desktop's button
   boxes put them (left on KDE).
 - Not ported: the Updates toolbar and the view styles of the panels (M8's decisions), the
-  32-pixel images of the copy, synchronization and find dialogs, the file list of the queue
-  (`QueueFileListAction`), the gaps between the toolbars of a row (Qt packs them).
+  gaps between the toolbars of a row (Qt packs them), the images of the updates and of the
+  tips (`Installer`, `Bulb On`).
 - The local path combo box has the drives of Linux, not all the mount points: the root and the
   media mounted for the user; the home and the documents and desktop folders are upstream's
   special folders.
