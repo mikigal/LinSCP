@@ -579,6 +579,18 @@ void __fastcall TFileMasks::CreateMask(
   Mask.HighModificationMask = TMask::None;
   Mask.LowModificationMask = TMask::None;
 
+  // OpenSCP: the masks of an invalid mask are not leaked
+  bool Added = false;
+  ::rtl::TFinally FreeMasks([&]()
+  {
+    if (!Added)
+    {
+      delete Mask.FileNameMask;
+      delete Mask.RemoteDirectoryMask;
+      delete Mask.LocalDirectoryMask;
+    }
+  });
+
   wchar_t NextPartDelimiter = L'\0';
   int NextPartFrom = 1;
   while (NextPartFrom <= MaskStr.Length())
@@ -727,6 +739,7 @@ void __fastcall TFileMasks::CreateMask(
   }
 
   FMasks[MASK_INDEX(Directory, Include)].push_back(Mask);
+  Added = true;
 }
 //---------------------------------------------------------------------------
 TStrings * __fastcall TFileMasks::GetMasksStr(int Index) const
