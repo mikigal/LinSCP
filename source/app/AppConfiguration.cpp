@@ -157,6 +157,9 @@ void __fastcall TAppConfiguration::Default()
   FCompareByTime = true;
   FCompareBySize = false;
   FExplorerKeyboardShortcuts = false;
+  FTreeOnLeft = false;
+  FLocalPanel = TPanelConfiguration();
+  FRemotePanel = TPanelConfiguration();
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -378,6 +381,21 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FCompareByTime); \
     KEY(Bool,    FCompareBySize); \
     KEY(Bool,    FExplorerKeyboardShortcuts); \
+    KEY(Bool,    FTreeOnLeft); \
+  ); \
+  BLOCK(L"Interface\\Commander\\LocalPanel", CANCREATE, \
+    KEYEX(String,  FLocalPanel.DirViewParams, L"DirViewParams"); \
+    KEYEX(Bool,    FLocalPanel.StatusBar, L"StatusBar"); \
+    KEYEX(Bool,    FLocalPanel.DriveView, L"DriveView"); \
+    KEYEX(Integer, FLocalPanel.DriveViewHeight, L"DriveViewHeight"); \
+    KEYEX(Integer, FLocalPanel.DriveViewWidth, L"DriveViewWidth"); \
+  ); \
+  BLOCK(L"Interface\\Commander\\RemotePanel", CANCREATE, \
+    KEYEX(String,  FRemotePanel.DirViewParams, L"DirViewParams"); \
+    KEYEX(Bool,    FRemotePanel.StatusBar, L"StatusBar"); \
+    KEYEX(Bool,    FRemotePanel.DriveView, L"DriveView"); \
+    KEYEX(Integer, FRemotePanel.DriveViewHeight, L"DriveViewHeight"); \
+    KEYEX(Integer, FRemotePanel.DriveViewWidth, L"DriveViewWidth"); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \
@@ -879,6 +897,13 @@ bool TEditorConfiguration::operator !=(const TEditorConfiguration & rhc) const
     C(Encoding) C(WarnOnEncodingFallback) C(WarnOrLargeFileSize) C(LargeFileSize)
     C(FontColor) C(BackgroundColor) false;
   #undef C
+}
+//---------------------------------------------------------------------------
+bool TPanelConfiguration::operator !=(const TPanelConfiguration & rhc) const
+{
+  return
+    (DirViewParams != rhc.DirViewParams) || (StatusBar != rhc.StatusBar) || (DriveView != rhc.DriveView) ||
+    (DriveViewHeight != rhc.DriveViewHeight) || (DriveViewWidth != rhc.DriveViewWidth);
 }
 //---------------------------------------------------------------------------
 bool TFontConfiguration::operator !=(const TFontConfiguration & rhc) const

@@ -121,6 +121,7 @@ private:
   // Commander
   QComboBox * NortonLikeModeCombo;
   QCheckBox * SwappedPanelsCheck;
+  QCheckBox * TreeOnLeftCheck;
   QComboBox * ExplorerKeyboardShortcutsCombo;
   QCheckBox * UseLocationProfilesCheck;
   QCheckBox * CompareByTimeCheck;
@@ -462,6 +463,7 @@ void TPreferencesDialog::CreateCommanderSheet()
   NortonLikeModeRow->addWidget(NortonLikeModeCombo);
   NortonLikeModeRow->addStretch(1);
   SwappedPanelsCheck = AddCheck(PanelsGroup, "SwappedPanelsCheck", tr("S&wap panels (local on right, remote on left)"));
+  TreeOnLeftCheck = AddCheck(PanelsGroup, "TreeOnLeftCheck", tr("Show &directory tree left of file list"));
 
   QGroupBox * CommanderMiscGroup = AddGroup(CommanderSheet, "CommanderMiscGroup", tr("Miscellaneous"));
   QHBoxLayout * ShortcutsRow = AddRow(CommanderMiscGroup);
@@ -1193,6 +1195,7 @@ void TPreferencesDialog::LoadConfiguration()
 
   #define BOOLPROP(PROP) PROP ## Check->setChecked(AppConfiguration->PROP)
   BOOLPROP(SwappedPanels);
+  BOOLPROP(TreeOnLeft);
   BOOLPROP(UseLocationProfiles);
   BOOLPROP(CompareByTime);
   BOOLPROP(CompareBySize);
@@ -1502,6 +1505,7 @@ void TPreferencesDialog::SaveConfiguration()
 
   #define BOOLPROP(PROP) AppConfiguration->PROP = PROP ## Check->isChecked()
   BOOLPROP(SwappedPanels);
+  BOOLPROP(TreeOnLeft);
   BOOLPROP(UseLocationProfiles);
   BOOLPROP(CompareByTime);
   BOOLPROP(CompareBySize);

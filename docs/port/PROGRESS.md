@@ -79,6 +79,15 @@ packaging (PLAN.md, section 7).
   preset) are in the menu of the button; the Manage menu opens the site in the SSH client and
   creates its desktop icon. `dialogs/TreePagesDialog.cpp` is the base of the dialogs of pages
   in a navigation tree (the preferences too).
+- The layout of the panels (`views/DirTree.cpp`, `TDirPanel`): the directory trees
+  (upstream's drive views, Ctrl+Alt+T, Options > Local/Remote Panel; the local one of the
+  file system, the remote one of the visited directories and of the directory cache, as
+  upstream's), above or left of the files (`TreeOnLeft`), the status bars, the Local and
+  Remote menus as upstream's (Go To, Sort with Ctrl+F3..F7, Columns with the columns shown
+  or hidden, sized automatically or reset, also in the menu of the header), the columns of
+  upstream's panels (the extension, the group, the link target and the type of the remote
+  files hidden by default), all kept in upstream's format (`DirViewParams`, `DriveView`,
+  `StatusBar` of `Interface\Commander\LocalPanel` and `RemotePanel`).
 
 Decisions:
 

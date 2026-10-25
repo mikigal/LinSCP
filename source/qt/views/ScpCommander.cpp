@@ -269,6 +269,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
   UpdatePanelsLayout();
   UpdateKeyboardShortcuts();
+  RestorePanelsParams();
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
   SessionChanged();
@@ -286,6 +287,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  // However the application ends (upstream's StoreParams)
+  ExecuteHandler([this]() { StorePanelsParams(); });
   // The sessions outlive the window
   FRemotePanel->SetTerminal(NULL);
   // The remote files of the clipboard cannot be downloaded any more
@@ -379,8 +382,7 @@ void TScpCommanderForm::CreateMenus()
 
   QMenu * LocalMenu = Menu->addMenu(tr("&Local"));
   LocalMenu->setObjectName(QStringLiteral("LocalMenuButton"));
-  LocalMenu->addActions(FLocalPanel->actions());
-  LocalMenu->addAction(LocalPathToClipboardAction2);
+  FLocalPanel->FillMenu(LocalMenu, LocalPathToClipboardAction2);
 
   Menu->addMenu(CreateMarkMenu());
 
@@ -478,6 +480,12 @@ void TScpCommanderForm::CreateMenus()
   OptionsMenu->setObjectName(QStringLiteral("OptionsMenu"));
   OptionsMenu->addAction(ShowHiddenFilesAction);
   OptionsMenu->addAction(SessionsTabsAction2);
+  QMenu * LocalPanelMenu = OptionsMenu->addMenu(tr("&Local Panel"));
+  LocalPanelMenu->setObjectName(QStringLiteral("CommanderLocalPanelMenu"));
+  FLocalPanel->FillOptionsMenu(LocalPanelMenu);
+  QMenu * RemotePanelMenu = OptionsMenu->addMenu(tr("&Remote Panel"));
+  RemotePanelMenu->setObjectName(QStringLiteral("CommanderRemotePanelMenu"));
+  FRemotePanel->FillOptionsMenu(RemotePanelMenu);
   QMenu * QueueViewMenu = OptionsMenu->addMenu(tr("&Queue"));
   QueueViewMenu->setObjectName(QStringLiteral("QueueViewMenu"));
   QueueViewMenu->addActions(FQueueShowGroup->actions());
@@ -486,8 +494,7 @@ void TScpCommanderForm::CreateMenus()
 
   QMenu * RemoteMenu = Menu->addMenu(tr("&Remote"));
   RemoteMenu->setObjectName(QStringLiteral("RemoteMenuButton"));
-  RemoteMenu->addActions(FRemotePanel->actions());
-  RemoteMenu->addAction(RemotePathToClipboardAction2);
+  FRemotePanel->FillMenu(RemoteMenu, RemotePathToClipboardAction2);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateToolbars()
@@ -716,6 +723,50 @@ void TScpCommanderForm::ConfigurationChanged()
   UpdateCaption();
   UpdatePanelsLayout();
   UpdateKeyboardShortcuts();
+  FLocalPanel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+  FRemotePanel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::RestorePanelsParams()
+{
+  // upstream's RestoreParams of the panels
+  for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
+  {
+    TPanelConfiguration PanelConfiguration =
+      (Panel == FLocalPanel) ? AppConfiguration->LocalPanel : AppConfiguration->RemotePanel;
+    Panel->SetDirViewParams(PanelConfiguration.DirViewParams);
+    Panel->SetStatusBarVisible(PanelConfiguration.StatusBar);
+    Panel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+    Panel->SetTreeVisible(PanelConfiguration.DriveView);
+    Panel->SetTreeSize(AppConfiguration->TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::StorePanelsParams()
+{
+  Configuration->BeginUpdate();
+  ::rtl::TFinally Finally([&]() { Configuration->EndUpdate(); });
+  for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
+  {
+    TPanelConfiguration PanelConfiguration =
+      (Panel == FLocalPanel) ? AppConfiguration->LocalPanel : AppConfiguration->RemotePanel;
+    PanelConfiguration.DirViewParams = Panel->GetDirViewParams();
+    PanelConfiguration.StatusBar = Panel->GetStatusBarVisible();
+    PanelConfiguration.DriveView = Panel->GetTreeVisible();
+    if (Panel->GetTreeVisible())
+    {
+      (AppConfiguration->TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight) =
+        Panel->GetTreeSize();
+    }
+    if (Panel == FLocalPanel)
+    {
+      AppConfiguration->LocalPanel = PanelConfiguration;
+    }
+    else
+    {
+      AppConfiguration->RemotePanel = PanelConfiguration;
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdatePanelsLayout()

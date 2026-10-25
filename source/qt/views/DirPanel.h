@@ -10,6 +10,8 @@
 #include <AppConfiguration.h>
 #include <CopyParam.h>
 
+#include "DirModel.h"
+
 #include <QElapsedTimer>
 #include <QTreeView>
 #include <QWidget>
@@ -27,6 +29,7 @@ class QMenu;
 class QMimeData;
 class QModelIndex;
 class QPushButton;
+class QSplitter;
 class QStackedWidget;
 class QTimer;
 class QToolBar;
@@ -34,6 +37,8 @@ class TDirModel;
 class TDirPanel;
 class TLocalDirModel;
 class TRemoteDirModel;
+class TLocalDirTree;
+class TRemoteDirTree;
 class TRemoteFile;
 class TTerminal;
 //---------------------------------------------------------------------------
@@ -189,6 +194,26 @@ public:
   UnicodeString GetMask() const;
   void SetRefreshShortCut(const QKeySequence & ShortCut);
 
+  // The menu of the panel (upstream's Local and Remote menus: Go To, the
+  // bookmarks, Sort, Columns, Filter); the options of the panel (the tree,
+  // the status bar)
+  void FillMenu(QMenu * Menu, QAction * PathToClipboardAction);
+  void FillOptionsMenu(QMenu * Menu);
+  // The directory tree (upstream's DriveView), above the files or left of
+  // them, its size
+  void SetTreeVisible(bool Visible);
+  bool GetTreeVisible() const;
+  void SetTreeOnLeft(bool Value);
+  int GetTreeSize() const;
+  void SetTreeSize(int Value);
+  void SetStatusBarVisible(bool Visible);
+  bool GetStatusBarVisible() const;
+  // The sort, the widths, the visibility and the order of the columns, in
+  // the format of upstream's DirViewParams
+  UnicodeString GetDirViewParams() const;
+  void SetDirViewParams(const UnicodeString & Value);
+  void ResetLayoutColumns();
+
   // Drag and drop, done by the main window: a drag of the selected files
   // starts; the action of a drop of the data on the panel; the files are
   // dropped
@@ -227,11 +252,24 @@ protected:
   QAction * OpenDirAction;
   QAction * AddBookmarkAction2;
   QAction * FilterAction;
+  QAction * TreeAction;
+  QAction * StatusBarAction;
+  QAction * SortAscendingAction;
   QMenu * OpenDirMenu;
+  QMenu * SortMenu;
+  QMenu * ColumnsMenu;
+  QSplitter * FViewSplitter;
+  QWidget * FTree;
+  QWidget * FStatusPanel;
   TDirModel * FModel;
   bool FShowHiddenFiles;
 
   void SetModel(TDirModel * Model);
+  // The tree of the panel, in the splitter above the files
+  void InitTree(QWidget * Tree);
+  // The tree shows the directory
+  virtual void UpdateTree() = 0;
+  virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const = 0;
   // The directory changed: the history, the path box, the focus
   void PathChanged();
   // The files were reloaded: the focus is kept
@@ -259,6 +297,11 @@ private:
   void PathComboActivated();
   // Selects or unselects the rows
   void SelectRows(const std::vector<int> & Rows, bool Select);
+  void CreateSortMenu(const QString & Prefix);
+  void CreateColumnsMenu(const QString & Prefix);
+  void UpdateSortMenu();
+  void UpdateColumnsMenu();
+  int DefaultColumnWidth(int Column) const;
   void RefreshActionExecute() { Reload(); }
   void HomeDirActionExecute() { HomeDirectory(); }
   void OpenDirActionExecute() { Q_EMIT OpenDirectoryRequested(this); }
@@ -279,9 +322,15 @@ public:
   virtual void HomeDirectory() override;
   // The directory of the Home command, the user's home when empty
   void SetHomeDirectory(const UnicodeString & Value) { FHomeDirectory = Value; }
+  virtual void ApplyConfiguration() override;
+
+protected:
+  virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const override;
+  virtual void UpdateTree() override;
 
 private:
   TLocalDirModel * FLocalModel;
+  TLocalDirTree * FLocalTree;
   UnicodeString FHomeDirectory;
   QFileSystemWatcher * FWatcher;
   QTimer * FReloadTimer;
@@ -310,6 +359,10 @@ public:
   void SetDisconnectMessage(const UnicodeString & Message);
   virtual void ApplyConfiguration() override;
 
+protected:
+  virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const override;
+  virtual void UpdateTree() override;
+
 Q_SIGNALS:
   void NewSessionRequested();
   void ReconnectRequested();
@@ -318,6 +371,7 @@ Q_SIGNALS:
 
 private:
   TRemoteDirModel * FRemoteModel;
+  TRemoteDirTree * FRemoteTree;
   TTerminal * FTerminal;
   bool FShownReady;
   bool FShowInaccesibleDirectories;

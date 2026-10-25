@@ -57,6 +57,18 @@ struct TFontConfiguration
     __declspec(property(get = Get ## NAME, put = Set ## NAME)) TYPE NAME; \
   private: \
     TYPE F ## NAME;
+// The settings of a panel of the Commander (upstream's
+// TScpCommanderPanelConfiguration): its columns, its status bar, its tree
+struct TPanelConfiguration
+{
+  UnicodeString DirViewParams;
+  bool StatusBar = true;
+  bool DriveView = false;
+  int DriveViewHeight = 100;
+  int DriveViewWidth = 100;
+
+  bool operator !=(const TPanelConfiguration & rhc) const;
+};
 // The settings of the editors (upstream's TEditorConfiguration, without the
 // colors and the window placement)
 struct TEditorConfiguration
@@ -363,6 +375,10 @@ public:
   APP_CONFIG_PROPERTY(bool, CompareBySize)
   // The keyboard shortcuts of the Explorer interface (F5 refreshes, ...)
   APP_CONFIG_PROPERTY(bool, ExplorerKeyboardShortcuts)
+  // The directory trees are left of the files, not above them
+  APP_CONFIG_PROPERTY(bool, TreeOnLeft)
+  APP_CONFIG_PROPERTY(TPanelConfiguration, LocalPanel)
+  APP_CONFIG_PROPERTY(TPanelConfiguration, RemotePanel)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

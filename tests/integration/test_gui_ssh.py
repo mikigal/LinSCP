@@ -1577,6 +1577,54 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'inner.txt'])
         self.assertEqual(gui.quit(), 0)
 
+    def test_panel_layout(self):
+        remote = self.work_dir('remote')
+        (remote / 'one').mkdir()
+        (remote / 'one' / 'deep').mkdir()
+        (remote / 'two').mkdir()
+        (remote / 'big.bin').write_bytes(b'x' * 3000)
+        (remote / 'small.bin').write_bytes(b'x' * 10)
+        local = self.work_dir('local')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        # The directory tree of the remote panel shows the visited
+        # directories and those in the cache
+        self.assertFalse(gui.get(W + 'RemoteDriveView')['visible'])
+        gui.trigger(W + 'RemoteTreeAction')
+        gui.wait_for(lambda: gui.get(W + 'RemoteDriveView')['visible'], what='the remote tree')
+        def tree():
+            return gui.names(W + 'RemoteDriveView')
+        self.assertEqual(tree(), ['/'])
+        self.screenshot('remote_tree')
+        gui.activate(W + 'RemoteDirView', 'one')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'one'), what='the directory')
+        # A directory of the tree is opened
+        gui.select(W + 'RemoteDriveView', ['/'] + list(remote.parts[1:]))
+        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote), what='the directory of the tree')
+
+        # Sorted by size, the extension column shown
+        gui.focus(W + 'RemoteDirView')
+        gui.trigger(W + 'RemoteSortBySizeAction2')
+        gui.wait_for(lambda: gui.names(W + 'RemoteDirView')[-2:] == ['small.bin', 'big.bin'], what='the sort by size')
+        gui.trigger(W + 'RemoteStatusBarAction2')
+        gui.wait_for(lambda: not gui.get(W + 'RemoteStatusBar')['visible'], what='no status bar')
+        self.assertEqual(gui.quit(), 0)
+
+        ini = gui.config_file.read_text()
+        section = ini[ini.index('Interface\\Commander\\RemotePanel]'):]
+        self.assertIn('DriveView=1', section)
+        self.assertIn('StatusBar=0', section)
+        self.assertIn('DirViewParams=1;1;0|', section)
+
+        # Restored with the next start
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local', accept_host_key=False)
+        self.assertTrue(gui.get(W + 'RemoteDriveView')['visible'])
+        self.assertFalse(gui.get(W + 'RemoteStatusBar')['visible'])
+        self.assertEqual(gui.names(W + 'RemoteDirView')[-2:], ['small.bin', 'big.bin'])
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

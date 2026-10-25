@@ -31,8 +31,16 @@ static QString ColumnCaption(TDirViewColumn Column)
     case dvOwner: return QObject::tr("Owner");
     case dvGroup: return QObject::tr("Group");
     case dvLinkTarget: return QObject::tr("Link target");
+    case dvExt: return QObject::tr("Ext");
   }
   return QString();
+}
+//---------------------------------------------------------------------------
+// The extension of the name, without the dot (upstream's Ext column)
+static UnicodeString ItemExt(const TDirViewItem & Item)
+{
+  UnicodeString Ext = UnixExtractFileExt(Item.FileName);
+  return Ext.IsEmpty() ? Ext : Ext.SubString(2, Ext.Length() - 1);
 }
 //---------------------------------------------------------------------------
 void FileTypeAndIcon(const QString & FileName, bool Directory, QString & Type, QIcon & Icon)
@@ -166,6 +174,12 @@ QVariant TDirModel::data(const QModelIndex & Index, int Role) const
         case dvLinkTarget:
           Result = Item.LinkTarget;
           break;
+        case dvExt:
+          if (!Item.IsDirectory)
+          {
+            Result = ToQString(ItemExt(Item));
+          }
+          break;
       }
     }
     else if ((Role == Qt::DecorationRole) && (Column == dvName))
@@ -245,6 +259,9 @@ void TDirModel::SortItems()
       case dvLinkTarget:
         Result = Item1.LinkTarget.compare(Item2.LinkTarget);
         break;
+      case dvExt:
+        Result = CompareText(ItemExt(Item1), ItemExt(Item2));
+        break;
       case dvName:
         break;
     }
@@ -279,6 +296,18 @@ void TDirModel::sort(int Column, Qt::SortOrder Order)
     changePersistentIndexList(Persistent, Updated);
     Q_EMIT layoutChanged({}, QAbstractItemModel::VerticalSortHint);
   }
+}
+//---------------------------------------------------------------------------
+int TDirModel::ColumnIndex(TDirViewColumn Column) const
+{
+  for (size_t Index = 0; Index < FColumns.size(); Index++)
+  {
+    if (FColumns[Index] == Column)
+    {
+      return static_cast<int>(Index);
+    }
+  }
+  return -1;
 }
 //---------------------------------------------------------------------------
 void TDirModel::SetDisplayOptions(
@@ -406,9 +435,9 @@ void TDirModel::Totals(__int64 & Size, int & Count) const
 }
 //---------------------------------------------------------------------------
 TLocalDirModel::TLocalDirModel(QObject * Parent) :
-  // Upstream's default columns of the local panel, with the rights in
-  // place of the Windows attributes
-  TDirModel({ dvName, dvSize, dvType, dvChanged, dvRights }, Parent)
+  // Upstream's columns of the local panel, with the rights in place of
+  // the Windows attributes
+  TDirModel({ dvName, dvSize, dvType, dvChanged, dvRights, dvExt }, Parent)
 {
 }
 //---------------------------------------------------------------------------
@@ -512,8 +541,8 @@ void TLocalDirModel::Load(const UnicodeString & Path, bool ShowHiddenFiles)
 }
 //---------------------------------------------------------------------------
 TRemoteDirModel::TRemoteDirModel(QObject * Parent) :
-  // Upstream's default columns of the remote panel
-  TDirModel({ dvName, dvSize, dvChanged, dvRights, dvOwner }, Parent)
+  // Upstream's columns of the remote panel
+  TDirModel({ dvName, dvSize, dvChanged, dvRights, dvOwner, dvGroup, dvExt, dvLinkTarget, dvType }, Parent)
 {
   FFiles = NULL;
 }

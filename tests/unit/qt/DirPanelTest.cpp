@@ -11,7 +11,9 @@
 #include <QBrush>
 #include <QDir>
 #include <QFile>
+#include <QFileSystemModel>
 #include <QLabel>
+#include <QMenu>
 #include <QTemporaryDir>
 #include <QTreeView>
 
@@ -224,5 +226,72 @@ TEST_F(DirPanelTest, KeyboardSelection)
   FPanel->ApplyConfiguration();
   QTest::keyClick(View, Qt::Key_Down);
   EXPECT_EQ(SelectedNames(), QStringList({ QStringLiteral("c") }));
+}
+//---------------------------------------------------------------------------
+TEST_F(DirPanelTest, ColumnsAndSort)
+{
+  CreateFile(FDir.path(), QStringLiteral("a.txt"), 10);
+  CreateFile(FDir.path(), QStringLiteral("b.log"), 5);
+  Load(FDir.path());
+  QTreeView * View = FPanel->GetDirView();
+  const TDirModel * Model = FPanel->GetModel();
+
+  // The extension column is hidden by default
+  int Ext = Model->ColumnIndex(dvExt);
+  ASSERT_GE(Ext, 0);
+  EXPECT_TRUE(View->isColumnHidden(Ext));
+  EXPECT_FALSE(View->isColumnHidden(Model->ColumnIndex(dvSize)));
+
+  QAction * SortBySize = FPanel->findChild<QAction *>(QStringLiteral("LocalSortBySizeAction2"));
+  ASSERT_NE(SortBySize, nullptr);
+  SortBySize->trigger();
+  EXPECT_EQ(ToQString(Model->Item(1).FileName), QStringLiteral("b.log"));
+  // Again in the reverse order
+  SortBySize->trigger();
+  EXPECT_EQ(ToQString(Model->Item(1).FileName), QStringLiteral("a.txt"));
+  EXPECT_EQ(Model->GetSortOrder(), Qt::DescendingOrder);
+
+  // A column shown by the menu
+  QMenu * ColumnsMenu = FPanel->findChild<QMenu *>(QStringLiteral("LocalColumnsMenu"));
+  ASSERT_NE(ColumnsMenu, nullptr);
+  Q_EMIT ColumnsMenu->aboutToShow();
+  QAction * ShowExt = FPanel->findChild<QAction *>(QStringLiteral("LocalShowHideColumn%1Action").arg(Ext));
+  ASSERT_NE(ShowExt, nullptr);
+  ShowExt->trigger();
+  EXPECT_FALSE(View->isColumnHidden(Ext));
+
+  // The layout and the sort are restored
+  UnicodeString Params = FPanel->GetDirViewParams();
+  TLocalDirPanel Other(nullptr);
+  Other.ChangeDirectory(ToUnicodeString(FDir.path()));
+  Other.SetDirViewParams(Params);
+  EXPECT_FALSE(Other.GetDirView()->isColumnHidden(Ext));
+  EXPECT_EQ(Other.GetModel()->GetSortColumn(), Model->ColumnIndex(dvSize));
+  EXPECT_EQ(Other.GetModel()->GetSortOrder(), Qt::DescendingOrder);
+  Other.ResetLayoutColumns();
+  EXPECT_TRUE(Other.GetDirView()->isColumnHidden(Ext));
+  EXPECT_EQ(Other.GetModel()->GetSortColumn(), 0);
+  // Upstream's default of the local panel
+  Other.SetDirViewParams(L"0;1;0|150,1;70,1;120,1;150,1;55,0;55,0;@96|5;0;1;2;3;4");
+  EXPECT_TRUE(Other.GetDirView()->isColumnHidden(Model->ColumnIndex(dvRights)));
+}
+//---------------------------------------------------------------------------
+TEST_F(DirPanelTest, LocalTree)
+{
+  QDir(FDir.path()).mkdir(QStringLiteral("sub"));
+  Load(FDir.path());
+  FPanel->show();
+  FPanel->SetTreeVisible(true);
+  EXPECT_TRUE(FPanel->GetTreeVisible());
+  QTreeView * Tree = FPanel->findChild<QTreeView *>(QStringLiteral("LocalDriveView"));
+  ASSERT_NE(Tree, nullptr);
+  QFileSystemModel * TreeModel = qobject_cast<QFileSystemModel *>(Tree->model());
+  ASSERT_NE(TreeModel, nullptr);
+  EXPECT_EQ(TreeModel->filePath(Tree->currentIndex()), FDir.path());
+  // A directory of the tree is opened
+  Tree->setCurrentIndex(TreeModel->index(FDir.path() + QStringLiteral("/sub")));
+  EXPECT_EQ(ToQString(FPanel->GetPath()), FDir.path() + QStringLiteral("/sub"));
+  FPanel->SetTreeVisible(false);
+  EXPECT_FALSE(FPanel->GetTreeVisible());
 }
 //---------------------------------------------------------------------------

@@ -8,10 +8,12 @@
 
 #include "DirModel.h"
 #include "DirPanel.h"
+#include "DirTree.h"
 
 #include <QAbstractItemDelegate>
 #include <QApplication>
 #include <QAction>
+#include <QActionGroup>
 #include <QComboBox>
 #include <QDir>
 #include <QDragEnterEvent>
@@ -24,6 +26,7 @@
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <QSplitter>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -565,18 +568,44 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
     }
   });
   connect(DirView, &QTreeView::activated, this, [this](const QModelIndex & Index) { ItemActivated(Index.row()); });
-  Layout->addWidget(DirView, 1);
+  // The directory tree (of the panel) and the files
+  FTree = nullptr;
+  FViewSplitter = new QSplitter(Qt::Vertical, this);
+  FViewSplitter->setObjectName(Prefix + QStringLiteral("ViewSplitter"));
+  FViewSplitter->setChildrenCollapsible(false);
+  FViewSplitter->addWidget(DirView);
+  Layout->addWidget(FViewSplitter, 1);
+
+  TreeAction = new QAction(tr("&Tree"), this);
+  TreeAction->setObjectName(Prefix + QStringLiteral("TreeAction"));
+  TreeAction->setToolTip(tr("Hide/show directory tree"));
+  TreeAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_T));
+  TreeAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+  TreeAction->setCheckable(true);
+  addAction(TreeAction);
+  connect(TreeAction, &QAction::triggered, this, [this](bool Checked) { SetTreeVisible(Checked); });
+  StatusBarAction = new QAction(tr("Status &Bar"), this);
+  StatusBarAction->setObjectName(Prefix + QStringLiteral("StatusBarAction2"));
+  StatusBarAction->setToolTip(tr("Hide/show status bar"));
+  StatusBarAction->setCheckable(true);
+  StatusBarAction->setChecked(true);
+  connect(StatusBarAction, &QAction::triggered, this, [this](bool Checked) { SetStatusBarVisible(Checked); });
+  CreateSortMenu(Prefix);
+  CreateColumnsMenu(Prefix);
 
   // The selected and all the files, the hidden ones and the filtered ones,
   // clicked to show them
-  QHBoxLayout * StatusLayout = new QHBoxLayout();
+  FStatusPanel = new QWidget(this);
+  FStatusPanel->setObjectName(Prefix + QStringLiteral("StatusPanel"));
+  QHBoxLayout * StatusLayout = new QHBoxLayout(FStatusPanel);
+  StatusLayout->setContentsMargins(0, 0, 0, 0);
   StatusLayout->setSpacing(2);
-  StatusBar = new QLabel(this);
+  StatusBar = new QLabel(FStatusPanel);
   StatusBar->setObjectName(Prefix + QStringLiteral("StatusBar"));
-  HiddenFilesLabel = new QLabel(this);
+  HiddenFilesLabel = new QLabel(FStatusPanel);
   HiddenFilesLabel->setObjectName(Prefix + QStringLiteral("HiddenFilesLabel"));
   HiddenFilesLabel->setToolTip(tr("Click to show hidden files"));
-  FilteredFilesLabel = new QLabel(this);
+  FilteredFilesLabel = new QLabel(FStatusPanel);
   FilteredFilesLabel->setObjectName(Prefix + QStringLiteral("FilteredFilesLabel"));
   FilteredFilesLabel->setToolTip(tr("Click to change filter"));
   for (QLabel * Label : { StatusBar, HiddenFilesLabel, FilteredFilesLabel })
@@ -589,7 +618,7 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   FilteredFilesLabel->installEventFilter(this);
   HiddenFilesLabel->setVisible(false);
   FilteredFilesLabel->setVisible(false);
-  Layout->addLayout(StatusLayout);
+  Layout->addWidget(FStatusPanel);
 }
 //---------------------------------------------------------------------------
 QAction * TDirPanel::CreateAction(const QString & Name, const QString & Caption, const QString & IconName,
@@ -614,31 +643,19 @@ void TDirPanel::SetModel(TDirModel * Model)
   QHeaderView * Header = DirView->header();
   Header->setStretchLastSection(false);
   Header->setSectionResizeMode(0, QHeaderView::Stretch);
+  Header->setSectionsMovable(true);
   for (int Column = 1; Column < Model->columnCount(); Column++)
   {
     Header->setSectionResizeMode(Column, QHeaderView::Interactive);
-    // Widths for typical values
-    QString Sample;
-    switch (Model->Column(Column))
-    {
-      case dvSize:
-        Sample = QStringLiteral("99,999 KB");
-        break;
-      case dvChanged:
-        Sample = QStringLiteral("00/00/0000 00:00:00");
-        break;
-      case dvType:
-        Sample = QStringLiteral("Plain text");
-        break;
-      case dvRights:
-        Sample = QStringLiteral("rwxrwxrwx");
-        break;
-      default:
-        Sample = QStringLiteral("username");
-        break;
-    }
-    Header->resizeSection(Column, DirView->fontMetrics().horizontalAdvance(Sample) + 32);
+    Header->resizeSection(Column, DefaultColumnWidth(Column));
   }
+  // The columns are shown and hidden by the menu of the header
+  Header->setContextMenuPolicy(Qt::CustomContextMenu);
+  connect(Header, &QHeaderView::customContextMenuRequested, this, [this](const QPoint & Pos)
+  {
+    ColumnsMenu->exec(DirView->header()->mapToGlobal(Pos));
+  });
+  connect(Header, &QHeaderView::sortIndicatorChanged, this, [this]() { UpdateSortMenu(); });
   connect(DirView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() { UpdateStatusBar(); });
   Model->OnRename = [this](const UnicodeString & FileName, const UnicodeString & NewName)
   {
@@ -651,6 +668,332 @@ void TDirPanel::SetModel(TDirModel * Model)
       }
     });
   };
+}
+//---------------------------------------------------------------------------
+int TDirPanel::DefaultColumnWidth(int Column) const
+{
+  // Widths for typical values
+  QString Sample;
+  switch (FModel->Column(Column))
+  {
+    case dvSize:
+      Sample = QStringLiteral("99,999 KB");
+      break;
+    case dvChanged:
+      Sample = QStringLiteral("00/00/0000 00:00:00");
+      break;
+    case dvType:
+      Sample = QStringLiteral("Plain text");
+      break;
+    case dvRights:
+      Sample = QStringLiteral("rwxrwxrwx");
+      break;
+    case dvExt:
+      Sample = QStringLiteral("ext");
+      break;
+    case dvLinkTarget:
+      Sample = QStringLiteral("/usr/local/target");
+      break;
+    default:
+      Sample = QStringLiteral("username");
+      break;
+  }
+  return DirView->fontMetrics().horizontalAdvance(Sample) + 32;
+}
+//---------------------------------------------------------------------------
+void TDirPanel::InitTree(QWidget * Tree)
+{
+  FTree = Tree;
+  FViewSplitter->insertWidget(0, FTree);
+  FViewSplitter->setStretchFactor(1, 1);
+  FTree->setVisible(false);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetTreeVisible(bool Visible)
+{
+  if (FTree != nullptr)
+  {
+    FTree->setVisible(Visible);
+    if (Visible)
+    {
+      UpdateTree();
+    }
+  }
+  TreeAction->setChecked(Visible);
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::GetTreeVisible() const
+{
+  return (FTree != nullptr) && !FTree->isHidden();
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetTreeOnLeft(bool Value)
+{
+  FViewSplitter->setOrientation(Value ? Qt::Horizontal : Qt::Vertical);
+}
+//---------------------------------------------------------------------------
+int TDirPanel::GetTreeSize() const
+{
+  QList<int> Sizes = FViewSplitter->sizes();
+  return (GetTreeVisible() && (Sizes.size() > 1)) ? Sizes[0] : 0;
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetTreeSize(int Value)
+{
+  if (Value > 0)
+  {
+    int Total = (FViewSplitter->orientation() == Qt::Horizontal) ? FViewSplitter->width() : FViewSplitter->height();
+    FViewSplitter->setSizes({ Value, std::max(Total - Value, Value) });
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetStatusBarVisible(bool Visible)
+{
+  FStatusPanel->setVisible(Visible);
+  StatusBarAction->setChecked(Visible);
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::GetStatusBarVisible() const
+{
+  return !FStatusPanel->isHidden();
+}
+//---------------------------------------------------------------------------
+void TDirPanel::CreateSortMenu(const QString & Prefix)
+{
+  // upstream's Sort submenus, the shortcuts as of its Commander
+  SortMenu = new QMenu(tr("&Sort"), this);
+  SortMenu->setObjectName(Prefix + QStringLiteral("SortMenu"));
+  SortAscendingAction = SortMenu->addAction(tr("&Ascending"));
+  SortAscendingAction->setObjectName(Prefix + QStringLiteral("SortAscendingAction2"));
+  SortAscendingAction->setCheckable(true);
+  connect(SortAscendingAction, &QAction::triggered, this, [this](bool Checked)
+  {
+    DirView->sortByColumn(FModel->GetSortColumn(), Checked ? Qt::AscendingOrder : Qt::DescendingOrder);
+  });
+  SortMenu->addSeparator();
+  QActionGroup * Group = new QActionGroup(SortMenu);
+  struct { TDirViewColumn Column; const char * Name; QString Caption; int Key; } Sorts[] =
+  {
+    { dvName, "SortByNameAction2", tr("By &Name"), Qt::Key_F3 },
+    { dvExt, "SortByExtAction2", tr("By &Extension"), Qt::Key_F4 },
+    { dvSize, "SortBySizeAction2", tr("By &Size"), Qt::Key_F6 },
+    { dvType, "SortByTypeAction2", tr("By &Type"), 0 },
+    { dvChanged, "SortByChangedAction3", tr("By Date &modified"), Qt::Key_F5 },
+    { dvRights, "SortByRightsAction2", tr("By &Permissions"), Qt::Key_F7 },
+    { dvOwner, "SortByOwnerAction2", tr("By &Owner"), 0 },
+    { dvGroup, "SortByGroupAction2", tr("By &Group"), 0 },
+  };
+  for (auto & Sort : Sorts)
+  {
+    TDirViewColumn Column = Sort.Column;
+    QAction * Action = SortMenu->addAction(Sort.Caption);
+    Action->setObjectName(Prefix + QString::fromLatin1(Sort.Name));
+    Action->setCheckable(true);
+    Action->setData(static_cast<int>(Column));
+    Action->setActionGroup(Group);
+    if (Sort.Key != 0)
+    {
+      Action->setShortcut(QKeySequence(Qt::CTRL | static_cast<Qt::Key>(Sort.Key)));
+      Action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+      addAction(Action);
+    }
+    connect(Action, &QAction::triggered, this, [this, Column]()
+    {
+      int Index = FModel->ColumnIndex(Column);
+      if (Index >= 0)
+      {
+        // The same column again reverses the order, as upstream's
+        Qt::SortOrder Order =
+          (FModel->GetSortColumn() == Index) && (FModel->GetSortOrder() == Qt::AscendingOrder) ?
+            Qt::DescendingOrder : Qt::AscendingOrder;
+        DirView->sortByColumn(Index, Order);
+      }
+    });
+  }
+  connect(SortMenu, &QMenu::aboutToShow, this, [this]() { UpdateSortMenu(); });
+}
+//---------------------------------------------------------------------------
+void TDirPanel::UpdateSortMenu()
+{
+  if (FModel == nullptr)
+  {
+    return;
+  }
+  SortAscendingAction->setChecked(FModel->GetSortOrder() == Qt::AscendingOrder);
+  for (QAction * Action : SortMenu->actions())
+  {
+    if (Action->data().isValid())
+    {
+      int Index = FModel->ColumnIndex(static_cast<TDirViewColumn>(Action->data().toInt()));
+      Action->setVisible(Index >= 0);
+      Action->setEnabled(Index >= 0);
+      Action->setChecked((Index >= 0) && (FModel->GetSortColumn() == Index));
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::CreateColumnsMenu(const QString & Prefix)
+{
+  ColumnsMenu = new QMenu(tr("&Columns"), this);
+  ColumnsMenu->setObjectName(Prefix + QStringLiteral("ColumnsMenu"));
+  connect(ColumnsMenu, &QMenu::aboutToShow, this, [this]() { UpdateColumnsMenu(); });
+}
+//---------------------------------------------------------------------------
+void TDirPanel::UpdateColumnsMenu()
+{
+  // Created once the columns are known
+  if (ColumnsMenu->isEmpty() && (FModel != nullptr))
+  {
+    QString Prefix = (FSide == osLocal) ? QStringLiteral("Local") : QStringLiteral("Remote");
+    for (int Column = 0; Column < FModel->columnCount(); Column++)
+    {
+      QString Caption = FModel->headerData(Column, Qt::Horizontal).toString();
+      QAction * Action = ColumnsMenu->addAction(tr("Show %1 column").arg(Caption));
+      Action->setObjectName(Prefix + QStringLiteral("ShowHideColumn%1Action").arg(Column));
+      Action->setCheckable(true);
+      Action->setData(Column);
+      // The name is always shown
+      Action->setEnabled(Column > 0);
+      connect(Action, &QAction::triggered, this, [this, Column](bool Checked)
+      {
+        DirView->setColumnHidden(Column, !Checked);
+      });
+    }
+    ColumnsMenu->addSeparator();
+    QAction * AutoSizeAction = ColumnsMenu->addAction(tr("Size &Automatically"));
+    AutoSizeAction->setObjectName(Prefix + QStringLiteral("AutoSizeColumnsAction"));
+    connect(AutoSizeAction, &QAction::triggered, this, [this]()
+    {
+      for (int Column = 1; Column < FModel->columnCount(); Column++)
+      {
+        if (!DirView->isColumnHidden(Column))
+        {
+          DirView->resizeColumnToContents(Column);
+        }
+      }
+    });
+    QAction * ResetAction = ColumnsMenu->addAction(tr("&Reset Layout"));
+    ResetAction->setObjectName(Prefix + QStringLiteral("ResetLayoutColumnsAction"));
+    connect(ResetAction, &QAction::triggered, this, [this]() { ResetLayoutColumns(); });
+  }
+  for (QAction * Action : ColumnsMenu->actions())
+  {
+    if (Action->isCheckable())
+    {
+      Action->setChecked(!DirView->isColumnHidden(Action->data().toInt()));
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::ResetLayoutColumns()
+{
+  QHeaderView * Header = DirView->header();
+  for (int Column = 0; Column < FModel->columnCount(); Column++)
+  {
+    Header->moveSection(Header->visualIndex(Column), Column);
+    DirView->setColumnHidden(Column, (Column > 0) && IsColumnHiddenByDefault(FModel->Column(Column)));
+    if (Column > 0)
+    {
+      Header->resizeSection(Column, DefaultColumnWidth(Column));
+    }
+  }
+  DirView->sortByColumn(0, Qt::AscendingOrder);
+}
+//---------------------------------------------------------------------------
+UnicodeString TDirPanel::GetDirViewParams() const
+{
+  // upstream's "sort|widths;@pixels-per-inch|order": the sort column and
+  // the order, the width and the visibility of each column, the columns
+  // in their order
+  QHeaderView * Header = DirView->header();
+  UnicodeString Widths;
+  UnicodeString Order;
+  for (int Column = 0; Column < FModel->columnCount(); Column++)
+  {
+    Widths += FORMAT(L"%d,%d;", (Header->sectionSize(Column), (DirView->isColumnHidden(Column) ? 0 : 1)));
+    AddToList(Order, IntToStr(Header->logicalIndex(Column)), L";");
+  }
+  return
+    FORMAT(L"%d;%d;0|%s@%d|%s",
+      (FModel->GetSortColumn(), ((FModel->GetSortOrder() == Qt::AscendingOrder) ? 1 : 0), Widths,
+       DirView->logicalDpiX(), Order));
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetDirViewParams(const UnicodeString & Value)
+{
+  if (Value.IsEmpty())
+  {
+    ResetLayoutColumns();
+    return;
+  }
+  QHeaderView * Header = DirView->header();
+  UnicodeString Buf = Value;
+  UnicodeString SortStr = CutToChar(Buf, L'|', true);
+  UnicodeString WidthsStr = CutToChar(Buf, L'@', true);
+  int PixelsPerInch = StrToIntDef(CutToChar(Buf, L'|', true), DirView->logicalDpiX());
+  if (PixelsPerInch <= 0)
+  {
+    PixelsPerInch = DirView->logicalDpiX();
+  }
+  UnicodeString OrderStr = Buf;
+
+  for (int Column = 0; (Column < FModel->columnCount()) && !WidthsStr.IsEmpty(); Column++)
+  {
+    UnicodeString ColStr = CutToChar(WidthsStr, L';', true);
+    int Width = StrToIntDef(CutToChar(ColStr, L',', true), 0);
+    bool Visible = (StrToIntDef(CutToChar(ColStr, L',', true), 1) != 0);
+    if ((Column > 0) && (Width > 0))
+    {
+      Header->resizeSection(Column, Width * DirView->logicalDpiX() / PixelsPerInch);
+    }
+    DirView->setColumnHidden(Column, (Column > 0) && !Visible);
+  }
+
+  // The columns in their order
+  int Visual = 0;
+  while (!OrderStr.IsEmpty() && (Visual < FModel->columnCount()))
+  {
+    int Column = StrToIntDef(CutToChar(OrderStr, L';', true), -1);
+    if ((Column >= 0) && (Column < FModel->columnCount()))
+    {
+      Header->moveSection(Header->visualIndex(Column), Visual);
+      Visual++;
+    }
+  }
+
+  int SortColumn = StrToIntDef(CutToChar(SortStr, L';', true), 0);
+  bool SortAscending = (StrToIntDef(CutToChar(SortStr, L';', true), 1) != 0);
+  if ((SortColumn < 0) || (SortColumn >= FModel->columnCount()))
+  {
+    SortColumn = 0;
+  }
+  DirView->sortByColumn(SortColumn, SortAscending ? Qt::AscendingOrder : Qt::DescendingOrder);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::FillMenu(QMenu * Menu, QAction * PathToClipboardAction)
+{
+  QString Prefix = (FSide == osLocal) ? QStringLiteral("Local") : QStringLiteral("Remote");
+  QMenu * GoToMenu = Menu->addMenu(tr("&Go To"));
+  GoToMenu->setObjectName(Prefix + QStringLiteral("GoToMenu"));
+  GoToMenu->addActions({ OpenDirAction, ParentDirAction, RootDirAction, HomeDirAction });
+  GoToMenu->addSeparator();
+  GoToMenu->addActions({ BackAction, ForwardAction });
+  Menu->addAction(RefreshAction);
+  Menu->addAction(AddBookmarkAction2);
+  if (PathToClipboardAction != nullptr)
+  {
+    Menu->addAction(PathToClipboardAction);
+  }
+  Menu->addSeparator();
+  Menu->addMenu(SortMenu);
+  Menu->addMenu(ColumnsMenu);
+  Menu->addAction(FilterAction);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::FillOptionsMenu(QMenu * Menu)
+{
+  Menu->addAction(TreeAction);
+  Menu->addAction(StatusBarAction);
 }
 //---------------------------------------------------------------------------
 void TDirPanel::StartRename()
@@ -1290,6 +1633,18 @@ TLocalDirPanel::TLocalDirPanel(QWidget * Parent) :
 {
   FLocalModel = new TLocalDirModel(this);
   SetModel(FLocalModel);
+  ResetLayoutColumns();
+
+  FLocalTree = new TLocalDirTree(this);
+  FLocalTree->setObjectName(QStringLiteral("LocalDriveView"));
+  InitTree(FLocalTree);
+  connect(FLocalTree, &TLocalDirTree::DirectorySelected, this, [this](const UnicodeString & Path)
+  {
+    if (Path != GetPath())
+    {
+      ExecuteHandler([this, Path]() { ChangeDirectory(Path); });
+    }
+  });
 
   // Changes of the directory reload it (once they settle)
   FReloadTimer = new QTimer(this);
@@ -1353,6 +1708,26 @@ void TLocalDirPanel::ChangeDirectory(const UnicodeString & Path)
   Load(NewPath);
   PathChanged();
   FilesReloaded();
+  UpdateTree();
+}
+//---------------------------------------------------------------------------
+void TLocalDirPanel::UpdateTree()
+{
+  if (GetTreeVisible())
+  {
+    FLocalTree->SetPath(GetPath());
+  }
+}
+//---------------------------------------------------------------------------
+void TLocalDirPanel::ApplyConfiguration()
+{
+  TDirPanel::ApplyConfiguration();
+  FLocalTree->SetShowHiddenFiles(FShowHiddenFiles);
+}
+//---------------------------------------------------------------------------
+bool TLocalDirPanel::IsColumnHiddenByDefault(TDirViewColumn Column) const
+{
+  return (Column == dvExt);
 }
 //---------------------------------------------------------------------------
 void TLocalDirPanel::Reload()
@@ -1375,14 +1750,26 @@ TRemoteDirPanel::TRemoteDirPanel(QWidget * Parent) :
 {
   FRemoteModel = new TRemoteDirModel(this);
   SetModel(FRemoteModel);
+  ResetLayoutColumns();
+
+  FRemoteTree = new TRemoteDirTree(this);
+  FRemoteTree->setObjectName(QStringLiteral("RemoteDriveView"));
+  InitTree(FRemoteTree);
+  connect(FRemoteTree, &TRemoteDirTree::DirectorySelected, this, [this](const UnicodeString & Path)
+  {
+    if (IsReady() && !UnixSamePath(Path, GetPath()))
+    {
+      ExecuteHandler([this, Path]() { ChangeDirectory(Path); });
+    }
+  });
 
   // The view or the "not connected" page in its place
   QVBoxLayout * Layout = static_cast<QVBoxLayout *>(layout());
-  int Index = Layout->indexOf(DirView);
+  int Index = Layout->indexOf(FViewSplitter);
   FStack = new QStackedWidget(this);
   FStack->setObjectName(QStringLiteral("RemoteStack"));
   Layout->insertWidget(Index, FStack, 1);
-  FStack->addWidget(DirView);
+  FStack->addWidget(FViewSplitter);
   QWidget * NoSessionPage = new QWidget(FStack);
   NoSessionPage->setObjectName(QStringLiteral("RemoteNoSessionPage"));
   QVBoxLayout * PageLayout = new QVBoxLayout(NoSessionPage);
@@ -1436,6 +1823,7 @@ void TRemoteDirPanel::SetTerminal(TTerminal * Terminal)
     FTerminal->OnReadDirectory = NULL;
   }
   FTerminal = Terminal;
+  FRemoteTree->SetTerminal(Terminal);
   if (FTerminal != NULL)
   {
     FTerminal->OnChangeDirectory = ::rtl::MethodPtr(this, &TRemoteDirPanel::TerminalChangeDirectory);
@@ -1493,12 +1881,28 @@ void TRemoteDirPanel::LoadFiles()
   SaveFocus();
   FRemoteModel->Load(FTerminal->Files, FShowHiddenFiles, FShowInaccesibleDirectories);
   FilesReloaded();
+  UpdateTree();
   Q_EMIT FilesLoaded();
+}
+//---------------------------------------------------------------------------
+void TRemoteDirPanel::UpdateTree()
+{
+  if (GetTreeVisible())
+  {
+    FRemoteTree->LoadDirectory();
+  }
+}
+//---------------------------------------------------------------------------
+bool TRemoteDirPanel::IsColumnHiddenByDefault(TDirViewColumn Column) const
+{
+  return (Column == dvGroup) || (Column == dvExt) || (Column == dvLinkTarget) || (Column == dvType);
 }
 //---------------------------------------------------------------------------
 void TRemoteDirPanel::ApplyConfiguration()
 {
   TDirPanel::ApplyConfiguration();
+  FRemoteTree->SetShowHiddenFiles(FShowHiddenFiles);
+  FRemoteTree->SetShowInaccesibleDirectories(AppConfiguration->ShowInaccesibleDirectories);
   if (FShowInaccesibleDirectories != AppConfiguration->ShowInaccesibleDirectories)
   {
     FShowInaccesibleDirectories = AppConfiguration->ShowInaccesibleDirectories;

@@ -319,6 +319,9 @@ private:
   UnicodeString PathForCaption();
   // The order of the panels (SwappedPanels)
   void UpdatePanelsLayout();
+  // The layout of the panels (their columns, trees, status bars)
+  void RestorePanelsParams();
+  void StorePanelsParams();
   // The keys of the Commander or of the Explorer (ExplorerKeyboardShortcuts)
   void UpdateKeyboardShortcuts();
   // The operation took long enough to beep (BeepOnFinish)

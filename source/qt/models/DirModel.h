@@ -21,7 +21,7 @@ class TRemoteFile;
 class TRemoteFileList;
 class TTerminal;
 //---------------------------------------------------------------------------
-enum TDirViewColumn { dvName, dvSize, dvType, dvChanged, dvRights, dvOwner, dvGroup, dvLinkTarget };
+enum TDirViewColumn { dvName, dvSize, dvType, dvChanged, dvRights, dvOwner, dvGroup, dvLinkTarget, dvExt };
 //---------------------------------------------------------------------------
 // The type and the icon of a file by the name, of the freedesktop theme
 void FileTypeAndIcon(const QString & FileName, bool Directory, QString & Type, QIcon & Icon);
@@ -78,6 +78,10 @@ public:
   // The size and count of the files, without the parent directory
   void Totals(__int64 & Size, int & Count) const;
   TDirViewColumn Column(int Index) const { return FColumns[Index]; }
+  // The index of the column, or -1
+  int ColumnIndex(TDirViewColumn Column) const;
+  int GetSortColumn() const { return FSortColumn; }
+  Qt::SortOrder GetSortOrder() const { return FSortOrder; }
   // The preferences of the display: the format of the sizes, the sorting
   void SetDisplayOptions(TFormatBytesStyle FormatSizeBytes, bool NaturalOrderNumericalSorting, bool AlwaysSortDirectoriesByName);
   // Only the files matching the mask are shown (all when empty), once the
