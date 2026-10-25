@@ -19,6 +19,7 @@
 #include <QMenu>
 #include <QMouseEvent>
 #include <QStatusBar>
+#include <QStyle>
 #include <QTabBar>
 #include <QTimer>
 #include <QTreeView>
@@ -176,6 +177,10 @@ void TScpCommanderForm::UpdateSessionTab(int Index)
     // Upstream shadows the tabs of the sessions that are not connected
     SessionsPageControl->setTabTextColor(Index,
       Session->Active ? QColor() : SessionsPageControl->palette().color(QPalette::Disabled, QPalette::WindowText));
+    // The color of the site (upstream colors the tab)
+    TColor Color = static_cast<TColor>(Session->StateData->Color);
+    int Size = SessionsPageControl->style()->pixelMetric(QStyle::PM_SmallIconSize);
+    SessionsPageControl->setTabIcon(Index, (Color != 0) ? ColorIcon(Color, QSize(Size, Size)) : QIcon());
 
     // upstream's GetTabHintDetails
     UnicodeString Hint = Manager->GetSessionTitle(Session, false);

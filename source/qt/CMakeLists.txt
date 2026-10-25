@@ -9,6 +9,7 @@ add_library(openscp_qt STATIC
   app/DesktopShortcut.cpp
   app/EditorManager.cpp
   app/ExportedFiles.cpp
+  app/KeyTools.cpp
   app/LocalFiles.cpp
   app/LocalProcesses.cpp
   app/Notifications.cpp
@@ -44,9 +45,11 @@ add_library(openscp_qt STATIC
   dialogs/RemoteTransferDialog.cpp
   dialogs/RightsFrame.cpp
   dialogs/SelectMaskDialog.cpp
+  dialogs/SiteAdvancedDialog.cpp
   dialogs/SynchronizeChecklistDialog.cpp
   dialogs/SynchronizeDialog.cpp
   dialogs/SynchronizeProgressForm.cpp
+  dialogs/TreePagesDialog.cpp
   models/DirModel.cpp
   views/DirPanel.cpp
   views/QueueController.cpp

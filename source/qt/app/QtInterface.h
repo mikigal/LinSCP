@@ -168,6 +168,12 @@ void HideFileFindDialog();
 // dialogs/EditMaskDialog.cpp
 bool DoEditMaskDialog(TFileMasks & Mask);
 
+// dialogs/SiteAdvancedDialog.cpp
+bool DoSiteAdvancedDialog(TSessionData * SessionData);
+// dialogs/CustomDialog.cpp: the settings of the site that differ from the
+// defaults, as raw settings (upstream's TSiteRawDialog)
+void DoSiteRawDialog(TSessionData * Data);
+
 // dialogs/SelectMaskDialog.cpp
 // The files of a panel selected by a mask (upstream's TFileFilter of
 // its directory views)
@@ -182,6 +188,19 @@ bool DoSelectMaskDialog(QWidget * Parent, bool Select, TFileFilter & Filter);
 // The mask of the files shown in a panel
 bool DoFilterMaskDialog(QWidget * Parent, UnicodeString & Mask);
 bool DoFileColorDialog(TFileColorData & FileColorData);
+
+// app/KeyTools.cpp: the private keys and the certificates of the sites
+// The key is usable (of PuTTY), else its error is shown and EAbort thrown
+// (unless the error can be and is ignored); a key of OpenSSH is converted
+// to a key of PuTTY when confirmed (VerifyAndConvertKey)
+void VerifyAndConvertKey(UnicodeString & FileName, bool CanIgnore);
+void VerifyKey(const UnicodeString & FileName);
+void VerifyCertificate(const UnicodeString & FileName);
+struct TPrivateKey;
+// Adds the certificate found next to the key to it, returns its file
+UnicodeString AddMatchingKeyCertificate(TPrivateKey * PrivateKey, const UnicodeString & FileName);
+// The proxy of the environment (https_proxy, ...)
+bool AutodetectProxy(UnicodeString & HostName, int & PortNumber);
 
 // dialogs/ColorMenu.cpp
 // The menu of the colors at the position: the default one (0), the custom

@@ -20,6 +20,7 @@
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
+#include "TreePagesDialog.h"
 
 #include <QApplication>
 #include <QBoxLayout>
@@ -61,7 +62,7 @@ enum TPreferencesPage
   ppRemote = 21, ppLocal = 22, ppLanguages = 23, ppEditorInternal = 24, ppFileColors = 25
 };
 //---------------------------------------------------------------------------
-class TPreferencesDialog : public QDialog
+class TPreferencesDialog : public TTreePagesDialog
 {
 public:
   TPreferencesDialog(QWidget * Parent, TPreferencesMode PreferencesMode);
@@ -85,10 +86,6 @@ private:
   QFont FEditorFont;
   TColor FEditorFontColor;
   TColor FEditorBackgroundColor;
-
-  QTreeWidget * NavigationTree;
-  QStackedWidget * PageControl;
-  std::map<int, QWidget *> FPages;
 
   // Environment
   QCheckBox * ConfirmTransferringCheck;
@@ -264,22 +261,6 @@ private:
   QCheckBox * ConfirmTemporaryDirectoryCleanupCheck;
   QLineEdit * RandomSeedFileEdit;
 
-  QWidget * AddSheet(const char * Name, const QString & Caption, int Tag, QTreeWidgetItem * ParentNode);
-  QTreeWidgetItem * NodeOf(int Tag);
-  QGroupBox * AddGroup(QWidget * Page, const char * Name, const QString & Caption);
-  QCheckBox * AddCheck(QWidget * Parent, const char * Name, const QString & Caption);
-  QRadioButton * AddRadio(QWidget * Parent, const char * Name, const QString & Caption);
-  QSpinBox * CreateSpin(QWidget * Parent, const char * Name, int Min, int Max, int Step = 1);
-  QComboBox * CreateCombo(QWidget * Parent, const char * Name, const QStringList & Items, bool Editable = false);
-  QPushButton * CreateButton(QWidget * Parent, const char * Name, const QString & Caption);
-  QHBoxLayout * AddRow(QWidget * Parent);
-  QLineEdit * CreatePathEdit(QWidget * Parent, QHBoxLayout * Row, const char * Name, bool Directory, const QString & Title);
-  QTreeWidget * CreateListView(QWidget * Parent, const char * Name, const QStringList & Columns);
-  void AddListButtons(QWidget * Parent, QHBoxLayout * Layout, QTreeWidget * View, const std::vector<QPushButton *> & Buttons);
-  int ListIndex(QTreeWidget * View);
-  void SetListIndex(QTreeWidget * View, int Index);
-  void ControlChange(QObject * Control);
-
   void CreateEnvironmentSheet();
   void CreateWindowSheet();
   void CreateCommanderSheet();
@@ -296,8 +277,7 @@ private:
 
   void LoadConfiguration();
   void SaveConfiguration();
-  void UpdateControls();
-  void SetActivePage(int Tag);
+  virtual void UpdateControls() override;
 
   void UpdateCustomCommandsView();
   TShortCuts GetShortCuts();
@@ -333,7 +313,7 @@ private:
 };
 //---------------------------------------------------------------------------
 TPreferencesDialog::TPreferencesDialog(QWidget * Parent, TPreferencesMode PreferencesMode) :
-  QDialog(Parent != nullptr ? Parent : QApplication::activeWindow())
+  TTreePagesDialog(Parent != nullptr ? Parent : QApplication::activeWindow())
 {
   setObjectName(QStringLiteral("PreferencesDialog"));
   setWindowTitle(tr("Preferences"));
@@ -346,30 +326,12 @@ TPreferencesDialog::TPreferencesDialog(QWidget * Parent, TPreferencesMode Prefer
   FEditorFontColor = TColor(0);
   FEditorBackgroundColor = TColor(0);
 
-  QVBoxLayout * MainLayout = new QVBoxLayout(this);
-  QSplitter * MainPanel = new QSplitter(Qt::Horizontal, this);
-  MainPanel->setObjectName(QStringLiteral("MainPanel"));
-  MainPanel->setChildrenCollapsible(false);
-  NavigationTree = new QTreeWidget(MainPanel);
-  NavigationTree->setObjectName(QStringLiteral("NavigationTree"));
-  NavigationTree->setHeaderHidden(true);
-  NavigationTree->setRootIsDecorated(false);
-  NavigationTree->setItemsExpandable(false);
-  NavigationTree->setMinimumWidth(fontMetrics().averageCharWidth() * 22);
-  PageControl = new QStackedWidget(MainPanel);
-  PageControl->setObjectName(QStringLiteral("PageControl"));
-  MainPanel->addWidget(NavigationTree);
-  MainPanel->addWidget(PageControl);
-  MainPanel->setStretchFactor(1, 1);
-  MainPanel->setSizes({ fontMetrics().averageCharWidth() * 24, fontMetrics().averageCharWidth() * 96 });
-  MainLayout->addWidget(MainPanel, 1);
-
   QDialogButtonBox * Buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
   Buttons->button(QDialogButtonBox::Ok)->setObjectName(QStringLiteral("OKButton"));
   Buttons->button(QDialogButtonBox::Cancel)->setObjectName(QStringLiteral("CloseButton"));
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  MainLayout->addWidget(Buttons);
+  MainLayout()->addWidget(Buttons);
 
   CreateEnvironmentSheet();
   CreatePanelsSheets();
@@ -383,202 +345,10 @@ TPreferencesDialog::TPreferencesDialog(QWidget * Parent, TPreferencesMode Prefer
   CreateStorageSheet();
   NavigationTree->expandAll();
 
-  connect(NavigationTree, &QTreeWidget::currentItemChanged, this, [this](QTreeWidgetItem * Item)
-  {
-    if (Item != nullptr)
-    {
-      PageControl->setCurrentWidget(FPages[Item->data(0, Qt::UserRole).toInt()]);
-    }
-  });
-
   // The changes of the controls update the others
-  for (QAbstractButton * Button : findChildren<QAbstractButton *>())
-  {
-    if (Button->isCheckable())
-    {
-      connect(Button, &QAbstractButton::toggled, this, [this, Button]() { ControlChange(Button); });
-    }
-  }
-  for (QComboBox * Combo : findChildren<QComboBox *>())
-  {
-    connect(Combo, &QComboBox::currentTextChanged, this, [this, Combo]() { ControlChange(Combo); });
-  }
-  for (QLineEdit * Edit : findChildren<QLineEdit *>())
-  {
-    connect(Edit, &QLineEdit::textChanged, this, [this, Edit]() { ControlChange(Edit); });
-  }
-  for (QSpinBox * Spin : findChildren<QSpinBox *>())
-  {
-    connect(Spin, &QSpinBox::valueChanged, this, [this, Spin]() { ControlChange(Spin); });
-  }
+  ConnectControls();
 
   resize(fontMetrics().averageCharWidth() * 120, fontMetrics().height() * 38);
-}
-//---------------------------------------------------------------------------
-QWidget * TPreferencesDialog::AddSheet(const char * Name, const QString & Caption, int Tag, QTreeWidgetItem * ParentNode)
-{
-  QScrollArea * Scroll = new QScrollArea(PageControl);
-  Scroll->setWidgetResizable(true);
-  Scroll->setFrameShape(QFrame::NoFrame);
-  QWidget * Sheet = new QWidget(Scroll);
-  Sheet->setObjectName(QString::fromLatin1(Name));
-  QVBoxLayout * Layout = new QVBoxLayout(Sheet);
-  Layout->setContentsMargins(0, 0, 0, 0);
-  Scroll->setWidget(Sheet);
-  PageControl->addWidget(Scroll);
-  FPages[Tag] = Scroll;
-
-  QTreeWidgetItem * Node =
-    (ParentNode != nullptr) ? new QTreeWidgetItem(ParentNode) : new QTreeWidgetItem(NavigationTree);
-  Node->setText(0, Caption);
-  Node->setData(0, Qt::UserRole, Tag);
-  return Sheet;
-}
-//---------------------------------------------------------------------------
-QTreeWidgetItem * TPreferencesDialog::NodeOf(int Tag)
-{
-  for (QTreeWidgetItemIterator It(NavigationTree); *It != nullptr; ++It)
-  {
-    if ((*It)->data(0, Qt::UserRole).toInt() == Tag)
-    {
-      return *It;
-    }
-  }
-  return nullptr;
-}
-//---------------------------------------------------------------------------
-QGroupBox * TPreferencesDialog::AddGroup(QWidget * Page, const char * Name, const QString & Caption)
-{
-  QGroupBox * Group = new QGroupBox(Caption, Page);
-  Group->setObjectName(QString::fromLatin1(Name));
-  new QVBoxLayout(Group);
-  static_cast<QVBoxLayout *>(Page->layout())->addWidget(Group);
-  return Group;
-}
-//---------------------------------------------------------------------------
-QCheckBox * TPreferencesDialog::AddCheck(QWidget * Parent, const char * Name, const QString & Caption)
-{
-  QCheckBox * Check = new QCheckBox(Caption, Parent);
-  Check->setObjectName(QString::fromLatin1(Name));
-  Parent->layout()->addWidget(Check);
-  return Check;
-}
-//---------------------------------------------------------------------------
-QRadioButton * TPreferencesDialog::AddRadio(QWidget * Parent, const char * Name, const QString & Caption)
-{
-  QRadioButton * Radio = new QRadioButton(Caption, Parent);
-  Radio->setObjectName(QString::fromLatin1(Name));
-  Parent->layout()->addWidget(Radio);
-  return Radio;
-}
-//---------------------------------------------------------------------------
-QSpinBox * TPreferencesDialog::CreateSpin(QWidget * Parent, const char * Name, int Min, int Max, int Step)
-{
-  QSpinBox * Spin = new QSpinBox(Parent);
-  Spin->setObjectName(QString::fromLatin1(Name));
-  Spin->setRange(Min, Max);
-  Spin->setSingleStep(Step);
-  return Spin;
-}
-//---------------------------------------------------------------------------
-QComboBox * TPreferencesDialog::CreateCombo(QWidget * Parent, const char * Name, const QStringList & Items, bool Editable)
-{
-  QComboBox * Combo = new QComboBox(Parent);
-  Combo->setObjectName(QString::fromLatin1(Name));
-  Combo->addItems(Items);
-  Combo->setEditable(Editable);
-  if (Editable)
-  {
-    Combo->setInsertPolicy(QComboBox::NoInsert);
-  }
-  return Combo;
-}
-//---------------------------------------------------------------------------
-QPushButton * TPreferencesDialog::CreateButton(QWidget * Parent, const char * Name, const QString & Caption)
-{
-  QPushButton * Button = new QPushButton(Caption, Parent);
-  Button->setObjectName(QString::fromLatin1(Name));
-  Button->setAutoDefault(false);
-  return Button;
-}
-//---------------------------------------------------------------------------
-QHBoxLayout * TPreferencesDialog::AddRow(QWidget * Parent)
-{
-  QHBoxLayout * Row = new QHBoxLayout();
-  static_cast<QBoxLayout *>(Parent->layout())->addLayout(Row);
-  return Row;
-}
-//---------------------------------------------------------------------------
-QLineEdit * TPreferencesDialog::CreatePathEdit(
-  QWidget * Parent, QHBoxLayout * Row, const char * Name, bool Directory, const QString & Title)
-{
-  QLineEdit * Edit = new QLineEdit(Parent);
-  Edit->setObjectName(QString::fromLatin1(Name));
-  Row->addWidget(Edit, 1);
-  QToolButton * Browse = new QToolButton(Parent);
-  Browse->setObjectName(QString::fromLatin1(Name) + QStringLiteral("Browse"));
-  Browse->setText(QStringLiteral("..."));
-  Browse->setToolTip(tr("Browse"));
-  Row->addWidget(Browse);
-  connect(Edit, &QLineEdit::textChanged, Browse, [Browse, Edit]() { Browse->setEnabled(Edit->isEnabled()); });
-  connect(Browse, &QToolButton::clicked, this, [this, Edit, Directory, Title]()
-  {
-    QString Path =
-      Directory ?
-        QFileDialog::getExistingDirectory(this, Title, Edit->text()) :
-        QFileDialog::getSaveFileName(this, Title, Edit->text(), QString(), nullptr, QFileDialog::DontConfirmOverwrite);
-    if (!Path.isEmpty())
-    {
-      Edit->setText(Path);
-    }
-  });
-  return Edit;
-}
-//---------------------------------------------------------------------------
-QTreeWidget * TPreferencesDialog::CreateListView(QWidget * Parent, const char * Name, const QStringList & Columns)
-{
-  QTreeWidget * View = new QTreeWidget(Parent);
-  View->setObjectName(QString::fromLatin1(Name));
-  View->setRootIsDecorated(false);
-  View->setUniformRowHeights(true);
-  View->setHeaderLabels(Columns);
-  View->setMinimumHeight(fontMetrics().height() * 10);
-  View->installEventFilter(this);
-  connect(View, &QTreeWidget::itemSelectionChanged, this, [this]() { UpdateControls(); });
-  return View;
-}
-//---------------------------------------------------------------------------
-void TPreferencesDialog::AddListButtons(
-  QWidget * Parent, QHBoxLayout * Layout, QTreeWidget * View, const std::vector<QPushButton *> & Buttons)
-{
-  Layout->addWidget(View, 1);
-  QVBoxLayout * ButtonsLayout = new QVBoxLayout();
-  for (QPushButton * Button : Buttons)
-  {
-    Button->setParent(Parent);
-    ButtonsLayout->addWidget(Button);
-  }
-  ButtonsLayout->addStretch(1);
-  Layout->addLayout(ButtonsLayout);
-}
-//---------------------------------------------------------------------------
-int TPreferencesDialog::ListIndex(QTreeWidget * View)
-{
-  QTreeWidgetItem * Item = View->currentItem();
-  return ((Item != nullptr) && Item->isSelected()) ? View->indexOfTopLevelItem(Item) : -1;
-}
-//---------------------------------------------------------------------------
-void TPreferencesDialog::SetListIndex(QTreeWidget * View, int Index)
-{
-  if ((Index >= 0) && (Index < View->topLevelItemCount()))
-  {
-    View->setCurrentItem(View->topLevelItem(Index));
-  }
-}
-//---------------------------------------------------------------------------
-void TPreferencesDialog::ControlChange(QObject * /*Control*/)
-{
-  UpdateControls();
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateEnvironmentSheet()
@@ -1415,15 +1185,6 @@ bool TPreferencesDialog::Execute(TPreferencesDialogData * DialogData)
     PuttyPathEdit->SaveToHistory();
   }
   return Result;
-}
-//---------------------------------------------------------------------------
-void TPreferencesDialog::SetActivePage(int Tag)
-{
-  QTreeWidgetItem * Node = NodeOf(Tag);
-  if (DebugAlwaysTrue(Node != nullptr))
-  {
-    NavigationTree->setCurrentItem(Node);
-  }
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::LoadConfiguration()

@@ -20,6 +20,7 @@ class QPlainTextEdit;
 class QPushButton;
 class QSpinBox;
 class QTreeWidget;
+class QToolButton;
 class QTreeWidgetItem;
 class TSessionData;
 //---------------------------------------------------------------------------
@@ -70,6 +71,8 @@ private:
   QPushButton * SaveButton;
   QPushButton * EditButton;
   QPushButton * EditCancelButton;
+  QToolButton * AdvancedButton;
+  QMenu * SessionAdvancedPopupMenu;
   QGroupBox * NoteGroup;
   QPlainTextEdit * NoteMemo;
   QGroupBox * ContentsGroupBox;
@@ -92,6 +95,12 @@ private:
   QAction * SetDefaultSessionAction;
   QAction * ResetNewSessionAction;
   QAction * PasteUrlAction;
+  QAction * PuttyAction;
+  QAction * DesktopIconAction;
+  QAction * SessionAdvancedAction;
+  QAction * SessionRawAction;
+  QAction * CopyParamRuleAction;
+  QAction * PreferencesLoggingAction;
 
   TSessionData * FNewSiteData;
   // A copy of the edited site with the settings that this dialog does not
@@ -208,6 +217,13 @@ private:
   void SetDefaultSessionActionExecute();
   void ResetNewSessionActionExecute();
   void PasteUrlActionExecute();
+  void SessionAdvancedActionExecute() { SessionAdvanced(false); }
+  void SessionRawActionExecute() { SessionAdvanced(true); }
+  void SessionAdvanced(bool Raw);
+  void CopyParamRuleActionExecute();
+  void PuttyActionExecute();
+  void DesktopIconActionExecute();
+  void PreferencesLoggingActionExecute();
 };
 //---------------------------------------------------------------------------
 #endif

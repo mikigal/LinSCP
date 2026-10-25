@@ -101,6 +101,10 @@ public:
   bool IsAvailableTerminalForSite(TTerminal * Terminal, TSessionData * Data);
   TManagedTerminal * FindActiveTerminalForSite(TSessionData * Data);
   TTerminalQueue * FindQueueForTerminal(TTerminal * Terminal);
+  // Installs the public key of the key file selected into the server's
+  // authorized keys, by the terminal or by a terminal of the site (false
+  // when no key was selected)
+  bool UploadPublicKey(TTerminal * Terminal, TSessionData * Data, UnicodeString & FileName);
   // The session is opened in an SSH client (upstream's "Open in PuTTY")
   bool CanOpenInPutty();
   void OpenInPutty();
@@ -165,7 +169,8 @@ private:
   TTerminalThread * CreateTerminalThread(TTerminal * Terminal);
   void ReconnectingTerminal(TManagedTerminal * ManagedTerminal);
   void ReconnectedTerminal(TManagedTerminal * ManagedTerminal);
-  void DoConnectTerminal(TTerminal * Terminal, bool Reopen);
+  // AdHoc: a terminal of no session (not of the list)
+  void DoConnectTerminal(TTerminal * Terminal, bool Reopen, bool AdHoc = false);
   bool ConnectActiveTerminalImpl(bool Reopen);
   bool ConnectActiveTerminal();
   void UpdateScpExplorer();

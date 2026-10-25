@@ -66,6 +66,19 @@ packaging (PLAN.md, section 7).
   File colors (`FileColors`, the files of the masks in their colors) of the preferences, with
   upstream's color menu (`dialogs/ColorMenu.cpp`: the palettes of the sessions and of the
   fonts, the custom colors picked before, More Colors), also for the colors of the editor.
+- Advanced site settings (`dialogs/SiteAdvancedDialog.cpp`, the site manager's Advanced
+  button with its menu): upstream's pages that apply to the protocol of the site (the
+  environment, the directories, the recycle bin, the encryption of files, SFTP, the shell
+  and SCP, FTP, S3, WebDAV, the connection, the proxy with its detection from the
+  environment, the tunnel, TLS, SSH with the ciphers, the key exchange, the authentication
+  with the private key, its certificate and its public key, the bugs, the note) and the color
+  of the site, shown in the site manager and on its tabs (`ColorIcon` of `app/QtTools.cpp`).
+  The keys of other formats are converted to PuTTY's (`app/KeyTools.cpp`); the public key is
+  installed into the server's authorized keys (`TTerminalManager::UploadPublicKey`). The raw
+  settings of the site (`TSiteRawDialog`) and the transfer settings rule of the site (its
+  preset) are in the menu of the button; the Manage menu opens the site in the SSH client and
+  creates its desktop icon. `dialogs/TreePagesDialog.cpp` is the base of the dialogs of pages
+  in a navigation tree (the preferences too).
 
 Decisions:
 
@@ -86,6 +99,10 @@ Decisions:
   shortcuts without the keypad modifier on xkb, as the keys of the main keyboard, which the
   incremental search needs. The directory trees of the Commander (`TreeOnLeft`) come with the
   Explorer interface.
+- Advanced site settings not ported: PuTTY's terminal settings of the site (upstream edits
+  them in PuTTY through its registry; PuTTY on Linux keeps its sessions in files and the
+  sessions open in it by their command line) and the generation of a key by PuTTYgen (a
+  command line tool on Linux).
 
 ## M7 — desktop integration (done, 2026-10-25)
 

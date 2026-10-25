@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QFontDatabase>
+#include <QPainter>
 #include <QThread>
 
 #include <cmath>
@@ -75,6 +76,30 @@ QColor TColorToQColor(TColor Color)
 TColor QColorToTColor(const QColor & Color)
 {
   return static_cast<TColor>(Color.red() | (Color.green() << 8) | (Color.blue() << 16));
+}
+//---------------------------------------------------------------------------
+QIcon ColorIcon(TColor Color, const QSize & Size)
+{
+  QPixmap Pixmap(Size);
+  Pixmap.fill(Qt::transparent);
+  QPainter Painter(&Pixmap);
+  Painter.setPen(TColorToQColor(Color).darker(150));
+  Painter.setBrush(TColorToQColor(Color));
+  Painter.drawRect(QRect(QPoint(0, 0), Size).adjusted(1, 1, -2, -2));
+  return QIcon(Pixmap);
+}
+//---------------------------------------------------------------------------
+QIcon SessionColorIcon(const QIcon & Icon, TColor Color, const QSize & Size)
+{
+  QPixmap Pixmap = Icon.pixmap(Size);
+  QPainter Painter(&Pixmap);
+  // The bottom right quarter
+  QSize MarkSize(Size.width() / 2, Size.height() / 2);
+  QRect Mark(QPoint(Size.width() - MarkSize.width(), Size.height() - MarkSize.height()), MarkSize);
+  Painter.setPen(TColorToQColor(Color).darker(150));
+  Painter.setBrush(TColorToQColor(Color));
+  Painter.drawRect(Mark.adjusted(0, 0, -1, -1));
+  return QIcon(Pixmap);
 }
 //---------------------------------------------------------------------------
 QFont EditorFont(const TEditorConfiguration & Editor)

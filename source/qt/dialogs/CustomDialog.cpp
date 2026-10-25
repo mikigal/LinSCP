@@ -36,14 +36,20 @@ TCustomDialog::TCustomDialog(QWidget * Parent) :
   MainLayout->addLayout(FControlsLayout);
   MainLayout->addStretch(1);
 
-  QDialogButtonBox * Buttons = new QDialogButtonBox(this);
-  OKButton = Buttons->addButton(QDialogButtonBox::Ok);
+  FButtons = new QDialogButtonBox(this);
+  OKButton = FButtons->addButton(QDialogButtonBox::Ok);
   OKButton->setObjectName(QStringLiteral("OKButton"));
-  CancelButton = Buttons->addButton(QDialogButtonBox::Cancel);
+  CancelButton = FButtons->addButton(QDialogButtonBox::Cancel);
   CancelButton->setObjectName(QStringLiteral("CancelButton"));
-  connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-  connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  MainLayout->addWidget(Buttons);
+  connect(FButtons, &QDialogButtonBox::accepted, this, &QDialog::accept);
+  connect(FButtons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  MainLayout->addWidget(FButtons);
+}
+//---------------------------------------------------------------------------
+void TCustomDialog::AddDialogButton(QPushButton * Button)
+{
+  Button->setAutoDefault(false);
+  FButtons->addButton(Button, QDialogButtonBox::ActionRole);
 }
 //---------------------------------------------------------------------------
 QLabel * TCustomDialog::CreateLabel(const UnicodeString & Caption)
@@ -1194,5 +1200,177 @@ bool DoShortCutDialog(TShortCut & ShortCut, const TShortCuts & ShortCuts)
 {
   TShortCutDialog Dialog(ShortCuts);
   return Dialog.Execute(ShortCut);
+}
+//---------------------------------------------------------------------------
+class TSiteRawAddDialog : public TCustomDialog
+{
+public:
+  TSiteRawAddDialog(QWidget * Parent, TStrings * Names);
+
+  QComboBox * AddComboBox;
+};
+//---------------------------------------------------------------------------
+TSiteRawAddDialog::TSiteRawAddDialog(QWidget * Parent, TStrings * Names) :
+  TCustomDialog(Parent)
+{
+  setObjectName(QStringLiteral("SiteRawAddDialog"));
+  setWindowTitle(ToQString(LoadStr(SITE_RAW_ADD_CAPTION)));
+  AddComboBox = new QComboBox(this);
+  AddComboBox->setObjectName(QStringLiteral("AddComboBox"));
+  for (int Index = 0; Index < Names->Count; Index++)
+  {
+    AddComboBox->addItem(ToQString(Names->Strings[Index]));
+  }
+  AddComboBox->setMaxVisibleItems(std::max(AddComboBox->maxVisibleItems(), 15));
+  AddEditLikeControl(AddComboBox, CreateLabel(LoadStr(SITE_RAW_ADD_LABEL)));
+}
+//---------------------------------------------------------------------------
+class TSiteRawDialog : public TCustomDialog
+{
+public:
+  TSiteRawDialog();
+
+  bool Execute(TSessionData * Data);
+
+private:
+  QPlainTextEdit * SettingsMemo;
+
+  void AddButtonClick();
+  void DeleteNames(TStrings * Names, TStrings * Options);
+  TStrings * GetSettings();
+};
+//---------------------------------------------------------------------------
+TSiteRawDialog::TSiteRawDialog()
+{
+  setObjectName(QStringLiteral("SiteRawDialog"));
+  setWindowTitle(ToQString(LoadStr(SITE_RAW_CAPTION)));
+  setMinimumWidth(fontMetrics().averageCharWidth() * 70);
+
+  SettingsMemo = new QPlainTextEdit(this);
+  SettingsMemo->setObjectName(QStringLiteral("SettingsMemo"));
+  SettingsMemo->setTabChangesFocus(true);
+  SettingsMemo->setMinimumHeight(fontMetrics().lineSpacing() * 20);
+  AddWidget(SettingsMemo);
+
+  QPushButton * AddButton = new QPushButton(ToQString(LoadStr(SITE_RAW_ADD)), this);
+  AddButton->setObjectName(QStringLiteral("AddButton"));
+  connect(AddButton, &QPushButton::clicked, this, [this]() { ExecuteHandler([this]() { AddButtonClick(); }); });
+  AddDialogButton(AddButton);
+}
+//---------------------------------------------------------------------------
+bool TSiteRawDialog::Execute(TSessionData * Data)
+{
+  std::unique_ptr<TSessionData> FactoryDefaults(new TSessionData(L""));
+  std::unique_ptr<TSessionData> RawData(new TSessionData(L""));
+  RawData->Assign(Data);
+  // SFTP-only is not reflected by the protocol prefix, the raw settings
+  // have it
+  if (RawData->FSProtocol != fsSFTPonly)
+  {
+    RawData->FSProtocol = FactoryDefaults->FSProtocol;
+  }
+  RawData->HostName = FactoryDefaults->HostName;
+  RawData->PortNumber = FactoryDefaults->PortNumber;
+  RawData->UserName = FactoryDefaults->UserName;
+  RawData->Password = FactoryDefaults->Password;
+  RawData->Ftps = FactoryDefaults->Ftps;
+
+  std::unique_ptr<TStrings> Options(RawData->SaveToOptions(FactoryDefaults.get(), false, false));
+
+  SettingsMemo->setPlainText(ToQString(Options->Text));
+
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    std::unique_ptr<TSessionData> BackupData(new TSessionData(L""));
+    BackupData->Assign(Data);
+    Data->DefaultSettings();
+
+    Data->FSProtocol = BackupData->FSProtocol;
+    Data->HostName = BackupData->HostName;
+    Data->PortNumber = BackupData->PortNumber;
+    Data->UserName = BackupData->UserName;
+    Data->Password = BackupData->Password;
+    Data->Ftps = BackupData->Ftps;
+
+    std::unique_ptr<TStrings> Settings(GetSettings());
+    Data->ApplyRawSettings(Settings.get(), false);
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+TStrings * TSiteRawDialog::GetSettings()
+{
+  return TextToStringList(ToUnicodeString(SettingsMemo->toPlainText()));
+}
+//---------------------------------------------------------------------------
+void TSiteRawDialog::AddButtonClick()
+{
+  std::unique_ptr<TSessionData> FactoryDefaults(new TSessionData(L""));
+  std::unique_ptr<TSessionData> BasicData(new TSessionData(L""));
+  BasicData->FSProtocol = TFSProtocol(FactoryDefaults->FSProtocol + 1);
+  UnicodeString RandomAppendix(L"_");
+  BasicData->HostName = FactoryDefaults->HostName + RandomAppendix;
+  BasicData->Ftps = TFtps(FactoryDefaults->Ftps + 1);
+  BasicData->PortNumber = BasicData->GetDefaultPort() + 1;
+  BasicData->UserName = FactoryDefaults->UserName + RandomAppendix;
+  BasicData->Password = FactoryDefaults->Password + RandomAppendix;
+
+  std::unique_ptr<TStrings> BasicOptions(BasicData->SaveToOptions(FactoryDefaults.get(), false, false));
+
+  std::unique_ptr<TStrings> AllOptions(TSessionData::GetAllOptionNames(false));
+
+  std::unique_ptr<TStrings> Names(CreateSortedStringList());
+  for (int Index = 0; Index < AllOptions->Count; Index++)
+  {
+    Names->Add(AllOptions->Names[Index]);
+  }
+  DeleteNames(Names.get(), BasicOptions.get());
+  std::unique_ptr<TStrings> Settings(GetSettings());
+  DeleteNames(Names.get(), Settings.get());
+
+  TSiteRawAddDialog AddDialog(this, Names.get());
+  QComboBox * AddComboBox = AddDialog.AddComboBox;
+  if ((AddComboBox->count() > 0) && AddDialog.Execute())
+  {
+    UnicodeString Name = ToUnicodeString(AddComboBox->currentText());
+    UnicodeString Value = AllOptions->Values[Name];
+    QString Text = SettingsMemo->toPlainText();
+    if (!Text.isEmpty() && !Text.endsWith(QLatin1Char('\n')))
+    {
+      Text += QLatin1Char('\n');
+    }
+    Text += ToQString(Name) + QLatin1Char('=');
+    int Start = Text.length();
+    Text += ToQString(Value);
+    SettingsMemo->setPlainText(Text);
+    SettingsMemo->setFocus();
+    QTextCursor Cursor = SettingsMemo->textCursor();
+    Cursor.setPosition(Start);
+    Cursor.setPosition(Start + ToQString(Value).length(), QTextCursor::KeepAnchor);
+    SettingsMemo->setTextCursor(Cursor);
+  }
+}
+//---------------------------------------------------------------------------
+void TSiteRawDialog::DeleteNames(TStrings * Names, TStrings * Options)
+{
+  for (int Index = 0; Index < Options->Count; Index++)
+  {
+    UnicodeString Name = Options->Names[Index];
+    if (!Name.IsEmpty())
+    {
+      int I = Names->IndexOf(Name);
+      if (I >= 0)
+      {
+        Names->Delete(I);
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void DoSiteRawDialog(TSessionData * Data)
+{
+  TSiteRawDialog Dialog;
+  Dialog.Execute(Data);
 }
 //---------------------------------------------------------------------------

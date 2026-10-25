@@ -10,6 +10,7 @@
 //---------------------------------------------------------------------------
 class QCheckBox;
 class QComboBox;
+class QDialogButtonBox;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
@@ -33,6 +34,8 @@ protected:
   void AddEditLikeControl(QWidget * Edit, QLabel * Label);
   QCheckBox * CreateAndAddCheckBox(const UnicodeString & Caption);
   void AddWidget(QWidget * Widget);
+  // A button with OK and Cancel
+  void AddDialogButton(QPushButton * Button);
   // Updates the state of the controls (the OK button with CanSubmit)
   void Change();
 
@@ -43,6 +46,7 @@ protected:
 
 private:
   QVBoxLayout * FControlsLayout;
+  QDialogButtonBox * FButtons;
 };
 //---------------------------------------------------------------------------
 // The history of a combo box: the value goes first, without duplicates

@@ -1532,6 +1532,51 @@ class GuiSshTest(GuiSshTestCase):
         self.screenshot('file_colors')
         self.assertEqual(gui.quit(), 0)
 
+    def test_site_advanced(self):
+        remote = self.work_dir('remote')
+        (remote / 'sub').mkdir()
+        (remote / 'sub' / 'inner.txt').write_text('inner')
+        local = self.work_dir('local')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        gui.wait_window('LoginDialog')
+        gui.select('LoginDialog/SessionTree', 'local')
+        # The advanced settings of a stored site are edited with it
+        self.assertFalse(gui.get('LoginDialog/AdvancedButton')['enabled'])
+        gui.click('LoginDialog/EditButton')
+        gui.click('LoginDialog/AdvancedButton')
+        gui.wait_window('SiteAdvancedDialog')
+        A = 'SiteAdvancedDialog/'
+        tree = gui.names(A + 'NavigationTree')
+        self.assertEqual(tree, ['Environment', 'Connection', 'SSH', 'Note'])
+        gui.select(A + 'NavigationTree', ['Environment', 'Directories'])
+        self.assertEqual(gui.get(A + 'RemoteDirectoryEdit')['text'], str(remote))
+        gui.set(A + 'RemoteDirectoryEdit', str(remote / 'sub'))
+        gui.set(A + 'UpdateDirectoriesCheck', False)
+        gui.select(A + 'NavigationTree', 'Note')
+        gui.set(A + 'NoteMemo', 'The test site')
+        # Popups need real input on Wayland
+        gui.click_real(A + 'ColorButton')
+        gui.wait_window('ColorMenu')
+        gui.click('ColorMenu/ColorCC99FF')
+        gui.wait_no_window('ColorMenu')
+        self.screenshot('site_advanced')
+        gui.click(A + 'OKBtn')
+        gui.wait_no_window('SiteAdvancedDialog')
+        # The note of the site
+        gui.wait_for(lambda: gui.get('LoginDialog/NoteGroup')['visible'], what='the note')
+        self.assertEqual(gui.get('LoginDialog/NoteMemo')['text'], 'The test site')
+        gui.click('LoginDialog/SaveButton')
+        gui.wait_idle()
+        ini = gui.config_file.read_text()
+        self.assertIn('RemoteDirectory=%s\n' % (remote / 'sub'), ini)
+        self.assertIn('Color=13408767', ini)
+        self.screenshot('site_color')
+
+        self.login(gui, 'local')
+        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote / 'sub'))
+        self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'inner.txt'])
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

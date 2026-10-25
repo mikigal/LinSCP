@@ -8,6 +8,7 @@
 
 #include <QColor>
 #include <QFont>
+#include <QIcon>
 #include <QString>
 #include <QUrl>
 //---------------------------------------------------------------------------
@@ -25,6 +26,10 @@ QString FileDialogFilter(const UnicodeString & Filter);
 // The colors of the configuration (VCL's 0x00BBGGRR)
 QColor TColorToQColor(TColor Color);
 TColor QColorToTColor(const QColor & Color);
+// A square of the color; the icon with the mark of the color of the
+// session (upstream's color mask of the site icons)
+QIcon ColorIcon(TColor Color, const QSize & Size);
+QIcon SessionColorIcon(const QIcon & Icon, TColor Color, const QSize & Size);
 // The fonts of the configuration (the fixed width font of the desktop for
 // the editor, the font of the desktop for the panels, by default)
 struct TEditorConfiguration;

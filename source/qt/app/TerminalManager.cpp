@@ -3,13 +3,16 @@
 #include "QtTools.h"
 
 #include <AppConfiguration.h>
+#include <PuttyTools.h>
 
 #include "AuthenticateForm.h"
 #include "ScpCommander.h"
 #include "TerminalManager.h"
 #include "OpenInPutty.h"
 
+#include <QApplication>
 #include <QCoreApplication>
+#include <QFileDialog>
 #include <QThread>
 //---------------------------------------------------------------------------
 TTerminalManager * TTerminalManager::FInstance = NULL;
@@ -261,7 +264,7 @@ void TTerminalManager::TerminalThreadIdle(void * /*Data*/, TObject * /*Sender*/)
   QCoreApplication::processEvents();
 }
 //---------------------------------------------------------------------------
-void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen)
+void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen, bool AdHoc)
 {
   TManagedTerminal * ManagedTerminal = dynamic_cast<TManagedTerminal *>(Terminal);
   // it must be managed terminal, unless it is secondary terminal (of managed terminal)
@@ -329,7 +332,7 @@ void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen)
     }
   }
 
-  if (DebugAlwaysTrue(Terminal->Active) && !Reopen && GUIConfiguration->QueueBootstrap)
+  if (DebugAlwaysTrue(Terminal->Active) && !Reopen && !AdHoc && GUIConfiguration->QueueBootstrap)
   {
     FindQueueForTerminal(Terminal)->AddItem(new TBootstrapQueueItem());
   }
@@ -1408,6 +1411,90 @@ void TTerminalManager::MasterPasswordPrompt()
   {
     Abort();
   }
+}
+//---------------------------------------------------------------------------
+bool TTerminalManager::UploadPublicKey(TTerminal * Terminal, TSessionData * Data, UnicodeString & FileName)
+{
+  QFileDialog Dialog(QApplication::activeWindow(), ToQString(LoadStr(LOGIN_PUBLIC_KEY_TITLE)), ToQString(FileName),
+    FileDialogFilter(LoadStr(LOGIN_PUBLIC_KEY_FILTER)));
+  Dialog.setObjectName(QStringLiteral("PublicKeyDialog"));
+  Dialog.setFileMode(QFileDialog::ExistingFile);
+  Dialog.setDefaultSuffix(ToQString(PuttyKeyExt));
+  if (!FileName.IsEmpty())
+  {
+    Dialog.selectFile(ToQString(FileName));
+  }
+
+  bool Result = (Dialog.exec() == QDialog::Accepted) && !Dialog.selectedFiles().isEmpty();
+  if (Result)
+  {
+    Configuration->Usage->Inc(L"PublicKeyInstallation");
+    FileName = ToUnicodeString(Dialog.selectedFiles().first());
+
+    VerifyAndConvertKey(FileName, false);
+
+    bool AdHocTerminal = (Terminal == NULL);
+    std::unique_ptr<TTerminal> TerminalOwner;
+    if (AdHocTerminal)
+    {
+      DebugAssert(Data != NULL);
+
+      TAutoFlag KeepAuthenticateFormFlag(FKeepAuthenticateForm);
+      try
+      {
+        TerminalOwner.reset(CreateTerminal(Data));
+        Terminal = TerminalOwner.get();
+        SetupTerminal(Terminal);
+        Terminal->OnProgress = NULL;
+        Terminal->OnFinished = NULL;
+        DoConnectTerminal(Terminal, false, true);
+      }
+      catch (Exception &)
+      {
+        CloseAuthenticateForm();
+        throw;
+      }
+    }
+
+    UnicodeString Installed;
+    {
+      // When uploading from the site manager
+      ::rtl::TFinally Finally([&]() { CloseAuthenticateForm(); });
+      UnicodeString SshImplementation = Terminal->GetSessionInfo().SshImplementation;
+      UnicodeString NotOpenSSHMessage = FMTLOAD(LOGIN_NOT_OPENSSH, (SshImplementation));
+      if (IsOpenSSH(SshImplementation) ||
+          (MessageDialog(NotOpenSSHMessage, qtConfirmation, qaOK | qaCancel) == qaOK))
+      {
+        // Ad hoc terminal
+        if (FAuthenticateForm != NULL)
+        {
+          UnicodeString Comment;
+          bool UnusedHasCertificate;
+          GetPublicKeyLine(FileName, Comment, UnusedHasCertificate);
+          FAuthenticateForm->Log(FMTLOAD(LOGIN_PUBLIC_KEY_UPLOAD, (Comment)));
+        }
+
+        Installed = Terminal->UploadPublicKey(FileName);
+      }
+    }
+
+    if (!Installed.IsEmpty())
+    {
+      Terminal->LogEvent(L"Public key installation done.");
+      if (AdHocTerminal)
+      {
+        TerminalOwner.reset(NULL);
+      }
+      else
+      {
+        Terminal->Log->AddSeparator();
+      }
+
+      MessageDialog(Installed, qtInformation, qaOK);
+    }
+  }
+
+  return Result;
 }
 //---------------------------------------------------------------------------
 bool TTerminalManager::CanOpenInPutty()

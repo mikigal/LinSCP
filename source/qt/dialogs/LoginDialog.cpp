@@ -3,6 +3,8 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <DesktopShortcut.h>
+#include <OpenInPutty.h>
 #include <S3FileSystem.h>
 
 #include "LoginDialog.h"
@@ -25,6 +27,7 @@
 #include <QSignalBlocker>
 #include <QSpinBox>
 #include <QStyle>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 //---------------------------------------------------------------------------
@@ -109,6 +112,19 @@ void TLoginDialog::CreateControls()
   PasteUrlAction = CreateAction("PasteUrlAction", tr("Paste Session &URL"), &TLoginDialog::PasteUrlActionExecute);
   PasteUrlAction->setShortcut(QKeySequence::Paste);
   PasteUrlAction->setShortcutContext(Qt::WidgetShortcut);
+  SessionAdvancedAction =
+    CreateAction("SessionAdvancedAction", tr("A&dvanced..."), &TLoginDialog::SessionAdvancedActionExecute);
+  SessionRawAction =
+    CreateAction("SessionRawAction", tr("Edit &Raw Settings..."), &TLoginDialog::SessionRawActionExecute);
+  PuttyAction = CreateAction("PuttyAction", tr("Open in SSH &Client"), &TLoginDialog::PuttyActionExecute);
+  PuttyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
+  PuttyAction->setShortcutContext(Qt::WindowShortcut);
+  addAction(PuttyAction);
+  DesktopIconAction = CreateAction("DesktopIconAction", tr("Desktop &Icon"), &TLoginDialog::DesktopIconActionExecute);
+  CopyParamRuleAction =
+    CreateAction("CopyParamRuleAction", tr("Transfer Settings &Rule..."), &TLoginDialog::CopyParamRuleActionExecute);
+  PreferencesLoggingAction =
+    CreateAction("PreferencesLoggingAction", tr("&Logging..."), &TLoginDialog::PreferencesLoggingActionExecute);
 
   QHBoxLayout * MainLayout = new QHBoxLayout(this);
 
@@ -152,6 +168,7 @@ void TLoginDialog::CreateControls()
   ManageMenu = new QMenu(this);
   ManageMenu->setObjectName(QStringLiteral("ManageSitePopupMenu"));
   ManageMenu->addAction(LoginAction);
+  ManageMenu->addAction(PuttyAction);
   ManageMenu->addSeparator();
   ManageMenu->addAction(EditSessionAction);
   ManageMenu->addAction(SaveAsSessionAction);
@@ -160,6 +177,8 @@ void TLoginDialog::CreateControls()
   ManageMenu->addAction(CloneToNewSiteAction);
   ManageMenu->addSeparator();
   ManageMenu->addAction(NewSessionFolderAction);
+  ManageMenu->addSection(tr("Site Shell Icon"));
+  ManageMenu->addAction(DesktopIconAction);
   ManageMenu->addSeparator();
   ManageMenu->addAction(PasteUrlAction);
   ManageMenu->addAction(SetDefaultSessionAction);
@@ -313,8 +332,22 @@ void TLoginDialog::CreateControls()
   BindButton(EditCancelButton, EditCancelAction);
   SiteButtonsLayout->addWidget(EditCancelButton);
   SiteButtonsLayout->addStretch(1);
-  // The advanced settings of sites (upstream's AdvancedButton) are not
-  // ported yet
+  // The advanced settings, with the menu of the other settings
+  AdvancedButton = new QToolButton(BasicGroup);
+  AdvancedButton->setObjectName(QStringLiteral("AdvancedButton"));
+  AdvancedButton->setDefaultAction(SessionAdvancedAction);
+  AdvancedButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+  AdvancedButton->setPopupMode(QToolButton::MenuButtonPopup);
+  SessionAdvancedPopupMenu = new QMenu(AdvancedButton);
+  SessionAdvancedPopupMenu->setObjectName(QStringLiteral("SessionAdvancedPopupMenu"));
+  SessionAdvancedPopupMenu->addSection(tr("Session"));
+  SessionAdvancedPopupMenu->addAction(SessionAdvancedAction);
+  SessionAdvancedPopupMenu->addAction(SessionRawAction);
+  SessionAdvancedPopupMenu->addAction(CopyParamRuleAction);
+  SessionAdvancedPopupMenu->addSection(tr("Global Preferences"));
+  SessionAdvancedPopupMenu->addAction(PreferencesLoggingAction);
+  AdvancedButton->setMenu(SessionAdvancedPopupMenu);
+  SiteButtonsLayout->addWidget(AdvancedButton);
 
   NoteGroup = new QGroupBox(tr("Note"), SitePanel);
   NoteGroup->setObjectName(QStringLiteral("NoteGroup"));
@@ -553,7 +586,21 @@ void TLoginDialog::UpdateNodeIcon(QTreeWidgetItem * Node)
           QIcon::fromTheme(QStringLiteral("folder"), style()->standardIcon(QStyle::SP_DirClosedIcon));
       break;
     case nkSite:
-      Icon = QIcon::fromTheme(QStringLiteral("network-server"), style()->standardIcon(QStyle::SP_ComputerIcon));
+      {
+        Icon = QIcon::fromTheme(QStringLiteral("network-server"), style()->standardIcon(QStyle::SP_ComputerIcon));
+        // The color of the site (upstream's color mask of the icon), of
+        // the site being edited too
+        TSessionData * Data = GetNodeSession(Node);
+        if ((Node == Selected()) && (FSessionData != NULL) && IsEditable())
+        {
+          Data = FSessionData;
+        }
+        if ((Data != NULL) && (Data->Color != 0))
+        {
+          int Size = style()->pixelMetric(QStyle::PM_SmallIconSize);
+          Icon = SessionColorIcon(Icon, static_cast<TColor>(Data->Color), QSize(Size, Size));
+        }
+      }
       break;
   }
   Node->setIcon(0, Icon);
@@ -1007,6 +1054,14 @@ void TLoginDialog::UpdateActions()
   NewSessionFolderAction->setEnabled(!FEditing);
   SetDefaultSessionAction->setEnabled(IsNewSiteNode(Node));
   ResetNewSessionAction->setEnabled(IsNewSiteNode(Node));
+  SessionAdvancedAction->setEnabled(Editable);
+  SessionRawAction->setEnabled(Editable);
+  TSessionData * Data = SiteSelected ? GetSessionData() : NULL;
+  PuttyAction->setEnabled(
+    (IsSiteAndCanOpen() && (Data != NULL) && !Data->Tunnel) ||
+    (IsFolderOrWorkspaceAndCanOpen() && IsFolderNode(Node)));
+  DesktopIconAction->setEnabled((SiteSelected && !FEditing) || FolderOrWorkspaceSelected);
+  CopyParamRuleAction->setEnabled(SiteSelected || IsNewSiteNode(Node));
   UnicodeString ClipboardUrl;
   PasteUrlAction->setEnabled(
     TextFromClipboard(ClipboardUrl, true) && !ClipboardUrl.IsEmpty() &&
@@ -1404,6 +1459,136 @@ void TLoginDialog::SessionTreeEdited(QTreeWidgetItem * Node, const UnicodeString
 void TLoginDialog::PreferencesActionExecute()
 {
   DoPreferencesDialog(pmDefault);
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::CopyParamRuleActionExecute()
+{
+  // A preset of the site's transfer settings, selected by its rule
+  TSessionData * Data = GetSessionData();
+  std::unique_ptr<TCopyParamList> CopyParamList(new TCopyParamList());
+  (*CopyParamList) = *GUIConfiguration->CopyParamList;
+
+  TCopyParamRuleData RuleData;
+  RuleData.HostName = Data->HostNameExpanded;
+  RuleData.UserName = Data->UserNameExpanded;
+  int CopyParamIndex = CopyParamList->Find(RuleData);
+  if (CopyParamIndex < 0)
+  {
+    TCopyParamRuleData RuleDataHostNameOnly;
+    RuleDataHostNameOnly.HostName = Data->HostNameExpanded;
+    CopyParamIndex = CopyParamList->Find(RuleDataHostNameOnly);
+  }
+
+  TCopyParamPresetMode Mode;
+  TCopyParamRuleData * CurrentRuleData = NULL;
+
+  if (CopyParamIndex < 0)
+  {
+    Mode = cpmAddCurrent;
+    CurrentRuleData = &RuleData;
+  }
+  else
+  {
+    Mode = cpmEdit;
+  }
+
+  TCopyParamType DefaultCopyParams;
+
+  if (DoCopyParamPresetDialog(
+        CopyParamList.get(), CopyParamIndex, Mode, CurrentRuleData, DefaultCopyParams))
+  {
+    GUIConfiguration->CopyParamList = CopyParamList.get();
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::PuttyActionExecute()
+{
+  if (PuttyAction->isEnabled())
+  {
+    bool Close = !FNeedTerminal;
+
+    // Copies of the sites
+    std::unique_ptr<TList> DataList(new TList());
+    SaveDataList(DataList.get());
+    for (int Index = 0; Index < DataList->Count; Index++)
+    {
+      std::unique_ptr<TSessionData> Data(reinterpret_cast<TSessionData *>(DataList->Items[Index]));
+      ExecuteHandler([&]() { OpenSessionInPutty(Data.get()); });
+    }
+
+    if (Close)
+    {
+      reject();
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::DesktopIconActionExecute()
+{
+  QTreeWidgetItem * Node = Selected();
+
+  UnicodeString Message;
+  UnicodeString Name;
+  if (IsSiteNode(Node))
+  {
+    Name = GetNodeSession(Node)->Name;
+    Message = FMTLOAD(CONFIRM_CREATE_SHORTCUT, (Name));
+  }
+  else if (IsFolderNode(Node))
+  {
+    Name = SessionNodePath(Node);
+    Message = FMTLOAD(CONFIRM_CREATE_SHORTCUT_FOLDER, (Name));
+  }
+  else if (IsWorkspaceNode(Node))
+  {
+    Name = SessionNodePath(Node);
+    Message = FMTLOAD(CONFIRM_CREATE_SHORTCUT_WORKSPACE, (Name));
+  }
+  else
+  {
+    DebugFail();
+    return;
+  }
+
+  Message = MainInstructions(Message);
+  if (MessageDialog(Message, qtConfirmation, qaYes | qaNo) == qaYes)
+  {
+    ExecuteHandler([&]() { CreateDesktopSessionShortCut(Name); });
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::PreferencesLoggingActionExecute()
+{
+  DoPreferencesDialog(pmLogging);
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::SessionAdvanced(bool Raw)
+{
+  if (DebugAlwaysTrue(FSessionData != NULL))
+  {
+    // The host name may change the protocol
+    ParseHostName();
+
+    SaveSession(FSessionData);
+    if (!Raw)
+    {
+      DoSiteAdvancedDialog(FSessionData);
+    }
+    else
+    {
+      DoSiteRawDialog(FSessionData);
+    }
+    // Needed only for the note (and the color); the only other setting of
+    // this dialog that the advanced settings change is the protocol
+    // (between fsSFTP and fsSFTPonly), the difference of which is not
+    // visible here
+    LoadSession(FSessionData);
+    QTreeWidgetItem * Node = Selected();
+    if ((Node != nullptr) && IsSiteNode(Node))
+    {
+      UpdateNodeIcon(Node);
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TLoginDialog::NewSessionFolderActionExecute()
