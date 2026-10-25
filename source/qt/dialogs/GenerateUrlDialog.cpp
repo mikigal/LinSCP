@@ -200,7 +200,7 @@ TGenerateUrlDialog::TGenerateUrlDialog(TSessionData * Data, TStrings * Paths) :
   PasswordCheck = AddCheck(UrlGrid, 1, 0, "PasswordCheck", tr("&Password"), 2);
   HostKeyCheck = AddCheck(UrlGrid, 2, 0, "HostKeyCheck", tr("SSH &host key"), 4);
   RemoteDirectoryCheck = AddCheck(UrlGrid, 0, 1, "RemoteDirectoryCheck", tr("Initial &directory"), 8);
-  WinSCPSpecificCheck = AddCheck(UrlGrid, 1, 1, "WinSCPSpecificCheck", tr("&WinSCP-specific"), 16);
+  WinSCPSpecificCheck = AddCheck(UrlGrid, 1, 1, "WinSCPSpecificCheck", tr("&OpenSCP-specific"), 16);
   SaveExtensionCheck = AddCheck(UrlGrid, 2, 1, "SaveExtensionCheck", tr("&Save extension"), 32);
   RawSettingsCheck = AddCheck(UrlGrid, 3, 0, "RawSettingsCheck", tr("&Advanced settings"), 64);
   UrlGrid->setRowStretch(4, 1);

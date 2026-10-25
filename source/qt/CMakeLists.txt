@@ -9,6 +9,7 @@ add_library(openscp_qt STATIC
   app/DesktopShortcut.cpp
   app/EditorManager.cpp
   app/ExportedFiles.cpp
+  app/FormTranslator.cpp
   app/KeyTools.cpp
   app/LocalFiles.cpp
   app/LocalProcesses.cpp
@@ -74,6 +75,18 @@ add_library(openscp_qt STATIC
   views/ScpCommanderSessions.cpp
   views/ScpCommanderSynchronize.cpp)
 
+# The English texts of upstream's forms, which the translations translate
+# (tools/dfm2cpp)
+file(GLOB OPENSCP_FORMS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/source/forms/*.dfm")
+set(OPENSCP_FORM_TEXTS "${CMAKE_CURRENT_BINARY_DIR}/FormTexts.cpp")
+add_custom_command(
+  OUTPUT "${OPENSCP_FORM_TEXTS}"
+  COMMAND Python3::Interpreter "${PROJECT_SOURCE_DIR}/tools/dfm2cpp/dfm2cpp.py" "${OPENSCP_FORM_TEXTS}" ${OPENSCP_FORMS}
+  DEPENDS ${OPENSCP_FORMS} "${PROJECT_SOURCE_DIR}/tools/dfm2cpp/dfm2cpp.py"
+  COMMENT "Generating the texts of the forms"
+  VERBATIM)
+target_sources(openscp_qt PRIVATE "${OPENSCP_FORM_TEXTS}")
+
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
 target_include_directories(openscp_qt PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/app"
@@ -103,3 +116,7 @@ target_link_libraries(openscp PRIVATE openscp_qt openscp::options)
 include(GNUInstallDirs)
 install(TARGETS openscp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES desktop/openscp.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+# Upstream's translations (app/Translations.cpp finds them next to the
+# binaries)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/translations/" DESTINATION "${CMAKE_INSTALL_DATADIR}/openscp/translations"
+  FILES_MATCHING PATTERN "*.ini" PATTERN "version.ini" EXCLUDE)

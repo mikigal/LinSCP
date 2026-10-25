@@ -1982,6 +1982,29 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(gui.quit(), 0)
         self.assertFalse(gui.config_file.exists())
 
+    def test_translation(self):
+        remote = self.work_dir('remote')
+        (remote / 'a.txt').write_text('a')
+        # The Polish translation (the language of the system by default)
+        gui = self.start_gui(ini=site_ini(remote=remote) + '[Configuration\\Interface]\nLanguage=PL\n')
+        gui.wait_window('LoginDialog')
+        self.assertEqual(gui.window('LoginDialog')['title'], 'Logowanie')
+        self.assertEqual(gui.get('LoginDialog/LoginButton')['text'], 'Logowanie')
+        self.screenshot('login')
+        gui.select('LoginDialog/SessionTree', 'local')
+        gui.click('LoginDialog/LoginButton')
+        # The resource strings
+        gui.wait_window('MessageForm')
+        self.assertIn('nieznanym serwerem', self.message_text(gui))
+        self.assertEqual(gui.get('MessageForm/Cancel')['text'], 'Anuluj')
+        gui.click('MessageForm/Yes')
+        gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
+        gui.wait_idle()
+        menus = [item['text'] for item in gui.get(W + 'MenuToolbar')['menus']]
+        self.assertIn('Pliki', menus)
+        self.screenshot('commander')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

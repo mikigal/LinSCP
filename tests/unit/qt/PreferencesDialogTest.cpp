@@ -10,6 +10,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLineEdit>
+#include <QLabel>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
@@ -281,5 +282,34 @@ TEST_F(PreferencesDialogTest, CommanderAndFileColors)
   EXPECT_EQ(AppConfiguration->NortonLikeMode, nlOff);
   EXPECT_TRUE(AppConfiguration->SwappedPanels);
   EXPECT_TRUE(AppConfiguration->ExplorerKeyboardShortcuts);
+}
+//---------------------------------------------------------------------------
+TEST_F(PreferencesDialogTest, Languages)
+{
+  AppConfiguration->Language = L"";
+  WhenModal([](QWidget * Dialog)
+  {
+    SelectPage(Dialog, QStringLiteral("Languages"));
+    EXPECT_EQ(CurrentSheet(Dialog), QStringLiteral("LanguagesSheet"));
+    QTreeWidget * LanguagesView = Child<QTreeWidget>(Dialog, "LanguagesView");
+    ASSERT_GT(LanguagesView->topLevelItemCount(), 50);
+    // The language of the system first, English, the translations
+    EXPECT_EQ(LanguagesView->topLevelItem(0)->text(0), QStringLiteral("Automatic"));
+    EXPECT_EQ(LanguagesView->currentItem(), LanguagesView->topLevelItem(0));
+    EXPECT_EQ(LanguagesView->topLevelItem(1)->text(0), QStringLiteral("English"));
+    QList<QTreeWidgetItem *> Polish = LanguagesView->findItems(QStringLiteral("Polski"), Qt::MatchExactly);
+    ASSERT_EQ(Polish.size(), 1);
+    QList<QTreeWidgetItem *> Brazilian = LanguagesView->findItems(QStringLiteral("Português (Brasil)"), Qt::MatchExactly);
+    EXPECT_EQ(Brazilian.size(), 1);
+    // The change applies on the next start
+    QLabel * LanguageChangeLabel = Child<QLabel>(Dialog, "LanguageChangeLabel");
+    EXPECT_TRUE(LanguageChangeLabel->isHidden());
+    LanguagesView->setCurrentItem(Polish[0]);
+    EXPECT_FALSE(LanguageChangeLabel->isHidden());
+    Child<QPushButton>(Dialog, "OKButton")->click();
+  });
+  EXPECT_TRUE(DoPreferencesDialog(pmDefault));
+  EXPECT_EQ(AppConfiguration->Language, UnicodeString(L"PL"));
+  AppConfiguration->Language = L"";
 }
 //---------------------------------------------------------------------------

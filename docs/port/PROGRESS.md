@@ -127,6 +127,19 @@ packaging (PLAN.md, section 7).
   too, the random seed file, the temporary directories; a configuration file cleaned up is not
   saved again). The test builds use Qt's file dialogs (`AA_DontUseNativeDialogs`), which the
   tests drive.
+- Translations (`app/Translations.cpp` of the application layer, `qt/app/FormTranslator.cpp`):
+  upstream's `translations/*.ini` as they are, installed to `share/openscp/translations` (the
+  source tree's for the builds). The language of the configuration (`Language`, the
+  Languages page of the preferences, applied on the next start) or of the system (gettext's
+  `LANGUAGE`, `LC_ALL`, `LC_MESSAGES`, `LANG`; upstream's codes map to locales). The resource
+  strings are replaced by their names (`rc2cpp` registers the names, `rtl::SetResourceString`);
+  the GUI's texts are the English texts of upstream's forms, a `QTranslator` maps them to the
+  translated ones by the keys of the forms (`tools/dfm2cpp` generates the English texts of the
+  `.dfm` files); the strings of the Delphi units (the buttons of the messages, the columns of
+  the panels) from the `[WinSCP_DRC.rc]` section; Qt's own translations; right-to-left
+  languages. The CLI is translated too (its tests run in English, as do the GUI tests).
+- Branding: the name of the application in upstream's texts is OpenSCP (`rc2cpp --brand`, and
+  the translations when loaded).
 
 Decisions:
 
@@ -151,6 +164,10 @@ Decisions:
   TScpExplorerForm next to TScpCommanderForm on their common base): the interface is switched
   at once, the hidden local panel keeps the local directory of the session; there are no icon
   and thumbnail views of the files (the report view only).
+- **Translations by the English texts**: the GUI is not built from the forms, so its texts are
+  matched to the forms' English texts (without the accelerators); a text that differs from
+  upstream's stays English. A translated text gets no accelerator where the English one has
+  none (titles, headers).
 - **The help is upstream's documentation** (`ShowHelp` opens WinSCP's online documentation of
   the keyword): it describes the same application, OpenSCP has no documentation of its own.
   Generate Code does not generate PowerShell scripts nor the code of the .NET assembly (which

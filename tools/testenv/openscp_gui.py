@@ -91,6 +91,9 @@ class OpenScpGui:
             'OPENSCP_AUTOMATION_SOCKET': str(self.socket_path),
             'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS,
             'UBSAN_OPTIONS': 'print_stacktrace=1',
+            # English, whatever the language of the user (the tests compare
+            # the texts); a test chooses a translation in the configuration
+            'LANGUAGE': 'en',
         }
 
     def stop(self):

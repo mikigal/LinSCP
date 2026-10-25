@@ -65,6 +65,14 @@ set_tests_properties(unit.rc2cpp PROPERTIES
   LABELS unit
   ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/rc2cpp;PYTHONDONTWRITEBYTECODE=1")
 
+# The generator of the texts of the forms
+add_test(NAME unit.dfm2cpp
+  COMMAND Python3::Interpreter -m unittest -v test_dfm2cpp
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dfm2cpp")
+set_tests_properties(unit.dfm2cpp PROPERTIES
+  LABELS unit
+  ENVIRONMENT "PYTHONPATH=${PROJECT_SOURCE_DIR}/tools/dfm2cpp;PYTHONDONTWRITEBYTECODE=1")
+
 # bcb2clang, and the converted core headers parsing against the RTL shim
 foreach(BCB2CLANG_TEST test_bcb2clang test_convert test_core_headers)
   add_test(NAME unit.bcb2clang.${BCB2CLANG_TEST}
@@ -96,7 +104,8 @@ add_executable(openscp_qt_tests
   qt/SelectMaskDialogTest.cpp
   qt/SiteAdvancedDialogTest.cpp
   qt/SymlinkDialogTest.cpp
-  qt/SynchronizeDialogTest.cpp)
+  qt/SynchronizeDialogTest.cpp
+  qt/TranslationsTest.cpp)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
 target_link_libraries(openscp_qt_tests PRIVATE
   openscp_qt

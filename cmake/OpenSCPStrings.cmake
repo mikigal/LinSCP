@@ -1,4 +1,5 @@
-# String tables generated from the upstream .rc files (tools/rc2cpp).
+# String tables generated from the upstream .rc files (tools/rc2cpp), the
+# name of the application in them is OpenSCP.
 #
 # openscp_add_string_tables(NAME RC_FILE...) creates the OBJECT library NAME
 # from the generated sources. Each source registers its strings with the RTL
@@ -15,7 +16,8 @@ function(openscp_add_string_tables NAME)
     add_custom_command(
       OUTPUT "${OUTPUT}"
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/strings"
-      COMMAND Python3::Interpreter "${PROJECT_SOURCE_DIR}/tools/rc2cpp/rc2cpp.py" "${RC_FILE}" "${OUTPUT}"
+      COMMAND Python3::Interpreter "${PROJECT_SOURCE_DIR}/tools/rc2cpp/rc2cpp.py" --brand "WinSCP=OpenSCP"
+        "${RC_FILE}" "${OUTPUT}"
       DEPENDS "${RC_FILE}" "${PROJECT_SOURCE_DIR}/tools/rc2cpp/rc2cpp.py"
       COMMENT "Generating string table ${BASE_NAME}.cpp"
       VERBATIM)

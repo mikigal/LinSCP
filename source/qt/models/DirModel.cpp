@@ -4,6 +4,7 @@
 
 #include <RemoteFiles.h>
 #include <Terminal.h>
+#include <Translations.h>
 
 #include <QApplication>
 #include <QHash>
@@ -21,19 +22,21 @@
 //---------------------------------------------------------------------------
 static QString ColumnCaption(TDirViewColumn Column)
 {
+  // The texts of upstream's directory views (their units' resource strings)
+  UnicodeString Result;
   switch (Column)
   {
-    case dvName: return QObject::tr("Name");
-    case dvSize: return QObject::tr("Size");
-    case dvType: return QObject::tr("Type");
-    case dvChanged: return QObject::tr("Changed");
-    case dvRights: return QObject::tr("Rights");
-    case dvOwner: return QObject::tr("Owner");
-    case dvGroup: return QObject::tr("Group");
-    case dvLinkTarget: return QObject::tr("Link target");
-    case dvExt: return QObject::tr("Ext");
+    case dvName: Result = DelphiResourceString("Dirviewcolproperties_SDirViewNameCol", L"Name"); break;
+    case dvSize: Result = DelphiResourceString("Dirviewcolproperties_SDirViewSizeCol", L"Size"); break;
+    case dvType: Result = DelphiResourceString("Dirviewcolproperties_SDirViewTypeCol", L"Type"); break;
+    case dvChanged: Result = DelphiResourceString("Dirviewcolproperties_SDirViewChangedCol2", L"Changed"); break;
+    case dvRights: Result = DelphiResourceString("Unixdirviewcolproperties_SUnixDirViewRightsCol", L"Rights"); break;
+    case dvOwner: Result = DelphiResourceString("Unixdirviewcolproperties_SUnixDirViewOwnerCol", L"Owner"); break;
+    case dvGroup: Result = DelphiResourceString("Unixdirviewcolproperties_SUnixDirViewGroupCol", L"Group"); break;
+    case dvLinkTarget: Result = DelphiResourceString("Unixdirviewcolproperties_SUnixDirViewLinkTargetCol", L"Link target"); break;
+    case dvExt: Result = DelphiResourceString("Dirviewcolproperties_SDirViewExtCol", L"Ext"); break;
   }
-  return QString();
+  return ToQString(Result);
 }
 //---------------------------------------------------------------------------
 // The extension of the name, without the dot (upstream's Ext column)

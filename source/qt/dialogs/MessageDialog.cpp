@@ -5,6 +5,8 @@
 
 #include "MessageDialog.h"
 
+#include <Translations.h>
+
 #include <QApplication>
 #include <QCheckBox>
 #include <QFontMetrics>
@@ -143,20 +145,20 @@ TMessageForm::TMessageForm(const UnicodeString & Msg, TStrings * MoreMessages, T
   {
     case qtConfirmation:
       Icon = QStyle::SP_MessageBoxQuestion;
-      Caption = L"Confirm";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgConfirm", L"Confirm");
       break;
     case qtWarning:
       Icon = QStyle::SP_MessageBoxWarning;
-      Caption = L"Warning";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgWarning", L"Warning");
       break;
     case qtError:
       Icon = QStyle::SP_MessageBoxCritical;
-      Caption = L"Error";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgError", L"Error");
       break;
     default:
       DebugAssert(Type == qtInformation);
       Icon = QStyle::SP_MessageBoxInformation;
-      Caption = L"Information";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgInformation", L"Information");
       break;
   }
   if ((Params != NULL) && !Params->CustomCaption.IsEmpty())

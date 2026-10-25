@@ -4,7 +4,9 @@
 //---------------------------------------------------------------------------
 #include <AppPCH.h>
 
+#include <AppConfiguration.h>
 #include <ProgParams.h>
+#include <Translations.h>
 
 #include "CliInterface.h"
 //---------------------------------------------------------------------------
@@ -65,6 +67,8 @@ int main(int /*argc*/, char ** /*argv*/)
     {
       Configuration->UpdateStaticUsage();
       ApplyCommandLineConfiguration(Params);
+      // The resource strings in the language of the configuration
+      LoadTranslation(AppConfiguration->Language);
       Result = Console(ConsoleMode(Params));
     }
     catch (Exception & E)

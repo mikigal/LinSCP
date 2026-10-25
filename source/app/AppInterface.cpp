@@ -8,6 +8,7 @@
 
 #include "AppConfiguration.h"
 #include "ProgParams.h"
+#include "Translations.h"
 //---------------------------------------------------------------------------
 const UnicodeString AppName = L"OpenSCP";
 //---------------------------------------------------------------------------
@@ -116,41 +117,41 @@ THandle StartThread(
 void __fastcall AnswerNameAndCaption(unsigned int Answer, UnicodeString & Name, UnicodeString & Caption)
 {
   // The captions of the answers that upstream takes from the VCL
-  // (Vcl.Consts) are the VCL's English ones
+  // (Vcl.Consts) are the VCL's English ones, unless translated
   switch (Answer)
   {
     case qaYes:
-      Caption = L"&Yes";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgYes", L"&Yes");
       Name = L"Yes";
       break;
 
     case qaNo:
-      Caption = L"&No";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgNo", L"&No");
       Name = L"No";
       break;
 
     case qaOK:
-      Caption = L"OK";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgOK", L"OK");
       Name = L"OK";
       break;
 
     case qaCancel:
-      Caption = L"Cancel";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgCancel", L"Cancel");
       Name = L"Cancel";
       break;
 
     case qaAbort:
-      Caption = L"&Abort";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgAbort", L"&Abort");
       Name = L"Abort";
       break;
 
     case qaRetry:
-      Caption = L"&Retry";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgRetry", L"&Retry");
       Name = L"Retry";
       break;
 
     case qaIgnore:
-      Caption = L"&Ignore";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgIgnore", L"&Ignore");
       Name = L"Ignore";
       break;
 
@@ -161,7 +162,7 @@ void __fastcall AnswerNameAndCaption(unsigned int Answer, UnicodeString & Name, 
       break;
 
     case qaNoToAll:
-      Caption = L"N&o to All";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgNoToAll", L"N&o to All");
       Name = L"NoToAll";
       break;
 
@@ -172,7 +173,7 @@ void __fastcall AnswerNameAndCaption(unsigned int Answer, UnicodeString & Name, 
       break;
 
     case qaHelp:
-      Caption = L"&Help";
+      Caption = DelphiResourceString("Vcl_Consts_SMsgDlgHelp", L"&Help");
       Name = L"Help";
       break;
 

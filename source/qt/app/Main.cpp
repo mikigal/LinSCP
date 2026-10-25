@@ -8,6 +8,7 @@
 #include <AppConfiguration.h>
 #include <AppInterface.h>
 
+#include "FormTranslator.h"
 #include "OpenScpApplication.h"
 #include "ScpCommander.h"
 #include "SingleInstance.h"
@@ -156,6 +157,8 @@ int main(int argc, char ** argv)
     {
       Configuration->UpdateStaticUsage();
       ApplyCommandLineConfiguration(Params);
+      // Before the windows are created
+      InstallTranslation();
       Result = Execute();
     }
     catch (Exception & E)

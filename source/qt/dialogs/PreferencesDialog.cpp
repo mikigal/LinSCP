@@ -16,6 +16,7 @@
 #include <PuttyTools.h>
 #include <SingleInstance.h>
 #include <TerminalManager.h>
+#include <Translations.h>
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
@@ -28,6 +29,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileDialog>
+#include <QLocale>
 #include <QFontDatabase>
 #include <QFontDialog>
 #include <QGridLayout>
@@ -122,6 +124,8 @@ private:
   QRadioButton * ExplorerInterfaceButton2;
   // Explorer
   QCheckBox * ShowFullAddressCheck;
+  QTreeWidget * LanguagesView;
+  QLabel * LanguageChangeLabel;
   // Commander
   QComboBox * NortonLikeModeCombo;
   QCheckBox * SwappedPanelsCheck;
@@ -271,6 +275,7 @@ private:
   void CreateWindowSheet();
   void CreateCommanderSheet();
   void CreateExplorerSheet();
+  void CreateLanguagesSheet();
   void CreatePanelsSheets();
   void CreateFileColorsSheet();
   void CreateEditorSheets();
@@ -410,6 +415,7 @@ void TPreferencesDialog::CreateEnvironmentSheet()
   CreateWindowSheet();
   CreateCommanderSheet();
   CreateExplorerSheet();
+  CreateLanguagesSheet();
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateInterfaceSheet()
@@ -450,6 +456,46 @@ void TPreferencesDialog::CreateExplorerSheet()
   QGroupBox * GroupBox2 = AddGroup(ExplorerSheet, "GroupBox2", tr("View"));
   ShowFullAddressCheck = AddCheck(GroupBox2, "ShowFullAddressCheck", tr("&Show full path on address bar"));
   static_cast<QVBoxLayout *>(ExplorerSheet->layout())->addStretch(1);
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::CreateLanguagesSheet()
+{
+  QWidget * LanguagesSheet = AddSheet("LanguagesSheet", tr("Languages"), ppLanguages, NodeOf(ppEnvironment));
+  QGroupBox * LanguagesGroup = AddGroup(LanguagesSheet, "LanguagesGroup", tr("Languages"));
+  static_cast<QVBoxLayout *>(LanguagesSheet->layout())->setStretchFactor(LanguagesGroup, 1);
+  LanguagesView = CreateListView(LanguagesGroup, "LanguagesView", { QString() });
+  LanguagesView->setHeaderHidden(true);
+  LanguagesGroup->layout()->addWidget(LanguagesView);
+  // The language of the system, English, the translations (upstream's
+  // locales)
+  auto AddLanguage = [this](const QString & Name, const QString & Code)
+  {
+    QTreeWidgetItem * Item = new QTreeWidgetItem(LanguagesView, { Name });
+    Item->setData(0, Qt::UserRole, Code);
+  };
+  AddLanguage(tr("Automatic"), QString());
+  AddLanguage(QStringLiteral("English"), QStringLiteral("EN"));
+  for (const TTranslation & Translation : FindTranslations())
+  {
+    QLocale Locale(ToQString(Translation.Locale).replace(QStringLiteral("@latin"), QStringLiteral("_Latn")));
+    QString Name = Locale.nativeLanguageName();
+    if (Name.isEmpty() || (Locale.language() == QLocale::C))
+    {
+      Name = ToQString(Translation.Code);
+    }
+    else
+    {
+      Name[0] = Name[0].toUpper();
+      if (ToQString(Translation.Locale).contains(QLatin1Char('_')))
+      {
+        Name += QStringLiteral(" (%1)").arg(Locale.nativeTerritoryName());
+      }
+    }
+    AddLanguage(Name, ToQString(Translation.Code));
+  }
+  LanguageChangeLabel = new QLabel(tr("Changes will apply on the next start."), LanguagesGroup);
+  LanguageChangeLabel->setObjectName(QStringLiteral("LanguageChangeLabel"));
+  LanguagesGroup->layout()->addWidget(LanguageChangeLabel);
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateWindowSheet()
@@ -1250,6 +1296,14 @@ void TPreferencesDialog::LoadConfiguration()
   CommanderInterfaceButton2->setChecked(AppConfiguration->Interface == ifCommander);
   ExplorerInterfaceButton2->setChecked(AppConfiguration->Interface == ifExplorer);
   ShowFullAddressCheck->setChecked(AppConfiguration->ExplorerShowFullAddress);
+  for (int Index = 0; Index < LanguagesView->topLevelItemCount(); Index++)
+  {
+    QTreeWidgetItem * Item = LanguagesView->topLevelItem(Index);
+    if (SameText(ToUnicodeString(Item->data(0, Qt::UserRole).toString()), AppConfiguration->Language))
+    {
+      LanguagesView->setCurrentItem(Item);
+    }
+  }
   // "Explorer-style selection"
   switch (AppConfiguration->NortonLikeMode)
   {
@@ -1562,6 +1616,10 @@ void TPreferencesDialog::SaveConfiguration()
   BOOLPROP(CompareBySize);
   AppConfiguration->Interface = CommanderInterfaceButton2->isChecked() ? ifCommander : ifExplorer;
   AppConfiguration->ExplorerShowFullAddress = ShowFullAddressCheck->isChecked();
+  if (LanguagesView->currentItem() != nullptr)
+  {
+    AppConfiguration->Language = ToUnicodeString(LanguagesView->currentItem()->data(0, Qt::UserRole).toString());
+  }
   switch (NortonLikeModeCombo->currentIndex())
   {
     case 2:
@@ -1849,6 +1907,12 @@ void TPreferencesDialog::SaveConfiguration()
 //---------------------------------------------------------------------------
 void TPreferencesDialog::UpdateControls()
 {
+  // The language applies on the next start (of the translation in use)
+  QTreeWidgetItem * LanguageItem = LanguagesView->currentItem();
+  UnicodeString SelectedLanguage =
+    (LanguageItem != nullptr) ? ToUnicodeString(LanguageItem->data(0, Qt::UserRole).toString()) : UnicodeString();
+  LanguageChangeLabel->setVisible(!SameText(SelectedLanguage, AppConfiguration->Language));
+
   if (FNoUpdate > 0)
   {
     return;

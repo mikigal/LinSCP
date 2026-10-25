@@ -148,8 +148,9 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   // The path in the title of the window
   connect(FRemotePanel, &TDirPanel::DirectoryChanged, this, [this]() { UpdateCaption(); });
 
-  NewSessionAction = CreateAction("NewSessionAction", tr("&New Session..."), QStringLiteral("network-connect"),
+  NewSessionAction = CreateAction("NewSessionAction", tr("&New Tab"), QStringLiteral("network-connect"),
     { QKeySequence(Qt::CTRL | Qt::Key_N) }, &TScpCommanderForm::NewSessionActionExecute);
+  NewSessionAction->setToolTip(tr("Open new tab"));
   CloseTabAction = CreateAction("CloseTabAction", tr("&Close Tab"), QStringLiteral("tab-close"),
     { QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) },
     &TScpCommanderForm::CloseTabActionExecute);

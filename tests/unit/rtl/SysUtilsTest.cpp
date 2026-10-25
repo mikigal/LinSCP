@@ -289,6 +289,27 @@ TEST(SysUtils, ResourceStrings)
   EXPECT_EQ(LoadResString(&Rec), L"Hello");
 }
 //---------------------------------------------------------------------------
+TEST(SysUtils, ResourceStringTranslations)
+{
+  static const rtl::TResourceString Strings[] = { { 60101, L"Open" } };
+  static const rtl::TResourceStringName Names[] = { { 60101, "TEST_OPEN" } };
+  rtl::RegisterResourceStrings(Strings, std::size(Strings));
+  rtl::RegisterResourceStringNames(Names, std::size(Names));
+  EXPECT_EQ(rtl::FindResourceStringIdent("TEST_OPEN"), 60101);
+  EXPECT_EQ(rtl::FindResourceStringIdent("TEST_MISSING"), -1);
+  // A translation replaces the text, kept by the RTL
+  {
+    UnicodeString Text = L"Otw\u00f3rz";
+    rtl::SetResourceString(60101, Text);
+  }
+  EXPECT_EQ(LoadStr(60101), L"Otw\u00f3rz");
+  rtl::SetResourceString(60101, L"Ouvrir");
+  EXPECT_EQ(LoadStr(60101), L"Ouvrir");
+  // The registered texts again
+  rtl::ResetResourceStrings();
+  EXPECT_EQ(LoadStr(60101), L"Open");
+}
+//---------------------------------------------------------------------------
 TEST(SysUtils, EmptyStr)
 {
   EXPECT_TRUE(EmptyStr.IsEmpty());

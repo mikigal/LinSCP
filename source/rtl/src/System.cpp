@@ -7,6 +7,7 @@
 #include <map>
 #include <mutex>
 #include <shared_mutex>
+#include <string>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
@@ -134,6 +135,26 @@ std::map<int, const wchar_t *> & ResourceStrings()
 {
   static std::map<int, const wchar_t *> Strings;
   return Strings;
+}
+
+// The texts of the strings set at run time (translations) and the
+// registered texts they replaced
+std::map<int, std::wstring> & ResourceStringOverrides()
+{
+  static std::map<int, std::wstring> Strings;
+  return Strings;
+}
+
+std::map<int, const wchar_t *> & ResourceStringOriginals()
+{
+  static std::map<int, const wchar_t *> Strings;
+  return Strings;
+}
+
+std::map<std::string, int> & ResourceStringNames()
+{
+  static std::map<std::string, int> Names;
+  return Names;
 }
 } // namespace
 //---------------------------------------------------------------------------
@@ -381,6 +402,53 @@ System::UnicodeString FindResourceString(int Ident)
   std::shared_lock<std::shared_mutex> Lock(System::ResourceMutex());
   auto I = System::ResourceStrings().find(Ident);
   return (I != System::ResourceStrings().end()) ? System::UnicodeString(I->second) : System::UnicodeString();
+}
+//---------------------------------------------------------------------------
+void RegisterResourceStringNames(const TResourceStringName * Names, size_t Count)
+{
+  std::unique_lock<std::shared_mutex> Lock(System::ResourceMutex());
+  for (size_t Index = 0; Index < Count; Index++)
+  {
+    System::ResourceStringNames()[Names[Index].Name] = Names[Index].Ident;
+  }
+}
+//---------------------------------------------------------------------------
+int FindResourceStringIdent(const char * Name)
+{
+  std::shared_lock<std::shared_mutex> Lock(System::ResourceMutex());
+  auto I = System::ResourceStringNames().find(Name);
+  return (I != System::ResourceStringNames().end()) ? I->second : -1;
+}
+//---------------------------------------------------------------------------
+void SetResourceString(int Ident, const System::UnicodeString & Text)
+{
+  std::unique_lock<std::shared_mutex> Lock(System::ResourceMutex());
+  if (System::ResourceStringOverrides().count(Ident) == 0)
+  {
+    auto I = System::ResourceStrings().find(Ident);
+    System::ResourceStringOriginals()[Ident] = (I != System::ResourceStrings().end()) ? I->second : nullptr;
+  }
+  std::wstring & Stored = System::ResourceStringOverrides()[Ident];
+  Stored.assign(Text.c_str(), Text.Length());
+  System::ResourceStrings()[Ident] = Stored.c_str();
+}
+//---------------------------------------------------------------------------
+void ResetResourceStrings()
+{
+  std::unique_lock<std::shared_mutex> Lock(System::ResourceMutex());
+  for (auto & Original : System::ResourceStringOriginals())
+  {
+    if (Original.second != nullptr)
+    {
+      System::ResourceStrings()[Original.first] = Original.second;
+    }
+    else
+    {
+      System::ResourceStrings().erase(Original.first);
+    }
+  }
+  System::ResourceStringOriginals().clear();
+  System::ResourceStringOverrides().clear();
 }
 //---------------------------------------------------------------------------
 void SetCommandLine(int ArgC, const char * const * ArgV)

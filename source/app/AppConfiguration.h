@@ -377,6 +377,9 @@ public:
   APP_CONFIG_PROPERTY(TGenerateUrlCodeTarget, GenerateUrlCodeTarget)
   APP_CONFIG_PROPERTY(TScriptFormat, GenerateUrlScriptFormat)
   APP_CONFIG_PROPERTY(bool, HttpForWebDAV)
+  // The code of the translation (upstream's, translations/*.ini), empty for
+  // the language of the system, EN for English
+  APP_CONFIG_PROPERTY(UnicodeString, Language)
   // The colors of the files in the panels (TFileColorData::SaveList)
   APP_CONFIG_PROPERTY(UnicodeString, FileColors)
   // The custom colors picked for the sessions and for the files (comma

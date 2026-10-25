@@ -15,10 +15,13 @@ add_library(openscp_app STATIC
   DiscMon.cpp
   GUIConfiguration.cpp
   ProgParams.cpp
-  SynchronizeController.cpp)
+  SynchronizeController.cpp
+  Translations.cpp)
 add_library(openscp::app ALIAS openscp_app)
 
 target_include_directories(openscp_app PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+# The translations of the source tree, for the builds that are not installed
+target_compile_definitions(openscp_app PRIVATE OPENSCP_SOURCE_TRANSLATIONS="${PROJECT_SOURCE_DIR}/translations")
 target_sources(openscp_app INTERFACE $<TARGET_OBJECTS:openscp_app_strings>)
 target_link_libraries(openscp_app
   PRIVATE openscp::options openscp_upstream_warnings

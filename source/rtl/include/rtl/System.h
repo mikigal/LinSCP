@@ -129,6 +129,20 @@ struct TResourceString
 void RegisterResourceStrings(const TResourceString * Strings, size_t Count);
 // Empty if not registered
 System::UnicodeString FindResourceString(int Ident);
+// The symbolic names of the strings (the identifiers of the .rc files), by
+// which the translations name them
+struct TResourceStringName
+{
+  int Ident;
+  const char * Name;
+};
+void RegisterResourceStringNames(const TResourceStringName * Names, size_t Count);
+// The identifier of the string of the name, -1 if not registered
+int FindResourceStringIdent(const char * Name);
+// Overrides the text of a string (by a translation), the text is kept
+void SetResourceString(int Ident, const System::UnicodeString & Text);
+// The texts registered, without the overrides
+void ResetResourceStrings();
 // Overrides the command line seen by ParamStr/ParamCount/CmdLine
 void SetCommandLine(int ArgC, const char * const * ArgV);
 } // namespace rtl

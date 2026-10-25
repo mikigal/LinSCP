@@ -49,7 +49,15 @@ class GenerateTest(unittest.TestCase):
         self.assertIn('#include "Texts.h"', source)
         self.assertIn('  { A, L"\\u00e9" },', source)
         self.assertIn('::rtl::RegisterResourceStrings(Strings,', source)
+        # The names of the translations
+        self.assertIn('  { A, "A" },', source)
+        self.assertIn('::rtl::RegisterResourceStringNames(Names,', source)
         source.encode('ascii')
+
+    def test_brand(self):
+        source = rc2cpp.generate('Texts.rc', 'STRINGTABLE\nBEGIN\n  A, "WinSCP is winscp.com"\nEND\n',
+                                 ('WinSCP', 'OpenSCP'))
+        self.assertIn('  { A, L"OpenSCP is winscp.com" },', source)
 
     def test_project_files(self):
         for name in ['TextsCore1.rc', 'TextsCore2.rc', 'TextsWin1.rc', 'TextsFileZilla.rc']:

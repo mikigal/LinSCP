@@ -153,6 +153,7 @@ void __fastcall TAppConfiguration::Default()
   FGenerateUrlCodeTarget = guctUrl;
   FGenerateUrlScriptFormat = sfScriptFile;
   FHttpForWebDAV = false;
+  FLanguage = L"";
   FFileColors = L"";
   FSessionColors = L"";
   FFontColors = L"";
@@ -385,6 +386,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Enum,    FGenerateUrlCodeTarget); \
     KEY(Enum,    FGenerateUrlScriptFormat); \
     KEY(Bool,    FHttpForWebDAV); \
+    KEY(String,  FLanguage); \
     KEY(String,  FFileColors); \
     KEY(String,  FSessionColors); \
     KEY(String,  FFontColors); \
