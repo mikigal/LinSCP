@@ -238,6 +238,8 @@ private:
   QAction * QueueDeleteAllAction;
   QAction * QueueIdleOnceEmptyAction;
   QAction * QueueDisconnectOnceEmptyAction2;
+  QAction * QueueSuspendOnceEmptyAction2;
+  QAction * QueueShutDownOnceEmptyAction2;
   QAction * QueueShowAction;
   QAction * QueueHideWhenEmptyAction;
   QAction * QueueHideAction;

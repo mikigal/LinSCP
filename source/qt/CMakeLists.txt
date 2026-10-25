@@ -5,6 +5,7 @@
 find_package(Qt6 6.5 REQUIRED COMPONENTS DBus Widgets)
 
 add_library(openscp_qt STATIC
+  app/ComputerPower.cpp
   app/EditorManager.cpp
   app/ExportedFiles.cpp
   app/LocalFiles.cpp

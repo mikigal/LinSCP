@@ -65,11 +65,16 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.session.wait_for_window(title)
         return log
 
-    def start_desktop_services(self):
+    def start_desktop_services(self, logind=False):
         """The notification server, the tray and the task manager of a desktop
-        shell (tools/testenv/desktop_services.py)."""
+        shell (tools/testenv/desktop_services.py), with logind on the system
+        bus of the session."""
         log = self.session.logs / ('%s-desktop.events' % self.test_name)
-        process = self.session.spawn([sys.executable, desktop_services.__file__, '--log', str(log)],
+        args = []
+        if logind:
+            self.session.start_system_bus()
+            args.append('--logind')
+        process = self.session.spawn([sys.executable, desktop_services.__file__, '--log', str(log), *args],
                                      log_name='%s-desktop' % self.test_name)
 
         def stop():
@@ -456,6 +461,60 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         gui.wait_for(lambda: gui.get(D + 'StartButton')['visible'], what='stopped watching')
         gui.click(D + 'CancelButton')
         gui.wait_no_window('SynchronizeDialog')
+        self.assertEqual(gui.quit(), 0)
+
+    def test_shut_down_once_empty(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'last.txt').write_text('last')
+        log = self.start_desktop_services(logind=True)
+        gui = self.start_commander(remote, local)
+
+        # Queued while the queue is disabled
+        gui.trigger(W + 'QueueEnableAction')
+        self.select(gui, 'Local', 'last.txt')
+        gui.trigger(W + 'CurrentCopyAction')
+        gui.wait_window('CopyDialog')
+        gui.set('CopyDialog/QueueCheck2', True)
+        gui.click('CopyDialog/OkButton')
+        gui.wait_no_window('CopyDialog')
+        gui.wait_for(lambda: gui.rows(W + 'QueueView3'), 30, 'the pending item')
+        self.assertTrue(gui.get(W + 'QueueSuspendOnceEmptyAction2')['visible'])
+        self.assertTrue(gui.get(W + 'QueueShutDownOnceEmptyAction2')['visible'])
+        gui.trigger(W + 'QueueShutDownOnceEmptyAction2')
+        gui.trigger(W + 'QueueEnableAction')
+
+        # The application closes and the computer is shut down (by the fake
+        # logind)
+        self.assertEqual(gui.process.wait(60), 0)
+        self.assertEqual((remote / 'last.txt').read_text(), 'last')
+        self.assertEqual(self.probe_events(log, 'logind'), [{'event': 'logind', 'method': 'PowerOff', 'interactive': True}])
+
+    def test_suspend_once_done(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'big.bin').write_bytes(os.urandom(1024 * 1024))
+        log = self.start_desktop_services(logind=True)
+        # 256 KB/s
+        gui = self.start_commander(remote, local, '[Configuration\\Interface\\CopyParam]\nCPSLimit=262144\n')
+
+        self.select(gui, 'Local', 'big.bin')
+        gui.trigger(W + 'CurrentCopyAction')
+        gui.wait_window('CopyDialog')
+        gui.click('CopyDialog/OkButton')
+        gui.wait_window('ProgressForm')
+        self.assertEqual(gui.get('ProgressForm/CycleOnceDoneItem')['text'], 'Once finished: Stay Idle')
+        gui.trigger('ProgressForm/SuspendOnceDoneItem')
+        gui.wait_for(lambda: gui.get('ProgressForm/CycleOnceDoneItem')['text'] == 'Once finished: Sleep Computer',
+                     what='the choice')
+        self.screenshot('progress')
+
+        # Suspended once done, then asked whether to exit
+        gui.wait_window('MessageForm', 60)
+        self.assertEqual(self.probe_events(log, 'logind'), [{'event': 'logind', 'method': 'Suspend', 'interactive': True}])
+        gui.click('MessageForm/No')
+        gui.wait_no_window('MessageForm')
+        self.assertEqual((remote / 'big.bin').stat().st_size, 1024 * 1024)
         self.assertEqual(gui.quit(), 0)
 
 

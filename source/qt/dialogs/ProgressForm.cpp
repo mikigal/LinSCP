@@ -4,16 +4,21 @@
 
 #include "ProgressForm.h"
 
+#include <ComputerPower.h>
 #include <RemoteFiles.h>
 
+#include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QMenu>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QToolButton>
 #include <QVBoxLayout>
 //---------------------------------------------------------------------------
 // The interval of the updates of the window (upstream updates it with a
@@ -50,7 +55,6 @@ TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgr
   FCancel = csContinue;
   FAllowSkip = AllowSkip;
   FSynchronizeProgress = SynchronizeProgress;
-  FOnceDoneOperation = odoIdle;
   FLastOperation = foNone;
   FLastSide = osCurrent;
 
@@ -106,7 +110,47 @@ TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgr
 
   QHBoxLayout * ButtonLayout = new QHBoxLayout();
   MainLayout->addLayout(ButtonLayout);
+  // What is done once the operation finishes
+  CycleOnceDoneItem = new QToolButton(this);
+  CycleOnceDoneItem->setObjectName(QStringLiteral("CycleOnceDoneItem"));
+  CycleOnceDoneItem->setToolTip(tr("Once Finished"));
+  CycleOnceDoneItem->setToolButtonStyle(Qt::ToolButtonTextOnly);
+  CycleOnceDoneItem->setPopupMode(QToolButton::MenuButtonPopup);
+  QMenu * OnceDoneMenu = new QMenu(CycleOnceDoneItem);
+  OnceDoneMenu->setObjectName(QStringLiteral("OnceDoneMenu"));
+  QActionGroup * OnceDoneGroup = new QActionGroup(this);
+  const struct { QAction ** Item; const char * Name; QString Caption; TOnceDoneOperation Operation; } OnceDoneItems[] =
+  {
+    { &IdleOnceDoneItem, "IdleOnceDoneItem", tr("&Stay Idle"), odoIdle },
+    { &DisconnectOnceDoneItem, "DisconnectOnceDoneItem", tr("&Disconnect Session"), odoDisconnect },
+    { &SuspendOnceDoneItem, "SuspendOnceDoneItem", tr("Slee&p Computer"), odoSuspend },
+    { &ShutDownOnceDoneItem, "ShutDownOnceDoneItem", tr("&Shut Down Computer"), odoShutDown },
+  };
+  for (const auto & Item : OnceDoneItems)
+  {
+    QAction * Action = OnceDoneMenu->addAction(Item.Caption);
+    Action->setObjectName(QString::fromLatin1(Item.Name));
+    Action->setCheckable(true);
+    OnceDoneGroup->addAction(Action);
+    TOnceDoneOperation Operation = Item.Operation;
+    connect(Action, &QAction::triggered, this, [this, Operation]() { SetOnceDoneOperation(Operation); });
+    *Item.Item = Action;
+  }
+  // Without logind (or its permission) the computer cannot be suspended or
+  // shut down
+  static bool CanSuspend = CanSuspendComputer();
+  static bool CanShutDown = CanShutDownComputer();
+  SuspendOnceDoneItem->setVisible(CanSuspend);
+  ShutDownOnceDoneItem->setVisible(CanShutDown);
+  CycleOnceDoneItem->setMenu(OnceDoneMenu);
+  connect(CycleOnceDoneItem, &QToolButton::clicked, this, [this]() { CycleOnceDone(); });
+  ButtonLayout->addWidget(CycleOnceDoneItem);
   ButtonLayout->addStretch(1);
+  MinimizeItem = new QPushButton(tr("&Minimize"), this);
+  MinimizeItem->setObjectName(QStringLiteral("MinimizeItem"));
+  MinimizeItem->setAutoDefault(false);
+  connect(MinimizeItem, &QPushButton::clicked, this, [this]() { MinimizeApplication(); });
+  ButtonLayout->addWidget(MinimizeItem);
   SkipItem = new QPushButton(tr("&Skip this file"), this);
   SkipItem->setObjectName(QStringLiteral("SkipItem"));
   SkipItem->setAutoDefault(false);
@@ -120,6 +164,47 @@ TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgr
 
   layout()->setSizeConstraint(QLayout::SetFixedSize);
   setWindowTitle(tr("Operation"));
+  FOnceDoneOperation = odoDisconnect;
+  SetOnceDoneOperation(odoIdle);
+}
+//---------------------------------------------------------------------------
+QAction * TProgressForm::OnceDoneItem(TOnceDoneOperation Operation) const
+{
+  switch (Operation)
+  {
+    case odoDisconnect:
+      return DisconnectOnceDoneItem;
+    case odoSuspend:
+      return SuspendOnceDoneItem;
+    case odoShutDown:
+      return ShutDownOnceDoneItem;
+    default:
+      return IdleOnceDoneItem;
+  }
+}
+//---------------------------------------------------------------------------
+void TProgressForm::SetOnceDoneOperation(TOnceDoneOperation Value)
+{
+  if (FOnceDoneOperation != Value)
+  {
+    FOnceDoneOperation = Value;
+    QAction * Item = OnceDoneItem(Value);
+    Item->setChecked(true);
+    CycleOnceDoneItem->setText(tr("Once finished: %1").arg(Item->text().remove(QLatin1Char('&'))));
+  }
+}
+//---------------------------------------------------------------------------
+void TProgressForm::CycleOnceDone()
+{
+  // The next available choice
+  QList<TOnceDoneOperation> Operations = { odoIdle, odoDisconnect, odoSuspend, odoShutDown };
+  int Index = Operations.indexOf(FOnceDoneOperation);
+  do
+  {
+    Index = (Index + 1) % Operations.size();
+  }
+  while (!OnceDoneItem(Operations[Index])->isVisible());
+  SetOnceDoneOperation(Operations[Index]);
 }
 //---------------------------------------------------------------------------
 void TProgressForm::ShowAsModal()

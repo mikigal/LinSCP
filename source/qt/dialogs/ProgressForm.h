@@ -14,7 +14,9 @@
 //---------------------------------------------------------------------------
 class QLabel;
 class QProgressBar;
+class QAction;
 class QPushButton;
+class QToolButton;
 class TSynchronizeProgress;
 //---------------------------------------------------------------------------
 class TProgressForm : public QDialog
@@ -38,7 +40,7 @@ public:
   // What is done once the operation finishes (disconnect: the application
   // closes)
   TOnceDoneOperation GetOnceDoneOperation() const { return FOnceDoneOperation; }
-  void SetOnceDoneOperation(TOnceDoneOperation Value) { FOnceDoneOperation = Value; }
+  void SetOnceDoneOperation(TOnceDoneOperation Value);
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -71,8 +73,17 @@ private:
   QProgressBar * FileProgress;
   QPushButton * CancelItem;
   QPushButton * SkipItem;
+  QPushButton * MinimizeItem;
+  // Upstream's submenu of the toolbar: a click cycles the choices
+  QToolButton * CycleOnceDoneItem;
+  QAction * IdleOnceDoneItem;
+  QAction * DisconnectOnceDoneItem;
+  QAction * SuspendOnceDoneItem;
+  QAction * ShutDownOnceDoneItem;
 
   void UpdateControls();
+  QAction * OnceDoneItem(TOnceDoneOperation Operation) const;
+  void CycleOnceDone();
   void CancelOperation();
   void SetCancelLower(TCancelStatus ACancel);
 };

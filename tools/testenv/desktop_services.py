@@ -8,16 +8,21 @@ run inside a headless KWin session (tools/wlharness) on its session bus:
 - a listener of the progress of the task manager
   (com.canonical.Unity.LauncherEntry signals).
 
+With --logind, also systemd-logind (org.freedesktop.login1) on the system
+bus of the session (Session.start_system_bus), to suspend and power off
+nothing.
+
 What the services get is logged as JSON lines. The tests act as the user
 through org.openscp.TestDesktop at /org/openscp/TestDesktop: ClickNotification
 (the default action of a notification) and ActivateTrayItem (a click on the
 last registered tray icon).
 
-    desktop_services.py --log FILE
+    desktop_services.py --log FILE [--logind]
 """
 
 import argparse
 import json
+import os
 import sys
 
 import gi
@@ -60,6 +65,17 @@ WATCHER_XML = """
 </node>
 """
 
+LOGIND_XML = """
+<node>
+  <interface name="org.freedesktop.login1.Manager">
+    <method name="CanSuspend"><arg type="s" direction="out"/></method>
+    <method name="CanPowerOff"><arg type="s" direction="out"/></method>
+    <method name="Suspend"><arg type="b" direction="in"/></method>
+    <method name="PowerOff"><arg type="b" direction="in"/></method>
+  </interface>
+</node>
+"""
+
 CONTROL_XML = """
 <node>
   <interface name="org.openscp.TestDesktop">
@@ -90,6 +106,28 @@ class DesktopServices:
                                    'RequestName', GLib.Variant('(su)', (name, 4)), None, Gio.DBusCallFlags.NONE, -1, None)
         if reply.unpack()[0] != 1:
             raise RuntimeError('cannot own %s' % name)
+
+    def start_logind(self):
+        address = os.environ.get('DBUS_SYSTEM_BUS_ADDRESS', '')
+        # Never the real one
+        if not address.startswith('unix:path=') or address == 'unix:path=/run/dbus/system_bus_socket':
+            raise RuntimeError('not the system bus of a harness session: %r' % address)
+        self.system_bus = Gio.DBusConnection.new_for_address_sync(
+            address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT | Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
+        info = Gio.DBusNodeInfo.new_for_xml(LOGIND_XML)
+        self.system_bus.register_object('/org/freedesktop/login1', info.interfaces[0], self.logind_call, None, None)
+        reply = self.system_bus.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+                                          'RequestName', GLib.Variant('(su)', ('org.freedesktop.login1', 4)), None,
+                                          Gio.DBusCallFlags.NONE, -1, None)
+        if reply.unpack()[0] != 1:
+            raise RuntimeError('cannot own org.freedesktop.login1')
+
+    def logind_call(self, connection, sender, path, interface, method, params, invocation):
+        if method in ('CanSuspend', 'CanPowerOff'):
+            invocation.return_value(GLib.Variant('(s)', ('yes',)))
+        else:
+            self.log('logind', method=method, interactive=params.unpack()[0])
+            invocation.return_value(None)
 
     def start(self):
         self.register('/org/freedesktop/Notifications', NOTIFICATIONS_XML, self.notifications_call)
@@ -184,8 +222,11 @@ class DesktopServices:
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--log', required=True)
+    parser.add_argument('--logind', action='store_true')
     args = parser.parse_args()
     services = DesktopServices(args.log)
+    if args.logind:
+        services.start_logind()
     services.start()
     GLib.MainLoop().run()
     return 0

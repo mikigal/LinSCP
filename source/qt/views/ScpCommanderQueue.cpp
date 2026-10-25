@@ -6,6 +6,7 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <ComputerPower.h>
 #include <TerminalManager.h>
 
 #include "QueueController.h"
@@ -87,8 +88,7 @@ void TScpCommanderForm::CreateQueueActions()
   QueueDeleteAllAction = QueueAction("QueueDeleteAllAction", tr("&Cancel All"),
     tr("Remove all queue items"), QStringLiteral("process-stop"), qoDeleteAll);
 
-  // What to do once the queue is empty; upstream also shuts down or
-  // suspends the computer
+  // What to do once the queue is empty
   FQueueOnceEmptyGroup = new QActionGroup(this);
   QueueIdleOnceEmptyAction = new QAction(tr("&Stay Idle"), FQueueOnceEmptyGroup);
   QueueIdleOnceEmptyAction->setObjectName(QStringLiteral("QueueIdleOnceEmptyAction"));
@@ -96,6 +96,12 @@ void TScpCommanderForm::CreateQueueActions()
   QueueDisconnectOnceEmptyAction2 = new QAction(tr("&Disconnect Session"), FQueueOnceEmptyGroup);
   QueueDisconnectOnceEmptyAction2->setObjectName(QStringLiteral("QueueDisconnectOnceEmptyAction2"));
   QueueDisconnectOnceEmptyAction2->setToolTip(tr("Disconnect the session once the queue is empty"));
+  QueueSuspendOnceEmptyAction2 = new QAction(tr("Slee&p Computer"), FQueueOnceEmptyGroup);
+  QueueSuspendOnceEmptyAction2->setObjectName(QStringLiteral("QueueSuspendOnceEmptyAction2"));
+  QueueSuspendOnceEmptyAction2->setToolTip(tr("Put the computer into sleep mode once the queue is empty"));
+  QueueShutDownOnceEmptyAction2 = new QAction(tr("&Shut Down Computer"), FQueueOnceEmptyGroup);
+  QueueShutDownOnceEmptyAction2->setObjectName(QStringLiteral("QueueShutDownOnceEmptyAction2"));
+  QueueShutDownOnceEmptyAction2->setToolTip(tr("Shut down the computer once the queue is empty"));
   for (QAction * Action : FQueueOnceEmptyGroup->actions())
   {
     Action->setCheckable(true);
@@ -484,11 +490,29 @@ void TScpCommanderForm::UpdateQueueActions()
     Action.first->setEnabled(HasQueue && AllowQueueOperation(Action.second));
   }
   FQueueOnceEmptyGroup->setEnabled(AllowQueueOperation(qoOnceEmpty));
+  // Without logind (or its permission) the computer cannot be suspended or
+  // shut down (asked once, the answer does not change)
+  static bool CanSuspend = CanSuspendComputer();
+  static bool CanShutDown = CanShutDownComputer();
+  QueueSuspendOnceEmptyAction2->setVisible(CanSuspend);
+  QueueShutDownOnceEmptyAction2->setVisible(CanShutDown);
 }
 //---------------------------------------------------------------------------
 TOnceDoneOperation TScpCommanderForm::CurrentQueueOnceEmptyOperation()
 {
-  return QueueDisconnectOnceEmptyAction2->isChecked() ? odoDisconnect : odoIdle;
+  if (QueueDisconnectOnceEmptyAction2->isChecked())
+  {
+    return odoDisconnect;
+  }
+  else if (QueueSuspendOnceEmptyAction2->isChecked())
+  {
+    return odoSuspend;
+  }
+  else if (QueueShutDownOnceEmptyAction2->isChecked())
+  {
+    return odoShutDown;
+  }
+  return odoIdle;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ResetQueueOnceEmptyOperation()

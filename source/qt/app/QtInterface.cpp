@@ -4,6 +4,7 @@
 //---------------------------------------------------------------------------
 #include "QtTools.h"
 #include "QtInterface.h"
+#include "ComputerPower.h"
 #include "ScpCommander.h"
 #include "TerminalManager.h"
 
@@ -44,10 +45,23 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
       Manager->FreeActiveTerminal();
     }
 
-    // Upstream also shuts down or suspends the computer (not offered)
+    if (Terminate->Operation == odoSuspend)
+    {
+      // suspend, so that exit prompt is shown only after the computer resumes
+      try
+      {
+        SuspendComputer();
+      }
+      catch (Exception & SuspendE)
+      {
+        ExceptionMessageDialog(&SuspendE, qtError);
+      }
+    }
+
     unsigned int Result = qaNo;
     bool ConfirmExitOnCompletion =
-      (Terminate->Operation == odoDisconnect) && AppConfiguration->ConfirmExitOnCompletion;
+      ((Terminate->Operation == odoDisconnect) || (Terminate->Operation == odoSuspend)) &&
+      AppConfiguration->ConfirmExitOnCompletion;
     if (ConfirmExitOnCompletion)
     {
       TMessageParams Params(mpNeverAskAgainCheck);
@@ -80,6 +94,17 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
     {
       // TerminateApplication
       QMetaObject::invokeMethod(Manager->ScpExplorer, "close", Qt::QueuedConnection);
+    }
+    if ((Result == qaYes) && (Terminate->Operation == odoShutDown))
+    {
+      try
+      {
+        ShutDownComputer();
+      }
+      catch (Exception & ShutDownE)
+      {
+        ExceptionMessageDialog(&ShutDownE, qtError);
+      }
     }
   }
   else if (ForActiveTerminal)
