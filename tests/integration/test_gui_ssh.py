@@ -669,6 +669,44 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual((remote / 'd.txt').read_text(), 'd')
         self.assertEqual(gui.quit(), 0)
 
+    def test_queue_file_list(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'tree' / 'sub').mkdir(parents=True)
+        for name in ('tree/a.txt', 'tree/b.txt', 'tree/sub/c.txt'):
+            (local / name).write_text(name)
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+        F = W + 'QueueFileList'
+        self.assertFalse(gui.get(W + 'QueueFileListAction')['enabled'])
+
+        # The files of a directory transferred in the background (in
+        # parallel), processed
+        self.queue_copy(gui, 'Local', 'tree')
+        gui.wait_for(lambda: (remote / 'tree' / 'sub' / 'c.txt').exists(), 60, 'the upload')
+        gui.wait_for(lambda: self.queue_rows(gui) and self.queue_rows(gui)[0][6] == 'Completed', 30, 'the completed item')
+        self.assertFalse(gui.get(F)['visible'])
+        self.assertTrue(gui.get(W + 'QueueFileListAction')['enabled'])
+        gui.trigger(W + 'QueueFileListAction')
+        gui.wait_idle()
+        self.assertTrue(gui.get(F)['visible'])
+        self.assertTrue(gui.get(W + 'QueueFileListAction')['checked'])
+        gui.select(Q, '')
+        gui.wait_idle()
+        gui.wait_for(lambda: len(gui.rows(F)) >= 3, 30, 'the files of the item')
+        files = [row[0] for row in gui.rows(F)]
+        for name in ('tree/a.txt', 'tree/b.txt', 'tree/sub/c.txt'):
+            self.assertIn(str(local / name), files)
+        self.screenshot('queue-file-list')
+
+        # Hidden again, kept in the configuration
+        gui.trigger(W + 'QueueFileListAction')
+        gui.wait_idle()
+        self.assertFalse(gui.get(F)['visible'])
+        gui.trigger(W + 'QueueFileListAction')
+        self.assertEqual(gui.quit(), 0)
+        self.assertIn('FileList=1', gui.config_file.read_text())
+
     def test_find_files(self):
         remote = self.work_dir('remote')
         local = self.work_dir('local')

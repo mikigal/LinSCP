@@ -226,6 +226,11 @@ void TScpCommanderForm::CreateToolbarActions()
   QueueToolbarAction->setToolTip(tr("Hide/show queue list toolbar (on queue list panel)"));
   QueueToolbarAction->setCheckable(true);
   QueueToolbarAction->setChecked(AppConfiguration->QueueViewToolBar);
+  QueueFileListAction = CreateAction("QueueFileListAction", tr("&File List"), QString(),
+    {}, &TScpCommanderForm::QueueFileListActionExecute);
+  QueueFileListAction->setToolTip(tr("Hide/show full queue file list"));
+  QueueFileListAction->setCheckable(true);
+  QueueFileListAction->setChecked(AppConfiguration->QueueViewFileList);
 
   // The sort of the current panel (upstream's CurrentSort*)
   CurrentSortAscendingAction = new QAction(QIcon::fromTheme(QStringLiteral("view-sort-ascending")), tr("&Ascending"), this);
@@ -986,6 +991,11 @@ void TScpCommanderForm::QueueToolbarActionExecute()
   QueueToolbar->setVisible(AppConfiguration->QueueViewToolBar);
 }
 //---------------------------------------------------------------------------
+void TScpCommanderForm::QueueFileListActionExecute()
+{
+  SetQueueFileListVisible(QueueFileListAction->isChecked());
+}
+//---------------------------------------------------------------------------
 void TScpCommanderForm::ToggleQueueVisibility()
 {
   // upstream's ToggleQueueVisibility
@@ -1087,11 +1097,16 @@ void TScpCommanderForm::ToolbarPopup(TToolbar * Toolbar, const QPoint & GlobalPo
     }
   }
   Menu.addAction(StatusBarAction);
+  Menu.addSeparator();
   if (!IsExplorer())
   {
-    Menu.addSeparator();
     Menu.addMenu(FLocalPanelMenu);
     Menu.addMenu(FRemotePanelMenu);
+  }
+  Menu.addMenu(CreateQueueOptionsMenu(&Menu, tr("&Queue"), QStringLiteral("QueueOptionsMenu")));
+  if (IsExplorer())
+  {
+    Menu.addAction(FRemotePanel->GetTreeAction());
   }
   Menu.exec(GlobalPos);
 }

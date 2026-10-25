@@ -29,6 +29,7 @@ class QAction;
 class QActionGroup;
 class QComboBox;
 class QLabel;
+class QListWidget;
 class QMenu;
 class QMimeData;
 class QSplitter;
@@ -261,6 +262,10 @@ private:
   QLabel * QueueLabel;
   TToolbar * QueueToolbar;
   QTreeWidget * QueueView3;
+  // The files of the selected item (of a parallel transfer)
+  QSplitter * FQueueFileListSplitter;
+  QListWidget * QueueFileList;
+  std::unique_ptr<TQueueFileList> FQueueFileList;
   TQueueController * FQueueController;
   TTerminalQueue * FQueue;
   TTerminalQueueStatus * FQueueStatus;
@@ -373,6 +378,7 @@ private:
   QAction * QueueHideAction;
   QAction * QueueToggleShowAction;
   QAction * QueueToolbarAction;
+  QAction * QueueFileListAction;
   // The toolbars (ScpCommanderToolbars.cpp)
   QAction * LockToolbarsAction;
   QAction * SelectiveToolbarTextAction;
@@ -430,6 +436,7 @@ private:
   void SelectiveToolbarTextActionExecute();
   void StatusBarActionExecute();
   void QueueToolbarActionExecute();
+  void QueueFileListActionExecute();
   void ToggleQueueVisibility();
   void UpdateSortActions();
   // upstream's Toolbars menu, and its popup menu of a toolbar
@@ -476,6 +483,11 @@ private:
   void UpdateQueueStatus(bool QueueChanging);
   void QueueChanged();
   void UpdateQueueView();
+  void SetQueueFileListVisible(bool Visible);
+  void AdjustQueueLayout();
+  void UpdateQueueFileList();
+  // upstream's Queue submenu of the popup menus (the queue view's options)
+  QMenu * CreateQueueOptionsMenu(QWidget * Parent, const QString & Caption, const QString & Name);
   void UpdateQueueLabel();
   void UpdateQueueActions();
   void RefreshQueueItems();

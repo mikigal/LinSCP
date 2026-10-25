@@ -18,6 +18,7 @@
 #include <QApplication>
 #include <QHeaderView>
 #include <QLabel>
+#include <QListWidget>
 #include <QMenu>
 #include <QSplitter>
 #include <QTimer>
@@ -212,12 +213,138 @@ void TScpCommanderForm::CreateQueuePanel()
   {
     QueueView3->addAction(Action);
   }
-  connect(QueueView3, &QTreeWidget::currentItemChanged, this, [this]() { UpdateQueueActions(); });
-  Layout->addWidget(QueueView3, 1);
+  // upstream's Options of the popup menu of the queue
+  QAction * Separator = new QAction(QueueView3);
+  Separator->setSeparator(true);
+  QueueView3->addAction(Separator);
+  QueueView3->addAction(CreateQueueOptionsMenu(QueueView3, tr("&Options"), QStringLiteral("QueuePopupOptionsMenu"))->menuAction());
+  connect(QueueView3, &QTreeWidget::currentItemChanged, this, [this]()
+  {
+    UpdateQueueActions();
+    // upstream's QueueView3Change
+    QueueFileList->scrollToTop();
+    UpdateQueueFileList();
+  });
+
+  // upstream's QueueFileList below the queue, with its splitter
+  FQueueFileListSplitter = new QSplitter(Qt::Vertical, QueuePanel);
+  FQueueFileListSplitter->setObjectName(QStringLiteral("QueueFileListSplitter"));
+  FQueueFileListSplitter->setChildrenCollapsible(false);
+  FQueueFileListSplitter->addWidget(QueueView3);
+  QueueFileList = new QListWidget(FQueueFileListSplitter);
+  QueueFileList->setObjectName(QStringLiteral("QueueFileList"));
+  QueueFileList->setSelectionMode(QAbstractItemView::NoSelection);
+  QueueFileList->setFocusPolicy(Qt::ClickFocus);
+  QueueFileList->setUniformItemSizes(true);
+  FQueueFileListSplitter->addWidget(QueueFileList);
+  FQueueFileListSplitter->setStretchFactor(0, 1);
+  QSplitterHandle * Handle = FQueueFileListSplitter->handle(1);
+  Handle->setToolTip(tr("Drag to resize queue file list. Double click to hide queue file list."));
+  Handle->installEventFilter(this);
+  connect(FQueueFileListSplitter, &QSplitter::splitterMoved, this, [this]()
+  {
+    AppConfiguration->QueueViewFileListHeight = QueueFileList->height();
+  });
+  QueueFileList->setVisible(AppConfiguration->QueueViewFileList);
+  Layout->addWidget(FQueueFileListSplitter, 1);
+  FQueueFileList.reset(new TQueueFileList());
 
   FQueueController = new TQueueController(QueueView3);
   FQueueController->OnChange = [this]() { UpdateQueueActions(); };
   UpdateQueueLabel();
+}
+//---------------------------------------------------------------------------
+QMenu * TScpCommanderForm::CreateQueueOptionsMenu(QWidget * Parent, const QString & Caption, const QString & Name)
+{
+  QMenu * Menu = new QMenu(Caption, Parent);
+  Menu->setObjectName(Name);
+  Menu->setToolTip(tr("Configure queue list"));
+  Menu->addActions(FQueueShowGroup->actions());
+  Menu->addSeparator();
+  Menu->addAction(QueueToolbarAction);
+  Menu->addAction(QueueFileListAction);
+  return Menu;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SetQueueFileListVisible(bool Visible)
+{
+  AppConfiguration->QueueViewFileList = Visible;
+  if (QueueFileList->isHidden() == Visible)
+  {
+    QueueFileList->setVisible(Visible);
+    if (Visible)
+    {
+      AdjustQueueLayout();
+    }
+    UpdateQueueFileList();
+  }
+  QueueFileListAction->setChecked(Visible);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::AdjustQueueLayout()
+{
+  // upstream's AdjustQueueLayout: the queue panel is high enough for the
+  // file list and some rows of the queue (upstream's GetMinQueueViewHeight)
+  if (!QueuePanel->isHidden() && !QueueFileList->isHidden())
+  {
+    int FileListHeight = AppConfiguration->QueueViewFileListHeight;
+    int MinHeight =
+      (QueueLabel->isHidden() ? 0 : QueueLabel->sizeHint().height()) +
+      (QueueToolbar->isHidden() ? 0 : QueueToolbar->sizeHint().height()) +
+      FQueueFileListSplitter->handleWidth() + FileListHeight +
+      QueueView3->header()->sizeHint().height() + 2 * QueueView3->fontMetrics().height();
+    QList<int> Sizes = FQueueSplitter->sizes();
+    if (Sizes.value(1) < MinHeight)
+    {
+      int Total = Sizes.value(0) + Sizes.value(1);
+      FQueueSplitter->setSizes({ std::max(Total - MinHeight, 1), MinHeight });
+    }
+    int Total = FQueueFileListSplitter->height();
+    FQueueFileListSplitter->setSizes({ std::max(Total - FileListHeight, 1), FileListHeight });
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::UpdateQueueFileList()
+{
+  // upstream's UpdateQueueFileList
+  if (!FQueueStatusUpdating)
+  {
+    bool Refresh;
+    if ((FQueueStatus != NULL) && !QueueFileList->isHidden())
+    {
+      Refresh = FQueueStatus->UpdateFileList(FQueueController->GetFocusedPrimaryItem(), FQueueFileList.get());
+    }
+    else
+    {
+      Refresh = (FQueueFileList->GetCount() > 0);
+      if (Refresh)
+      {
+        FQueueFileList->Clear();
+      }
+    }
+    int Count = FQueueFileList->GetCount();
+    if (Refresh || (QueueFileList->count() != Count))
+    {
+      while (QueueFileList->count() > Count)
+      {
+        delete QueueFileList->takeItem(QueueFileList->count() - 1);
+      }
+      // upstream's QueueFileListCustomDrawItem: the processed files grayed
+      QBrush Processed = QueueFileList->palette().brush(QPalette::Disabled, QPalette::Text);
+      for (int Index = 0; Index < Count; Index++)
+      {
+        QListWidgetItem * Item = QueueFileList->item(Index);
+        if (Item == nullptr)
+        {
+          Item = new QListWidgetItem(QueueFileList);
+        }
+        Item->setText(ToQString(FQueueFileList->GetFileName(Index)));
+        bool IsProcessed = (FQueueFileList->GetState(Index) == qfsProcessed);
+        Item->setData(Qt::UserRole, IsProcessed);
+        Item->setForeground(IsProcessed ? Processed : QBrush());
+      }
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::SetQueue(TTerminalQueue * Value)
@@ -263,6 +390,7 @@ void TScpCommanderForm::UpdateQueueStatus(bool QueueChanging)
     TAutoFlag Flag(FQueueStatusUpdating);
     FQueueController->UpdateQueueStatus(FQueueStatus);
   }
+  UpdateQueueFileList();
   SetQueueProgress();
   UpdateQueueLabel();
 
@@ -300,6 +428,7 @@ void TScpCommanderForm::UpdateQueueView()
     if (Visible)
     {
       FQueueSplitter->setSizes({ FQueueSplitter->height() - AppConfiguration->QueueViewHeight, AppConfiguration->QueueViewHeight });
+      AdjustQueueLayout();
     }
   }
 }
@@ -407,6 +536,7 @@ void TScpCommanderForm::RefreshQueueItems()
     {
       UpdateQueueActions();
       SetQueueProgress();
+      UpdateQueueFileList();
       UpdateQueueLabel();
     }
   }

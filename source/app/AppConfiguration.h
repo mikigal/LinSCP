@@ -403,13 +403,16 @@ public:
   APP_CONFIG_PROPERTY(bool, TreeOnLeft)
   APP_CONFIG_PROPERTY(TPanelConfiguration, LocalPanel)
   APP_CONFIG_PROPERTY(TPanelConfiguration, RemotePanel)
+  // The queue view (Interface\QueueView): its toolbar, the setting the
+  // queue was shown by before the user toggled it, the list of the files
+  // of the selected item and its height
+  APP_CONFIG_PROPERTY(bool, QueueViewToolBar)
+  APP_CONFIG_PROPERTY(TQueueViewShow, QueueViewLastHideShow)
+  APP_CONFIG_PROPERTY(bool, QueueViewFileList)
+  APP_CONFIG_PROPERTY(int, QueueViewFileListHeight)
   // The toolbars of the Commander in upstream's format (ToolbarsLayout2:
   // Name=Visible:Dock:Row+Pos), their hidden buttons (Name=Button:0,...;),
   // the status bar of the window
-  // The queue view (Interface\QueueView): its toolbar, the setting the
-  // queue was shown by before the user toggled it
-  APP_CONFIG_PROPERTY(bool, QueueViewToolBar)
-  APP_CONFIG_PROPERTY(TQueueViewShow, QueueViewLastHideShow)
   APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsLayout)
   APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsButtons)
   APP_CONFIG_PROPERTY(bool, CommanderStatusBar)

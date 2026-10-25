@@ -28,6 +28,7 @@
 #include <QDir>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QListWidget>
 #include <QMenuBar>
 #include <QProcess>
 #include <QSplitter>
@@ -66,6 +67,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FQueueItemInvalidated = false;
   FQueueStatusUpdating = false;
   FPendingQueueActionItem = NULL;
+  FQueueFileListSplitter = nullptr;
+  QueueFileList = nullptr;
   FDragSourcePanel = NULL;
   FDragging = false;
   FDragExtracted = false;
@@ -104,6 +107,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   CreateQueuePanel();
   FQueueSplitter->addWidget(QueuePanel);
   FQueueSplitter->setStretchFactor(0, 1);
+  connect(FQueueSplitter, &QSplitter::splitterMoved, this, [this]()
+  {
+    AppConfiguration->QueueViewHeight = QueuePanel->height();
+  });
   QueuePanel->setVisible(false);
   CentralLayout->addWidget(FQueueSplitter, 1);
   setCentralWidget(Central);
@@ -594,9 +601,12 @@ void TScpCommanderForm::CreateMenus()
   QueueViewMenu->addActions(FQueueShowGroup->actions());
   QueueViewMenu->addSeparator();
   QueueViewMenu->addAction(QueueToolbarAction);
+  QueueViewMenu->addAction(QueueFileListAction);
   // The menu of the queue button (upstream's QueueToggleShowAction)
   FQueueShowMenu = NewMenu(QString(), "QueueShowMenu");
   FQueueShowMenu->addActions(FQueueShowGroup->actions());
+  FQueueShowMenu->addSeparator();
+  FQueueShowMenu->addAction(QueueFileListAction);
 
   // upstream's Toolbars menu (of the interface's toolbars)
   FToolbarsMenu = NewMenu(tr("&Toolbars"), "ToolbarsMenu");
@@ -835,6 +845,8 @@ void TScpCommanderForm::UpdateActions()
   CurrentEditWithAction->setEnabled(CanEdit);
   QueueToggleShowAction->setChecked(!QueuePanel->isHidden());
   QueueToolbarAction->setEnabled(!QueuePanel->isHidden());
+  QueueFileListAction->setEnabled(!QueuePanel->isHidden());
+  QueueFileListAction->setChecked(!QueueFileList->isHidden());
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanConsole()

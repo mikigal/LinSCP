@@ -19,6 +19,7 @@
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
+#include <QSplitter>
 #include <QStatusBar>
 #include <QStyle>
 #include <QTabBar>
@@ -299,6 +300,13 @@ bool TScpCommanderForm::eventFilter(QObject * Object, QEvent * Event)
       FileSystemInfoAction->isEnabled())
   {
     QTimer::singleShot(0, this, [this]() { FileSystemInfoAction->trigger(); });
+    return true;
+  }
+  // upstream's QueueFileListSplitterDblClick
+  if ((Event->type() == QEvent::MouseButtonDblClick) && (FQueueFileListSplitter != nullptr) &&
+      (Object == FQueueFileListSplitter->handle(1)))
+  {
+    QTimer::singleShot(0, this, [this]() { SetQueueFileListVisible(false); });
     return true;
   }
   return EventFilterPanels(Object, Event) || QMainWindow::eventFilter(Object, Event);

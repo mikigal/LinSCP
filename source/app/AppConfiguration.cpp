@@ -95,6 +95,8 @@ void __fastcall TAppConfiguration::Default()
   FQueueViewHeight = 140;
   FQueueViewToolBar = true;
   FQueueViewLastHideShow = qvHideWhenEmpty;
+  FQueueViewFileList = false;
+  FQueueViewFileListHeight = 90;
   FSelectMask = AnyMask;
   FSynchronizeSummary = true;
   FShowHiddenFiles = false;
@@ -508,6 +510,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(Integer, FQueueViewShow, L"Show"); \
     KEYEX(Enum,    FQueueViewLastHideShow, L"LastHideShow"); \
     KEYEX(Bool,    FQueueViewToolBar, L"ToolBar"); \
+    KEYEX(Bool,    FQueueViewFileList, L"FileList"); \
+    KEYEX(Integer, FQueueViewFileListHeight, L"FileListHeight"); \
   ); \
   BLOCK(L"Security", CANCREATE, \
     KEY(Bool,    FUseMasterPassword); \
