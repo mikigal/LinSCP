@@ -100,6 +100,9 @@ Manual edits in upstream directories since M5:
 - `core/Terminal.cpp`: `TCalculateSizeParams` zeroes itself with `memset`, which corrupted
   its `UnicodeString` member (a pointer in C++Builder, a `std::wstring` here); the member is
   constructed again (parallel downloads of the queue crashed).
+- `core/SessionInfo.cpp`: the memory check of the application log (`/applog`) walked the
+  address space from a null pointer with pointer arithmetic (undefined behavior, which
+  UBSan stops); it adds to the address as an integer.
 
 ## M5 — GUI skeleton (done, 2026-10-25)
 
