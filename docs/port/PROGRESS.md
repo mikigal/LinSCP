@@ -121,6 +121,12 @@ packaging (PLAN.md, section 7).
   script (in place of upstream's batch file) and the command-line arguments of
   `openscp-cli`; the core's RTF with its colors and links is shown as HTML
   (`app/RtfText.cpp`), the links open the documentation.
+- The site manager's Tools: Export/Backup Configuration and Import/Restore Configuration (the
+  application restarts with the restored configuration, as upstream), Clean Up
+  (`dialogs/CleanupDialog.cpp`: the configuration file, which holds the sites and the caches
+  too, the random seed file, the temporary directories; a configuration file cleaned up is not
+  saved again). The test builds use Qt's file dialogs (`AA_DontUseNativeDialogs`), which the
+  tests drive.
 
 Decisions:
 

@@ -181,6 +181,9 @@ typedef std::function<void(const UnicodeString & Path, TSpaceAvailable & ASpaceA
 void DoFileSystemInfoDialog(const TSessionInfo & SessionInfo, const TFileSystemInfo & FileSystemInfo,
   const UnicodeString & SpaceAvailablePath, TGetSpaceAvailableEvent OnGetSpaceAvailable);
 
+// dialogs/CleanupDialog.cpp: the application data removed, as selected
+bool DoCleanupDialog();
+
 // dialogs/GenerateUrlDialog.cpp: the URL of the session, or of the files
 // (full paths) when given, and the scripts opening the session
 void DoGenerateUrlDialog(TSessionData * Data, TStrings * Paths);

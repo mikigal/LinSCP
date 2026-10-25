@@ -23,6 +23,7 @@ add_library(openscp_qt STATIC
   app/TaskbarProgress.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
+  dialogs/CleanupDialog.cpp
   dialogs/ColorMenu.cpp
   dialogs/ConsoleDialog.cpp
   dialogs/CopyDialog.cpp

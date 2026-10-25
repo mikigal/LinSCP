@@ -6,6 +6,7 @@
 #include <DesktopShortcut.h>
 #include <OpenInPutty.h>
 #include <S3FileSystem.h>
+#include <TextsWin.h>
 
 #include "LoginDialog.h"
 
@@ -14,6 +15,8 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QCoreApplication>
+#include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -23,6 +26,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QPlainTextEdit>
+#include <QProcess>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSpinBox>
@@ -123,6 +127,11 @@ void TLoginDialog::CreateControls()
   DesktopIconAction = CreateAction("DesktopIconAction", tr("Desktop &Icon"), &TLoginDialog::DesktopIconActionExecute);
   ImportSessionsAction =
     CreateAction("ImportSessionsAction", tr("&Import Sites..."), &TLoginDialog::ImportSessionsActionExecute);
+  ImportAction =
+    CreateAction("ImportAction", tr("Import/&Restore Configuration..."), &TLoginDialog::ImportActionExecute);
+  ExportAction =
+    CreateAction("ExportAction", tr("&Export/Backup Configuration..."), &TLoginDialog::ExportActionExecute);
+  CleanUpAction = CreateAction("CleanUpAction", tr("&Clean Up..."), &TLoginDialog::CleanUpActionExecute);
   CopyParamRuleAction =
     CreateAction("CopyParamRuleAction", tr("Transfer Settings &Rule..."), &TLoginDialog::CopyParamRuleActionExecute);
   PreferencesLoggingAction =
@@ -388,6 +397,10 @@ void TLoginDialog::CreateControls()
   ToolsPopupMenu = new QMenu(this);
   ToolsPopupMenu->setObjectName(QStringLiteral("ToolsPopupMenu"));
   ToolsPopupMenu->addAction(ImportSessionsAction);
+  ToolsPopupMenu->addSeparator();
+  ToolsPopupMenu->addAction(ImportAction);
+  ToolsPopupMenu->addAction(ExportAction);
+  ToolsPopupMenu->addAction(CleanUpAction);
   ToolsPopupMenu->addSeparator();
   ToolsPopupMenu->addAction(PreferencesAction);
   ToolsMenuButton->setMenu(ToolsPopupMenu);
@@ -1066,6 +1079,9 @@ void TLoginDialog::UpdateActions()
     (IsFolderOrWorkspaceAndCanOpen() && IsFolderNode(Node)));
   DesktopIconAction->setEnabled((SiteSelected && !FEditing) || FolderOrWorkspaceSelected);
   ImportSessionsAction->setEnabled(!FEditing);
+  ImportAction->setEnabled(!FEditing);
+  ExportAction->setEnabled(!FEditing);
+  CleanUpAction->setEnabled(!FEditing);
   CopyParamRuleAction->setEnabled(SiteSelected || IsNewSiteNode(Node));
   UnicodeString ClipboardUrl;
   PasteUrlAction->setEnabled(
@@ -1579,6 +1595,79 @@ void TLoginDialog::ImportSessionsActionExecute()
       Select(Node);
     }
     SessionTree->setFocus();
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::ExportActionExecute()
+{
+  UnicodeString FileName = Configuration->GetDefaultIniFileExportPath();
+  QFileDialog Dialog(this, ToQString(LoadStr(EXPORT_CONF_TITLE)), ToQString(ExtractFilePath(FileName)),
+    FileDialogFilter(LoadStr(EXPORT_CONF_FILTER)));
+  Dialog.setObjectName(QStringLiteral("ExportDialog"));
+  Dialog.setAcceptMode(QFileDialog::AcceptSave);
+  Dialog.setDefaultSuffix(QStringLiteral("ini"));
+  Dialog.selectFile(ToQString(FileName));
+  if ((Dialog.exec() == QDialog::Accepted) && !Dialog.selectedFiles().isEmpty())
+  {
+    UnicodeString Path = ToUnicodeString(Dialog.selectedFiles().first());
+    ExecuteHandler([&]() { Configuration->Export(Path); });
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::ImportActionExecute()
+{
+  if (MessageDialog(LoadStr(IMPORT_CONFIGURATION2), qtWarning, qaOK | qaCancel) == qaOK)
+  {
+    UnicodeString FileName = Configuration->GetDefaultIniFileExportPath();
+    QFileDialog Dialog(this, ToQString(LoadStr(IMPORT_CONF_TITLE)), ToQString(ExtractFilePath(FileName)),
+      FileDialogFilter(LoadStr(EXPORT_CONF_FILTER)));
+    Dialog.setObjectName(QStringLiteral("ImportDialog"));
+    Dialog.setFileMode(QFileDialog::ExistingFile);
+    Dialog.setDefaultSuffix(QStringLiteral("ini"));
+    Dialog.selectFile(ToQString(FileName));
+    if ((Dialog.exec() == QDialog::Accepted) && !Dialog.selectedFiles().isEmpty())
+    {
+      QString Path = Dialog.selectedFiles().first();
+      bool Imported = false;
+      ExecuteHandler([&]()
+      {
+        // Before the session list gets destroyed
+        SessionTree->clear();
+        Configuration->Import(ToUnicodeString(Path));
+        Imported = true;
+      });
+      if (Imported)
+      {
+        // The application restarts with the configuration (upstream's
+        // ExecuteSelf), with its configuration file
+        QStringList Arguments;
+        for (const QString & Argument : QCoreApplication::arguments().mid(1))
+        {
+          if (Argument.startsWith(QLatin1String("/ini="), Qt::CaseInsensitive) ||
+              Argument.startsWith(QLatin1String("-ini="), Qt::CaseInsensitive))
+          {
+            Arguments.append(Argument);
+          }
+        }
+        QProcess::startDetached(QCoreApplication::applicationFilePath(), Arguments);
+        QCoreApplication::exit(0);
+        reject();
+      }
+      else
+      {
+        LoadSessions();
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TLoginDialog::CleanUpActionExecute()
+{
+  bool Result = false;
+  ExecuteHandler([&]() { Result = DoCleanupDialog(); });
+  if (Result)
+  {
+    LoadSessions();
   }
 }
 //---------------------------------------------------------------------------

@@ -160,6 +160,10 @@ class OpenScpGui:
     def expand(self, target, item, expanded=True):
         return self.call('expand', target=target, item=item, expanded=expanded)
 
+    def check(self, target, item, checked=True):
+        """Checks or unchecks the item of an item view."""
+        return self.call('check', target=target, item=item, checked=checked)
+
     def key(self, key, target=None):
         """Sends a key (e.g. "Return", "Ctrl+A") to the widget or the focused one;
         shortcuts need real input (Session.input)."""

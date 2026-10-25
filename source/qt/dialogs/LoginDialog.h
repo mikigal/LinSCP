@@ -98,6 +98,9 @@ private:
   QAction * PuttyAction;
   QAction * DesktopIconAction;
   QAction * ImportSessionsAction;
+  QAction * ImportAction;
+  QAction * ExportAction;
+  QAction * CleanUpAction;
   QAction * SessionAdvancedAction;
   QAction * SessionRawAction;
   QAction * CopyParamRuleAction;
@@ -225,6 +228,11 @@ private:
   void PuttyActionExecute();
   void DesktopIconActionExecute();
   void ImportSessionsActionExecute();
+  // The configuration restored from a backup (the application restarts),
+  // backed up, the application data cleaned up
+  void ImportActionExecute();
+  void ExportActionExecute();
+  void CleanUpActionExecute();
   void PreferencesLoggingActionExecute();
 };
 //---------------------------------------------------------------------------

@@ -1945,6 +1945,43 @@ class GuiSshTest(GuiSshTestCase):
         self.assertFalse((local / 'other').exists())
         self.assertEqual(gui.quit(), 0)
 
+    def test_configuration_backup(self):
+        gui = self.start_gui(ini=site_ini('first'))
+        gui.wait_window('LoginDialog')
+        backup = self.work_dir('backup') / 'backup.ini'
+
+        # Exported (backed up)
+        gui.trigger('LoginDialog/ExportAction')
+        gui.wait_window('ExportDialog')
+        gui.set('ExportDialog/fileNameEdit', str(backup))
+        gui.key('Return', 'ExportDialog/fileNameEdit')
+        gui.wait_no_window('ExportDialog')
+        gui.wait_for(lambda: backup.exists(), what='the backup')
+        self.assertIn('[Sessions\\first]', backup.read_text())
+
+        # Restoring it is confirmed (it restarts the application)
+        gui.trigger('LoginDialog/ImportAction')
+        gui.wait_window('MessageForm')
+        self.assertIn('Restore configuration from a backup?', self.message_text(gui))
+        gui.click('MessageForm/OK')
+        gui.wait_window('ImportDialog')
+        gui.key('Escape', 'ImportDialog/fileNameEdit')
+        gui.wait_no_window('ImportDialog')
+
+        # The configuration file cleaned up is not saved again
+        gui.trigger('LoginDialog/CleanUpAction')
+        gui.wait_window('CleanupDialog')
+        rows = gui.rows('CleanupDialog/DataListView')
+        self.assertEqual(rows[0], ['Configuration INI file', str(gui.config_file)])
+        self.assertFalse(gui.get('CleanupDialog/OKButton')['enabled'])
+        gui.check('CleanupDialog/DataListView', 'Configuration INI file')
+        gui.click('CleanupDialog/OKButton')
+        gui.wait_no_window('CleanupDialog')
+        self.assertFalse(gui.config_file.exists())
+        gui.click('LoginDialog/CloseButton')
+        self.assertEqual(gui.quit(), 0)
+        self.assertFalse(gui.config_file.exists())
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))
