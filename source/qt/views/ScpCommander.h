@@ -159,6 +159,10 @@ private:
   int FNewSessionNesting;
   // Its local directory is shown regardless of PreserveLocalDirectory
   bool FFirstTerminal;
+  // The previous paths of the panels (local, remote) and the other panel
+  // following one (upstream's synchronized browsing)
+  UnicodeString FPrevPath[2];
+  bool FSynchronisingBrowse;
   UnicodeString FNote;
   QSplitter * FPanelSplitter;
   TLocalDirPanel * FLocalPanel;
@@ -280,6 +284,7 @@ private:
   QAction * RemoteFindFilesAction2;
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
+  QAction * SynchronizeBrowsingAction2;
   QAction * ConsoleAction;
   QAction * PuttyAction;
   QAction * CurrentEditAction;
@@ -511,6 +516,15 @@ private:
   void PanelContextPopup(TDirPanel * Panel, bool OnFile, const QPoint & GlobalPos);
 
   // The synchronization (ScpCommanderSynchronize.cpp)
+  // The other panel follows the changes of the directories of one
+  // (upstream's synchronized browsing)
+  void SynchronizeBrowsingActionExecute();
+  void SynchronizeBrowsing(TDirPanel * Panel);
+  void SynchronizeBrowsing(TDirPanel * Panel, UnicodeString PrevPath, UnicodeString & NewPath, bool Create);
+  void SynchronizeBrowsingLocal(UnicodeString PrevPath, UnicodeString & NewPath, bool Create);
+  void SynchronizeBrowsingRemote(UnicodeString PrevPath, UnicodeString & NewPath, bool Create);
+  // Both panels go to their home directories when browsing synchronized
+  bool SynchronizedHomeDirectory(TDirPanel * Panel);
   struct TSynchronizeParams
   {
     TSynchronizeMode Mode;

@@ -349,6 +349,7 @@ void TScpCommanderForm::UpdateSessionData(TSessionData * Data)
   Data->LocalDirectory = FLocalPanel->GetPath();
   // The color of the tab is kept in the state data (upstream's SessionColor)
   Data->Color = FManagedSession->StateData->Color;
+  Data->SynchronizeBrowsing = SynchronizeBrowsingAction2->isChecked();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::RestoreSessionLocalDirectory(const UnicodeString & LocalDirectory)
@@ -369,6 +370,7 @@ void TScpCommanderForm::RestoreSessionLocalDirectory(const UnicodeString & Local
 //---------------------------------------------------------------------------
 void TScpCommanderForm::SessionChanged()
 {
+  SynchronizeBrowsingAction2->setChecked(false);
   TManagedTerminal * Session = FManagedSession;
   TTerminalManager * Manager = TTerminalManager::Instance(false);
   if ((Manager != NULL) && !Manager->Updating)
@@ -398,6 +400,7 @@ void TScpCommanderForm::SessionChanged()
     if (RestoreState)
     {
       FLocalPanel->RestoreState(Session->LocalExplorerState);
+      SynchronizeBrowsingAction2->setChecked(Session->StateData->SynchronizeBrowsing);
     }
   }
 

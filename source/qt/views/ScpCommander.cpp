@@ -98,11 +98,17 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   CentralLayout->addWidget(FQueueSplitter, 1);
   setCentralWidget(Central);
   FCurrentPanel = FLocalPanel;
+  FSynchronisingBrowse = false;
 
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
   {
     connect(Panel, &TDirPanel::Entered, this, [this](TDirPanel * APanel) { SetCurrentPanel(APanel); });
-    connect(Panel, &TDirPanel::DirectoryChanged, this, [this]() { TransferPresetAutoSelect(); });
+    connect(Panel, &TDirPanel::DirectoryChanged, this, [this](TDirPanel * APanel)
+    {
+      TransferPresetAutoSelect();
+      ExecuteHandler([this, APanel]() { SynchronizeBrowsing(APanel); });
+    });
+    Panel->OnHomeDirectory = [this](TDirPanel * APanel) { return SynchronizedHomeDirectory(APanel); };
     connect(Panel, &TDirPanel::OpenDirectoryRequested, this, [this](TDirPanel * APanel) { OpenDirectory(APanel->GetSide()); });
     connect(Panel, &TDirPanel::FileActivated, this, [this](TDirPanel * APanel) { FileActivated(APanel); });
     connect(Panel, &TDirPanel::AddBookmarkRequested, this, [this](TDirPanel * APanel) { AddBookmark(APanel->GetSide()); });
@@ -241,6 +247,11 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::ALT | Qt::Key_F7) }, &TScpCommanderForm::RemoteFindFilesActionExecute);
   FullSynchronizeAction2 = CreateAction("FullSynchronizeAction2", tr("&Synchronize..."), QStringLiteral("folder-sync"),
     { QKeySequence(Qt::CTRL | Qt::Key_S) }, &TScpCommanderForm::FullSynchronizeActionExecute);
+  SynchronizeBrowsingAction2 = CreateAction("SynchronizeBrowsingAction2", tr("Synchronize &Browsing"),
+    QStringLiteral("view-split-left-right"), { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_B) },
+    &TScpCommanderForm::SynchronizeBrowsingActionExecute);
+  SynchronizeBrowsingAction2->setToolTip(tr("Synchronize browsing between both panels"));
+  SynchronizeBrowsingAction2->setCheckable(true);
   SynchronizeAction = CreateAction("SynchronizeAction", tr("&Keep Remote Directory up to Date..."),
     QStringLiteral("view-refresh"), { QKeySequence(Qt::CTRL | Qt::Key_U) }, &TScpCommanderForm::SynchronizeActionExecute);
   ConsoleAction = CreateAction("ConsoleAction", tr("Open &Terminal"), QStringLiteral("utilities-terminal"),
@@ -458,6 +469,7 @@ void TScpCommanderForm::CreateMenus()
   FCommandsMenu->addAction(RemoteFindFilesAction2);
   FCommandsMenu->addAction(CompareDirectoriesAction2);
   FCommandsMenu->addAction(FullSynchronizeAction2);
+  FCommandsMenu->addAction(SynchronizeBrowsingAction2);
   FCommandsMenu->addAction(SynchronizeAction);
   FCommandsMenu->addSeparator();
   FCommandsMenu->addMenu(CustomCommandsMenu);
@@ -792,6 +804,7 @@ void TScpCommanderForm::UpdateActions()
   RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
+  SynchronizeBrowsingAction2->setEnabled(!Busy && Connected && !IsExplorer());
   ConsoleAction->setEnabled(!Busy && CanConsole());
   PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
   UpdateMarkActions();
@@ -883,6 +896,8 @@ void TScpCommanderForm::ApplyInterface()
   if (Explorer)
   {
     SetCurrentPanel(FRemotePanel);
+    // Without the local panel
+    SynchronizeBrowsingAction2->setChecked(false);
   }
   SessionsTabsAction2->setChecked(Explorer ? AppConfiguration->ExplorerSessionsTabs : AppConfiguration->SessionsTabs);
   SessionsPageControl->setVisible(SessionsTabsAction2->isChecked());

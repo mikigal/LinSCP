@@ -1880,6 +1880,48 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_no_window('LocalDirViewPopup')
         self.assertEqual(gui.quit(), 0)
 
+    def test_synchronize_browsing(self):
+        remote = self.work_dir('remote')
+        (remote / 'sub' / 'deep').mkdir(parents=True)
+        (remote / 'other').mkdir()
+        local = self.work_dir('local')
+        (local / 'sub').mkdir()
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+        remote_path = W + 'RemotePathComboBox'
+        local_path = W + 'LocalPathComboBox'
+        gui.trigger(W + 'SynchronizeBrowsingAction2')
+        self.assertTrue(gui.get(W + 'SynchronizeBrowsingAction2')['checked'])
+
+        # The remote panel follows the local one
+        gui.activate(W + 'LocalDirView', 'sub')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(remote / 'sub'), what='the remote directory')
+        self.assertEqual(gui.get(local_path)['text'], str(local / 'sub'))
+        # and the local one the remote one, a missing directory is created
+        # when confirmed
+        gui.activate(W + 'RemoteDirView', 'deep')
+        gui.wait_window('MessageForm')
+        self.assertIn(str(local / 'sub' / 'deep'), self.message_text(gui))
+        gui.click('MessageForm/Yes')
+        gui.wait_for(lambda: gui.get(local_path)['text'] == str(local / 'sub' / 'deep'), what='the created directory')
+        self.assertTrue((local / 'sub' / 'deep').is_dir())
+        gui.activate(W + 'LocalDirView', '..')
+        gui.wait_for(lambda: gui.get(remote_path)['text'] == str(remote / 'sub'), what='the parent directory')
+        gui.activate(W + 'RemoteDirView', '..')
+        gui.wait_for(lambda: gui.get(local_path)['text'] == str(local), what='the local parent directory')
+        gui.wait_idle()
+
+        # Not created, the browsing is not synchronized anymore
+        gui.activate(W + 'RemoteDirView', 'other')
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/No')
+        gui.wait_no_window('MessageForm')
+        gui.wait_for(lambda: not gui.get(W + 'SynchronizeBrowsingAction2')['checked'], what='the browsing not synchronized')
+        self.assertEqual(gui.get(remote_path)['text'], str(remote / 'other'))
+        self.assertEqual(gui.get(local_path)['text'], str(local))
+        self.assertFalse((local / 'other').exists())
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

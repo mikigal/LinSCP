@@ -1028,6 +1028,14 @@ void TDirPanel::FillMenu(QMenu * Menu, QAction * PathToClipboardAction)
   Menu->addAction(FilterAction);
 }
 //---------------------------------------------------------------------------
+void TDirPanel::HomeDirActionExecute()
+{
+  if (!OnHomeDirectory || !OnHomeDirectory(this))
+  {
+    HomeDirectory();
+  }
+}
+//---------------------------------------------------------------------------
 void TDirPanel::FillDirViewPopup(QMenu * Menu, QAction * PathToClipboardAction)
 {
   QMenu * GoToMenu = Menu->addMenu(tr("&Go To"));

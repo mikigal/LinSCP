@@ -1,11 +1,13 @@
 // The synchronization of directories of the main window (upstream has it in
 // forms/CustomScpExplorer.cpp and forms/ScpCommander.cpp): the comparison,
-// the checklist and the synchronization, directly or in the queue.
+// the checklist and the synchronization, directly or in the queue; the
+// synchronized browsing.
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
 #include <TerminalManager.h>
+#include <TextsWin.h>
 
 #include "DirModel.h"
 #include "DirPanel.h"
@@ -590,5 +592,190 @@ void TScpCommanderForm::Synchronize(const UnicodeString LocalDirectory,
       ::rtl::MethodPtr(this, &TScpCommanderForm::TerminalSynchronizeDirectory),
       ::rtl::MethodPtr(this, &TScpCommanderForm::SynchronizeProcessedItem), NULL, NULL, NULL);
   }
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeBrowsingActionExecute()
+{
+  // upstream's SynchronizeBrowsingChanged
+  if (SynchronizeBrowsingAction2->isChecked())
+  {
+    Configuration->Usage->Inc(L"SynchronizeBrowsingEnabled");
+  }
+  PostNote(FORMAT(LoadStrPart(SYNC_DIR_BROWSE_TOGGLE, 1),
+    (LoadStrPart(SYNC_DIR_BROWSE_TOGGLE, (SynchronizeBrowsingAction2->isChecked() ? 2 : 3)))));
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeBrowsingLocal(UnicodeString PrevPath, UnicodeString & NewPath, bool Create)
+{
+  TTerminal * Terminal = GetTerminal();
+  Terminal->ExceptionOnFail = true;
+  ::rtl::TFinally Finally([&]() { Terminal->ExceptionOnFail = false; });
+  std::unique_ptr<TStrings> Paths(new TStringList());
+  UnicodeString LocalPath = FLocalPanel->GetPath();
+  Paths->Add(IncludeTrailingBackslash(PrevPath));
+  Paths->Add(IncludeTrailingBackslash(LocalPath));
+  UnicodeString CommonPath;
+  if (ExtractCommonPath(Paths.get(), CommonPath))
+  {
+    PrevPath = IncludeTrailingBackslash(PrevPath);
+    CommonPath = IncludeTrailingBackslash(CommonPath);
+    // With the trailing slash, as upstream's path of the remote panel
+    NewPath = UnixIncludeTrailingBackslash(FRemotePanel->GetPath());
+    while (!SamePaths(PrevPath, CommonPath))
+    {
+      if (NewPath == UnixExcludeTrailingBackslash(NewPath))
+      {
+        Abort();
+      }
+      NewPath = UnixExtractFilePath(UnixExcludeTrailingBackslash(NewPath));
+      PrevPath = ExtractFilePath(ExcludeTrailingBackslash(PrevPath));
+    }
+
+    NewPath = UnixIncludeTrailingBackslash(NewPath) +
+      LocalPath.SubString(PrevPath.Length() + 1, LocalPath.Length() - PrevPath.Length());
+  }
+  else
+  {
+    Abort();
+  }
+
+  if (Create)
+  {
+    TRemoteProperties Properties = GUIConfiguration->NewDirectoryProperties;
+    Terminal->CreateDirectory(UnixExcludeTrailingBackslash(NewPath), &Properties);
+  }
+
+  FRemotePanel->ChangeDirectory(NewPath);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeBrowsingRemote(UnicodeString PrevPath, UnicodeString & NewPath, bool Create)
+{
+  std::unique_ptr<TStrings> Paths(new TStringList());
+  UnicodeString RemotePath = FRemotePanel->GetPath();
+  Paths->Add(UnixIncludeTrailingBackslash(PrevPath));
+  Paths->Add(UnixIncludeTrailingBackslash(RemotePath));
+  UnicodeString CommonPath;
+
+  if (UnixExtractCommonPath(Paths.get(), CommonPath))
+  {
+    PrevPath = UnixIncludeTrailingBackslash(PrevPath);
+    CommonPath = UnixIncludeTrailingBackslash(CommonPath);
+
+    UnicodeString NewLocalPath;
+    NewPath = ExcludeTrailingBackslash(FLocalPanel->GetPath());
+    while (!UnixSamePath(PrevPath, CommonPath))
+    {
+      NewLocalPath = ExcludeTrailingBackslash(ExtractFileDir(NewPath));
+      if (NewLocalPath == NewPath)
+      {
+        Abort();
+      }
+      NewPath = NewLocalPath;
+      PrevPath = UnixExtractFilePath(UnixExcludeTrailingBackslash(PrevPath));
+    }
+
+    // The remote path is a local one on Linux (upstream converts the slashes)
+    NewPath = IncludeTrailingBackslash(NewPath) +
+      RemotePath.SubString(PrevPath.Length() + 1, RemotePath.Length() - PrevPath.Length());
+  }
+  else
+  {
+    Abort();
+  }
+
+  if (Create && !ForceDirectories(ApiPath(ExcludeTrailingBackslash(NewPath))))
+  {
+    throw EOSExtException(FMTLOAD(CREATE_DIR_ERROR, (NewPath)));
+  }
+
+  FLocalPanel->ChangeDirectory(NewPath);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeBrowsing(TDirPanel * Panel, UnicodeString PrevPath, UnicodeString & NewPath, bool Create)
+{
+  if (Panel == FLocalPanel)
+  {
+    SynchronizeBrowsingLocal(PrevPath, NewPath, Create);
+  }
+  else
+  {
+    SynchronizeBrowsingRemote(PrevPath, NewPath, Create);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeBrowsing(TDirPanel * Panel)
+{
+  int Index = (Panel == FLocalPanel) ? 1 : 0;
+  UnicodeString PrevPath = FPrevPath[Index];
+  FPrevPath[Index] = Panel->GetPath();
+
+  if (!FSynchronisingBrowse && SynchronizeBrowsingAction2->isChecked() && !IsExplorer() &&
+      FRemotePanel->IsReady() && !PrevPath.IsEmpty() && (PrevPath != Panel->GetPath()))
+  {
+    TAutoFlag SynchronisingBrowseFlag(FSynchronisingBrowse);
+
+    try
+    {
+      UnicodeString NewPath;
+
+      bool Error = false;
+      std::unique_ptr<TStrings> ErrorMoreMessages;
+
+      try
+      {
+        SynchronizeBrowsing(Panel, PrevPath, NewPath, false);
+      }
+      // EAbort means that we do not know how to synchronize browsing
+      // there's no fallback scenario for that
+      catch (EAbort &)
+      {
+        throw;
+      }
+      catch (Exception & E)
+      {
+        Error = true;
+        ErrorMoreMessages.reset(ExceptionToMoreMessages(&E));
+      }
+
+      if (Error)
+      {
+        if (::MoreMessageDialog(FMTLOAD(SYNC_DIR_BROWSE_CREATE2, (NewPath)),
+              ErrorMoreMessages.get(), qtConfirmation, qaYes | qaNo) == qaYes)
+        {
+          try
+          {
+            SynchronizeBrowsing(Panel, PrevPath, NewPath, true);
+          }
+          catch (Exception & E)
+          {
+            GetTerminal()->ShowExtendedException(&E);
+            throw;
+          }
+        }
+        else
+        {
+          SynchronizeBrowsingAction2->setChecked(false);
+        }
+      }
+    }
+    catch (Exception &)
+    {
+      SynchronizeBrowsingAction2->setChecked(false);
+      MessageDialog(LoadStr(SYNC_DIR_BROWSE_ERROR), qtInformation, qaOK);
+    }
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::SynchronizedHomeDirectory(TDirPanel * Panel)
+{
+  bool Result = SynchronizeBrowsingAction2->isChecked() && !IsExplorer() && FRemotePanel->IsReady();
+  if (Result)
+  {
+    TAutoFlag SynchronisingBrowseFlag(FSynchronisingBrowse);
+    Panel->HomeDirectory();
+    OtherPanel(Panel)->HomeDirectory();
+  }
+  return Result;
 }
 //---------------------------------------------------------------------------

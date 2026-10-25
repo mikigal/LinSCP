@@ -112,6 +112,10 @@ packaging (PLAN.md, section 7).
   hard links in place of upstream's Windows shortcuts), the locks (Files > Locking, WebDAV),
   Calculate Directory Sizes (Alt+Shift+Enter, the sizes shown in the panel until it is
   reloaded).
+- Synchronized browsing (Commands > Synchronize Browsing, Ctrl+Alt+B): the other panel follows
+  the changes of the directory of one, a missing directory is created when confirmed (else the
+  browsing is not synchronized anymore), Home goes home in both panels; kept in the state of
+  the session and its workspace.
 
 Decisions:
 

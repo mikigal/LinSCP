@@ -158,6 +158,8 @@ public:
   // Edits the name of the focused file in place; OnRename renames it
   void StartRename();
   std::function<void(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName)> OnRename;
+  // The home directory is requested; true when done by the handler
+  std::function<bool(TDirPanel * Panel)> OnHomeDirectory;
   void SetShowHiddenFiles(bool Value);
   // The preferences of the panels (the font, the sizes, the sorting, ...)
   virtual void ApplyConfiguration();
@@ -316,7 +318,7 @@ private:
   void UpdateColumnsMenu();
   int DefaultColumnWidth(int Column) const;
   void RefreshActionExecute() { Reload(); }
-  void HomeDirActionExecute() { HomeDirectory(); }
+  void HomeDirActionExecute();
   void OpenDirActionExecute() { Q_EMIT OpenDirectoryRequested(this); }
   void AddBookmarkActionExecute() { Q_EMIT AddBookmarkRequested(this); }
 };
