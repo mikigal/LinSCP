@@ -76,7 +76,8 @@ without warnings.
   icons the GUI asks for, over the desktop's theme (which has the icons of the file types and
   the others LinSCP has not); the desktop's icons by a preference (Window > Use icons of the
   desktop theme, `DesktopIcons`). The application has an icon of its own (`linscp`, installed
-  to the hicolor theme) instead of the theme's `folder-remote`.
+  to the hicolor theme) instead of the theme's `folder-remote`: upstream's motif (a padlock with
+  the blue and green transfers) drawn anew, the arrows in LinSCP's directions.
 - The images of upstream's dialogs (its `DialogImages`, `LoadDialogImage`): LinSCP's own
   32-pixel pictures (`source/qt/icons/linscp/dialogs`, by the same generator, not a part of the
   theme) left of the controls of the copy (by the direction, and for moving), synchronization,

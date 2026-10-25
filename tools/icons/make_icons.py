@@ -433,14 +433,34 @@ def queue_list():
     return s
 
 
+def gradient(name, top, bottom, x2=0, y2=1):
+    return ('<linearGradient id="%s" x1="0" y1="0" x2="%g" y2="%g"><stop offset="0" stop-color="%s"/>'
+            '<stop offset="1" stop-color="%s"/></linearGradient>' % (name, x2, y2, top, bottom))
+
+
 def app_icon():
-    # LinSCP: two panels with the transfer between them
-    return svg(rect(0.5, 1.5, 15, 13, '#ffffff', BLUE_DARK, 1.5),
-               rect(0.5, 1.5, 15, 3, BLUE, BLUE_DARK, 1.5),
-               rect(1.8, 5.5, 5.7, 7.8, FOLDER_FRONT, FOLDER_STROKE, 0.6),
-               rect(8.5, 5.5, 5.7, 7.8, '#cfe6ff', BLUE_DARK, 0.6),
-               arrow('right', 8, 7.6, 4.6, GREEN, GREEN_DARK),
-               arrow('left', 8, 11.2, 4.6, ORANGE, ORANGE_DARK))
+    # LinSCP: a padlock (the secure connection) with the transfers, as
+    # upstream's icon says it, drawn in LinSCP's convention: the upload blue
+    # up and right behind the lock, the download green down and left before
+    # it; on a 64-pixel grid, readable down to 16 pixels
+    defs = '<defs>%s%s%s%s</defs>' % (
+        gradient('upload', '#6fd6ff', '#1565c8', 1, 1),
+        gradient('download', '#a6e852', '#2f8f14', 1, 1),
+        gradient('body', '#fbfcfd', '#a9b2bc'),
+        gradient('shackle', '#f2f4f6', '#9aa4ae', 1, 0))
+    shackle = 'M23.5,32 V22.5 a9.5,9.5 0 0 1 19,0 V32'
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\n' +
+            defs + '\n<g transform="translate(32,32) scale(1.12) translate(-32,-32)">\n' +
+            '\n'.join([
+                arrow(45, 46.5, 17.5, 31, 'url(#upload)', '#0f4f9e', 2),
+                path(shackle, 'none', '#56606b', 9),
+                path(shackle, 'none', 'url(#shackle)', 5.5),
+                rect(16, 30, 34, 25, 'url(#body)', '#56606b', 4.5, 2),
+                path('M19.5,34.3 h27', 'none', '#ffffffcc', 1.5),
+                circle(36, 40.5, 3.6, '#56606b'),
+                path('M34,41.5 h4 l1.4,7.5 h-6.8 z', '#56606b'),
+                arrow(225, 17.5, 46.5, 31, 'url(#download)', '#2a6e12', 2),
+            ]) + '\n</g>\n</svg>\n')
 
 
 # The icons ------------------------------------------------------------------
