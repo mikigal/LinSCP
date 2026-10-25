@@ -80,6 +80,7 @@ protected:
   virtual void dragMoveEvent(QDragMoveEvent * Event) override;
   virtual void dragLeaveEvent(QDragLeaveEvent * Event) override;
   virtual void dropEvent(QDropEvent * Event) override;
+  virtual void contextMenuEvent(QContextMenuEvent * Event) override;
   virtual void drawRow(QPainter * Painter, const QStyleOptionViewItem & Option, const QModelIndex & Index) const override;
 
 private:
@@ -202,6 +203,11 @@ public:
   // the status bar)
   void FillMenu(QMenu * Menu, QAction * PathToClipboardAction);
   void FillOptionsMenu(QMenu * Menu);
+  // The commands of the directory in the popup menu out of the files
+  // (upstream's DirViewPopup: Go To, Refresh, the bookmark, the filter)
+  void FillDirViewPopup(QMenu * Menu, QAction * PathToClipboardAction);
+  // The calculated size of a directory is shown
+  void SetCalculatedSize(const UnicodeString & FileName, __int64 Size);
   // The directory tree (upstream's DriveView), above the files or left of
   // them, its size
   void SetTreeVisible(bool Visible);
@@ -238,6 +244,9 @@ Q_SIGNALS:
   void BookmarksMenuRequested(TDirPanel * Panel, QMenu * Menu);
   // The count of the hidden files in the status bar was clicked
   void ToggleHiddenFilesRequested();
+  // The popup menu of the files (on a file, selected) or of the directory
+  // is requested at the position
+  void ContextPopupRequested(TDirPanel * Panel, bool OnFile, const QPoint & GlobalPos);
 
 protected:
   QToolBar * PathToolbar;

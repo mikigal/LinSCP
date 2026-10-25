@@ -349,6 +349,20 @@ QJsonObject Describe(QObject * Object, bool Children)
     }
     Result[QStringLiteral("menus")] = Items;
   }
+  else if (QMenu * Menu = qobject_cast<QMenu *>(Object))
+  {
+    // The texts of the visible items (the actions are not its children,
+    // when of the window), the separators empty
+    QJsonArray Items;
+    for (QAction * Action : Menu->actions())
+    {
+      if (Action->isVisible())
+      {
+        Items.append(Action->isSeparator() ? QString() : Action->text().remove(QLatin1Char('&')));
+      }
+    }
+    Result[QStringLiteral("items")] = Items;
+  }
   else if (QTabBar * Tabs = qobject_cast<QTabBar *>(Object))
   {
     QJsonArray Items;

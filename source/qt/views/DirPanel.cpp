@@ -15,6 +15,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QComboBox>
+#include <QContextMenuEvent>
 #include <QDir>
 #include <QDragEnterEvent>
 #include <QDragLeaveEvent>
@@ -413,6 +414,42 @@ void TDirView::dragLeaveEvent(QDragLeaveEvent * Event)
 {
   QTreeView::dragLeaveEvent(Event);
   SetDropTargetRow(-1);
+}
+//---------------------------------------------------------------------------
+void TDirView::contextMenuEvent(QContextMenuEvent * Event)
+{
+  // The popup of the files under the pointer or of the focused file of the
+  // keyboard, else of the directory
+  QModelIndex Index;
+  QPoint Pos;
+  if (Event->reason() == QContextMenuEvent::Keyboard)
+  {
+    Index = currentIndex();
+    QRect Rect = Index.isValid() ? visualRect(Index) : QRect();
+    if (Rect.isValid() && viewport()->rect().intersects(Rect))
+    {
+      Pos = QPoint(Rect.left() + Rect.height(), Rect.bottom());
+    }
+    else
+    {
+      Index = QModelIndex();
+      Pos = viewport()->rect().center();
+    }
+  }
+  else
+  {
+    Pos = Event->pos();
+    Index = indexAt(Pos);
+  }
+  const TDirModel * Model = FPanel->GetModel();
+  bool OnFile = FPanel->IsReady() && Index.isValid() && !Model->Item(Index.row()).IsParentDirectory;
+  // A file not selected is the only one selected, as in the file managers
+  if (OnFile && !selectionModel()->isSelected(Index))
+  {
+    selectionModel()->setCurrentIndex(Index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+  }
+  Event->accept();
+  Q_EMIT FPanel->ContextPopupRequested(FPanel, OnFile, viewport()->mapToGlobal(Pos));
 }
 //---------------------------------------------------------------------------
 void TDirView::dropEvent(QDropEvent * Event)
@@ -989,6 +1026,31 @@ void TDirPanel::FillMenu(QMenu * Menu, QAction * PathToClipboardAction)
   Menu->addMenu(SortMenu);
   Menu->addMenu(ColumnsMenu);
   Menu->addAction(FilterAction);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::FillDirViewPopup(QMenu * Menu, QAction * PathToClipboardAction)
+{
+  QMenu * GoToMenu = Menu->addMenu(tr("&Go To"));
+  GoToMenu->addActions({ OpenDirAction, ParentDirAction, RootDirAction, HomeDirAction });
+  GoToMenu->addSeparator();
+  GoToMenu->addActions({ BackAction, ForwardAction });
+  Menu->addAction(RefreshAction);
+  Menu->addAction(AddBookmarkAction2);
+  Menu->addAction(FilterAction);
+  if (PathToClipboardAction != nullptr)
+  {
+    Menu->addAction(PathToClipboardAction);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetCalculatedSize(const UnicodeString & FileName, __int64 Size)
+{
+  int Row = FModel->FindFile(FileName);
+  if (Row >= 0)
+  {
+    FModel->SetCalculatedSize(Row, Size);
+    UpdateStatusBar();
+  }
 }
 //---------------------------------------------------------------------------
 void TDirPanel::FillOptionsMenu(QMenu * Menu)

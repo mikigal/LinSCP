@@ -151,7 +151,7 @@ QVariant TDirModel::data(const QModelIndex & Index, int Role) const
           Result = ToQString(Item.FileName);
           break;
         case dvSize:
-          if (!Item.IsDirectory)
+          if (!Item.IsDirectory || Item.SizeCalculated)
           {
             Result = ToQString(FormatPanelBytes(Item.Size, FFormatSizeBytes));
           }
@@ -418,6 +418,18 @@ int TDirModel::FindFile(const UnicodeString & FileName) const
     }
   }
   return -1;
+}
+//---------------------------------------------------------------------------
+void TDirModel::SetCalculatedSize(int Row, __int64 Size)
+{
+  TDirViewItem & Item = FItems[Row];
+  Item.Size = Size;
+  Item.SizeCalculated = true;
+  int Column = ColumnIndex(dvSize);
+  if (Column >= 0)
+  {
+    Q_EMIT dataChanged(index(Row, Column), index(Row, Column));
+  }
 }
 //---------------------------------------------------------------------------
 void TDirModel::Totals(__int64 & Size, int & Count) const

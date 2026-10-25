@@ -181,6 +181,11 @@ typedef std::function<void(const UnicodeString & Path, TSpaceAvailable & ASpaceA
 void DoFileSystemInfoDialog(const TSessionInfo & SessionInfo, const TFileSystemInfo & FileSystemInfo,
   const UnicodeString & SpaceAvailablePath, TGetSpaceAvailableEvent OnGetSpaceAvailable);
 
+// dialogs/SymlinkDialog.cpp: the link to add (its name, its target and
+// whether it is symbolic) or to edit (its target only)
+bool DoSymlinkDialog(UnicodeString & FileName, UnicodeString & PointTo,
+  bool & SymbolicLink, bool Edit, bool AllowHardLink);
+
 // dialogs/SiteAdvancedDialog.cpp
 bool DoSiteAdvancedDialog(TSessionData * SessionData);
 // dialogs/CustomDialog.cpp: the settings of the site that differ from the

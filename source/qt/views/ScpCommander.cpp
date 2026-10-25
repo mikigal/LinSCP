@@ -119,6 +119,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     {
       PanelDrop(APanel, Params, Action);
     };
+    connect(Panel, &TDirPanel::ContextPopupRequested, this, [this](TDirPanel * APanel, bool OnFile, const QPoint & Pos)
+    {
+      ExecuteHandler([this, APanel, OnFile, Pos]() { PanelContextPopup(APanel, OnFile, Pos); });
+    });
     QTreeView * DirView = Panel->GetDirView();
     DirView->installEventFilter(this);
     connect(DirView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() { UpdateActions(); });
@@ -269,6 +273,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   ShowHiddenFilesAction->setCheckable(true);
   ShowHiddenFilesAction->setChecked(AppConfiguration->ShowHiddenFiles);
   CreateMarkActions();
+  CreateFileCommandActions();
 
   CreateMenus();
   CreateToolbars();
@@ -409,6 +414,7 @@ void TScpCommanderForm::CreateMenus()
   QMenu * NewFilesMenu = NewMenu(tr("&New"), "NewMenu");
   NewFilesMenu->addAction(NewFileAction);
   NewFilesMenu->addAction(CurrentCreateDirAction);
+  NewFilesMenu->addAction(NewLinkAction);
   QMenu * EditWithMenu = NewMenu(tr("Edi&t With"), "CurrentEditWithMenu");
   EditWithMenu->addAction(CurrentEditInternalAction);
   QMenu * FileNamesMenu = NewMenu(tr("&File Names"), "FileNamesMenu");
@@ -428,6 +434,7 @@ void TScpCommanderForm::CreateMenus()
   FFilesMenu->addAction(CurrentOpenAction);
   FFilesMenu->addAction(CurrentEditAction);
   FFilesMenu->addMenu(EditWithMenu);
+  FFilesMenu->addAction(CurrentAddEditLinkAction);
   FFilesMenu->addSeparator();
   FFilesMenu->addAction(CurrentCopyAction);
   FFilesMenu->addAction(CurrentMoveAction);
@@ -441,8 +448,10 @@ void TScpCommanderForm::CreateMenus()
   FFilesMenu->addAction(PasteAction3);
   FFilesMenu->addSeparator();
   FFilesMenu->addMenu(FileNamesMenu);
+  FFilesMenu->addMenu(FLockingMenu);
   FFilesMenu->addSeparator();
   FFilesMenu->addAction(CurrentPropertiesAction);
+  FFilesMenu->addAction(CalculateDirectorySizesAction);
 
   FCommandsMenu = NewMenu(tr("&Commands"), "CommandsMenu");
   FCommandsMenu->addAction(CurrentCreateDirAction);
@@ -530,10 +539,12 @@ void TScpCommanderForm::CreateMenus()
   FExplorerFilesMenu->addAction(CurrentOpenAction);
   FExplorerFilesMenu->addAction(CurrentEditAction);
   FExplorerFilesMenu->addMenu(EditWithMenu);
+  FExplorerFilesMenu->addAction(CurrentAddEditLinkAction);
   FExplorerFilesMenu->addAction(CurrentDeleteAction);
   FExplorerFilesMenu->addAction(CurrentDeleteAlternativeAction);
   FExplorerFilesMenu->addAction(CurrentRenameAction);
   FExplorerFilesMenu->addAction(CurrentPropertiesAction);
+  FExplorerFilesMenu->addAction(CalculateDirectorySizesAction);
   FExplorerFilesMenu->addSeparator();
   FExplorerFilesMenu->addAction(CurrentCopyAction);
   FExplorerFilesMenu->addAction(CurrentMoveAction);
@@ -544,6 +555,7 @@ void TScpCommanderForm::CreateMenus()
   FExplorerFilesMenu->addAction(PasteAction3);
   FExplorerFilesMenu->addSeparator();
   FExplorerFilesMenu->addMenu(FileNamesMenu);
+  FExplorerFilesMenu->addMenu(FLockingMenu);
   FExplorerFilesMenu->addSeparator();
   FExplorerFilesMenu->addAction(CloseTabAction);
   FExplorerFilesMenu->addAction(CloseApplicationAction);
@@ -783,6 +795,7 @@ void TScpCommanderForm::UpdateActions()
   ConsoleAction->setEnabled(!Busy && CanConsole());
   PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
   UpdateMarkActions();
+  UpdateFileCommandActions();
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanConsole()

@@ -1,6 +1,7 @@
 // Operations on the local files of the GUI that upstream leaves to the
 // Windows shell: the properties of local files (upstream shows the shell's
-// properties dialog), their size and their permissions.
+// properties dialog), their size and their permissions, the links (upstream
+// creates Windows shortcuts).
 //---------------------------------------------------------------------------
 #ifndef LocalFilesH
 #define LocalFilesH
@@ -20,5 +21,9 @@ void CalculateLocalFilesSize(TStrings * FileList, __int64 & Size, TCalculateSize
 // changed); recursively as chmod -R does, symbolic links found in the
 // directories are skipped
 void ChangeLocalFilesProperties(TStrings * FileList, const TRemoteProperties & Properties);
+// Creates a symbolic link to PointTo (as given, relative to the link) or a
+// hard link to it (relative to the directory of the link); an existing
+// link of the name is replaced when Replace
+void CreateLocalLink(const UnicodeString & FileName, const UnicodeString & PointTo, bool Symbolic, bool Replace);
 //---------------------------------------------------------------------------
 #endif

@@ -301,6 +301,13 @@ private:
   QAction * SelectSameExtAction;
   QAction * UnselectSameExtAction;
   QAction * CompareDirectoriesAction2;
+  // The commands of the files (ScpCommanderFileCommands.cpp)
+  QAction * NewLinkAction;
+  QAction * CurrentAddEditLinkAction;
+  QAction * LockAction;
+  QAction * UnlockAction;
+  QAction * CalculateDirectorySizesAction;
+  QMenu * FLockingMenu;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
   QAction * QueueItemQueryAction;
@@ -486,6 +493,22 @@ private:
   void SelectSameExt(bool Select);
   // Selects the files that differ between the panels
   void CompareDirectories();
+
+  // The commands of the files (ScpCommanderFileCommands.cpp): the links,
+  // the locks, the sizes of the directories, the popup menus of the panels
+  void CreateFileCommandActions();
+  void UpdateFileCommandActions();
+  void NewLinkActionExecute() { AddEditLink(true); }
+  void CurrentAddEditLinkActionExecute() { AddEditLink(false); }
+  void AddEditLink(bool Add);
+  bool CanAddEditLink();
+  // The focused file is a link (that can be edited)
+  bool LinkFocused();
+  void LockActionExecute() { LockFiles(true); }
+  void UnlockActionExecute() { LockFiles(false); }
+  void LockFiles(bool Lock);
+  void CalculateDirectorySizes();
+  void PanelContextPopup(TDirPanel * Panel, bool OnFile, const QPoint & GlobalPos);
 
   // The synchronization (ScpCommanderSynchronize.cpp)
   struct TSynchronizeParams

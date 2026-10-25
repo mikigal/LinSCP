@@ -216,3 +216,32 @@ void ChangeLocalFilesProperties(TStrings * FileList, const TRemoteProperties & P
   }
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+void CreateLocalLink(const UnicodeString & FileName, const UnicodeString & PointTo, bool Symbolic, bool Replace)
+{
+  UTF8String Path = UTF8Encode(FileName);
+  struct stat Stat;
+  if (Replace && (lstat(Path.c_str(), &Stat) == 0) && S_ISLNK(Stat.st_mode) && (unlink(Path.c_str()) != 0))
+  {
+    RaiseFileError(errno, FMTLOAD(DELETE_FILE_ERROR, (FileName)));
+  }
+  int Result;
+  if (Symbolic)
+  {
+    Result = symlink(UTF8Encode(PointTo).c_str(), Path.c_str());
+  }
+  else
+  {
+    UnicodeString Target = PointTo;
+    if (!Target.IsEmpty() && (Target[1] != L'/'))
+    {
+      Target = IncludeTrailingBackslash(ExtractFilePath(FileName)) + Target;
+    }
+    Result = link(UTF8Encode(Target).c_str(), Path.c_str());
+  }
+  if (Result != 0)
+  {
+    RaiseFileError(errno, FMTLOAD(CREATE_LINK_ERROR, (FileName)));
+  }
+}
+//---------------------------------------------------------------------------

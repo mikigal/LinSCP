@@ -1799,6 +1799,87 @@ class GuiSshTest(GuiSshTestCase):
         self.assertIn('Color=13408767', section)
         self.assertEqual(gui.quit(), 0)
 
+    def test_links_and_sizes(self):
+        remote = self.work_dir('remote')
+        (remote / 'a.txt').write_text('a')
+        (remote / 'b.txt').write_text('bb')
+        (remote / 'dir').mkdir()
+        (remote / 'dir' / 'c.bin').write_bytes(b'x' * 3000)
+        local = self.work_dir('local')
+        (local / 'l.txt').write_text('l')
+        (local / 'ldir').mkdir()
+        (local / 'ldir' / 'd.bin').write_bytes(b'y' * 5000)
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+        S = 'SymlinkDialog/'
+
+        def create_link(side, focused, name, hard_link_enabled):
+            self.select(gui, side, focused)
+            gui.trigger(W + 'NewLinkAction')
+            gui.wait_window('SymlinkDialog')
+            self.assertEqual(gui.get(S + 'PointToEdit')['text'], focused)
+            self.assertEqual(gui.get(S + 'HardLinkCheck')['enabled'], hard_link_enabled)
+            gui.set(S + 'FileNameEdit', name)
+            gui.click(S + 'OkButton')
+            gui.wait_no_window('SymlinkDialog')
+            gui.wait_for(lambda: name in gui.names(W + side + 'DirView'), what='the link %s' % name)
+
+        def edit_link(side, name, target):
+            self.select(gui, side, name)
+            gui.trigger(W + 'CurrentAddEditLinkAction')
+            gui.wait_window('SymlinkDialog')
+            self.assertEqual(gui.get(S + 'FileNameEdit')['text'], name)
+            gui.set(S + 'PointToEdit', target)
+            gui.click(S + 'OkButton')
+            gui.wait_no_window('SymlinkDialog')
+            gui.wait_idle()
+
+        # A remote link to the focused file, edited
+        create_link('Remote', 'a.txt', 'link', True)
+        self.assertEqual(os.readlink(remote / 'link'), 'a.txt')
+        edit_link('Remote', 'link', 'b.txt')
+        gui.wait_for(lambda: os.readlink(remote / 'link') == 'b.txt', what='the edited remote link')
+        # A local one
+        create_link('Local', 'l.txt', 'llink', True)
+        self.assertEqual(os.readlink(local / 'llink'), 'l.txt')
+        edit_link('Local', 'llink', 'ldir')
+        self.assertEqual(os.readlink(local / 'llink'), 'ldir')
+
+        # The sizes of the directories
+        def size_of(side, name):
+            return next(cells[1] for cells in gui.rows(W + side + 'DirView') if cells[0] == name)
+
+        for side, name in [('Remote', 'dir'), ('Local', 'ldir')]:
+            self.assertEqual(size_of(side, name), '')
+            self.select(gui, side, name)
+            gui.trigger(W + 'CalculateDirectorySizesAction')
+            gui.wait_for(lambda: size_of(side, name) != '', what='the size of %s' % name)
+
+        # The popup menus of the files and of the directory (popups need
+        # real input on Wayland); a file clicked is selected
+        self.select(gui, 'Remote', 'a.txt')
+        x, y = gui.row_point(W + 'RemoteDirView', 'b.txt')
+        self.session.input('move', x, y, 'click', 'right')
+        gui.wait_window('RemoteFilePopup')
+        self.screenshot('file_popup')
+        items = gui.get('RemoteFilePopup')['items']
+        self.assertEqual(items[:3], ['Open', 'Edit', 'Copy...'])
+        self.assertIn('Properties', items)
+        self.assertEqual([row['cells'][0] for row in gui.get(W + 'RemoteDirView')['rows'] if row['selected']],
+                         ['b.txt'])
+        self.session.input('key', 'escape')
+        gui.wait_no_window('RemoteFilePopup')
+        geometry = gui.get(W + 'LocalDirView')['geometry']
+        x0, y0 = gui.client_origin('ScpCommanderForm')
+        self.session.input('move', x0 + geometry['x'] + 40, y0 + geometry['y'] + geometry['height'] - 20, 'click', 'right')
+        gui.wait_window('LocalDirViewPopup')
+        items = gui.get('LocalDirViewPopup')['items']
+        self.assertEqual(items[:2], ['Go To', 'Refresh'])
+        self.assertIn('Paste from Clipboard', items)
+        self.session.input('key', 'escape')
+        gui.wait_no_window('LocalDirViewPopup')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

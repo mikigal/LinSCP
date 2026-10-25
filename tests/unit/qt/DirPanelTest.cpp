@@ -9,6 +9,7 @@
 #include <DirPanel.h>
 
 #include <QBrush>
+#include <QContextMenuEvent>
 #include <QDir>
 #include <QFile>
 #include <QFileSystemModel>
@@ -293,5 +294,67 @@ TEST_F(DirPanelTest, LocalTree)
   EXPECT_EQ(ToQString(FPanel->GetPath()), FDir.path() + QStringLiteral("/sub"));
   FPanel->SetTreeVisible(false);
   EXPECT_FALSE(FPanel->GetTreeVisible());
+}
+//---------------------------------------------------------------------------
+TEST_F(DirPanelTest, CalculatedSizes)
+{
+  QDir(FDir.path()).mkdir(QStringLiteral("sub"));
+  CreateFile(FDir.path(), QStringLiteral("a.txt"), 100);
+  Load(FDir.path());
+  const TDirModel * Model = FPanel->GetModel();
+  int Row = Model->FindFile(L"sub");
+  ASSERT_GE(Row, 0);
+  int SizeColumn = Model->ColumnIndex(dvSize);
+  // The size of a directory is shown once calculated
+  EXPECT_TRUE(Model->data(Model->index(Row, SizeColumn)).toString().isEmpty());
+  FPanel->SetCalculatedSize(L"sub", 2500);
+  EXPECT_FALSE(Model->data(Model->index(Row, SizeColumn)).toString().isEmpty());
+  __int64 Size;
+  int Count;
+  Model->Totals(Size, Count);
+  EXPECT_EQ(Size, 2600);
+  // Until the directory is loaded again
+  FPanel->Reload();
+  Row = Model->FindFile(L"sub");
+  EXPECT_TRUE(Model->data(Model->index(Row, SizeColumn)).toString().isEmpty());
+}
+//---------------------------------------------------------------------------
+TEST_F(DirPanelTest, ContextPopup)
+{
+  CreateFile(FDir.path(), QStringLiteral("a.txt"), 1);
+  CreateFile(FDir.path(), QStringLiteral("b.txt"), 1);
+  Load(FDir.path());
+  FPanel->show();
+  std::vector<std::pair<bool, QPoint>> Requests;
+  QObject::connect(FPanel.get(), &TDirPanel::ContextPopupRequested,
+    [&](TDirPanel *, bool OnFile, const QPoint & Pos) { Requests.emplace_back(OnFile, Pos); });
+  QTreeView * View = FPanel->GetDirView();
+  FPanel->SelectFiles(TFileFilter{ L"a.txt", false }, true);
+  ASSERT_EQ(SelectedNames(), QStringList({ QStringLiteral("a.txt") }));
+
+  // A file not selected becomes the only one selected
+  QRect Rect = View->visualRect(FPanel->GetModel()->index(FPanel->GetModel()->FindFile(L"b.txt"), 0));
+  QContextMenuEvent MouseEvent(QContextMenuEvent::Mouse, Rect.center(), View->viewport()->mapToGlobal(Rect.center()));
+  QApplication::sendEvent(View->viewport(), &MouseEvent);
+  ASSERT_EQ(Requests.size(), 1u);
+  EXPECT_TRUE(Requests[0].first);
+  EXPECT_EQ(Requests[0].second, View->viewport()->mapToGlobal(Rect.center()));
+  EXPECT_EQ(SelectedNames(), QStringList({ QStringLiteral("b.txt") }));
+  EXPECT_EQ(Current(), QStringLiteral("b.txt"));
+
+  // Out of the files, the popup of the directory
+  QPoint EmptyPos(10, View->viewport()->height() - 5);
+  QContextMenuEvent EmptyEvent(QContextMenuEvent::Mouse, EmptyPos, View->viewport()->mapToGlobal(EmptyPos));
+  QApplication::sendEvent(View->viewport(), &EmptyEvent);
+  ASSERT_EQ(Requests.size(), 2u);
+  EXPECT_FALSE(Requests[1].first);
+
+  // The menu key, of the focused file
+  Focus(QStringLiteral("a.txt"));
+  QContextMenuEvent KeyEvent(QContextMenuEvent::Keyboard, QPoint(), View->mapToGlobal(QPoint()));
+  QApplication::sendEvent(View, &KeyEvent);
+  ASSERT_EQ(Requests.size(), 3u);
+  EXPECT_TRUE(Requests[2].first);
+  EXPECT_EQ(SelectedNames(), QStringList({ QStringLiteral("a.txt") }));
 }
 //---------------------------------------------------------------------------

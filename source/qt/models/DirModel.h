@@ -35,6 +35,8 @@ struct TDirViewItem
   bool IsDirectory = false;
   bool IsSymLink = false;
   __int64 Size = 0;
+  // The size of the directory was calculated (it is shown)
+  bool SizeCalculated = false;
   TDateTime Modification;
   // The precision of the time (of a remote listing)
   TModificationFmt ModificationFmt = mfFull;
@@ -77,6 +79,9 @@ public:
   int FindFile(const UnicodeString & FileName) const;
   // The size and count of the files, without the parent directory
   void Totals(__int64 & Size, int & Count) const;
+  // The calculated size of the directory of the row (upstream's
+  // SetItemCalculatedSize)
+  void SetCalculatedSize(int Row, __int64 Size);
   TDirViewColumn Column(int Index) const { return FColumns[Index]; }
   // The index of the column, or -1
   int ColumnIndex(TDirViewColumn Column) const;

@@ -105,6 +105,13 @@ packaging (PLAN.md, section 7).
   fingerprints, the capabilities, the space available, copied to the clipboard), the color of
   the tab (kept in the state of the session, saved with it and its workspace), Change
   Password, Install Public Key into Server, Clear Caches.
+- Commands of the files (`views/ScpCommanderFileCommands.cpp`): the popup menus of the panels
+  (upstream's file popups and the popups of the directory out of the files, also by the menu
+  key; a file clicked that is not selected becomes the selection), the links (New > Link,
+  Edit Link, `dialogs/SymlinkDialog.cpp`: remote symbolic and hard links, local symbolic and
+  hard links in place of upstream's Windows shortcuts), the locks (Files > Locking, WebDAV),
+  Calculate Directory Sizes (Alt+Shift+Enter, the sizes shown in the panel until it is
+  reloaded).
 
 Decisions:
 
