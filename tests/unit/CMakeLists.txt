@@ -106,6 +106,7 @@ add_executable(openscp_qt_tests
   qt/SiteAdvancedDialogTest.cpp
   qt/SymlinkDialogTest.cpp
   qt/SynchronizeDialogTest.cpp
+  qt/ToolbarsTest.cpp
   qt/TranslationsTest.cpp)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
 target_link_libraries(openscp_qt_tests PRIVATE

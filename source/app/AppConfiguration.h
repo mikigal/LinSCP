@@ -403,6 +403,22 @@ public:
   APP_CONFIG_PROPERTY(bool, TreeOnLeft)
   APP_CONFIG_PROPERTY(TPanelConfiguration, LocalPanel)
   APP_CONFIG_PROPERTY(TPanelConfiguration, RemotePanel)
+  // The toolbars of the Commander in upstream's format (ToolbarsLayout2:
+  // Name=Visible:Dock:Row+Pos), their hidden buttons (Name=Button:0,...;),
+  // the status bar of the window
+  // The queue view (Interface\QueueView): its toolbar, the setting the
+  // queue was shown by before the user toggled it
+  APP_CONFIG_PROPERTY(bool, QueueViewToolBar)
+  APP_CONFIG_PROPERTY(TQueueViewShow, QueueViewLastHideShow)
+  APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsLayout)
+  APP_CONFIG_PROPERTY(UnicodeString, CommanderToolbarsButtons)
+  APP_CONFIG_PROPERTY(bool, CommanderStatusBar)
+  // The toolbars of both interfaces (Interface): fixed in their places,
+  // the text of the important buttons shown, the size of the icons
+  // (0 normal, 1 large, 2 very large)
+  APP_CONFIG_PROPERTY(bool, LockToolbars)
+  APP_CONFIG_PROPERTY(bool, SelectiveToolbarText)
+  APP_CONFIG_PROPERTY(int, LargerToolbar)
 
   // The Explorer (Interface\Explorer): its panel, the local directory of
   // the downloads and the synchronizations, the full path in the address
@@ -411,6 +427,8 @@ public:
   APP_CONFIG_PROPERTY(UnicodeString, ExplorerLastLocalTargetDirectory)
   APP_CONFIG_PROPERTY(bool, ExplorerShowFullAddress)
   APP_CONFIG_PROPERTY(bool, ExplorerSessionsTabs)
+  APP_CONFIG_PROPERTY(UnicodeString, ExplorerToolbarsLayout)
+  APP_CONFIG_PROPERTY(UnicodeString, ExplorerToolbarsButtons)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

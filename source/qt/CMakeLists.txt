@@ -74,7 +74,9 @@ add_library(openscp_qt STATIC
   views/ScpCommanderMark.cpp
   views/ScpCommanderQueue.cpp
   views/ScpCommanderSessions.cpp
-  views/ScpCommanderSynchronize.cpp)
+  views/ScpCommanderSynchronize.cpp
+  views/ScpCommanderToolbars.cpp
+  views/Toolbars.cpp)
 
 # The English texts of upstream's forms, which the translations translate
 # (tools/dfm2cpp)

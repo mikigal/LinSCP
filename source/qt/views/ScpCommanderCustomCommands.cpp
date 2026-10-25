@@ -740,6 +740,7 @@ void TScpCommanderForm::CreateCustomCommandsMenu(QMenu * Menu)
     {
       QAction * Item = Menu->addAction(ToQString(Command->Name));
       Item->setObjectName(QStringLiteral("CustomCommand%1").arg(Index));
+      Item->setData(ToQString(Command->Name));
       Item->setEnabled(!IsBusy() && (State > 0));
       Item->setShortcut(ShortCutToKeySequence(Command->ShortCut));
       // Shown only, the window handles the shortcuts itself

@@ -11,6 +11,7 @@
 
 #include "QueueController.h"
 #include "ScpCommander.h"
+#include "Toolbars.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -163,32 +164,33 @@ void TScpCommanderForm::CreateQueuePanel()
   QueueLabel->setContentsMargins(4, 2, 4, 2);
   Layout->addWidget(QueueLabel);
 
-  QueueToolbar = new QToolBar(tr("Queue"), QueuePanel);
-  QueueToolbar->setObjectName(QStringLiteral("QueueToolbar"));
-  QueueToolbar->setIconSize(QSize(16, 16));
-  QueueToolbar->addAction(QueueEnableAction);
-  QueueToolbar->addSeparator();
+  QueueToolbar = new TToolbar(QStringLiteral("QueueToolbar"), tr("Queue"), QueuePanel);
+  QueueToolbar->AddButton(QueueEnableAction);
+  QueueToolbar->AddSeparatorItem();
   for (QAction * Action :
          { QueueItemQueryAction, QueueItemErrorAction, QueueItemPromptAction, QueueItemExecuteAction,
            QueueItemPauseAction, QueueItemResumeAction, QueueItemDeleteAction })
   {
-    QueueToolbar->addAction(Action);
+    QueueToolbar->AddButton(Action);
   }
-  QueueToolbar->addSeparator();
-  QueueToolbar->addAction(QueueItemUpAction);
-  QueueToolbar->addAction(QueueItemDownAction);
-  QueueToolbar->addSeparator();
-  QueueToolbar->addAction(QueueDeleteAllDoneAction);
-  QueueToolbar->addSeparator();
+  QueueToolbar->AddSeparatorItem();
+  QueueToolbar->AddButton(QueueItemUpAction);
+  QueueToolbar->AddButton(QueueItemDownAction);
+  QueueToolbar->AddSeparatorItem();
+  QueueToolbar->AddButton(QueueDeleteAllDoneAction);
+  QueueToolbar->AddSeparatorItem();
   QToolButton * OnceEmptyButton = new QToolButton(QueueToolbar);
   OnceEmptyButton->setObjectName(QStringLiteral("QueueCycleOnceEmptyButton"));
   OnceEmptyButton->setIcon(QIcon::fromTheme(QStringLiteral("system-shutdown")));
   OnceEmptyButton->setToolTip(tr("Action to perform once the queue list is empty"));
   OnceEmptyButton->setPopupMode(QToolButton::InstantPopup);
+  OnceEmptyButton->setAutoRaise(true);
   QMenu * OnceEmptyMenu = new QMenu(OnceEmptyButton);
   OnceEmptyMenu->addActions(FQueueOnceEmptyGroup->actions());
   OnceEmptyButton->setMenu(OnceEmptyMenu);
-  QueueToolbar->addWidget(OnceEmptyButton);
+  connect(QueueToolbar, &QToolBar::iconSizeChanged, OnceEmptyButton, &QToolButton::setIconSize);
+  QueueToolbar->AddControl(OnceEmptyButton);
+  QueueToolbar->setVisible(AppConfiguration->QueueViewToolBar);
   Layout->addWidget(QueueToolbar);
 
   QueueView3 = new QTreeWidget(QueuePanel);

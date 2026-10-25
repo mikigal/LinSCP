@@ -17,9 +17,14 @@
 #include "ScpCommander.h"
 
 #include <QDesktopServices>
+#include <QMenu>
 #include <QProcess>
 #include <QTreeView>
 #include <QUrl>
+
+#include <algorithm>
+#include <functional>
+#include <memory>
 //---------------------------------------------------------------------------
 namespace
 {
@@ -1039,5 +1044,113 @@ void TScpCommanderForm::CurrentOpenActionExecute()
 void TScpCommanderForm::NewFileActionExecute()
 {
   EditNew(FCurrentPanel->GetSide());
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CreateEditWithMenu(QMenu * Menu, TOperationSide Side)
+{
+  // upstream's CreateEditorListMenu: the default editor, the internal one,
+  // the external ones of the list (each once), any other, the list; of the
+  // panel of the toolbar or of the current one
+  auto Item = [this, Menu, Side](const QString & Caption, const QString & Hint, std::function<void()> Execute)
+  {
+    QAction * Action = Menu->addAction(Caption);
+    Action->setToolTip(Hint);
+    connect(Action, &QAction::triggered, this, [this, Side, Execute]()
+    {
+      ExecuteHandler([this, Side, Execute]()
+      {
+        if (Side != osCurrent)
+        {
+          ActivatePanel(Side);
+        }
+        Execute();
+      });
+    });
+    return Action;
+  };
+  bool Enabled = CurrentEditAction->isEnabled();
+  if (Side != osCurrent)
+  {
+    Enabled = findChild<QAction *>(
+      (Side == osLocal) ? QStringLiteral("LocalEditAction2") : QStringLiteral("RemoteEditAction2"),
+      Qt::FindDirectChildrenOnly)->isEnabled();
+  }
+  Menu->setToolTipsVisible(true);
+  QAction * EditItem = Item(CurrentEditAction->text(), CurrentEditAction->toolTip(), [this]() { CurrentEditActionExecute(); });
+  EditItem->setIcon(CurrentEditAction->icon());
+  EditItem->setEnabled(Enabled);
+  Menu->addSeparator();
+  Item(CurrentEditInternalAction->text(), tr("Edit selected file(s) using internal editor"),
+    [this]() { CurrentEditInternalActionExecute(); })->setEnabled(Enabled);
+  Menu->addSeparator();
+  std::vector<UnicodeString> UsedEditors;
+  const TEditorList * EditorList = AppConfiguration->EditorList;
+  for (int Index = 0; Index < EditorList->Count; Index++)
+  {
+    const TEditorPreferences * Editor = EditorList->Editors[Index];
+    if ((Editor->Data->Editor == edExternal) &&
+        (std::find(UsedEditors.begin(), UsedEditors.end(), Editor->Data->ExternalEditor) == UsedEditors.end()))
+    {
+      UsedEditors.push_back(Editor->Data->ExternalEditor);
+      UnicodeString Hint = FMTLOAD(EXTERNAL_EDITOR_HINT, (Editor->Name));
+      TEditorData Data = *Editor->Data;
+      QString LongHint = ToQString(Hint);
+      LongHint = LongHint.contains(QLatin1Char('|')) ? LongHint.section(QLatin1Char('|'), 1) : LongHint;
+      Item(ToQString(Editor->Name), LongHint, [this, Data]()
+      {
+        ExecuteFile(FCurrentPanel->GetSide(), efExternalEditor, &Data, true);
+      })->setEnabled(Enabled);
+    }
+  }
+  Item(CurrentEditWithAction->text(), CurrentEditWithAction->toolTip(), [this]() { CurrentEditWithActionExecute(); })
+    ->setEnabled(Enabled);
+  Menu->addSeparator();
+  Menu->addAction(EditorListCustomizeAction);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CurrentEditWithActionExecute()
+{
+  // upstream's ExecuteCurrentFileWith
+  if (!CurrentEditAction->isEnabled())
+  {
+    return;
+  }
+  TEditorData ExternalEditor;
+  ExternalEditor.Editor = edExternal;
+  bool Remember = false;
+  if (DoEditorPreferencesDialog(&ExternalEditor, Remember, epmAdHoc, (FCurrentPanel == FRemotePanel)))
+  {
+    if (Remember)
+    {
+      std::unique_ptr<TEditorList> EditorList(new TEditorList());
+      *EditorList = *AppConfiguration->EditorList;
+
+      bool Found = false;
+      int i = 0;
+      while (!Found && (i < EditorList->Count))
+      {
+        const TEditorPreferences * Editor = EditorList->Editors[i];
+        if ((Editor->Data->Editor == edExternal) &&
+            (Editor->Data->ExternalEditor == ExternalEditor.ExternalEditor))
+        {
+          Found = true;
+        }
+        i++;
+      }
+
+      if (!Found)
+      {
+        EditorList->Add(new TEditorPreferences(ExternalEditor));
+        AppConfiguration->EditorList = EditorList.get();
+      }
+    }
+
+    ExecuteFile(FCurrentPanel->GetSide(), efExternalEditor, &ExternalEditor, true);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::EditorListCustomizeActionExecute()
+{
+  DoPreferencesDialog(pmEditor);
 }
 //---------------------------------------------------------------------------

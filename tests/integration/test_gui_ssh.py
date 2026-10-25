@@ -1625,6 +1625,83 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(gui.names(W + 'RemoteDirView')[-2:], ['small.bin', 'big.bin'])
         self.assertEqual(gui.quit(), 0)
 
+    def test_toolbars(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'up.txt').write_text('uploaded')
+        ini = site_ini(remote=remote, local=local) + (
+            '[Configuration\\Interface\\Commander]\nToolbarsButtons=Commands=Console:0\n')
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local')
+
+        # upstream's default layout: the commands, the preferences and the
+        # transfer settings, the toolbars of the panels; the others hidden
+        for name in ('CommandsToolbar', 'PreferencesToolbar', 'TransferToolbar', 'LocalPathToolbar',
+                     'LocalHistoryToolbar', 'LocalNavigationToolbar', 'LocalFileToolbar', 'LocalSelectionToolbar',
+                     'RemoteFileToolbar', 'RemoteSelectionToolbar'):
+            self.assertTrue(gui.get(W + name)['visible'], name)
+        for name in ('SessionToolbar2', 'SortToolbar', 'CustomCommandsToolbar', 'Toolbar2Toolbar'):
+            self.assertFalse(gui.get(W + name)['visible'], name)
+        commands = [child['name'] for child in gui.get(W + 'CommandsToolbar', children=True)['children']]
+        self.assertIn('FullSynchronizeAction2', commands)
+        self.assertIn('PuttyAction', commands)
+        # Hidden by the configuration
+        self.assertNotIn('ConsoleAction', commands)
+        self.assertEqual(gui.get(W + 'RemoteNavigationToolbar/RemoteFindFilesAction2')['text'], 'Find Files')
+        self.assertEqual(gui.get(W + 'CommandsToolbar/FullSynchronizeAction2')['text'], 'Synchronize')
+        # The layout of the rows of a panel
+        path = gui.get(W + 'LocalPathToolbar')['geometry']
+        history = gui.get(W + 'LocalHistoryToolbar')['geometry']
+        files = gui.get(W + 'LocalFileToolbar')['geometry']
+        self.assertEqual(path['y'], history['y'])
+        self.assertLess(path['x'], history['x'])
+        self.assertGreater(files['y'], path['y'])
+        self.screenshot('toolbars')
+
+        # Uploaded by the button of the local panel's toolbar
+        self.select(gui, 'Local', 'up.txt')
+        gui.focus(W + 'RemoteDirView')
+        gui.wait_idle()
+        gui.click(W + 'LocalFileToolbar/LocalCopyAction')
+        self.confirm_copy(gui, 'Upload file \'up.txt\' to remote directory:')
+        gui.wait_for(lambda: (remote / 'up.txt').exists(), 30, 'the upload')
+
+        # Shown and hidden by upstream's actions
+        gui.trigger(W + 'CommanderSortBandAction')
+        self.assertTrue(gui.get(W + 'SortToolbar')['visible'])
+        gui.trigger(W + 'CommanderLocalFileBandAction2')
+        self.assertFalse(gui.get(W + 'LocalFileToolbar')['visible'])
+        gui.trigger(W + 'ToolBar2Action')
+        self.assertTrue(gui.get(W + 'Toolbar2Toolbar')['visible'])
+        gui.trigger(W + 'LockToolbarsAction')
+
+        # A button hidden in the popup menu of the toolbar
+        gui.session.input('move', *gui.screen_point(W + 'CommandsToolbar/PuttyAction'), 'click', 'right')
+        gui.wait_window('CommanderBarPopup')
+        self.assertTrue(gui.get('CommanderBarPopup/CustomizeToolbarMenu/PuttyCustomizeItem')['checked'])
+        gui.trigger('CommanderBarPopup/CustomizeToolbarMenu/PuttyCustomizeItem')
+        gui.key('Escape', 'CommanderBarPopup')
+        gui.wait_no_window('CommanderBarPopup')
+        commands = [child['name'] for child in gui.get(W + 'CommandsToolbar', children=True)['children']]
+        self.assertNotIn('PuttyAction', commands)
+
+        # Kept in upstream's format
+        self.assertEqual(gui.quit(), 0)
+        ini = gui.config_file.read_text()
+        self.assertIn('Sort=1:TopDock:', ini)
+        self.assertIn('LocalFile=0:LocalTopDock:1+0', ini)
+        self.assertIn('Toolbar2=1:BottomDock:', ini)
+        self.assertIn('ToolbarsButtons=Commands=Console:0,Putty:0', ini)
+        self.assertIn('LockToolbars=1', ini)
+
+        # And restored
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local', accept_host_key=False)
+        self.assertTrue(gui.get(W + 'SortToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'LocalFileToolbar')['visible'])
+        self.assertTrue(gui.get(W + 'LockToolbarsAction')['checked'])
+        self.assertEqual(gui.quit(), 0)
+
     def test_explorer(self):
         remote = self.work_dir('remote')
         (remote / 'sub').mkdir()
@@ -1642,8 +1719,9 @@ class GuiSshTest(GuiSshTestCase):
         tree = gui.get(W + 'RemoteDriveView')['geometry']
         view = gui.get(W + 'RemoteDirView')['geometry']
         self.assertLess(tree['x'], view['x'])
+        # The Explorer's toolbars
         self.assertTrue(gui.get(W + 'ButtonsToolbar')['visible'])
-        self.assertFalse(gui.get(W + 'HotkeysToolbar')['visible'])
+        self.assertTrue(gui.get(W + 'TransferToolbar')['visible'])
         menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
         self.assertEqual(menus, ['ExplorerFilesMenu', 'ExplorerCommandsMenu', 'MarkMenu', 'TabsMenu', 'ViewMenu',
                                  'HelpMenu'])
@@ -1666,7 +1744,9 @@ class GuiSshTest(GuiSshTestCase):
         gui.click(R + 'OKButton')
         gui.wait_no_window('PreferencesDialog')
         gui.wait_for(lambda: gui.get(W + 'LocalPanel')['visible'], what='the local panel')
-        self.assertTrue(gui.get(W + 'HotkeysToolbar')['visible'])
+        # The Commander's, the hot keys hidden by default (as upstream)
+        self.assertTrue(gui.get(W + 'CommandsToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'Toolbar2Toolbar')['visible'])
         self.assertEqual(gui.get(W + 'CurrentCopyAction')['shortcut'], 'F5')
         menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
         self.assertEqual(menus[0], 'LocalMenuButton')

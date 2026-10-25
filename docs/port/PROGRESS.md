@@ -8,10 +8,29 @@ The main window and the site manager as upstream's: the toolbars, the panels, th
 (PLAN.md, section 7). Compared with upstream's `.dfm` files and with the screenshots of
 upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
 
+- Toolbars (`views/Toolbars.cpp`, `views/ScpCommanderToolbars.cpp`): upstream's toolbars of the
+  Commander with their names, buttons and drop-down menus: Commands, Preferences (with the
+  queue's button), Transfer Settings in one row, Sessions and Tabs, Sort, Custom Commands and
+  the hot keys at the bottom hidden by default; the panels' two rows (`LocalTopDock`,
+  `RemoteTopDock`): the path (with the bookmarks and the filter), the history (the visited
+  directories in their drop-down menus), the navigation (with Find Files on the remote side,
+  the tree), the files (Upload/Download with the background and the delete variants, Edit with
+  the editors, Delete, Rename, Properties with the directory sizes, New) and the selection. The
+  text is shown on upstream's important buttons only (`SelectiveToolbarText`), the icons have
+  upstream's three sizes (`LargerToolbar`), the toolbars can be locked; their layout and
+  their hidden buttons are kept in upstream's format (`ToolbarsLayout2`, `ToolbarsButtons`),
+  shown and hidden in Options > Toolbars, Left Panel and Right Panel (as upstream's, swapped
+  with the panels) and in upstream's popup menu of the toolbars (with Customize Toolbar). The
+  Edit With menu lists the external editors (and Edit With..., Configure...), as upstream's.
+
 Decisions:
 
 - **No icons of WinSCP**: their license (`license.txt`, part B) forbids reusing them in other
   software. OpenSCP draws its own, in a similar style (the last step of M9).
+- The toolbars keep the order of upstream's positions, not the gaps (Qt packs them); the
+  buttons of the toolbars have upstream's narrower drop-down arrows and separators (a proxy
+  of the desktop's style). The window is 1200 pixels wide by default (upstream's 1090 for the
+  wider fonts of the desktops), so that the panels' toolbars fit.
 
 ## M8 — completeness (done, 2026-10-25)
 

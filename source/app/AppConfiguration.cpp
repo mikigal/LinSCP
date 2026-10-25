@@ -93,6 +93,8 @@ void __fastcall TAppConfiguration::Default()
   FConfirmExitOnCompletion = true;
   FQueueViewShow = qvHideWhenEmpty;
   FQueueViewHeight = 140;
+  FQueueViewToolBar = true;
+  FQueueViewLastHideShow = qvHideWhenEmpty;
   FSelectMask = AnyMask;
   FSynchronizeSummary = true;
   FShowHiddenFiles = false;
@@ -172,6 +174,49 @@ void __fastcall TAppConfiguration::Default()
   FExplorerLastLocalTargetDirectory = L"";
   FExplorerShowFullAddress = true;
   FExplorerSessionsTabs = true;
+  // upstream's defaults (WinConfiguration.cpp), at 96 DPI
+  FCommanderToolbarsLayout =
+    L"Queue=1::0+-1,"
+     "Menu=1:TopDock:0+0,"
+     "Preferences=1:TopDock:1+228,"
+     "Session=0:TopDock:1+602,"
+     "Sort=0:TopDock:2+0,"
+     "Commands=1:TopDock:1+0,"
+     "Updates=1:TopDock:1+596,"
+     "Transfer=1:TopDock:1+341,"
+     "CustomCommands=0:TopDock:3+0,"
+     "RemoteHistory=1:RemoteTopDock:0+172,"
+     "RemoteNavigation=1:RemoteTopDock:0+252,"
+     "RemotePath=1:RemoteTopDock:0+0,"
+     "RemoteFile=1:RemoteTopDock:1+0,"
+     "RemoteSelection=1:RemoteTopDock:1+345,"
+     "LocalHistory=1:LocalTopDock:0+207,"
+     "LocalNavigation=1:LocalTopDock:0+287,"
+     "LocalPath=1:LocalTopDock:0+0,"
+     "LocalFile=1:LocalTopDock:1+0,"
+     "LocalSelection=1:LocalTopDock:1+329,"
+     "Toolbar2=0:BottomDock:1+0,"
+     "CommandLine=0:BottomDock:0+0,"
+     "PixelsPerInch=96";
+  FCommanderToolbarsButtons = L"";
+  FCommanderStatusBar = true;
+  FExplorerToolbarsLayout =
+    L"Queue=1::0+-1,"
+     "Menu=1:TopDock:0+0,"
+     "Buttons=1:TopDock:2+0,"
+     "Selection=0:TopDock:3+0,"
+     "Session=0:TopDock:6+0,"
+     "Preferences=1:TopDock:4+0,"
+     "Sort=0:TopDock:5+0,"
+     "Address=1:TopDock:1+0,"
+     "Updates=1:TopDock:4+393,"
+     "Transfer=1:TopDock:4+171,"
+     "CustomCommands=0:TopDock:7+0,"
+     "PixelsPerInch=96";
+  FExplorerToolbarsButtons = L"";
+  FLockToolbars = false;
+  FSelectiveToolbarText = true;
+  FLargerToolbar = 1;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -382,6 +427,9 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FEditorCheckNotModified); \
     KEY(Enum,    FInterface); \
     KEY(Bool,    FSelectDirectories); \
+    KEY(Bool,    FLockToolbars); \
+    KEY(Bool,    FSelectiveToolbarText); \
+    KEY(Integer, FLargerToolbar); \
     KEY(Integer, FGenerateUrlComponents); \
     KEY(Enum,    FGenerateUrlCodeTarget); \
     KEY(Enum,    FGenerateUrlScriptFormat); \
@@ -400,6 +448,9 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FCompareBySize); \
     KEY(Bool,    FExplorerKeyboardShortcuts); \
     KEY(Bool,    FTreeOnLeft); \
+    KEYEX(String, FCommanderToolbarsLayout, L"ToolbarsLayout2"); \
+    KEYEX(String, FCommanderToolbarsButtons, L"ToolbarsButtons"); \
+    KEYEX(Bool,  FCommanderStatusBar, L"StatusBar"); \
   ); \
   BLOCK(L"Interface\\Explorer", CANCREATE, \
     KEYEX(String,  FExplorerPanel.DirViewParams, L"DirViewParams"); \
@@ -409,6 +460,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(String,  FExplorerLastLocalTargetDirectory, L"LastLocalTargetDirectory"); \
     KEYEX(Bool,    FExplorerShowFullAddress, L"ShowFullAddress"); \
     KEYEX(Bool,    FExplorerSessionsTabs, L"SessionsTabs"); \
+    KEYEX(String,  FExplorerToolbarsLayout, L"ToolbarsLayout2"); \
+    KEYEX(String,  FExplorerToolbarsButtons, L"ToolbarsButtons"); \
   ); \
   BLOCK(L"Interface\\Commander\\LocalPanel", CANCREATE, \
     KEYEX(String,  FLocalPanel.DirViewParams, L"DirViewParams"); \
@@ -447,6 +500,8 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
   BLOCK(L"Interface\\QueueView", CANCREATE, \
     KEYEX(Integer, FQueueViewHeight, L"Height"); \
     KEYEX(Integer, FQueueViewShow, L"Show"); \
+    KEYEX(Enum,    FQueueViewLastHideShow, L"LastHideShow"); \
+    KEYEX(Bool,    FQueueViewToolBar, L"ToolBar"); \
   ); \
   BLOCK(L"Security", CANCREATE, \
     KEY(Bool,    FUseMasterPassword); \

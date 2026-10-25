@@ -14,6 +14,7 @@
 #include "DirPanel.h"
 #include "ProgressForm.h"
 #include "ScpCommander.h"
+#include "Toolbars.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -40,7 +41,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   QMainWindow(Parent)
 {
   setObjectName(QStringLiteral("ScpCommanderForm"));
-  resize(1100, 720);
+  // upstream's 1090 pixels, for the wider fonts of the desktops
+  resize(1200, 720);
   FProgressForm = nullptr;
   FSynchronizeProgressForm = nullptr;
   FManagedSession = NULL;
@@ -69,6 +71,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FNotifications.reset(new TNotifications(nullptr));
   FTaskbarProgress.reset(new TTaskbarProgress());
   FTrayIcon = nullptr;
+  FTransferList = nullptr;
+  FHotkeysToolbar = nullptr;
+  FCustomCommandsToolbar = nullptr;
+  FCustomCommandsToolbarMenu = nullptr;
   CreateEditorManager();
 
   // The tabs of the sessions, the file panels below them, the queue below
@@ -246,6 +252,12 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::Key_F4) }, &TScpCommanderForm::CurrentEditActionExecute);
   CurrentEditInternalAction = CreateAction("CurrentEditInternalAction", tr("&Internal editor"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_F4) }, &TScpCommanderForm::CurrentEditInternalActionExecute);
+  CurrentEditWithAction = CreateAction("CurrentEditWithAction", tr("Edit &With..."), QString(),
+    {}, &TScpCommanderForm::CurrentEditWithActionExecute);
+  CurrentEditWithAction->setToolTip(tr("Edit selected file(s) using editor of your choice"));
+  EditorListCustomizeAction = CreateAction("EditorListCustomizeAction", tr("&Configure..."), QStringLiteral("configure"),
+    {}, &TScpCommanderForm::EditorListCustomizeActionExecute);
+  EditorListCustomizeAction->setToolTip(tr("Customize editors"));
   CurrentOpenAction = CreateAction("CurrentOpenAction", tr("&Open"), QStringLiteral("document-open"),
     {}, &TScpCommanderForm::CurrentOpenActionExecute);
   NewFileAction = CreateAction("NewFileAction", tr("&File..."), QStringLiteral("document-new"),
@@ -304,9 +316,11 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   ShowHiddenFilesAction->setChecked(AppConfiguration->ShowHiddenFiles);
   CreateMarkActions();
   CreateFileCommandActions();
+  CreateSideActions();
+  CreateToolbarActions();
 
+  // The toolbars of the window come with the interface (ApplyInterface)
   CreateMenus();
-  CreateToolbars();
   UpdateBookmarkShortCuts();
   UpdateCustomCommandShortCuts();
 
@@ -446,7 +460,11 @@ void TScpCommanderForm::CreateMenus()
   NewFilesMenu->addAction(CurrentCreateDirAction);
   NewFilesMenu->addAction(NewLinkAction);
   QMenu * EditWithMenu = NewMenu(tr("Edi&t With"), "CurrentEditWithMenu");
-  EditWithMenu->addAction(CurrentEditInternalAction);
+  connect(EditWithMenu, &QMenu::aboutToShow, this, [this, EditWithMenu]()
+  {
+    EditWithMenu->clear();
+    ExecuteHandler([this, EditWithMenu]() { CreateEditWithMenu(EditWithMenu, osCurrent); });
+  });
   QMenu * FileNamesMenu = NewMenu(tr("&File Names"), "FileNamesMenu");
   FileNamesMenu->addAction(FileListToClipboardAction);
   FileNamesMenu->addAction(FullFileListToClipboardAction);
@@ -537,6 +555,9 @@ void TScpCommanderForm::CreateMenus()
   FTabsMenu->addSeparator();
   QMenu * SavedSessionsMenu = FTabsMenu->addMenu(tr("Si&tes"));
   SavedSessionsMenu->setObjectName(QStringLiteral("SavedSessionsMenu"));
+  SavedSessionsMenu->setIcon(QIcon::fromTheme(QStringLiteral("network-server")));
+  SavedSessionsMenu->setToolTip(tr("Open site"));
+  FSavedSessionsMenu = SavedSessionsMenu;
   connect(SavedSessionsMenu, &QMenu::aboutToShow, this, [this, SavedSessionsMenu]()
   {
     ExecuteHandler([this, SavedSessionsMenu]()
@@ -548,18 +569,31 @@ void TScpCommanderForm::CreateMenus()
 
   QMenu * QueueViewMenu = NewMenu(tr("&Queue"), "QueueViewMenu");
   QueueViewMenu->addActions(FQueueShowGroup->actions());
+  QueueViewMenu->addSeparator();
+  QueueViewMenu->addAction(QueueToolbarAction);
+  // The menu of the queue button (upstream's QueueToggleShowAction)
+  FQueueShowMenu = NewMenu(QString(), "QueueShowMenu");
+  FQueueShowMenu->addActions(FQueueShowGroup->actions());
+
+  // upstream's Toolbars menu (of the interface's toolbars)
+  FToolbarsMenu = NewMenu(tr("&Toolbars"), "ToolbarsMenu");
+  connect(FToolbarsMenu, &QMenu::aboutToShow, this, [this]()
+  {
+    FToolbarsMenu->clear();
+    FillToolbarsMenu(FToolbarsMenu);
+  });
 
   FOptionsMenu = NewMenu(tr("&Options"), "OptionsMenu");
-  FOptionsMenu->addAction(ShowHiddenFilesAction);
+  FOptionsMenu->addMenu(FToolbarsMenu);
+  FOptionsMenu->addMenu(FLocalPanelMenu);
+  FOptionsMenu->addMenu(FRemotePanelMenu);
+  UpdatePanelMenus();
+  FOptionsMenu->addSeparator();
   FOptionsMenu->addAction(SessionsTabsAction2);
-  QMenu * LocalPanelMenu = FOptionsMenu->addMenu(tr("&Local Panel"));
-  LocalPanelMenu->setObjectName(QStringLiteral("CommanderLocalPanelMenu"));
-  FLocalPanel->FillOptionsMenu(LocalPanelMenu);
-  QMenu * RemotePanelMenu = FOptionsMenu->addMenu(tr("&Remote Panel"));
-  RemotePanelMenu->setObjectName(QStringLiteral("CommanderRemotePanelMenu"));
-  FRemotePanel->FillOptionsMenu(RemotePanelMenu);
+  FOptionsMenu->addAction(StatusBarAction);
   FOptionsMenu->addMenu(QueueViewMenu);
   FOptionsMenu->addSeparator();
+  FOptionsMenu->addAction(ShowHiddenFilesAction);
   FOptionsMenu->addAction(PreferencesAction);
 
   FHelpMenu = NewMenu(tr("&Help"), "HelpMenu");
@@ -617,6 +651,7 @@ void TScpCommanderForm::CreateMenus()
   FExplorerCommandsMenu->addAction(ClearCachesAction);
 
   FViewMenu = NewMenu(tr("&View"), "ViewMenu");
+  FViewMenu->addMenu(FToolbarsMenu);
   FViewMenu->addAction(SessionsTabsAction2);
   FRemotePanel->FillOptionsMenu(FViewMenu);
   FViewMenu->addMenu(QueueViewMenu);
@@ -643,83 +678,6 @@ void TScpCommanderForm::ArrangeMenus()
   for (QMenu * AMenu : Menus)
   {
     Menu->addMenu(AMenu);
-  }
-}
-//---------------------------------------------------------------------------
-void TScpCommanderForm::CreateToolbars()
-{
-  QToolBar * Toolbar = addToolBar(tr("Commands"));
-  FCommandsToolbar = Toolbar;
-  Toolbar->setObjectName(QStringLiteral("CommandsToolbar"));
-  Toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  Toolbar->addAction(NewSessionAction);
-  Toolbar->addAction(DisconnectSessionAction);
-  Toolbar->addSeparator();
-  Toolbar->addAction(CurrentCopyAction);
-  Toolbar->addAction(CurrentMoveAction);
-  Toolbar->addAction(CurrentRenameAction);
-  Toolbar->addAction(CurrentDeleteAction);
-  Toolbar->addAction(CurrentCreateDirAction);
-  Toolbar->addAction(CurrentPropertiesAction);
-
-  // The Explorer's standard buttons (upstream's ButtonsToolbar), with the
-  // address bar of the remote panel
-  FButtonsToolbar = addToolBar(tr("Standard Buttons"));
-  FButtonsToolbar->setObjectName(QStringLiteral("ButtonsToolbar"));
-  FButtonsToolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  FButtonsToolbar->addAction(NewSessionAction);
-  FButtonsToolbar->addSeparator();
-  FButtonsToolbar->addAction(RemoteFindFilesAction2);
-  FButtonsToolbar->addAction(CurrentCopyAction);
-  FButtonsToolbar->addAction(CurrentEditAction);
-  FButtonsToolbar->addAction(CurrentDeleteAction);
-  FButtonsToolbar->addAction(CurrentPropertiesAction);
-  FButtonsToolbar->addAction(CurrentRenameAction);
-  FButtonsToolbar->addAction(CurrentCreateDirAction);
-  FButtonsToolbar->addSeparator();
-  FButtonsToolbar->addAction(ConsoleAction);
-  FButtonsToolbar->addAction(SynchronizeAction);
-  FButtonsToolbar->addAction(FullSynchronizeAction2);
-
-  // The transfer settings presets (upstream's TransferDropDown), in a row
-  // of their own
-  addToolBarBreak();
-  QToolBar * TransferToolbar = addToolBar(tr("Transfer Settings"));
-  TransferToolbar->setObjectName(QStringLiteral("TransferToolbar"));
-  QLabel * TransferLabel = new QLabel(tr("Transfer Settings"), TransferToolbar);
-  TransferLabel->setObjectName(QStringLiteral("TransferLabel"));
-  TransferLabel->setContentsMargins(4, 0, 4, 0);
-  TransferToolbar->addWidget(TransferLabel);
-  FTransferList = new QComboBox(TransferToolbar);
-  FTransferList->setObjectName(QStringLiteral("TransferList"));
-  FTransferList->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-  TransferLabel->setBuddy(FTransferList);
-  TransferToolbar->addWidget(FTransferList);
-  connect(FTransferList, &QComboBox::currentIndexChanged, this, [this]() { TransferListChange(); });
-  UpdateTransferList();
-
-  // The keys of the commands, at the bottom, as in upstream's Commander
-  QToolBar * Hotkeys = new QToolBar(tr("Hotkeys"), this);
-  FHotkeysToolbar = Hotkeys;
-  Hotkeys->setObjectName(QStringLiteral("HotkeysToolbar"));
-  Hotkeys->setToolButtonStyle(Qt::ToolButtonTextOnly);
-  addToolBar(Qt::BottomToolBarArea, Hotkeys);
-  for (QAction * Action :
-         { CurrentRenameAction, CurrentEditAction, CurrentCopyAction, CurrentMoveAction, CurrentCreateDirAction, CurrentDeleteAction,
-           CurrentPropertiesAction, CloseApplicationAction })
-  {
-    QAction * Proxy = Hotkeys->addAction(QString());
-    Proxy->setObjectName(Action->objectName() + QStringLiteral("Hotkey"));
-    auto UpdateProxy = [Action, Proxy]()
-    {
-      QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
-      Proxy->setText(Action->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(' ') + Caption);
-    };
-    UpdateProxy();
-    connect(Proxy, &QAction::triggered, Action, &QAction::trigger);
-    connect(Action, &QAction::enabledChanged, Proxy, &QAction::setEnabled);
-    // The keys change with the preferences
-    connect(Action, &QAction::changed, Proxy, UpdateProxy);
   }
 }
 //---------------------------------------------------------------------------
@@ -840,6 +798,14 @@ void TScpCommanderForm::UpdateActions()
   PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
   UpdateMarkActions();
   UpdateFileCommandActions();
+  UpdateSideActions();
+  UpdateSortActions();
+  CustomCommandsEnterAction->setEnabled(!Busy);
+  CustomCommandsCustomizeAction->setEnabled(!Busy);
+  UpdateCustomCommandsToolbarState();
+  CurrentEditWithAction->setEnabled(CanEdit);
+  QueueToggleShowAction->setChecked(!QueuePanel->isHidden());
+  QueueToolbarAction->setEnabled(!QueuePanel->isHidden());
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanConsole()
@@ -893,6 +859,9 @@ void TScpCommanderForm::ConfigurationChanged()
   UpdateTransferList();
   UpdateBookmarkShortCuts();
   UpdateCustomCommandShortCuts();
+  // Not from the handler of a button of the toolbar
+  QTimer::singleShot(0, this, [this]() { UpdateCustomCommandsToolbar(); });
+  UpdatePanelMenus();
   // The preferences
   ShowHiddenFilesAction->setChecked(AppConfiguration->ShowHiddenFiles);
   FLocalPanel->ApplyConfiguration();
@@ -920,9 +889,9 @@ void TScpCommanderForm::ApplyInterface()
 {
   bool Explorer = IsExplorer();
   ArrangeMenus();
-  FCommandsToolbar->setVisible(!Explorer);
-  FHotkeysToolbar->setVisible(!Explorer);
-  FButtonsToolbar->setVisible(Explorer);
+  CreateToolbars();
+  statusBar()->setVisible(Explorer || AppConfiguration->CommanderStatusBar);
+  StatusBarAction->setChecked(!statusBar()->isHidden());
   FLocalPanel->setVisible(!Explorer);
   if (Explorer)
   {
@@ -1015,6 +984,7 @@ void TScpCommanderForm::StorePanelsParams()
   {
     AppConfiguration->ExplorerSessionsTabs = SessionsTabsAction2->isChecked();
   }
+  StoreToolbarsLayout();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdatePanelsLayout()
@@ -1090,6 +1060,10 @@ void TScpCommanderForm::UpdateKeyboardShortcuts()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()
 {
+  if (FTransferList == nullptr)
+  {
+    return;
+  }
   TAutoNestingCounter UpdatingCounter(FUpdatingTransferList);
   FTransferList->clear();
   FTransferList->addItem(ToQString(StripHotkey(LoadStr(COPY_PARAM_DEFAULT))));
@@ -1109,7 +1083,7 @@ void TScpCommanderForm::UpdateTransferList()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::TransferListChange()
 {
-  if (FUpdatingTransferList == 0)
+  if ((FUpdatingTransferList == 0) && (FTransferList != nullptr))
   {
     int Index = FTransferList->currentIndex();
     UnicodeString Name;
@@ -1445,6 +1419,10 @@ bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, T
     !Param.TargetDirectory.IsEmpty() ? Param.TargetDirectory :
       ((IsExplorer() && !ToRemote) ? LocalDirectory() : Target->GetPath());
   TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+  if (Param.Queue != asAuto)
+  {
+    CopyParam.Queue = (Param.Queue == asOn);
+  }
   bool Confirm = !Param.NoConfirmation && (!Param.DragDrop || (AppConfiguration->DDTransferConfirmation != asOff));
   bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, Confirm, Param.DragDrop);
   if (Result)

@@ -44,8 +44,8 @@ void TScpCommanderForm::CreateMarkActions()
   UnselectSameExtAction = CreateAction("UnselectSameExtAction", tr("Unselect Files with Same E&xtension"), QString(),
     { QKeySequence(QKeyCombination(Qt::AltModifier | Qt::KeypadModifier, Qt::Key_Minus)) }, &TScpCommanderForm::UnselectSameExtActionExecute);
   UnselectSameExtAction->setToolTip(tr("Unselect all files with the same extension as currently focused file"));
-  CompareDirectoriesAction2 = CreateAction("CompareDirectoriesAction2", tr("&Compare Directories"), QString(),
-    { QKeySequence(Qt::SHIFT | Qt::Key_F2) }, &TScpCommanderForm::CompareDirectories);
+  CompareDirectoriesAction2 = CreateAction("CompareDirectoriesAction2", tr("&Compare Directories"),
+    QStringLiteral("document-compareleft"), { QKeySequence(Qt::SHIFT | Qt::Key_F2) }, &TScpCommanderForm::CompareDirectories);
   CompareDirectoriesAction2->setToolTip(tr("Mark different files between files panels"));
 }
 //---------------------------------------------------------------------------

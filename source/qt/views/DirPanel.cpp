@@ -5,10 +5,12 @@
 #include <AppConfiguration.h>
 #include <RemoteFiles.h>
 #include <Terminal.h>
+#include <TextsWin.h>
 
 #include "DirModel.h"
 #include "DirPanel.h"
 #include "DirTree.h"
+#include "Toolbars.h"
 
 #include <QAbstractItemDelegate>
 #include <QApplication>
@@ -532,10 +534,20 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   Layout->setContentsMargins(0, 0, 0, 0);
   Layout->setSpacing(2);
 
-  PathToolbar = new QToolBar(this);
-  PathToolbar->setObjectName(Prefix + QStringLiteral("PathToolbar"));
-  PathToolbar->setIconSize(QSize(16, 16));
-  Layout->addWidget(PathToolbar);
+  // upstream's toolbars of the panel (its LocalTopDock and RemoteTopDock):
+  // the path, the history and the navigation; the main window adds its
+  // own and arranges them
+  FTopDock = new TToolbarDock(Prefix + QStringLiteral("TopDock"), this);
+  Layout->addWidget(FTopDock);
+  PathToolbar = new TToolbar(Prefix + QStringLiteral("PathToolbar"),
+    (Side == osLocal) ? tr("Local Path") : tr("Remote Path"), this);
+  FTopDock->AddToolbar(PathToolbar, true);
+  HistoryToolbar = new TToolbar(Prefix + QStringLiteral("HistoryToolbar"),
+    (Side == osLocal) ? tr("Local History") : tr("Remote History"), this);
+  FTopDock->AddToolbar(HistoryToolbar);
+  NavigationToolbar = new TToolbar(Prefix + QStringLiteral("NavigationToolbar"),
+    (Side == osLocal) ? tr("Local Navigation") : tr("Remote Navigation"), this);
+  FTopDock->AddToolbar(NavigationToolbar);
 
   PathComboBox = new QComboBox(PathToolbar);
   PathComboBox->setObjectName(Prefix + QStringLiteral("PathComboBox"));
@@ -543,7 +555,6 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   PathComboBox->setInsertPolicy(QComboBox::NoInsert);
   PathComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   PathComboBox->installEventFilter(this);
-  PathToolbar->addWidget(PathComboBox);
   connect(PathComboBox->lineEdit(), &QLineEdit::returnPressed, this, [this]() { PathComboActivated(); });
   connect(PathComboBox, &QComboBox::activated, this, [this]() { PathComboActivated(); });
 
@@ -553,14 +564,19 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
     QKeySequence(Qt::ALT | Qt::Key_Right), &TDirPanel::Forward);
   ParentDirAction = CreateAction(Prefix + QStringLiteral("ParentDirAction"), tr("&Parent Directory"), QStringLiteral("go-up"),
     QKeySequence(Qt::Key_Backspace), &TDirPanel::ParentDirectory);
+  ParentDirAction->setToolTip(tr("Go to parent directory"));
   RootDirAction = CreateAction(Prefix + QStringLiteral("RootDirAction"), tr("&Root Directory"), QStringLiteral("go-top"),
     QKeySequence(Qt::CTRL | Qt::Key_Backslash), &TDirPanel::RootDirectory);
+  RootDirAction->setToolTip(tr("Go to root directory"));
   HomeDirAction = CreateAction(Prefix + QStringLiteral("HomeDirAction"), tr("&Home Directory"), QStringLiteral("go-home"),
     QKeySequence(Qt::CTRL | Qt::Key_H), &TDirPanel::HomeDirActionExecute);
+  HomeDirAction->setToolTip(tr("Go to home directory"));
   RefreshAction = CreateAction(Prefix + QStringLiteral("RefreshAction"), tr("&Refresh"), QStringLiteral("view-refresh"),
     QKeySequence(Qt::CTRL | Qt::Key_R), &TDirPanel::RefreshActionExecute);
+  RefreshAction->setToolTip(tr("Refresh directory content"));
   OpenDirAction = CreateAction(Prefix + QStringLiteral("OpenDirAction"), tr("&Open Directory/Bookmark..."),
     QStringLiteral("document-open-folder"), QKeySequence(Qt::CTRL | Qt::Key_O), &TDirPanel::OpenDirActionExecute);
+  OpenDirAction->setToolTip(tr("Open directory or bookmark"));
   // The bookmarks, in the drop down menu of the button
   OpenDirMenu = new QMenu(this);
   OpenDirMenu->setObjectName(Prefix + QStringLiteral("OpenDirMenu"));
@@ -570,14 +586,8 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
     OpenDirMenu->clear();
     Q_EMIT BookmarksMenuRequested(this, OpenDirMenu);
   });
-  if (QToolButton * OpenDirButton = qobject_cast<QToolButton *>(PathToolbar->widgetForAction(OpenDirAction)))
-  {
-    OpenDirButton->setMenu(OpenDirMenu);
-    OpenDirButton->setPopupMode(QToolButton::MenuButtonPopup);
-  }
   AddBookmarkAction2 = CreateAction(Prefix + QStringLiteral("AddBookmarkAction2"), tr("&Add Path to Bookmarks"),
     QStringLiteral("bookmark-new"), QKeySequence(Qt::CTRL | Qt::Key_B), &TDirPanel::AddBookmarkActionExecute);
-  // In the menu of the panel only
   FilterAction = new QAction(QIcon::fromTheme(QStringLiteral("view-filter")), tr("&Filter..."), this);
   FilterAction->setObjectName(Prefix + QStringLiteral("FilterAction"));
   FilterAction->setToolTip(tr("Filter displayed files"));
@@ -585,6 +595,29 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   FilterAction->setShortcutContext(Qt::WidgetWithChildrenShortcut);
   addAction(FilterAction);
   connect(FilterAction, &QAction::triggered, this, [this]() { ExecuteHandler([this]() { Filter(); }); });
+  // The filter and the colors of the files (added by the main window)
+  FilterMenu = new QMenu(this);
+  FilterMenu->setObjectName(Prefix + QStringLiteral("FilterMenu"));
+  FilterMenu->addAction(FilterAction);
+  FilterMenu->addSeparator();
+
+  // The visited directories in the drop down menus of the history buttons
+  BackMenu = new QMenu(this);
+  BackMenu->setObjectName(Prefix + QStringLiteral("BackMenu"));
+  connect(BackMenu, &QMenu::aboutToShow, this, [this]() { FillHistoryMenu(BackMenu, true); });
+  ForwardMenu = new QMenu(this);
+  ForwardMenu->setObjectName(Prefix + QStringLiteral("ForwardMenu"));
+  connect(ForwardMenu, &QMenu::aboutToShow, this, [this]() { FillHistoryMenu(ForwardMenu, false); });
+
+  PathToolbar->AddControl(PathComboBox);
+  PathToolbar->AddMenuButton(OpenDirAction, OpenDirMenu, tmmSplit);
+  PathToolbar->AddMenuButton(FilterAction, FilterMenu, tmmSplit);
+  HistoryToolbar->AddMenuButton(BackAction, BackMenu, tmmSplit);
+  HistoryToolbar->AddMenuButton(ForwardAction, ForwardMenu, tmmSplit);
+  NavigationToolbar->AddButton(ParentDirAction);
+  NavigationToolbar->AddButton(RootDirAction);
+  NavigationToolbar->AddButton(HomeDirAction);
+  NavigationToolbar->AddButton(RefreshAction);
 
   DirView = new TDirView(this);
   DirView->setObjectName(Prefix + QStringLiteral("DirView"));
@@ -622,6 +655,10 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   TreeAction->setCheckable(true);
   addAction(TreeAction);
   connect(TreeAction, &QAction::triggered, this, [this](bool Checked) { SetTreeVisible(Checked); });
+  TreeAction->setIcon(QIcon::fromTheme(QStringLiteral("view-list-tree")));
+  NavigationToolbar->AddSeparatorItem();
+  NavigationToolbar->AddButton(TreeAction);
+  FTopDock->Arrange();
   StatusBarAction = new QAction(tr("Status &Bar"), this);
   StatusBarAction->setObjectName(Prefix + QStringLiteral("StatusBarAction2"));
   StatusBarAction->setToolTip(tr("Hide/show status bar"));
@@ -668,7 +705,6 @@ QAction * TDirPanel::CreateAction(const QString & Name, const QString & Caption,
   // Of the panel with the focus
   Action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
   addAction(Action);
-  PathToolbar->addAction(Action);
   connect(Action, &QAction::triggered, this, [this, Method]() { ExecuteHandler([this, Method]() { (this->*Method)(); }); });
   return Action;
 }
@@ -693,7 +729,11 @@ void TDirPanel::SetModel(TDirModel * Model)
   {
     ColumnsMenu->exec(DirView->header()->mapToGlobal(Pos));
   });
-  connect(Header, &QHeaderView::sortIndicatorChanged, this, [this]() { UpdateSortMenu(); });
+  connect(Header, &QHeaderView::sortIndicatorChanged, this, [this]()
+  {
+    UpdateSortMenu();
+    Q_EMIT SortChanged(this);
+  });
   connect(DirView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() { UpdateStatusBar(); });
   Model->OnRename = [this](const UnicodeString & FileName, const UnicodeString & NewName)
   {
@@ -804,10 +844,7 @@ void TDirPanel::CreateSortMenu(const QString & Prefix)
   SortAscendingAction = SortMenu->addAction(tr("&Ascending"));
   SortAscendingAction->setObjectName(Prefix + QStringLiteral("SortAscendingAction2"));
   SortAscendingAction->setCheckable(true);
-  connect(SortAscendingAction, &QAction::triggered, this, [this](bool Checked)
-  {
-    DirView->sortByColumn(FModel->GetSortColumn(), Checked ? Qt::AscendingOrder : Qt::DescendingOrder);
-  });
+  connect(SortAscendingAction, &QAction::triggered, this, [this](bool Checked) { SetSortAscending(Checked); });
   SortMenu->addSeparator();
   QActionGroup * Group = new QActionGroup(SortMenu);
   struct { TDirViewColumn Column; const char * Name; QString Caption; int Key; } Sorts[] =
@@ -835,20 +872,43 @@ void TDirPanel::CreateSortMenu(const QString & Prefix)
       Action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
       addAction(Action);
     }
-    connect(Action, &QAction::triggered, this, [this, Column]()
-    {
-      int Index = FModel->ColumnIndex(Column);
-      if (Index >= 0)
-      {
-        // The same column again reverses the order, as upstream's
-        Qt::SortOrder Order =
-          (FModel->GetSortColumn() == Index) && (FModel->GetSortOrder() == Qt::AscendingOrder) ?
-            Qt::DescendingOrder : Qt::AscendingOrder;
-        DirView->sortByColumn(Index, Order);
-      }
-    });
+    connect(Action, &QAction::triggered, this, [this, Column]() { SortBy(Column); });
   }
   connect(SortMenu, &QMenu::aboutToShow, this, [this]() { UpdateSortMenu(); });
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SortBy(TDirViewColumn Column)
+{
+  int Index = FModel->ColumnIndex(Column);
+  if (Index >= 0)
+  {
+    // The same column again reverses the order, as upstream's
+    Qt::SortOrder Order =
+      (FModel->GetSortColumn() == Index) && (FModel->GetSortOrder() == Qt::AscendingOrder) ?
+        Qt::DescendingOrder : Qt::AscendingOrder;
+    DirView->sortByColumn(Index, Order);
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetSortAscending(bool Ascending)
+{
+  DirView->sortByColumn(FModel->GetSortColumn(), Ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::IsSortedBy(TDirViewColumn Column) const
+{
+  int Index = FModel->ColumnIndex(Column);
+  return (Index >= 0) && (FModel->GetSortColumn() == Index);
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::IsSortAscending() const
+{
+  return (FModel->GetSortOrder() == Qt::AscendingOrder);
+}
+//---------------------------------------------------------------------------
+bool TDirPanel::HasColumn(TDirViewColumn Column) const
+{
+  return (FModel->ColumnIndex(Column) >= 0);
 }
 //---------------------------------------------------------------------------
 void TDirPanel::UpdateSortMenu()
@@ -1184,6 +1244,30 @@ void TDirPanel::Forward()
     ChangeDirectory(FHistory[FHistoryIndex + 1]);
     FHistoryIndex++;
     UpdateActions();
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::GoToHistory(int Index)
+{
+  if (IsReady() && (Index >= 0) && (Index < static_cast<int>(FHistory.size())) && (Index != FHistoryIndex))
+  {
+    TAutoFlag NavigatingFlag(FNavigatingHistory);
+    ChangeDirectory(FHistory[Index]);
+    FHistoryIndex = Index;
+    UpdateActions();
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::FillHistoryMenu(QMenu * Menu, bool Back)
+{
+  // upstream's history menus: the nearest directory first
+  Menu->clear();
+  int Count = static_cast<int>(FHistory.size());
+  for (int Index = Back ? FHistoryIndex - 1 : FHistoryIndex + 1; Back ? (Index >= 0) : (Index < Count);
+       Back ? Index-- : Index++)
+  {
+    QAction * Item = Menu->addAction(ToQString(FHistory[Index]));
+    connect(Item, &QAction::triggered, this, [this, Index]() { ExecuteHandler([this, Index]() { GoToHistory(Index); }); });
   }
 }
 //---------------------------------------------------------------------------
@@ -1708,8 +1792,13 @@ void TDirPanel::UpdateStatusBar()
 void TDirPanel::UpdateActions()
 {
   bool Ready = IsReady();
-  BackAction->setEnabled(Ready && (FHistoryIndex > 0));
-  ForwardAction->setEnabled(Ready && (FHistoryIndex + 1 < static_cast<int>(FHistory.size())));
+  bool CanBack = Ready && (FHistoryIndex > 0);
+  BackAction->setEnabled(CanBack);
+  BackAction->setToolTip(CanBack ? ToQString(FMTLOAD(EXPLORER_BACK_HINT, (FHistory[FHistoryIndex - 1]))) : QString());
+  bool CanForward = Ready && (FHistoryIndex + 1 < static_cast<int>(FHistory.size()));
+  ForwardAction->setEnabled(CanForward);
+  ForwardAction->setToolTip(
+    CanForward ? ToQString(FMTLOAD(EXPLORER_FORWARD_HINT, (FHistory[FHistoryIndex + 1]))) : QString());
   ParentDirAction->setEnabled(Ready && (GetPath() != L"/"));
   RootDirAction->setEnabled(Ready);
   HomeDirAction->setEnabled(Ready);

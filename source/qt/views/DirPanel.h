@@ -32,7 +32,6 @@ class QPushButton;
 class QSplitter;
 class QStackedWidget;
 class QTimer;
-class QToolBar;
 class TDirModel;
 class TDirPanel;
 class TLocalDirModel;
@@ -41,6 +40,8 @@ class TLocalDirTree;
 class TRemoteDirTree;
 class TRemoteFile;
 class TTerminal;
+class TToolbar;
+class TToolbarDock;
 //---------------------------------------------------------------------------
 // How the selection of a panel changes (upstream's TSelectMode)
 enum TSelectMode { smAll, smNone, smInvert };
@@ -149,6 +150,8 @@ public:
   void RootDirectory();
   void Back();
   void Forward();
+  // To the directory of the history
+  void GoToHistory(int Index);
 
   // The selected files, or the focused file when none is selected; never
   // the parent directory
@@ -199,6 +202,16 @@ public:
   // The address shows the name of the directory only (upstream's
   // ShowFullAddress of the Explorer)
   void SetShowFullAddress(bool Value);
+  // The toolbars above the panel (upstream's top dock of the panel), its
+  // own ones and the window's
+  TToolbarDock * GetTopDock() const { return FTopDock; }
+  TToolbar * GetPathToolbar() const { return PathToolbar; }
+  TToolbar * GetHistoryToolbar() const { return HistoryToolbar; }
+  TToolbar * GetNavigationToolbar() const { return NavigationToolbar; }
+  // The drop down menu of the filter button
+  QMenu * GetFilterMenu() const { return FilterMenu; }
+  QAction * GetTreeAction() const { return TreeAction; }
+  QAction * GetStatusBarAction() const { return StatusBarAction; }
 
   // The menu of the panel (upstream's Local and Remote menus: Go To, the
   // bookmarks, Sort, Columns, Filter); the options of the panel (the tree,
@@ -224,6 +237,13 @@ public:
   UnicodeString GetDirViewParams() const;
   void SetDirViewParams(const UnicodeString & Value);
   void ResetLayoutColumns();
+  // The order of the files (upstream's sort commands): by the column, the
+  // same column again reverses the order
+  void SortBy(TDirViewColumn Column);
+  void SetSortAscending(bool Ascending);
+  bool IsSortedBy(TDirViewColumn Column) const;
+  bool IsSortAscending() const;
+  bool HasColumn(TDirViewColumn Column) const;
 
   // Drag and drop, done by the main window: a drag of the selected files
   // starts; the action of a drop of the data on the panel; the files are
@@ -239,6 +259,8 @@ Q_SIGNALS:
   void DirectoryChanged(TDirPanel * Panel);
   // A file (not a directory) was double-clicked or entered
   void FileActivated(TDirPanel * Panel);
+  // The files are sorted otherwise
+  void SortChanged(TDirPanel * Panel);
   // The commands on the bookmarks, done by the main window
   void OpenDirectoryRequested(TDirPanel * Panel);
   void AddBookmarkRequested(TDirPanel * Panel);
@@ -251,7 +273,10 @@ Q_SIGNALS:
   void ContextPopupRequested(TDirPanel * Panel, bool OnFile, const QPoint & GlobalPos);
 
 protected:
-  QToolBar * PathToolbar;
+  TToolbarDock * FTopDock;
+  TToolbar * PathToolbar;
+  TToolbar * HistoryToolbar;
+  TToolbar * NavigationToolbar;
   QComboBox * PathComboBox;
   TDirView * DirView;
   QLabel * StatusBar;
@@ -270,6 +295,9 @@ protected:
   QAction * StatusBarAction;
   QAction * SortAscendingAction;
   QMenu * OpenDirMenu;
+  QMenu * FilterMenu;
+  QMenu * BackMenu;
+  QMenu * ForwardMenu;
   QMenu * SortMenu;
   QMenu * ColumnsMenu;
   QSplitter * FViewSplitter;
@@ -310,6 +338,7 @@ private:
   QAction * CreateAction(const QString & Name, const QString & Caption, const QString & IconName,
     const QKeySequence & ShortCut, void (TDirPanel::*Method)());
   void PathComboActivated();
+  void FillHistoryMenu(QMenu * Menu, bool Back);
   // Selects or unselects the rows
   void SelectRows(const std::vector<int> & Rows, bool Select);
   void CreateSortMenu(const QString & Prefix);

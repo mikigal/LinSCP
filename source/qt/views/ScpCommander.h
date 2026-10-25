@@ -13,6 +13,7 @@
 #include <FileOperationProgress.h>
 #include <Queue.h>
 
+#include "DirModel.h"
 #include "QueueController.h"
 
 #include <Notifications.h>
@@ -52,6 +53,7 @@ class TRemoteDirPanel;
 class TSynchronizeProgressForm;
 class TTaskbarProgress;
 class TTerminal;
+class TToolbar;
 //---------------------------------------------------------------------------
 // How a transfer was started (upstream's TTransferOperationParam)
 struct TTransferOperationParam
@@ -62,6 +64,8 @@ struct TTransferOperationParam
   bool DragDrop = false;
   // Without the copy dialog (a double-click)
   bool NoConfirmation = false;
+  // In the background (asOn), not (asOff), as the copy dialog says (asAuto)
+  TAutoSwitch Queue = asAuto;
 };
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
@@ -150,9 +154,22 @@ private:
   QMenu * FExplorerFilesMenu;
   QMenu * FExplorerCommandsMenu;
   QMenu * FViewMenu;
-  QToolBar * FCommandsToolbar;
-  QToolBar * FButtonsToolbar;
-  QToolBar * FHotkeysToolbar;
+  // The toolbars of the window, of the interface, and the actions that
+  // show and hide them, in the order of upstream's menus
+  // (ScpCommanderToolbars.cpp)
+  std::vector<TToolbar *> FToolbars;
+  std::vector<QAction *> FToolbarBands;
+  TToolbar * FHotkeysToolbar;
+  TToolbar * FCustomCommandsToolbar;
+  QPointer<QMenu> FCustomCommandsToolbarMenu;
+  QMenu * FToolbarsMenu;
+  QMenu * FToolbarIconSizeMenu;
+  // upstream's Left Panel and Right Panel menus
+  QMenu * FLocalPanelMenu;
+  QMenu * FRemotePanelMenu;
+  QMenu * FSavedSessionsMenu;
+  QMenu * FQueueShowMenu;
+  std::vector<std::pair<TDirViewColumn, QAction *>> FCurrentSortActions;
   // The tabs of the sessions and the "new tab" tab (ScpCommanderSessions.cpp)
   QTabBar * SessionsPageControl;
   bool FUpdatingSessionTabs;
@@ -231,7 +248,7 @@ private:
   QSplitter * FQueueSplitter;
   QWidget * QueuePanel;
   QLabel * QueueLabel;
-  QToolBar * QueueToolbar;
+  TToolbar * QueueToolbar;
   QTreeWidget * QueueView3;
   TQueueController * FQueueController;
   TTerminalQueue * FQueue;
@@ -343,13 +360,64 @@ private:
   QAction * QueueShowAction;
   QAction * QueueHideWhenEmptyAction;
   QAction * QueueHideAction;
+  QAction * QueueToggleShowAction;
+  QAction * QueueToolbarAction;
+  // The toolbars (ScpCommanderToolbars.cpp)
+  QAction * LockToolbarsAction;
+  QAction * SelectiveToolbarTextAction;
+  QAction * StatusBarAction;
+  QAction * CurrentSortAscendingAction;
+  QAction * FileColorsPreferencesAction;
+  QAction * CurrentEditWithAction;
+  QAction * EditorListCustomizeAction;
 
   QAction * CreateAction(const char * Name, const QString & Caption, const QString & IconName,
     const QList<QKeySequence> & ShortCuts, void (TScpCommanderForm::*Method)());
   void CreateMenus();
   // The menus of the interface in the menu bar
   void ArrangeMenus();
+  // The toolbars (ScpCommanderToolbars.cpp): the commands of the panels'
+  // toolbars on their files (upstream's Local* and Remote* actions)
+  void CreateSideActions();
+  void ActivatePanel(TOperationSide Side);
+  void UpdateSideActions();
+  void ExecuteCopyOperationCommand(TAutoSwitch Queue);
+  void FileColorsPreferencesActionExecute();
+  void CreateToolbarActions();
+  TToolbar * NewToolbar(const char * Name, const QString & Caption, QWidget * Parent);
+  QAction * NewBandAction(TToolbar * Toolbar, const char * Name, const QString & Caption, const QString & Hint);
+  void SetToolbarVisible(TToolbar * Toolbar, bool Visible);
+  // The toolbars of the window on the files and the selection of a panel,
+  // its menu of the toolbars
+  void CreatePanelToolbars(TDirPanel * Panel);
+  void UpdatePanelMenus();
+  // The toolbars of the window for the interface, arranged by the layout
   void CreateToolbars();
+  void DestroyToolbars();
+  void CreateCommanderToolbars();
+  void CreateExplorerToolbars();
+  void CreateTransferToolbar();
+  void CreateSessionToolbar();
+  void CreateSortToolbar();
+  void CreateCustomCommandsToolbar();
+  void UpdateCustomCommandsToolbar();
+  void UpdateCustomCommandsToolbarState();
+  void CreateHotkeysToolbar();
+  // Of the window and of the panels
+  std::vector<TToolbar *> AllToolbars() const;
+  void RestoreToolbarsLayout();
+  void StoreToolbarsLayout();
+  // Locked, the text of the important buttons, the size of the icons
+  void ApplyToolbarsOptions();
+  void LockToolbarsActionExecute();
+  void SelectiveToolbarTextActionExecute();
+  void StatusBarActionExecute();
+  void QueueToolbarActionExecute();
+  void ToggleQueueVisibility();
+  void UpdateSortActions();
+  // upstream's Toolbars menu, and its popup menu of a toolbar
+  void FillToolbarsMenu(QMenu * Menu);
+  void ToolbarPopup(TToolbar * Toolbar, const QPoint & GlobalPos);
   void UpdateActions();
   void UpdateTransferList();
   void TransferListChange();
@@ -649,6 +717,11 @@ private:
   void DoEditFoundFiles(TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished);
   void CurrentEditActionExecute();
   void CurrentEditInternalActionExecute();
+  // The editors of a panel's files (or of the current one, osCurrent) in
+  // the menu (upstream's CreateEditorListMenu)
+  void CreateEditWithMenu(QMenu * Menu, TOperationSide Side);
+  void CurrentEditWithActionExecute();
+  void EditorListCustomizeActionExecute();
   void CurrentOpenActionExecute();
   void NewFileActionExecute();
   void DeleteFiles(bool Alternative);
