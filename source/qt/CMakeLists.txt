@@ -16,6 +16,7 @@ add_library(openscp_qt STATIC
   dialogs/CopyParamsFrame.cpp
   dialogs/CustomDialog.cpp
   dialogs/EditMaskDialog.cpp
+  dialogs/FileFindDialog.cpp
   dialogs/HistoryComboBox.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp

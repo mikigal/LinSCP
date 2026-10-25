@@ -43,6 +43,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FLocalDirectoryTerminal = NULL;
   FRefreshLocalDirectory = false;
   FRefreshRemoteDirectory = false;
+  FFileFindTerminal = NULL;
   FQueue = NULL;
   FQueueStatus = NULL;
   FQueueStatusInvalidated = false;
@@ -111,6 +112,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::Key_F7) }, &TScpCommanderForm::CurrentCreateDirActionExecute);
   CurrentPropertiesAction = CreateAction("CurrentPropertiesAction", tr("&Properties"), QStringLiteral("document-properties"),
     { QKeySequence(Qt::Key_F9) }, &TScpCommanderForm::CurrentPropertiesActionExecute);
+  RemoteFindFilesAction2 = CreateAction("RemoteFindFilesAction2", tr("&Find Files..."), QStringLiteral("edit-find"),
+    { QKeySequence(Qt::ALT | Qt::Key_F7) }, &TScpCommanderForm::RemoteFindFilesActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -140,6 +143,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  HideFileFindDialog();
   DestroyProgressForm();
   SetQueue(NULL);
   delete FQueueStatus;
@@ -225,6 +229,7 @@ void TScpCommanderForm::CreateMenus()
   QMenu * CommandsMenu = Menu->addMenu(tr("&Commands"));
   CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
   CommandsMenu->addAction(CurrentCreateDirAction);
+  CommandsMenu->addAction(RemoteFindFilesAction2);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
   CommandsMenu->addSeparator();
@@ -358,6 +363,7 @@ void TScpCommanderForm::UpdateActions()
   CurrentDeleteAlternativeAction->setEnabled(!Busy && HasSelection);
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
   CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
+  RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ConfigurationChanged()
@@ -495,6 +501,12 @@ void TScpCommanderForm::TerminalChanged()
   FRemotePanel->SetTerminal(Terminal);
   TTerminalManager * Manager = TTerminalManager::Instance(false);
   SetQueue((Manager != NULL) ? Manager->ActiveQueue : NULL);
+  // The file find of a session that is gone
+  if ((FFileFindTerminal != NULL) && (FFileFindTerminal != Terminal))
+  {
+    FFileFindTerminal = NULL;
+    HideFileFindDialog();
+  }
   UnicodeString Status;
   UnicodeString Hint;
   if ((Terminal != NULL) && Terminal->Active)
@@ -652,9 +664,17 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
     AddQueueItem(Direction, FileList, TargetDirectory, CopyParam, Params);
     Result = false;
 
-    // The files of the source panel are unselected (upstream's ClearTransferSourceSelection)
-    TDirPanel * Source = (Direction == tdToRemote) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
-    Source->GetDirView()->selectionModel()->clearSelection();
+    // upstream's ClearTransferSourceSelection
+    TOperationSide Side = ((Direction == tdToRemote) ? osLocal : osRemote);
+    if (FOnFileOperationFinished)
+    {
+      FOnFileOperationFinished(Side, UnicodeString(), true, true);
+    }
+    else
+    {
+      TDirPanel * Source = (Side == osLocal) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
+      Source->GetDirView()->selectionModel()->clearSelection();
+    }
   }
 
   return Result;
@@ -671,17 +691,23 @@ void TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation)
   }
 
   std::unique_ptr<TStrings> FileList(CreateFileList(Source));
-  if (FileList->Count == 0)
+  if (FileList->Count > 0)
   {
-    return;
+    ExecuteCopyMoveFileOperation(Operation, Source->GetSide(), FileList.get());
   }
-
-  bool ToRemote = (Source == FLocalPanel);
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList)
+{
+  TTerminal * Terminal = GetTerminal();
+  bool ToRemote = (Side == osLocal);
+  TDirPanel * Target = ToRemote ? static_cast<TDirPanel *>(FRemotePanel) : static_cast<TDirPanel *>(FLocalPanel);
   TTransferDirection Direction = (ToRemote ? tdToRemote : tdToLocal);
   TTransferType Type = (Operation == foCopy ? ttCopy : ttMove);
   UnicodeString TargetDirectory = Target->GetPath();
   TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
-  if (CopyParamDialog(Direction, Type, FileList.get(), TargetDirectory, CopyParam, true))
+  bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, true);
+  if (Result)
   {
     int Params = FLAGMASK(Operation == foMove, cpDelete);
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
@@ -696,16 +722,17 @@ void TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation)
     if (ToRemote)
     {
       UnicodeString TargetDir = UnixIncludeTrailingBackslash(TargetDirectory);
-      CopyParam.IncludeFileMask.SetRoots(FileList.get(), TargetDir);
-      Terminal->CopyToRemote(FileList.get(), TargetDir, &CopyParam, Params, NULL);
+      CopyParam.IncludeFileMask.SetRoots(FileList, TargetDir);
+      Terminal->CopyToRemote(FileList, TargetDir, &CopyParam, Params, NULL);
     }
     else
     {
       UnicodeString TargetDir = IncludeTrailingBackslash(TargetDirectory);
-      CopyParam.IncludeFileMask.SetRoots(TargetDir, FileList.get());
-      Terminal->CopyToLocal(FileList.get(), TargetDir, &CopyParam, Params, NULL);
+      CopyParam.IncludeFileMask.SetRoots(TargetDir, FileList);
+      Terminal->CopyToLocal(FileList, TargetDir, &CopyParam, Params, NULL);
     }
   }
+  return Result;
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::DoDirectoryExists(void * Session, const UnicodeString & Directory)
@@ -917,18 +944,21 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
     return;
   }
   std::unique_ptr<TStrings> FileList(CreateFileList(Panel));
-  if (FileList->Count == 0)
+  if (FileList->Count > 0)
   {
-    return;
+    DeleteFiles(Panel->GetSide(), FileList.get(), Alternative);
   }
-
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative)
+{
   if (AppConfiguration->ConfirmDeleting)
   {
     UnicodeString Message;
     if (FileList->Count == 1)
     {
       UnicodeString FileName =
-        (Panel == FLocalPanel) ? ExtractFileName(FileList->Strings[0]) : UnixExtractFileName(FileList->Strings[0]);
+        (Side == osLocal) ? ExtractFileName(FileList->Strings[0]) : UnixExtractFileName(FileList->Strings[0]);
       Message = FMTLOAD(CONFIRM_DELETE_FILE, (FileName));
     }
     else
@@ -943,7 +973,7 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
     }
     else if (Answer != qaOK)
     {
-      return;
+      return false;
     }
   }
 
@@ -954,12 +984,12 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
     ::rtl::TFinally Finally([&]()
     {
       DestroyProgressForm();
-      if (Panel == FLocalPanel)
+      if (Side == osLocal)
       {
         FLocalPanel->Reload();
       }
     });
-    if (Panel == FLocalPanel)
+    if (Side == osLocal)
     {
       bool ToRecycleBin = (DeleteToRecycleBin != Alternative);
       for (int Index = 0; Index < FileList->Count; Index++)
@@ -969,9 +999,10 @@ void TScpCommanderForm::DeleteFiles(bool Alternative)
     }
     else
     {
-      GetTerminal()->DeleteFiles(FileList.get(), FLAGMASK(Alternative, dfAlternative));
+      GetTerminal()->DeleteFiles(FileList, FLAGMASK(Alternative, dfAlternative));
     }
   }
+  return true;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CurrentRenameActionExecute()
@@ -1060,6 +1091,77 @@ void TScpCommanderForm::CurrentPropertiesActionExecute()
     ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
     SetProperties(Panel, FileList.get());
   }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::RemoteFindFilesActionExecute()
+{
+  TTerminal * Terminal = GetTerminal();
+  if (!IsBusy() && (Terminal != NULL) && FRemotePanel->IsReady())
+  {
+    FFileFindTerminal = Terminal;
+    ShowFileFindDialog(
+      Terminal, FRemotePanel->GetPath(),
+      [this](TTerminal * ATerminal, UnicodeString Directory, const TFileMasks & FileMask,
+        TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile)
+      {
+        DoFindFiles(ATerminal, Directory, FileMask, OnFileFound, OnFindingFile);
+      },
+      [this](TTerminal * ATerminal, const UnicodeString & Path) { DoFocusRemotePath(ATerminal, Path); },
+      [this](TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished)
+      {
+        if (CanOperateOnFoundFiles(ATerminal))
+        {
+          TValueRestorer<TFileOperationFinishedEvent> OnFileOperationFinishedRestorer(
+            FOnFileOperationFinished, OnFileOperationFinished);
+          DeleteFiles(osRemote, FileList, false);
+        }
+      },
+      [this](TTerminal * ATerminal, TStrings * FileList, TFileOperationFinishedEvent OnFileOperationFinished)
+      {
+        if (CanOperateOnFoundFiles(ATerminal))
+        {
+          TValueRestorer<TFileOperationFinishedEvent> OnFileOperationFinishedRestorer(
+            FOnFileOperationFinished, OnFileOperationFinished);
+          ExecuteCopyMoveFileOperation(foCopy, osRemote, FileList);
+        }
+      },
+      nullptr);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoFindFiles(TTerminal * ATerminal, UnicodeString Directory, const TFileMasks & FileMask,
+  TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile)
+{
+  if (!IsBusy() && (ATerminal == GetTerminal()))
+  {
+    Configuration->Usage->Inc(L"FileFinds");
+    ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+    TAutoNestingCounter BusyCounter(FBusy);
+    UpdateActions();
+    ATerminal->FilesFind(Directory, FileMask, OnFileFound, OnFindingFile);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoFocusRemotePath(TTerminal * ATerminal, const UnicodeString & Path)
+{
+  if (!IsBusy() && (ATerminal == GetTerminal()) && FRemotePanel->IsReady())
+  {
+    activateWindow();
+    FRemotePanel->ChangeDirectory(UnixExtractFilePath(Path));
+    UnicodeString FileName = UnixExtractFileName(Path);
+    // If not found, it can because we have loaded directory from cache and the file is new, try again after reload.
+    if (FRemotePanel->GetModel()->FindFile(FileName) < 0)
+    {
+      FRemotePanel->Reload();
+    }
+    FRemotePanel->FocusFile(FileName);
+    FRemotePanel->GetDirView()->setFocus();
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanOperateOnFoundFiles(TTerminal * ATerminal)
+{
+  return !IsBusy() && (ATerminal == GetTerminal());
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CalculateSize(
@@ -1360,11 +1462,19 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::OperationFinished(TFileOperation Operation, TOperationSide Side,
-  bool Temp, const UnicodeString & FileName, bool Success, bool /*NotCancelled*/,
+  bool Temp, const UnicodeString & FileName, bool Success, bool NotCancelled,
   TOnceDoneOperation & /*OnceDoneOperation*/)
 {
+  // The operations on the files of the file find dialog report to it
+  if (FOnFileOperationFinished)
+  {
+    if ((Operation != foCalculateSize) && (Operation != foGetProperties) && (Operation != foCalculateChecksum))
+    {
+      FOnFileOperationFinished(Side, FileName, Success, NotCancelled);
+    }
+  }
   // The transferred files are unselected in the source panel, as upstream
-  if (Success && !Temp && ((Operation == foCopy) || (Operation == foMove)))
+  else if (Success && !Temp && ((Operation == foCopy) || (Operation == foMove)))
   {
     TDirPanel * Panel = (Side == osLocal) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
     UnicodeString Name = (Side == osLocal) ? ExtractFileName(FileName) : UnixExtractFileName(FileName);

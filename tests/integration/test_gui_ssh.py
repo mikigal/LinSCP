@@ -637,6 +637,64 @@ class GuiSshTest(GuiTestCase):
         self.assertEqual((remote / 'd.txt').read_text(), 'd')
         self.assertEqual(gui.quit(), 0)
 
+    def test_find_files(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (remote / 'a.txt').write_text('a')
+        (remote / 'b.log').write_text('b')
+        (remote / 'sub' / 'deeper').mkdir(parents=True)
+        (remote / 'sub' / 'c.txt').write_text('c')
+        (remote / 'sub' / 'deeper' / 'd.txt').write_text('d')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        F = 'FileFindDialog/'
+        gui.trigger(W + 'RemoteFindFilesAction2')
+        gui.wait_window('FileFindDialog')
+        self.assertEqual(gui.get(F + 'MaskEdit')['text'], '*.*')
+        self.assertEqual(gui.get(F + 'RemoteDirectoryEdit')['text'], str(remote))
+        gui.set(F + 'MaskEdit', '*.txt')
+        gui.click(F + 'StartStopButton')
+        gui.wait_for(lambda: gui.window('FileFindDialog')['title'].startswith('Find ') and
+                     gui.get(F + 'StartStopButton')['text'] == '&Start', 60, 'the find')
+        rows = {row[0]: row[1] for row in gui.rows(F + 'FileView2')}
+        self.assertEqual(rows, {'a.txt': './', 'c.txt': './sub/', 'd.txt': './sub/deeper/'})
+        self.screenshot('find')
+
+        # Focus of a file found in a subdirectory
+        gui.select(F + 'FileView2', 'd.txt')
+        gui.wait_idle()
+        gui.trigger(F + 'FocusAction')
+        gui.wait_idle()
+        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote / 'sub' / 'deeper'))
+        current = [row['cells'][0] for row in gui.get(W + 'RemoteDirView')['rows'] if row['current']]
+        self.assertEqual(current, ['d.txt'])
+
+        # Download of files found
+        gui.select(F + 'FileView2', 'a.txt', 'c.txt')
+        gui.wait_idle()
+        gui.trigger(F + 'DownloadAction')
+        gui.wait_window('CopyDialog')
+        self.assertEqual(gui.get(C + 'DirectoryLabel')['text'], 'Download 2 files to local directory:')
+        self.submit_copy(gui)
+        self.assertEqual((local / 'a.txt').read_text(), 'a')
+        self.assertEqual((local / 'c.txt').read_text(), 'c')
+        self.assertFalse(any(row['selected'] for row in gui.get(F + 'FileView2')['rows']))
+
+        # Delete of a file found: it leaves the results
+        gui.select(F + 'FileView2', 'a.txt')
+        gui.wait_idle()
+        gui.trigger(F + 'DeleteAction')
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/OK')
+        gui.wait_no_window('MessageForm')
+        gui.wait_idle()
+        self.assertFalse((remote / 'a.txt').exists())
+        self.assertEqual(sorted(gui.names(F + 'FileView2')), ['c.txt', 'd.txt'])
+        gui.call('close', target='FileFindDialog')
+        gui.wait_no_window('FileFindDialog')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

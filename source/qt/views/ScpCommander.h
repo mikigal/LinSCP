@@ -76,6 +76,9 @@ private:
   // The session whose local directory the local panel went to
   TTerminal * FLocalDirectoryTerminal;
   QTimer * FIdleTimer;
+  // The operations on files report their files to it (the file find dialog)
+  TFileOperationFinishedEvent FOnFileOperationFinished;
+  TTerminal * FFileFindTerminal;
   bool FRefreshLocalDirectory;
   bool FRefreshRemoteDirectory;
 
@@ -109,6 +112,7 @@ private:
   QAction * CurrentDeleteAlternativeAction;
   QAction * CurrentCreateDirAction;
   QAction * CurrentPropertiesAction;
+  QAction * RemoteFindFilesAction2;
   QAction * ShowHiddenFilesAction;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
@@ -184,9 +188,16 @@ private:
   void CurrentDeleteAlternativeActionExecute() { DeleteFiles(true); }
   void CurrentCreateDirActionExecute();
   void CurrentPropertiesActionExecute();
+  void RemoteFindFilesActionExecute();
+  void DoFindFiles(TTerminal * ATerminal, UnicodeString Directory, const TFileMasks & FileMask,
+    TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile);
+  void DoFocusRemotePath(TTerminal * ATerminal, const UnicodeString & Path);
+  bool CanOperateOnFoundFiles(TTerminal * ATerminal);
   void ShowHiddenFilesActionExecute();
   void DeleteFiles(bool Alternative);
+  bool DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative);
   void ExecuteCopyMoveFileOperation(TFileOperation Operation);
+  bool ExecuteCopyMoveFileOperation(TFileOperation Operation, TOperationSide Side, TStrings * FileList);
   bool CopyParamDialog(TTransferDirection Direction, TTransferType Type,
     TStrings * FileList, UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, bool Confirm);
   void ExecuteRemoteTransfer(bool Move);

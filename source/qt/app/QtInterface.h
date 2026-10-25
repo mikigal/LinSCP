@@ -81,6 +81,9 @@ void SessionNameValidate(const UnicodeString & Text, const UnicodeString & Origi
 bool DoMasterPasswordDialog();
 
 enum TTransferDirection { tdToRemote, tdToLocal };
+// The operation on a file finished (an empty name: on all files)
+typedef std::function<void(TOperationSide Side, const UnicodeString & FileName, bool Success, bool NotCancelled)>
+  TFileOperationFinishedEvent;
 enum TTransferType { ttCopy, ttMove };
 
 // dialogs/CopyDialog.cpp
@@ -111,6 +114,19 @@ const int cplSaveSettings =     0x04;
 // settings changed (a preset was selected or the settings customized)
 int CopyParamListPopup(const QPoint & Pos, TCopyParamType & Param, UnicodeString & Preset,
   int Options, int CopyParamAttrs, bool * SaveSettings);
+
+// dialogs/FileFindDialog.cpp
+typedef std::function<void(TTerminal * Terminal, UnicodeString Directory, const TFileMasks & FileMask,
+  TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile)> TFindEvent;
+typedef std::function<void(TTerminal * Terminal, const UnicodeString & Path)> TFocusFileEvent;
+typedef std::function<void(TTerminal * Terminal, TStrings * FileList,
+  TFileOperationFinishedEvent OnFileOperationFinished)> TFileListOperationEvent;
+// The modeless window of the file find; OnEditFiles is optional
+void ShowFileFindDialog(
+  TTerminal * Terminal, UnicodeString Directory, TFindEvent OnFind, TFocusFileEvent OnFocusFile,
+  TFileListOperationEvent OnDeleteFiles, TFileListOperationEvent OnDownloadFiles,
+  TFileListOperationEvent OnEditFiles);
+void HideFileFindDialog();
 
 // dialogs/EditMaskDialog.cpp
 bool DoEditMaskDialog(TFileMasks & Mask);

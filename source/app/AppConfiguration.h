@@ -43,6 +43,8 @@ public:
   void SetQueueViewShow(TQueueViewShow value);
   int GetQueueViewHeight() const { return FQueueViewHeight; }
   void SetQueueViewHeight(int value);
+  UnicodeString GetSelectMask() const { return FSelectMask; }
+  void SetSelectMask(UnicodeString value);
   bool GetShowHiddenFiles() const { return FShowHiddenFiles; }
   void SetShowHiddenFiles(bool value);
   UnicodeString GetLastStoredSession() const { return FLastStoredSession; }
@@ -69,6 +71,8 @@ public:
   __declspec(property(get = GetConfirmExitOnCompletion, put = SetConfirmExitOnCompletion)) bool ConfirmExitOnCompletion;
   __declspec(property(get = GetQueueViewShow, put = SetQueueViewShow)) TQueueViewShow QueueViewShow;
   __declspec(property(get = GetQueueViewHeight, put = SetQueueViewHeight)) int QueueViewHeight;
+  // The last file mask of the select and find dialogs
+  __declspec(property(get = GetSelectMask, put = SetSelectMask)) UnicodeString SelectMask;
   __declspec(property(get = GetShowHiddenFiles, put = SetShowHiddenFiles)) bool ShowHiddenFiles;
   // The site or site folder (with a trailing slash) last selected in the
   // site manager
@@ -100,6 +104,7 @@ private:
   // TQueueViewShow
   int FQueueViewShow;
   int FQueueViewHeight;
+  UnicodeString FSelectMask;
   bool FShowHiddenFiles;
   // The histories (their names, the strings with the "modified" flag as the
   // objects of the names)
