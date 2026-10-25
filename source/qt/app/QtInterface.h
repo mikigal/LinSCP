@@ -145,6 +145,10 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
 
+// dialogs/ConsoleDialog.cpp
+void DoConsoleDialog(TTerminal * Terminal, const UnicodeString & Command = UnicodeString(),
+  const TStrings * Log = NULL);
+
 // dialogs/OpenDirectoryDialog.cpp
 enum TOpenDirectoryMode { odBrowse, odAddBookmark };
 bool DoOpenDirectoryDialog(TOpenDirectoryMode Mode, TOperationSide Side, UnicodeString & Directory,

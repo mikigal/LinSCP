@@ -47,6 +47,9 @@ Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit
   shared bookmarks (Ctrl+0..9, Shift+Ctrl+Alt+A..Z; `app/ShortCuts.cpp` converts the VCL's
   `TShortCut`). Stored as upstream (`Bookmarks`, `Interface\UseLocationProfiles`,
   `Interface\UseSharedBookmarks`).
+- The console (`TConsoleDialog`, Ctrl+Shift+T): commands in the shell of the session (the
+  separate shell session where the protocol has none), the panel follows a changed
+  directory.
 
 Decisions:
 

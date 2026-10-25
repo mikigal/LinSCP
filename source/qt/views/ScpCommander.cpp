@@ -126,6 +126,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::CTRL | Qt::Key_S) }, &TScpCommanderForm::FullSynchronizeActionExecute);
   SynchronizeAction = CreateAction("SynchronizeAction", tr("&Keep Remote Directory up to Date..."),
     QStringLiteral("view-refresh"), { QKeySequence(Qt::CTRL | Qt::Key_U) }, &TScpCommanderForm::SynchronizeActionExecute);
+  ConsoleAction = CreateAction("ConsoleAction", tr("Open &Terminal"), QStringLiteral("utilities-terminal"),
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T) }, &TScpCommanderForm::ConsoleActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -245,6 +247,8 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->addAction(RemoteFindFilesAction2);
   CommandsMenu->addAction(FullSynchronizeAction2);
   CommandsMenu->addAction(SynchronizeAction);
+  CommandsMenu->addSeparator();
+  CommandsMenu->addAction(ConsoleAction);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
   CommandsMenu->addSeparator();
@@ -381,6 +385,23 @@ void TScpCommanderForm::UpdateActions()
   RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
+  ConsoleAction->setEnabled(!Busy && CanConsole());
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanConsole()
+{
+  TTerminal * Terminal = GetTerminal();
+  return
+    (Terminal != NULL) && Terminal->Active &&
+    (Terminal->IsCapable[fcAnyCommand] || Terminal->IsCapable[fcSecondaryShell]);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::OpenConsole(const UnicodeString & Command)
+{
+  if (!IsBusy() && CanConsole() && EnsureCommandSessionFallback(fcAnyCommand))
+  {
+    DoConsoleDialog(GetTerminal(), Command);
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ConfigurationChanged()

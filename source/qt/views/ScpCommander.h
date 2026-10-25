@@ -134,6 +134,7 @@ private:
   QAction * RemoteFindFilesAction2;
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
+  QAction * ConsoleAction;
   QAction * ShowHiddenFilesAction;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
@@ -214,6 +215,9 @@ private:
   void RemoteFindFilesActionExecute();
   void FullSynchronizeActionExecute();
   void SynchronizeActionExecute();
+  void ConsoleActionExecute() { OpenConsole(); }
+  bool CanConsole();
+  void OpenConsole(const UnicodeString & Command = UnicodeString());
 
   // The synchronization (ScpCommanderSynchronize.cpp)
   struct TSynchronizeParams

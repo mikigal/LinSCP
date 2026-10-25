@@ -12,6 +12,7 @@ add_library(openscp_qt STATIC
   app/ShortCuts.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
+  dialogs/ConsoleDialog.cpp
   dialogs/CopyDialog.cpp
   dialogs/CopyParamDialogs.cpp
   dialogs/CopyParamsFrame.cpp

@@ -962,6 +962,36 @@ class GuiSshTest(GuiTestCase):
         self.assertIn('Bookmarks', config)
         self.assertIn('both', config)
 
+    def test_console(self):
+        remote = self.work_dir('remote')
+        (remote / 'sub').mkdir()
+        (remote / 'sub' / 'file.txt').write_text('content\n')
+        gui = self.start_gui(ini=site_ini(remote=remote))
+        self.login(gui, 'local')
+
+        gui.trigger(W + 'ConsoleAction')
+        # SFTP has no shell; the separate shell session is confirmed
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/OK')
+        gui.wait_window('ConsoleDialog', 60)
+        C = 'ConsoleDialog/'
+        self.assertEqual(gui.get(C + 'DirectoryLabel')['text'], str(remote))
+        gui.set(C + 'CommandEdit', 'cd sub')
+        gui.click(C + 'ExecuteButton')
+        gui.wait_for(lambda: gui.get(C + 'DirectoryLabel')['text'] == str(remote / 'sub'), 30, 'the directory')
+        gui.set(C + 'CommandEdit', 'cat file.txt; echo done')
+        gui.click(C + 'ExecuteButton')
+        gui.wait_for(lambda: 'done' in gui.get(C + 'OutputMemo')['text'], 30, 'the output')
+        output = gui.get(C + 'OutputMemo')['text'].splitlines()
+        self.assertEqual(output[-3:], ['%s$ cat file.txt; echo done' % (remote / 'sub'), 'content', 'done'])
+        self.screenshot('console')
+        gui.click(C + 'CancelBtn')
+        gui.wait_no_window('ConsoleDialog')
+        # The panel follows the directory changed in the console
+        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'sub'), 30,
+                     'the remote directory')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))
