@@ -443,10 +443,17 @@ void TPreferencesDialog::CreateInterfaceSheet()
        "- drag && drop"), InterfaceGroup);
   ExplorerDescriptionLabel->setObjectName(QStringLiteral("ExplorerDescriptionLabel"));
   ExplorerDescriptionLabel->setWordWrap(true);
+  // The pictures of the interfaces below their buttons, as upstream's
+  QLabel * CommanderInterfacePicture = CreateDialogImage(InterfaceGroup, L"Commander");
+  CommanderInterfacePicture->setObjectName(QStringLiteral("CommanderInterfacePicture"));
+  QLabel * ExplorerInterfacePicture = CreateDialogImage(InterfaceGroup, L"Explorer");
+  ExplorerInterfacePicture->setObjectName(QStringLiteral("ExplorerInterfacePicture"));
   Grid->addWidget(CommanderInterfaceButton2, 0, 0, Qt::AlignTop);
-  Grid->addWidget(CommanderDescriptionLabel2, 0, 1);
-  Grid->addWidget(ExplorerInterfaceButton2, 1, 0, Qt::AlignTop);
-  Grid->addWidget(ExplorerDescriptionLabel, 1, 1);
+  Grid->addWidget(CommanderInterfacePicture, 1, 0, Qt::AlignHCenter | Qt::AlignTop);
+  Grid->addWidget(CommanderDescriptionLabel2, 0, 1, 2, 1, Qt::AlignTop);
+  Grid->addWidget(ExplorerInterfaceButton2, 2, 0, Qt::AlignTop);
+  Grid->addWidget(ExplorerInterfacePicture, 3, 0, Qt::AlignHCenter | Qt::AlignTop);
+  Grid->addWidget(ExplorerDescriptionLabel, 2, 1, 2, 1, Qt::AlignTop);
   Grid->setColumnStretch(1, 1);
   static_cast<QVBoxLayout *>(GeneralSheet->layout())->addStretch(1);
 }

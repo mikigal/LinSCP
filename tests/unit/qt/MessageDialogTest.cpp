@@ -24,6 +24,11 @@ QStringList ButtonNames(QWidget * Dialog)
   return Result;
 }
 //---------------------------------------------------------------------------
+QString ImageName(QWidget * Dialog)
+{
+  return Child<QLabel>(Dialog, "Image")->property("automationImageName").toString();
+}
+//---------------------------------------------------------------------------
 void ClickWhenModal(const char * Name)
 {
   WhenModal([Name](QWidget * Dialog) { Child<QPushButton>(Dialog, Name)->click(); });
@@ -56,10 +61,12 @@ public:
 TEST(MessageDialogTest, ButtonsOfAnswersInOrder)
 {
   QStringList Names;
+  QString Image;
   bool YesDefault = false;
   WhenModal([&](QWidget * Dialog)
   {
     Names = ButtonNames(Dialog);
+    Image = ImageName(Dialog);
     YesDefault = Child<QPushButton>(Dialog, "Yes")->isDefault();
     EXPECT_EQ(Dialog->objectName(), QStringLiteral("MessageForm"));
     EXPECT_EQ(Dialog->windowTitle(), QStringLiteral("Confirm"));
@@ -69,6 +76,36 @@ TEST(MessageDialogTest, ButtonsOfAnswersInOrder)
   EXPECT_EQ(Answer, qaNo);
   EXPECT_EQ(Names, (QStringList{ QStringLiteral("Yes"), QStringLiteral("No"), QStringLiteral("Cancel") }));
   EXPECT_TRUE(YesDefault);
+  EXPECT_EQ(Image, QStringLiteral("Help Blue"));
+}
+//---------------------------------------------------------------------------
+TEST(MessageDialogTest, ImagesOfTypes)
+{
+  // upstream's images of the types, or of the parameters
+  std::vector<std::pair<TQueryType, QString>> Types = {
+    { qtWarning, QStringLiteral("Warning") }, { qtError, QStringLiteral("Error") },
+    { qtInformation, QStringLiteral("Information") } };
+  for (const auto & Type : Types)
+  {
+    QString Image;
+    WhenModal([&](QWidget * Dialog)
+    {
+      Image = ImageName(Dialog);
+      Child<QPushButton>(Dialog, "OK")->click();
+    });
+    MessageDialog(L"Message", Type.first, qaOK);
+    EXPECT_EQ(Image, Type.second);
+  }
+  TMessageParams Params;
+  Params.ImageName = L"Delete file";
+  QString Image;
+  WhenModal([&](QWidget * Dialog)
+  {
+    Image = ImageName(Dialog);
+    Child<QPushButton>(Dialog, "Cancel")->click();
+  });
+  EXPECT_EQ(MessageDialog(L"Delete?", qtConfirmation, qaOK | qaCancel, &Params), qaCancel);
+  EXPECT_EQ(Image, QStringLiteral("Delete file"));
 }
 //---------------------------------------------------------------------------
 TEST(MessageDialogTest, EscapeIsTheCancelAnswer)

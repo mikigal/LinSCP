@@ -1298,12 +1298,14 @@ void TLoginDialog::SaveAsSessionActionExecute()
 //---------------------------------------------------------------------------
 void TLoginDialog::DeleteSessionActionExecute()
 {
+  TMessageParams Params;
+  Params.ImageName = L"Delete file";
   QTreeWidgetItem * Node = Selected();
   if (IsSiteNode(Node))
   {
     TSessionData * Session = GetSelectedSession();
     UnicodeString Message = MainInstructions(FMTLOAD(CONFIRM_DELETE_SESSION, (Session->SessionName)));
-    if (MessageDialog(Message, qtConfirmation, qaOK | qaCancel) == qaOK)
+    if (MessageDialog(Message, qtConfirmation, qaOK | qaCancel, &Params) == qaOK)
     {
       Session->Remove();
       StoredSessions->Remove(Session);
@@ -1336,7 +1338,8 @@ void TLoginDialog::DeleteSessionActionExecute()
     UnicodeString Path = SessionNodePath(Node);
     int Prompt = IsFolderNode(Node) ? LOGIN_DELETE_SESSION_FOLDER : LOGIN_DELETE_WORKSPACE;
     if ((Sessions == 0) ||
-        (MessageDialog(MainInstructions(FMTLOAD(Prompt, (Path, Sessions))), qtConfirmation, qaOK | qaCancel) == qaOK))
+        (MessageDialog(MainInstructions(FMTLOAD(Prompt, (Path, Sessions))), qtConfirmation, qaOK | qaCancel,
+           &Params) == qaOK))
     {
       std::vector<QTreeWidgetItem *> Nodes;
       for (QTreeWidgetItemIterator It(Node); *It != nullptr; ++It)

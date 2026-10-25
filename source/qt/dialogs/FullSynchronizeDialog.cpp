@@ -127,33 +127,36 @@ TFullSynchronizeDialog::TFullSynchronizeDialog() :
   QGroupBox * DirectoriesGroup = new QGroupBox(tr("Directories"), this);
   DirectoriesGroup->setObjectName(QStringLiteral("DirectoriesGroup"));
   QGridLayout * DirectoriesLayout = new QGridLayout(DirectoriesGroup);
+  // The image left of the directories, as upstream's
+  QLabel * Image = CreateDialogImage(DirectoriesGroup, L"Synchronize directories");
+  DirectoriesLayout->addWidget(Image, 0, 0, 2, 1, Qt::AlignTop);
   LocalDirectoryLabel = new QLabel(tr("Lo&cal directory:"), DirectoriesGroup);
   LocalDirectoryLabel->setObjectName(QStringLiteral("LocalDirectoryLabel"));
-  DirectoriesLayout->addWidget(LocalDirectoryLabel, 0, 0, 1, 2);
+  DirectoriesLayout->addWidget(LocalDirectoryLabel, 0, 1, 1, 2);
   LocalDirectoryEdit = new THistoryComboBox(DirectoriesGroup);
   LocalDirectoryEdit->setObjectName(QStringLiteral("LocalDirectoryEdit"));
   LocalDirectoryLabel->setBuddy(LocalDirectoryEdit);
-  DirectoriesLayout->addWidget(LocalDirectoryEdit, 1, 0);
+  DirectoriesLayout->addWidget(LocalDirectoryEdit, 1, 1);
   LocalDirectoryBrowseButton = new QPushButton(tr("Bro&wse..."), DirectoriesGroup);
   LocalDirectoryBrowseButton->setObjectName(QStringLiteral("LocalDirectoryBrowseButton"));
   LocalDirectoryBrowseButton->setAutoDefault(false);
   connect(LocalDirectoryBrowseButton, &QPushButton::clicked, this,
     [this]() { DoLocalDirectoryBrowseButtonClick(LocalDirectoryEdit); });
-  DirectoriesLayout->addWidget(LocalDirectoryBrowseButton, 1, 1);
+  DirectoriesLayout->addWidget(LocalDirectoryBrowseButton, 1, 2);
   RemoteDirectoryLabel = new QLabel(tr("R&emote directory:"), DirectoriesGroup);
   RemoteDirectoryLabel->setObjectName(QStringLiteral("RemoteDirectoryLabel"));
-  DirectoriesLayout->addWidget(RemoteDirectoryLabel, 2, 0, 1, 2);
+  DirectoriesLayout->addWidget(RemoteDirectoryLabel, 2, 1, 1, 2);
   RemoteDirectoryEdit = new THistoryComboBox(DirectoriesGroup);
   RemoteDirectoryEdit->setObjectName(QStringLiteral("RemoteDirectoryEdit"));
   RemoteDirectoryLabel->setBuddy(RemoteDirectoryEdit);
-  DirectoriesLayout->addWidget(RemoteDirectoryEdit, 3, 0);
+  DirectoriesLayout->addWidget(RemoteDirectoryEdit, 3, 1);
   OtherLocalDirectoryBrowseButton = new QPushButton(tr("Brows&e..."), DirectoriesGroup);
   OtherLocalDirectoryBrowseButton->setObjectName(QStringLiteral("OtherLocalDirectoryBrowseButton"));
   OtherLocalDirectoryBrowseButton->setAutoDefault(false);
   connect(OtherLocalDirectoryBrowseButton, &QPushButton::clicked, this,
     [this]() { DoLocalDirectoryBrowseButtonClick(RemoteDirectoryEdit); });
-  DirectoriesLayout->addWidget(OtherLocalDirectoryBrowseButton, 3, 1);
-  DirectoriesLayout->setColumnStretch(0, 1);
+  DirectoriesLayout->addWidget(OtherLocalDirectoryBrowseButton, 3, 2);
+  DirectoriesLayout->setColumnStretch(1, 1);
   for (THistoryComboBox * Edit : { LocalDirectoryEdit, RemoteDirectoryEdit })
   {
     connect(Edit, &QComboBox::currentTextChanged, this, [this]() { UpdateControls(); });

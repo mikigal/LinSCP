@@ -1798,6 +1798,7 @@ bool TScpCommanderForm::DeleteFiles(TOperationSide Side, TStrings * FileList, bo
       Message = FMTLOAD((Recycle ? CONFIRM_RECYCLE_FILES : CONFIRM_DELETE_FILES), (FileList->Count));
     }
     TMessageParams Params(mpNeverAskAgainCheck);
+    Params.ImageName = L"Delete file";
     unsigned int Answer = MessageDialog(MainInstructions(Message), qtConfirmation, qaOK | qaCancel, &Params);
     if (Answer == qaNeverAskAgain)
     {

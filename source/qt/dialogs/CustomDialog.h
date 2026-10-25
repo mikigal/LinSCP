@@ -11,6 +11,7 @@
 class QCheckBox;
 class QComboBox;
 class QDialogButtonBox;
+class QHBoxLayout;
 class QLabel;
 class QLineEdit;
 class QPlainTextEdit;
@@ -31,6 +32,8 @@ protected:
   QPushButton * CancelButton;
 
   QLabel * CreateLabel(const UnicodeString & Caption);
+  // upstream's image (LoadDialogImage) left of the controls
+  void AddImage(const UnicodeString & ImageName);
   void AddEditLikeControl(QWidget * Edit, QLabel * Label);
   QCheckBox * CreateAndAddCheckBox(const UnicodeString & Caption);
   void AddWidget(QWidget * Widget);
@@ -47,6 +50,7 @@ protected:
   virtual void accept() override;
 
 private:
+  QHBoxLayout * FContentsLayout;
   QVBoxLayout * FControlsLayout;
   QDialogButtonBox * FButtons;
 };

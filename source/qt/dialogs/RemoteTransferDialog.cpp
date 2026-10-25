@@ -16,6 +16,7 @@
 #include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QGroupBox>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -73,7 +74,11 @@ TRemoteTransferDialog::TRemoteTransferDialog() :
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
   QGroupBox * Group = new QGroupBox(this);
   Group->setObjectName(QStringLiteral("Group"));
-  QVBoxLayout * GroupLayout = new QVBoxLayout(Group);
+  // The image left of the controls, as upstream's
+  QHBoxLayout * GroupRowLayout = new QHBoxLayout(Group);
+  GroupRowLayout->addWidget(CreateDialogImage(Group, L"Duplicate L to R"), 0, Qt::AlignTop);
+  QVBoxLayout * GroupLayout = new QVBoxLayout();
+  GroupRowLayout->addLayout(GroupLayout, 1);
   QLabel * SessionLabel = new QLabel(tr("Target &session:"), Group);
   SessionLabel->setObjectName(QStringLiteral("SessionLabel"));
   GroupLayout->addWidget(SessionLabel);

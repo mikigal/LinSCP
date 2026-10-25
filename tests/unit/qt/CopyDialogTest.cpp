@@ -129,12 +129,13 @@ TEST(CopyDialogTest, MoveWithFileMaskInTheTarget)
   UnicodeString TargetDirectory = L"/tmp";
   TGUICopyParamType Params;
   int OutputOptions = 0;
-  QString Title, Label, Text;
+  QString Title, Label, Text, Image;
   bool QueueEnabled = true;
   WhenModal([&](QWidget * Dialog)
   {
     Title = Dialog->windowTitle();
     Label = Child<QLabel>(Dialog, "DirectoryLabel")->text();
+    Image = Child<QLabel>(Dialog, "Image")->property("automationImageName").toString();
     QComboBox * Edit = Child<QComboBox>(Dialog, "LocalDirectoryEdit");
     Text = Edit->currentText();
     QueueEnabled = Child<QCheckBox>(Dialog, "QueueCheck2")->isEnabled();
@@ -146,6 +147,7 @@ TEST(CopyDialogTest, MoveWithFileMaskInTheTarget)
     coDisableQueue | coDoNotShowAgain, 0, &OutputOptions);
   ASSERT_TRUE(Result);
   EXPECT_EQ(Title, QStringLiteral("Download and Delete"));
+  EXPECT_EQ(Image, QStringLiteral("Download File Remove Original"));
   EXPECT_EQ(Label, QStringLiteral("Download 2 files to local directory and delete originals:"));
   EXPECT_EQ(Text, QStringLiteral("/tmp/*.*"));
   EXPECT_FALSE(QueueEnabled);
@@ -160,17 +162,19 @@ TEST(CopyDialogTest, SingleFileToNewName)
   FileList->Add(L"/home/user/a.txt");
   UnicodeString TargetDirectory = L"/remote";
   TGUICopyParamType Params;
-  QString Label;
+  QString Label, Image;
   bool NeverShowAgainVisible = true;
   WhenModal([&](QWidget * Dialog)
   {
     Label = Child<QLabel>(Dialog, "DirectoryLabel")->text();
+    Image = Child<QLabel>(Dialog, "Image")->property("automationImageName").toString();
     NeverShowAgainVisible = Child<QCheckBox>(Dialog, "NeverShowAgainCheck")->isVisible();
     Child<QComboBox>(Dialog, "RemoteDirectoryEdit")->setEditText(QStringLiteral("/remote/sub/b.txt"));
     Child<QPushButton>(Dialog, "OkButton")->click();
   });
   ASSERT_TRUE(DoCopyDialog(true, false, FileList.get(), TargetDirectory, &Params, 0, 0, NULL));
   EXPECT_EQ(Label, QStringLiteral("Upload file 'a.txt' to remote directory:"));
+  EXPECT_EQ(Image, QStringLiteral("Upload File"));
   EXPECT_FALSE(NeverShowAgainVisible);
   EXPECT_EQ(TargetDirectory, UnicodeString(L"/remote/sub/"));
   EXPECT_EQ(Params.FileMask, UnicodeString(L"b.txt"));

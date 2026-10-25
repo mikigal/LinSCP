@@ -312,13 +312,16 @@ TLocationProfilesDialog::TLocationProfilesDialog() :
 
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
   QGridLayout * EditLayout = new QGridLayout();
+  // The image left of the directories, as upstream's
+  EditLayout->addWidget(CreateDialogImage(this, L"Open folder"), 0, 0, 2, 1, Qt::AlignTop);
+  EditLayout->setColumnStretch(1, 1);
   QLabel * LocalDirectoryLabel = new QLabel(tr("&Local directory:"), this);
   LocalDirectoryLabel->setObjectName(QStringLiteral("LocalDirectoryLabel"));
-  EditLayout->addWidget(LocalDirectoryLabel, 0, 0, 1, 2);
+  EditLayout->addWidget(LocalDirectoryLabel, 0, 1, 1, 2);
   LocalDirectoryEdit = CreateDirectoryEdit(this, "LocalDirectoryEdit");
   LocalDirectoryEdit->setMinimumWidth(fontMetrics().averageCharWidth() * 60);
   LocalDirectoryLabel->setBuddy(LocalDirectoryEdit);
-  EditLayout->addWidget(LocalDirectoryEdit, 1, 0);
+  EditLayout->addWidget(LocalDirectoryEdit, 1, 1);
   QPushButton * LocalDirectoryBrowseButton = CreateButton(this, QStringLiteral("LocalDirectoryBrowseButton"), tr("B&rowse..."));
   connect(LocalDirectoryBrowseButton, &QPushButton::clicked, this, [this]()
   {
@@ -329,13 +332,13 @@ TLocationProfilesDialog::TLocationProfilesDialog() :
       LocalDirectoryEdit->setEditText(Directory);
     }
   });
-  EditLayout->addWidget(LocalDirectoryBrowseButton, 1, 1);
+  EditLayout->addWidget(LocalDirectoryBrowseButton, 1, 2);
   QLabel * RemoteDirectoryLabel = new QLabel(tr("&Remote directory:"), this);
   RemoteDirectoryLabel->setObjectName(QStringLiteral("RemoteDirectoryLabel"));
-  EditLayout->addWidget(RemoteDirectoryLabel, 2, 0, 1, 2);
+  EditLayout->addWidget(RemoteDirectoryLabel, 2, 1, 1, 2);
   RemoteDirectoryEdit = CreateDirectoryEdit(this, "RemoteDirectoryEdit");
   RemoteDirectoryLabel->setBuddy(RemoteDirectoryEdit);
-  EditLayout->addWidget(RemoteDirectoryEdit, 3, 0, 1, 2);
+  EditLayout->addWidget(RemoteDirectoryEdit, 3, 1, 1, 2);
   for (QComboBox * Edit : { LocalDirectoryEdit, RemoteDirectoryEdit })
   {
     connect(Edit, &QComboBox::currentTextChanged, this, [this]() { DirectoryEditChange(); });

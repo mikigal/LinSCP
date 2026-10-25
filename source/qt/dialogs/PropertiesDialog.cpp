@@ -520,8 +520,7 @@ void TPropertiesDialog::LoadInfo()
     setWindowTitle(ToQString(FMTLOAD(PROPERTIES_FILES_CAPTION, (File->FileName))));
     LinksToLabelLabel->hide();
     LinksToLabel->hide();
-    QIcon Icon = QIcon::fromTheme(QStringLiteral("document-multiple"), QIcon::fromTheme(QStringLiteral("edit-copy")));
-    FileIconImage->setPixmap(Icon.pixmap(IconSize, IconSize));
+    LoadDialogImage(FileIconImage, L"Multiple Files");
   }
 
   ChecksumGroup->setVisible(!FMultipleChecksum);

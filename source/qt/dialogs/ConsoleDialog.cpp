@@ -15,7 +15,6 @@
 #include <QDialog>
 #include <QFontDatabase>
 #include <QGridLayout>
-#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -78,16 +77,19 @@ TConsoleDialog::TConsoleDialog() :
   FPrevTerminalClose = NULL;
 
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
+  // upstream's layout: the image, the command, the note and the directory
+  // in rows, Close and Help on the right
   QGridLayout * Grid = new QGridLayout();
+  Grid->addWidget(CreateDialogImage(this, L"Open console window"), 0, 0, 3, 1, Qt::AlignTop);
   QLabel * Label1 = new QLabel(tr("Enter &command:"), this);
   Label1->setObjectName(QStringLiteral("Label1"));
-  Grid->addWidget(Label1, 0, 0);
+  Grid->addWidget(Label1, 0, 1);
   CommandEdit = new THistoryComboBox(this);
   CommandEdit->setObjectName(QStringLiteral("CommandEdit"));
   CommandEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   Label1->setBuddy(CommandEdit);
   connect(CommandEdit, &QComboBox::currentTextChanged, this, [this]() { UpdateControls(); });
-  Grid->addWidget(CommandEdit, 0, 1);
+  Grid->addWidget(CommandEdit, 0, 2);
   ExecuteButton = new QPushButton(tr("&Execute"), this);
   ExecuteButton->setObjectName(QStringLiteral("ExecuteButton"));
   ExecuteButton->setDefault(true);
@@ -96,18 +98,28 @@ TConsoleDialog::TConsoleDialog() :
     CommandEdit->SaveToHistory();
     ExecuteCommand();
   });
-  Grid->addWidget(ExecuteButton, 0, 2);
+  Grid->addWidget(ExecuteButton, 0, 3);
+  CancelBtn = new QPushButton(tr("Close"), this);
+  CancelBtn->setObjectName(QStringLiteral("CancelBtn"));
+  CancelBtn->setAutoDefault(false);
+  connect(CancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+  Grid->addWidget(CancelBtn, 0, 4);
+  QLabel * Label4 = new QLabel(tr("Do not execute commands that require user-input or data transfer"), this);
+  Label4->setObjectName(QStringLiteral("Label4"));
+  Grid->addWidget(Label4, 1, 1, 1, 3);
+  QPushButton * HelpButton = new QPushButton(tr("&Help"), this);
+  HelpButton->setObjectName(QStringLiteral("HelpButton"));
+  HelpButton->setAutoDefault(false);
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"Console.dfm")); });
+  Grid->addWidget(HelpButton, 1, 4);
   QLabel * Label2 = new QLabel(tr("Current directory:"), this);
   Label2->setObjectName(QStringLiteral("Label2"));
-  Grid->addWidget(Label2, 1, 0);
+  Grid->addWidget(Label2, 2, 1);
   DirectoryLabel = new QLabel(this);
   DirectoryLabel->setObjectName(QStringLiteral("DirectoryLabel"));
   DirectoryLabel->setTextFormat(Qt::PlainText);
-  Grid->addWidget(DirectoryLabel, 1, 1, 1, 2);
-  QLabel * Label4 = new QLabel(tr("Do not execute commands that require user-input or data transfer"), this);
-  Label4->setObjectName(QStringLiteral("Label4"));
-  Grid->addWidget(Label4, 2, 0, 1, 3);
-  Grid->setColumnStretch(1, 1);
+  Grid->addWidget(DirectoryLabel, 2, 2, 1, 2);
+  Grid->setColumnStretch(2, 1);
   MainLayout->addLayout(Grid);
 
   OutputMemo = new QPlainTextEdit(this);
@@ -140,20 +152,6 @@ TConsoleDialog::TConsoleDialog() :
   addAction(AdjustWindow);
   OutputMemo->addActions({ EditCopy, EditSelectAll, Separator, AdjustWindow });
   MainLayout->addWidget(OutputMemo, 1);
-
-  QHBoxLayout * ButtonsLayout = new QHBoxLayout();
-  ButtonsLayout->addStretch(1);
-  CancelBtn = new QPushButton(tr("Close"), this);
-  CancelBtn->setObjectName(QStringLiteral("CancelBtn"));
-  CancelBtn->setAutoDefault(false);
-  connect(CancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-  ButtonsLayout->addWidget(CancelBtn);
-  QPushButton * HelpButton = new QPushButton(tr("&Help"), this);
-  HelpButton->setObjectName(QStringLiteral("HelpButton"));
-  HelpButton->setAutoDefault(false);
-  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"Console.dfm")); });
-  ButtonsLayout->addWidget(HelpButton);
-  MainLayout->addLayout(ButtonsLayout);
 
   resize(fontMetrics().averageCharWidth() * 100, fontMetrics().height() * 30);
 }

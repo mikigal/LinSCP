@@ -76,6 +76,7 @@ void TMessageParams::Reset()
   NeverAskAgainTitle = L"";
   NeverAskAgainAnswer = 0;
   NeverAskAgainCheckedInitially = false;
+  ImageName = L"";
   CustomCaption = L"";
 }
 //---------------------------------------------------------------------------
@@ -139,25 +140,26 @@ TMessageForm::TMessageForm(const UnicodeString & Msg, TStrings * MoreMessages, T
     DefaultAnswer = qaRetry;
   }
 
-  QStyle::StandardPixmap Icon;
+  // upstream's images of the types
+  UnicodeString ImageName;
   UnicodeString Caption;
   switch (Type)
   {
     case qtConfirmation:
-      Icon = QStyle::SP_MessageBoxQuestion;
+      ImageName = L"Help Blue";
       Caption = DelphiResourceString("Vcl_Consts_SMsgDlgConfirm", L"Confirm");
       break;
     case qtWarning:
-      Icon = QStyle::SP_MessageBoxWarning;
+      ImageName = L"Warning";
       Caption = DelphiResourceString("Vcl_Consts_SMsgDlgWarning", L"Warning");
       break;
     case qtError:
-      Icon = QStyle::SP_MessageBoxCritical;
+      ImageName = L"Error";
       Caption = DelphiResourceString("Vcl_Consts_SMsgDlgError", L"Error");
       break;
     default:
       DebugAssert(Type == qtInformation);
-      Icon = QStyle::SP_MessageBoxInformation;
+      ImageName = L"Information";
       Caption = DelphiResourceString("Vcl_Consts_SMsgDlgInformation", L"Information");
       break;
   }
@@ -171,11 +173,11 @@ TMessageForm::TMessageForm(const UnicodeString & Msg, TStrings * MoreMessages, T
   QHBoxLayout * ContentsLayout = new QHBoxLayout();
   MainLayout->addLayout(ContentsLayout);
 
-  QLabel * Image = new QLabel(this);
-  Image->setObjectName(QStringLiteral("Image"));
-  int IconSize = style()->pixelMetric(QStyle::PM_MessageBoxIconSize, nullptr, this);
-  Image->setPixmap(style()->standardIcon(Icon, nullptr, this).pixmap(IconSize, IconSize));
-  Image->setAlignment(Qt::AlignTop);
+  if ((Params != NULL) && !Params->ImageName.IsEmpty())
+  {
+    ImageName = Params->ImageName;
+  }
+  QLabel * Image = CreateDialogImage(this, ImageName);
   ContentsLayout->addWidget(Image, 0, Qt::AlignTop);
   ContentsLayout->addSpacing(style()->pixelMetric(QStyle::PM_LayoutHorizontalSpacing, nullptr, this));
 

@@ -121,9 +121,15 @@ TOpenDirectoryDialog::TOpenDirectoryDialog() :
   FUpdating = 0;
 
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
+  // The image left of the directory, as upstream's
+  QHBoxLayout * TopLayout = new QHBoxLayout();
+  TopLayout->addWidget(CreateDialogImage(this, L"Open folder"), 0, Qt::AlignTop);
+  QVBoxLayout * DirectoryLayout = new QVBoxLayout();
+  TopLayout->addLayout(DirectoryLayout, 1);
+  MainLayout->addLayout(TopLayout);
   EditLabel = new QLabel(tr("&Open directory:"), this);
   EditLabel->setObjectName(QStringLiteral("EditLabel"));
-  MainLayout->addWidget(EditLabel);
+  DirectoryLayout->addWidget(EditLabel);
   QHBoxLayout * EditLayout = new QHBoxLayout();
   for (QComboBox ** Edit : { &LocalDirectoryEdit, &RemoteDirectoryEdit })
   {
@@ -143,7 +149,7 @@ TOpenDirectoryDialog::TOpenDirectoryDialog() :
   LocalDirectoryBrowseButton = CreateButton(this, QStringLiteral("LocalDirectoryBrowseButton"), tr("B&rowse..."));
   connect(LocalDirectoryBrowseButton, &QPushButton::clicked, this, [this]() { LocalDirectoryBrowseButtonClick(); });
   EditLayout->addWidget(LocalDirectoryBrowseButton);
-  MainLayout->addLayout(EditLayout);
+  DirectoryLayout->addLayout(EditLayout);
 
   PageControl = new QTabWidget(this);
   PageControl->setObjectName(QStringLiteral("PageControl"));

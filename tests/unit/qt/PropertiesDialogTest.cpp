@@ -108,7 +108,7 @@ TEST(PropertiesDialogTest, MultipleFilesWithDirectoryCalculateSize)
   std::unique_ptr<TStrings> Algs(new TStringList());
 
   TRemoteProperties Properties = TRemoteProperties::CommonProperties(Files.List.get());
-  QString Title, FileText, SizeBefore, SizeAfter;
+  QString Title, FileText, SizeBefore, SizeAfter, Image;
   bool OwnerViewVisible = false;
   bool OwnerComboVisible = true;
   bool RecursiveVisible = false;
@@ -118,6 +118,7 @@ TEST(PropertiesDialogTest, MultipleFilesWithDirectoryCalculateSize)
   {
     Title = Dialog->windowTitle();
     FileText = Child<QLineEdit>(Dialog, "FileLabel")->text();
+    Image = Child<QLabel>(Dialog, "FileIconImage")->property("automationImageName").toString();
     SizeBefore = Child<QLineEdit>(Dialog, "SizeLabel")->text();
     OwnerViewVisible = Child<QLineEdit>(Dialog, "OwnerView")->isVisible();
     OwnerComboVisible = Child<QComboBox>(Dialog, "OwnerComboBox")->isVisible();
@@ -142,6 +143,7 @@ TEST(PropertiesDialogTest, MultipleFilesWithDirectoryCalculateSize)
   ASSERT_TRUE(Result);
   EXPECT_EQ(Title, QStringLiteral("a.txt, ... Properties"));
   EXPECT_EQ(FileText, QStringLiteral("1 file, 1 folder"));
+  EXPECT_EQ(Image, QStringLiteral("Multiple Files"));
   EXPECT_EQ(SizeBefore, QStringLiteral("Unknown"));
   EXPECT_EQ(SizeAfter, QStringLiteral("4.88 KB (5,000 B)"));
   EXPECT_EQ(Calculations, 1);

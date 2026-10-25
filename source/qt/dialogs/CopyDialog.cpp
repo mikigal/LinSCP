@@ -101,6 +101,7 @@ private:
   int FCopyParamAttrs;
   bool FSaveSettings;
 
+  QLabel * Image;
   QLabel * DirectoryLabel;
   THistoryComboBox * DirectoryEdit;
   QPushButton * LocalDirectoryBrowseButton;
@@ -135,10 +136,17 @@ TCopyDialog::TCopyDialog(bool ToRemote, bool Move, TStrings * FileList, int Opti
   FSaveSettings = false;
 
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
+  // The image left of the directory, as upstream's
+  QHBoxLayout * TopLayout = new QHBoxLayout();
+  Image = CreateDialogImage(this, L"Download File");
+  TopLayout->addWidget(Image, 0, Qt::AlignTop);
+  QVBoxLayout * TargetLayout = new QVBoxLayout();
+  TopLayout->addLayout(TargetLayout, 1);
+  MainLayout->addLayout(TopLayout);
   DirectoryLabel = new QLabel(this);
   DirectoryLabel->setObjectName(QStringLiteral("DirectoryLabel"));
   DirectoryLabel->setTextFormat(Qt::PlainText);
-  MainLayout->addWidget(DirectoryLabel);
+  TargetLayout->addWidget(DirectoryLabel);
   QHBoxLayout * DirectoryLayout = new QHBoxLayout();
   DirectoryEdit = new THistoryComboBox(this);
   DirectoryEdit->setObjectName(FToRemote ? QStringLiteral("RemoteDirectoryEdit") : QStringLiteral("LocalDirectoryEdit"));
@@ -151,7 +159,7 @@ TCopyDialog::TCopyDialog(bool ToRemote, bool Move, TStrings * FileList, int Opti
   LocalDirectoryBrowseButton->setAutoDefault(false);
   connect(LocalDirectoryBrowseButton, &QPushButton::clicked, this, [this]() { LocalDirectoryBrowseButtonClick(); });
   DirectoryLayout->addWidget(LocalDirectoryBrowseButton);
-  MainLayout->addLayout(DirectoryLayout);
+  TargetLayout->addLayout(DirectoryLayout);
 
   CopyParamGroup = new QGroupBox(tr("Transfer settings"), this);
   CopyParamGroup->setObjectName(QStringLiteral("CopyParamGroup"));
@@ -233,16 +241,20 @@ void TCopyDialog::AdjustTransferControls()
     DirectoryLabel->setText(ToQString(Caption));
   }
 
+  UnicodeString ImageName;
   UnicodeString ACaption;
   if (!FMove)
   {
     ACaption = LoadStr(FToRemote ? COPY_COPY_TOREMOTE_CAPTION : COPY_COPY_TOLOCAL_CAPTION);
+    ImageName = FToRemote ? L"Upload File" : L"Download File";
   }
   else
   {
     ACaption = LoadStr(FToRemote ? COPY_MOVE_TOREMOTE_CAPTION : COPY_MOVE_TOLOCAL_CAPTION);
+    ImageName = FToRemote ? L"Upload File Remove Original" : L"Download File Remove Original";
   }
   setWindowTitle(ToQString(ACaption));
+  LoadDialogImage(Image, ImageName);
 }
 //---------------------------------------------------------------------------
 void TCopyDialog::AdjustControls()

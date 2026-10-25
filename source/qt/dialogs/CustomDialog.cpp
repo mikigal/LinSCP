@@ -33,8 +33,10 @@ TCustomDialog::TCustomDialog(QWidget * Parent) :
   QDialog(Parent != nullptr ? Parent : QApplication::activeWindow())
 {
   QVBoxLayout * MainLayout = new QVBoxLayout(this);
+  FContentsLayout = new QHBoxLayout();
   FControlsLayout = new QVBoxLayout();
-  MainLayout->addLayout(FControlsLayout);
+  FContentsLayout->addLayout(FControlsLayout, 1);
+  MainLayout->addLayout(FContentsLayout);
   MainLayout->addStretch(1);
 
   FButtons = new QDialogButtonBox(this);
@@ -56,6 +58,11 @@ void TCustomDialog::AddDialogButton(QPushButton * Button)
 void TCustomDialog::SetHelpKeyword(const UnicodeString & HelpKeyword)
 {
   AddHelpButton(FButtons, HelpKeyword);
+}
+//---------------------------------------------------------------------------
+void TCustomDialog::AddImage(const UnicodeString & ImageName)
+{
+  FContentsLayout->insertWidget(0, CreateDialogImage(this, ImageName), 0, Qt::AlignTop);
 }
 //---------------------------------------------------------------------------
 QLabel * TCustomDialog::CreateLabel(const UnicodeString & Caption)
@@ -1113,6 +1120,8 @@ TRemoteMoveDialog::TRemoteMoveDialog(bool Multi, TDirectoryExistsEvent OnDirecto
   setWindowTitle(ToQString(LoadStr(REMOTE_MOVE_TITLE)));
   FMulti = Multi;
   FOnDirectoryExists = OnDirectoryExists;
+
+  AddImage(L"Move L to R");
 
   Combo = new THistoryComboBox(this);
   Combo->setObjectName(QStringLiteral("Combo"));
