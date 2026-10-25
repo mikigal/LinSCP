@@ -237,6 +237,10 @@ public:
   void SetTreeSize(int Value);
   void SetStatusBarVisible(bool Visible);
   bool GetStatusBarVisible() const;
+  // The status bar of the panel, in the window's of the Explorer; back below
+  // the files
+  QWidget * GetStatusPanel() const { return FStatusPanel; }
+  void AttachStatusPanel();
   // The sort, the widths, the visibility and the order of the columns, in
   // the format of upstream's DirViewParams
   UnicodeString GetDirViewParams() const;
@@ -282,6 +286,7 @@ protected:
   TPathLabel * FPathLabel;
   // What the path combo box shows (a path is typed instead)
   QString FComboDisplayText;
+  QAction * FAddressLabelAction;
   TToolbar * PathToolbar;
   TToolbar * HistoryToolbar;
   TToolbar * NavigationToolbar;

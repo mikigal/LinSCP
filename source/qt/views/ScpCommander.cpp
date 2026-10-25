@@ -12,6 +12,7 @@
 
 #include "DirModel.h"
 #include "DirPanel.h"
+#include "HistoryComboBox.h"
 #include "PathLabel.h"
 #include "ProgressForm.h"
 #include "ScpCommander.h"
@@ -76,6 +77,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FHotkeysToolbar = nullptr;
   FCustomCommandsToolbar = nullptr;
   FCustomCommandsToolbarMenu = nullptr;
+  FCommandLineToolbar = nullptr;
+  FCommandLineCombo = nullptr;
   CreateEditorManager();
 
   // The tabs of the sessions, the file panels below them, the queue below
@@ -610,6 +613,7 @@ void TScpCommanderForm::CreateMenus()
   UpdatePanelMenus();
   FOptionsMenu->addSeparator();
   FOptionsMenu->addAction(SessionsTabsAction2);
+  FOptionsMenu->addAction(CommandLinePanelAction);
   FOptionsMenu->addAction(StatusBarAction);
   FOptionsMenu->addMenu(QueueViewMenu);
   FOptionsMenu->addSeparator();
@@ -673,8 +677,9 @@ void TScpCommanderForm::CreateMenus()
   FViewMenu = NewMenu(tr("&View"), "ViewMenu");
   FViewMenu->addMenu(FToolbarsMenu);
   FViewMenu->addAction(SessionsTabsAction2);
-  FRemotePanel->FillOptionsMenu(FViewMenu);
+  FViewMenu->addAction(StatusBarAction);
   FViewMenu->addMenu(QueueViewMenu);
+  FViewMenu->addAction(FRemotePanel->GetTreeAction());
   FViewMenu->addSeparator();
   FRemotePanel->FillMenu(FViewMenu, nullptr);
   FViewMenu->addAction(ShowHiddenFilesAction);
@@ -820,6 +825,10 @@ void TScpCommanderForm::UpdateActions()
   UpdateFileCommandActions();
   UpdateSideActions();
   UpdateSortActions();
+  if (FCommandLineCombo != nullptr)
+  {
+    FCommandLineCombo->setEnabled(!Busy && CanConsole());
+  }
   CustomCommandsEnterAction->setEnabled(!Busy);
   CustomCommandsCustomizeAction->setEnabled(!Busy);
   UpdateCustomCommandsToolbarState();
@@ -910,7 +919,20 @@ void TScpCommanderForm::ApplyInterface()
   bool Explorer = IsExplorer();
   ArrangeMenus();
   CreateToolbars();
-  statusBar()->setVisible(Explorer || AppConfiguration->CommanderStatusBar);
+  CommandLinePanelAction->setVisible(!Explorer);
+  CommandLinePanelAction->setChecked((FCommandLineToolbar != nullptr) && !FCommandLineToolbar->isHidden());
+  // The Explorer has one status bar (upstream's), with the remote panel's
+  if (Explorer)
+  {
+    statusBar()->insertWidget(0, FRemotePanel->GetStatusPanel(), 1);
+    FRemotePanel->GetStatusPanel()->show();
+  }
+  else if (FRemotePanel->GetStatusPanel()->parentWidget() != FRemotePanel)
+  {
+    statusBar()->removeWidget(FRemotePanel->GetStatusPanel());
+    FRemotePanel->AttachStatusPanel();
+  }
+  statusBar()->setVisible(Explorer ? AppConfiguration->ExplorerPanel.StatusBar : AppConfiguration->CommanderStatusBar);
   StatusBarAction->setChecked(!statusBar()->isHidden());
   FLocalPanel->setVisible(!Explorer);
   if (Explorer)
@@ -960,7 +982,8 @@ void TScpCommanderForm::RestorePanelsParams()
     // The tree of the Explorer is left of the files
     bool TreeOnLeft = AppConfiguration->TreeOnLeft || (IsExplorer() && (Panel == FRemotePanel));
     Panel->SetDirViewParams(PanelConfiguration.DirViewParams);
-    Panel->SetStatusBarVisible(PanelConfiguration.StatusBar);
+    // The Explorer's is the window's
+    Panel->SetStatusBarVisible(PanelConfiguration.StatusBar || (IsExplorer() && (Panel == FRemotePanel)));
     Panel->SetTreeOnLeft(TreeOnLeft);
     Panel->SetTreeVisible(PanelConfiguration.DriveView);
     Panel->SetTreeSize(TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight);
@@ -983,7 +1006,8 @@ void TScpCommanderForm::StorePanelsParams()
     TPanelConfiguration PanelConfiguration = PanelParams(Panel);
     bool TreeOnLeft = AppConfiguration->TreeOnLeft || (IsExplorer() && (Panel == FRemotePanel));
     PanelConfiguration.DirViewParams = Panel->GetDirViewParams();
-    PanelConfiguration.StatusBar = Panel->GetStatusBarVisible();
+    PanelConfiguration.StatusBar =
+      (IsExplorer() && (Panel == FRemotePanel)) ? !statusBar()->isHidden() : Panel->GetStatusBarVisible();
     PanelConfiguration.DriveView = Panel->GetTreeVisible();
     if (Panel->GetTreeVisible())
     {

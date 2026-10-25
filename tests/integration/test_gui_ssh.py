@@ -1010,6 +1010,34 @@ class GuiSshTest(GuiSshTestCase):
                      'the remote directory')
         self.assertEqual(gui.quit(), 0)
 
+    def test_command_line(self):
+        remote = self.work_dir('remote')
+        (remote / 'file.txt').write_text('content\n')
+        gui = self.start_gui(ini=site_ini(remote=remote))
+        self.login(gui, 'local')
+
+        # upstream's command line, hidden by default: its command in the
+        # console, kept in the history
+        self.assertFalse(gui.get(W + 'CommandLineToolbar')['visible'])
+        gui.trigger(W + 'CommandLinePanelAction')
+        self.assertTrue(gui.get(W + 'CommandLineToolbar')['visible'])
+        self.assertEqual(gui.get(W + 'CommandLinePromptLabel')['text'], 'Command $')
+        gui.set(W + 'CommandLineCombo', 'cat file.txt; echo done')
+        gui.key('Return', W + 'CommandLineCombo')
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/OK')
+        gui.wait_window('ConsoleDialog', 60)
+        C = 'ConsoleDialog/'
+        gui.wait_for(lambda: 'done' in gui.get(C + 'OutputMemo')['text'], 30, 'the output')
+        self.assertIn('content', gui.get(C + 'OutputMemo')['text'])
+        gui.click(C + 'CancelBtn')
+        gui.wait_no_window('ConsoleDialog')
+        self.assertEqual(gui.get(W + 'CommandLineCombo')['text'], '')
+        self.assertIn('cat file.txt; echo done', gui.get(W + 'CommandLineCombo')['items'])
+        self.assertEqual(gui.quit(), 0)
+        ini = gui.config_file.read_text()
+        self.assertIn('CommandLine=1:BottomDock:', ini)
+
     def test_custom_commands(self):
         remote = self.work_dir('remote')
         (remote / 'a.txt').write_text('one\ntwo\nthree\n')
@@ -1722,9 +1750,25 @@ class GuiSshTest(GuiSshTestCase):
         tree = gui.get(W + 'RemoteDriveView')['geometry']
         view = gui.get(W + 'RemoteDirView')['geometry']
         self.assertLess(tree['x'], view['x'])
-        # The Explorer's toolbars
+        # The Explorer's toolbars: the address bar (the remote panel's path
+        # toolbar), the standard buttons with the remote commands; one
+        # status bar
+        self.assertTrue(gui.get(W + 'AddressToolbar')['visible'])
+        self.assertEqual(gui.get(W + 'AddressToolbar/RemotePathComboBox')['text'], str(remote))
         self.assertTrue(gui.get(W + 'ButtonsToolbar')['visible'])
+        buttons = [child['name'] for child in gui.get(W + 'ButtonsToolbar', children=True)['children']]
+        for name in ('RemoteBackAction', 'RemoteParentDirAction', 'RemoteFindFilesAction2', 'RemoteCopyAction',
+                     'RemoteEditAction2', 'CurrentOpenAction', 'RemoteDeleteAction2', 'NewSubmenuItem',
+                     'FullSynchronizeAction2'):
+            self.assertIn(name, buttons)
         self.assertTrue(gui.get(W + 'TransferToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'SelectionToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'RemoteFileToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'RemotePathLabel')['visible'])
+        self.assertTrue(gui.get(W + 'RemoteStatusBar')['visible'])
+        status = gui.get(W + 'RemoteStatusBar')['geometry']
+        self.assertGreater(status['y'], gui.get(W + 'RemoteDirView')['geometry']['y'] +
+                           gui.get(W + 'RemoteDirView')['geometry']['height'])
         menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
         self.assertEqual(menus, ['ExplorerFilesMenu', 'ExplorerCommandsMenu', 'MarkMenu', 'TabsMenu', 'ViewMenu',
                                  'HelpMenu'])
@@ -1747,9 +1791,12 @@ class GuiSshTest(GuiSshTestCase):
         gui.click(R + 'OKButton')
         gui.wait_no_window('PreferencesDialog')
         gui.wait_for(lambda: gui.get(W + 'LocalPanel')['visible'], what='the local panel')
-        # The Commander's, the hot keys hidden by default (as upstream)
+        # The Commander's, the hot keys hidden by default (as upstream); the
+        # path toolbar back in its panel
         self.assertTrue(gui.get(W + 'CommandsToolbar')['visible'])
         self.assertFalse(gui.get(W + 'Toolbar2Toolbar')['visible'])
+        self.assertTrue(gui.get(W + 'RemoteTopDock/RemotePathToolbar')['visible'])
+        self.assertTrue(gui.get(W + 'RemotePanel/RemoteStatusBar')['visible'])
         self.assertEqual(gui.get(W + 'CurrentCopyAction')['shortcut'], 'F5')
         menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
         self.assertEqual(menus[0], 'LocalMenuButton')

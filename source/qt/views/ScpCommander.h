@@ -39,6 +39,7 @@ class QTabBar;
 class QTreeWidget;
 class TBookmark;
 class TEditorManager;
+class THistoryComboBox;
 struct TEditedFileData;
 struct TEditorData;
 class TBookmarkList;
@@ -161,6 +162,9 @@ private:
   std::vector<QAction *> FToolbarBands;
   TToolbar * FHotkeysToolbar;
   TToolbar * FCustomCommandsToolbar;
+  // upstream's command line (CommandLineToolbar)
+  TToolbar * FCommandLineToolbar;
+  THistoryComboBox * FCommandLineCombo;
   QPointer<QMenu> FCustomCommandsToolbarMenu;
   QMenu * FToolbarsMenu;
   QMenu * FToolbarIconSizeMenu;
@@ -370,6 +374,7 @@ private:
   QAction * LockToolbarsAction;
   QAction * SelectiveToolbarTextAction;
   QAction * StatusBarAction;
+  QAction * CommandLinePanelAction;
   QAction * CurrentSortAscendingAction;
   QAction * FileColorsPreferencesAction;
   QAction * CurrentEditWithAction;
@@ -407,6 +412,11 @@ private:
   void UpdateCustomCommandsToolbar();
   void UpdateCustomCommandsToolbarState();
   void CreateHotkeysToolbar();
+  void CreateCommandLineToolbar();
+  // The command of the command line in the console (upstream's
+  // ExecuteCommandLine)
+  void ExecuteCommandLine();
+  void CommandLinePanelActionExecute();
   // Of the window and of the panels
   std::vector<TToolbar *> AllToolbars() const;
   void RestoreToolbarsLayout();

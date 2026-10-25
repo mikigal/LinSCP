@@ -671,6 +671,13 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   ForwardMenu->setObjectName(Prefix + QStringLiteral("ForwardMenu"));
   connect(ForwardMenu, &QMenu::aboutToShow, this, [this]() { FillHistoryMenu(ForwardMenu, false); });
 
+  // The Explorer's address bar is the path toolbar with its label
+  QLabel * AddressLabel = new QLabel(tr("Address"), PathToolbar);
+  AddressLabel->setObjectName(Prefix + QStringLiteral("AddressLabel"));
+  AddressLabel->setContentsMargins(4, 0, 4, 0);
+  AddressLabel->setBuddy(PathComboBox);
+  FAddressLabelAction = PathToolbar->AddControl(AddressLabel);
+  FAddressLabelAction->setVisible(false);
   PathToolbar->AddControl(PathComboBox);
   PathToolbar->AddMenuButton(OpenDirAction, OpenDirMenu, tmmSplit);
   PathToolbar->AddMenuButton(FilterAction, FilterMenu, tmmSplit);
@@ -896,6 +903,15 @@ void TDirPanel::SetStatusBarVisible(bool Visible)
 bool TDirPanel::GetStatusBarVisible() const
 {
   return !FStatusPanel->isHidden();
+}
+//---------------------------------------------------------------------------
+void TDirPanel::AttachStatusPanel()
+{
+  if (FStatusPanel->parentWidget() != this)
+  {
+    static_cast<QBoxLayout *>(layout())->addWidget(FStatusPanel);
+    FStatusPanel->show();
+  }
 }
 //---------------------------------------------------------------------------
 void TDirPanel::CreateSortMenu(const QString & Prefix)
@@ -1757,6 +1773,7 @@ void TDirPanel::SetAddressBar(bool AddressBar, bool ShowFullAddress)
   {
     FAddressBar = AddressBar;
     FShowFullAddress = ShowFullAddress;
+    FAddressLabelAction->setVisible(FAddressBar);
     if (IsReady())
     {
       UpdatePathComboBox();

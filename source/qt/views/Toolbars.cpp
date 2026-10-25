@@ -15,6 +15,7 @@
 #include <QWidgetAction>
 
 #include <algorithm>
+#include <iterator>
 #include <memory>
 //---------------------------------------------------------------------------
 namespace
@@ -121,7 +122,7 @@ void TToolbar::AddSubmenu(const QString & Name, QMenu * Menu, bool ImageAndText)
   AddEntry(Entry);
 }
 //---------------------------------------------------------------------------
-void TToolbar::AddControl(QWidget * Widget)
+QAction * TToolbar::AddControl(QWidget * Widget)
 {
   QWidgetAction * Action = new QWidgetAction(this);
   Action->setDefaultWidget(Widget);
@@ -132,6 +133,7 @@ void TToolbar::AddControl(QWidget * Widget)
   Entry.ImageAndText = false;
   Entry.Visible = true;
   AddEntry(Entry);
+  return Action;
 }
 //---------------------------------------------------------------------------
 void TToolbar::AddSeparatorItem()
@@ -340,6 +342,7 @@ void TToolbarDock::AddToolbar(TToolbar * Toolbar, bool Stretch)
   Docked.Row = static_cast<int>(FToolbars.size());
   Docked.Pos = 0;
   Docked.Stretch = Stretch;
+  Docked.Undocked = false;
   FToolbars.push_back(Docked);
 }
 //---------------------------------------------------------------------------
@@ -351,6 +354,17 @@ void TToolbarDock::SetPosition(TToolbar * Toolbar, int Row, int Pos)
     {
       Docked.Row = Row;
       Docked.Pos = Pos;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TToolbarDock::SetUndocked(TToolbar * Toolbar, bool Undocked)
+{
+  for (TDocked & Docked : FToolbars)
+  {
+    if (Docked.Toolbar == Toolbar)
+    {
+      Docked.Undocked = Undocked;
     }
   }
 }
@@ -372,7 +386,10 @@ std::vector<TToolbar *> TToolbarDock::GetToolbars() const
   std::vector<TToolbar *> Result;
   for (const TDocked & Docked : FToolbars)
   {
-    Result.push_back(Docked.Toolbar);
+    if (!Docked.Undocked)
+    {
+      Result.push_back(Docked.Toolbar);
+    }
   }
   return Result;
 }
@@ -391,7 +408,8 @@ void TToolbarDock::Arrange()
     }
     delete Item;
   }
-  std::vector<TDocked> Sorted = FToolbars;
+  std::vector<TDocked> Sorted;
+  std::copy_if(FToolbars.begin(), FToolbars.end(), std::back_inserter(Sorted), [](const TDocked & D) { return !D.Undocked; });
   std::stable_sort(Sorted.begin(), Sorted.end(), [](const TDocked & A, const TDocked & B)
   {
     return (A.Row < B.Row) || ((A.Row == B.Row) && (A.Pos < B.Pos));

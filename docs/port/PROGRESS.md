@@ -34,6 +34,15 @@ upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
   encrypted, with the cipher in its hint) and the time of the session; a double-click shows the
   server and protocol information. The "new tab" tab has upstream's caption. The size of the
   window and its maximized state are kept (`WindowParams`; the compositor places it).
+- The Explorer's toolbars as upstream's: the address bar (the remote panel's path toolbar, in the
+  window while the Explorer is shown), the standard buttons (the history, the navigation, Find
+  Files, Download, Edit, Open, Delete, Properties, Rename, New, the console, the SSH client, the
+  synchronizations), the selection, the sessions, the preferences (with the queue and the tree),
+  the sort, the transfer settings and the custom commands; its View menu as upstream's. The
+  Explorer has one status bar, with the remote panel's selection and the session's panels.
+- The command line (upstream's `CommandLineToolbar`, Options > Command Line, Ctrl+Shift+M): the
+  commands typed into it run in the shell of the session, in the console, kept in the history
+  of upstream's `Commands`.
 
 Decisions:
 

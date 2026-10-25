@@ -47,8 +47,8 @@ public:
   // A button of a submenu (New): with the title and the icon of the menu,
   // its name is upstream's of the item
   void AddSubmenu(const QString & Name, QMenu * Menu, bool ImageAndText = false);
-  // A label or a combo box (not hidden by the user)
-  void AddControl(QWidget * Widget);
+  // A label or a combo box (not hidden by the user); its action hides it
+  QAction * AddControl(QWidget * Widget);
   void AddSeparatorItem();
   // A button, a separator before the button of another action
   void InsertButton(QAction * Before, QAction * Action, bool ImageAndText = false);
@@ -112,6 +112,9 @@ public:
 
   void AddToolbar(TToolbar * Toolbar, bool Stretch = false);
   void SetPosition(TToolbar * Toolbar, int Row, int Pos);
+  // The toolbar is elsewhere for a while (the Explorer's address bar is the
+  // remote panel's path toolbar), not arranged
+  void SetUndocked(TToolbar * Toolbar, bool Undocked);
   void GetPosition(TToolbar * Toolbar, int & Row, int & Pos) const;
   std::vector<TToolbar *> GetToolbars() const;
   // The toolbars in their rows, in the order of their positions
@@ -124,6 +127,7 @@ private:
     int Row;
     int Pos;
     bool Stretch;
+    bool Undocked;
   };
   std::vector<TDocked> FToolbars;
   QVBoxLayout * FLayout;

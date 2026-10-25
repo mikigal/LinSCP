@@ -6,8 +6,10 @@
 #include <QtTools.h>
 
 #include <AppConfiguration.h>
+#include <TextsWin.h>
 
 #include "DirPanel.h"
+#include "HistoryComboBox.h"
 #include "ScpCommander.h"
 #include "Toolbars.h"
 
@@ -15,6 +17,7 @@
 #include <QActionGroup>
 #include <QComboBox>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QStatusBar>
@@ -206,6 +209,10 @@ void TScpCommanderForm::CreateToolbarActions()
     FToolbarIconSizeMenu->addAction(Action);
   }
 
+  CommandLinePanelAction = CreateAction("CommandLinePanelAction", tr("Comma&nd Line"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_M) }, &TScpCommanderForm::CommandLinePanelActionExecute);
+  CommandLinePanelAction->setToolTip(tr("Hide/show command line"));
+  CommandLinePanelAction->setCheckable(true);
   StatusBarAction = CreateAction("StatusBarAction", tr("Status &Bar"), QString(),
     {}, &TScpCommanderForm::StatusBarActionExecute);
   StatusBarAction->setToolTip(tr("Hide/show status bar"));
@@ -429,6 +436,18 @@ void TScpCommanderForm::DestroyToolbars()
   for (TToolbar * Toolbar : FToolbars)
   {
     removeToolBar(Toolbar);
+    // The Explorer's address bar goes back to its panel
+    if (Toolbar == FRemotePanel->GetPathToolbar())
+    {
+      delete Toolbar->GetBandAction();
+      Toolbar->SetBandAction(nullptr);
+      Toolbar->setObjectName(QStringLiteral("RemotePathToolbar"));
+      Toolbar->setMovable(false);
+      Toolbar->setFloatable(false);
+      Toolbar->setParent(FRemotePanel->GetTopDock());
+      FRemotePanel->GetTopDock()->SetUndocked(Toolbar, false);
+      continue;
+    }
     // The transfer list is created again
     if (Toolbar->isAncestorOf(FTransferList))
     {
@@ -440,6 +459,8 @@ void TScpCommanderForm::DestroyToolbars()
   FToolbarBands.clear();
   FHotkeysToolbar = nullptr;
   FCustomCommandsToolbar = nullptr;
+  FCommandLineCombo = nullptr;
+  FCommandLineToolbar = nullptr;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateTransferToolbar()
@@ -602,28 +623,114 @@ void TScpCommanderForm::CreateCommanderToolbars()
   CreateTransferToolbar();
   CreateCustomCommandsToolbar();
   CreateHotkeysToolbar();
+  CreateCommandLineToolbar();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CreateCommandLineToolbar()
+{
+  // upstream's command line (CommandLineToolbar): commands for the shell
+  // of the session, shown in the console
+  TToolbar * Toolbar = NewToolbar("CommandLineToolbar", tr("Command Line"), this);
+  QLabel * PromptLabel = new QLabel(Toolbar);
+  PromptLabel->setObjectName(QStringLiteral("CommandLinePromptLabel"));
+  PromptLabel->setContentsMargins(4, 0, 4, 0);
+  PromptLabel->setText(ToQString(LoadStr(COMMAND_LINE_LABEL) + L" $"));
+  Toolbar->AddControl(PromptLabel);
+  FCommandLineCombo = new THistoryComboBox(Toolbar);
+  FCommandLineCombo->setObjectName(QStringLiteral("CommandLineCombo"));
+  FCommandLineCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  FCommandLineCombo->SetHistoryKey(L"Commands");
+  PromptLabel->setBuddy(FCommandLineCombo);
+  Toolbar->AddControl(FCommandLineCombo);
+  connect(FCommandLineCombo->lineEdit(), &QLineEdit::returnPressed, this, [this]()
+  {
+    ExecuteHandler([this]() { ExecuteCommandLine(); });
+  });
+  // The action of the window (in the Options menu) shows and hides it
+  Toolbar->SetBandAction(CommandLinePanelAction);
+  FCommandLineToolbar = Toolbar;
+  FToolbars.push_back(Toolbar);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ExecuteCommandLine()
+{
+  // upstream's ExecuteCommandLine
+  TTerminal * Terminal = GetTerminal();
+  UnicodeString Command = FCommandLineCombo->GetText();
+  if (!IsBusy() && !Command.IsEmpty() && CanConsole() &&
+      Terminal->AllowedAnyCommand(Command) && EnsureCommandSessionFallback(fcAnyCommand))
+  {
+    FCommandLineCombo->SaveToHistory();
+    FCommandLineCombo->SetText(UnicodeString());
+    OpenConsole(Command);
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateExplorerToolbars()
 {
+  auto PanelAction = [this](const char * Name)
+  {
+    return FRemotePanel->findChild<QAction *>(QString::fromLatin1(Name));
+  };
+  auto WindowAction = [this](const char * Name)
+  {
+    return findChild<QAction *>(QString::fromLatin1(Name), Qt::FindDirectChildrenOnly);
+  };
+  auto Menu = [this](const char * Name)
+  {
+    return findChild<QMenu *>(QString::fromLatin1(Name));
+  };
+
+  // The address bar (upstream's AddressToolbar) is the remote panel's path
+  // toolbar, in the window while the Explorer is shown
+  TToolbar * Address = FRemotePanel->GetPathToolbar();
+  FRemotePanel->GetTopDock()->SetUndocked(Address, true);
+  Address->setObjectName(QStringLiteral("AddressToolbar"));
+  FToolbarBands.push_back(
+    NewBandAction(Address, "ExplorerAddressBandAction", tr("&Address"), tr("Hide/show address toolbar")));
+  FToolbars.push_back(Address);
+
   // The Explorer's standard buttons (upstream's ButtonsToolbar)
   TToolbar * Buttons = NewToolbar("ButtonsToolbar", tr("Commands"), this);
-  Buttons->AddButton(NewSessionAction, true);
+  Buttons->AddMenuButton(PanelAction("RemoteBackAction"), Menu("RemoteBackMenu"), tmmSplit);
+  Buttons->AddMenuButton(PanelAction("RemoteForwardAction"), Menu("RemoteForwardMenu"), tmmSplit);
+  Buttons->AddSeparatorItem();
+  Buttons->AddButton(PanelAction("RemoteParentDirAction"));
+  Buttons->AddButton(PanelAction("RemoteRootDirAction"));
+  Buttons->AddButton(PanelAction("RemoteHomeDirAction"));
+  Buttons->AddButton(PanelAction("RemoteRefreshAction"));
   Buttons->AddSeparatorItem();
   Buttons->AddButton(RemoteFindFilesAction2, true);
-  Buttons->AddButton(CurrentCopyAction, true);
-  Buttons->AddButton(CurrentEditAction, true);
-  Buttons->AddButton(CurrentDeleteAction);
-  Buttons->AddButton(CurrentPropertiesAction, true);
-  Buttons->AddButton(CurrentRenameAction);
-  Buttons->AddButton(CurrentCreateDirAction);
   Buttons->AddSeparatorItem();
+  Buttons->AddMenuButton(WindowAction("RemoteCopyAction"), Menu("RemoteCopyMenu"), tmmSplit, true);
+  Buttons->AddSeparatorItem();
+  Buttons->AddMenuButton(WindowAction("RemoteEditAction2"), Menu("RemoteEditMenu"), tmmSplit, true);
+  Buttons->AddButton(CurrentOpenAction);
+  Buttons->AddButton(WindowAction("RemoteDeleteAction2"));
+  Buttons->AddMenuButton(WindowAction("RemotePropertiesAction2"), Menu("RemotePropertiesMenu"), tmmSplit, true);
+  Buttons->AddButton(WindowAction("RemoteRenameAction2"));
+  Buttons->AddSeparatorItem();
+  Buttons->AddSubmenu(QStringLiteral("NewSubmenuItem"), Menu("RemoteNewMenu"), true);
   Buttons->AddButton(ConsoleAction);
+  Buttons->AddButton(PuttyAction);
+  Buttons->AddSeparatorItem();
   Buttons->AddButton(SynchronizeAction);
   Buttons->AddButton(FullSynchronizeAction2, true);
   FToolbarBands.push_back(
     NewBandAction(Buttons, "ExplorerToolbarBandAction", tr("&Standard Buttons"), tr("Hide/show standard toolbar")));
   FToolbars.push_back(Buttons);
+
+  TToolbar * Selection = NewToolbar("SelectionToolbar", tr("Selection"), this);
+  Selection->AddButton(SelectAction);
+  Selection->AddButton(UnselectAction);
+  Selection->AddSeparatorItem();
+  Selection->AddButton(SelectAllAction);
+  Selection->AddButton(InvertSelectionAction);
+  Selection->AddButton(ClearSelectionAction);
+  Selection->AddButton(RestoreSelectionAction);
+  FToolbarBands.push_back(
+    NewBandAction(Selection, "ExplorerSelectionBandAction", tr("Se&lection Buttons"), tr("Hide/show selection toolbar")));
+  FToolbars.push_back(Selection);
 
   CreateSessionToolbar();
 
@@ -757,16 +864,9 @@ void TScpCommanderForm::RestoreToolbarsLayout()
       {
         Dock->SetPosition(Toolbar, Position.Row, Position.Pos);
       }
-      // In the Explorer, the remote panel has the path and the navigation
-      // only (the window's toolbars have the rest)
-      bool Visible = Position.Visible;
-      if (IsExplorer() && (Panel == FRemotePanel))
-      {
-        Visible =
-          (Toolbar == Panel->GetPathToolbar()) || (Toolbar == Panel->GetHistoryToolbar()) ||
-          (Toolbar == Panel->GetNavigationToolbar());
-      }
-      SetToolbarVisible(Toolbar, Visible);
+      // In the Explorer, the window's toolbars have the remote panel's
+      // commands
+      SetToolbarVisible(Toolbar, Position.Visible && !(IsExplorer() && (Panel == FRemotePanel)));
     }
     Dock->Arrange();
   }
@@ -863,6 +963,18 @@ void TScpCommanderForm::SelectiveToolbarTextActionExecute()
 {
   AppConfiguration->SelectiveToolbarText = SelectiveToolbarTextAction->isChecked();
   ApplyToolbarsOptions();
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CommandLinePanelActionExecute()
+{
+  if (FCommandLineToolbar != nullptr)
+  {
+    SetToolbarVisible(FCommandLineToolbar, CommandLinePanelAction->isChecked());
+    if (CommandLinePanelAction->isChecked())
+    {
+      FCommandLineCombo->setFocus();
+    }
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::StatusBarActionExecute()
@@ -967,6 +1079,7 @@ void TScpCommanderForm::ToolbarPopup(TToolbar * Toolbar, const QPoint & GlobalPo
   Menu.addAction(SessionsTabsAction2);
   if (!IsExplorer())
   {
+    Menu.addAction(CommandLinePanelAction);
     for (QAction * Band : FToolbarBands)
     {
       if (Band->objectName() == QStringLiteral("ToolBar2Action"))
