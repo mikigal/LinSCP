@@ -25,6 +25,7 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QMenu>
 #include <QPushButton>
 #include <QTimer>
 #include <QToolButton>
@@ -107,6 +108,8 @@ private:
   QPushButton * StartButton;
   QPushButton * StopButton;
   QPushButton * MinimizeButton;
+  QToolButton * MinimizeDropDownButton;
+  QMenu * MinimizeMenu;
   QPushButton * CancelButton;
   QWidget * LogPanel;
   QTreeWidget * LogView;
@@ -123,7 +126,7 @@ private:
   void Abort(bool Close);
   void AbortStop();
   void SaveHistory();
-  void Minimize();
+  void Minimize(bool ToTray);
   void DoAbort(TObject * Sender, bool Close);
   void DoLog(TSynchronizeController * Controller, TSynchronizeLogEntry Entry, const UnicodeString Message);
   void DoLogInternal(TSynchronizeLogEntry Entry, const UnicodeString & Message,
@@ -257,10 +260,27 @@ TSynchronizeDialog::TSynchronizeDialog() :
   StopButton->setVisible(false);
   connect(StopButton, &QPushButton::clicked, this, [this]() { Stop(); });
   ButtonsLayout->addWidget(StopButton);
-  // Upstream's split button also minimizes to the system tray (M7)
+  // Upstream's split button: the drop down minimizes to the system tray
+  // too (unless that is what the button does already)
   MinimizeButton = CreateButton(this, "MinimizeButton", tr("&Minimize"));
-  connect(MinimizeButton, &QPushButton::clicked, this, [this]() { Minimize(); });
+  connect(MinimizeButton, &QPushButton::clicked, this, [this]() { Minimize(false); });
   ButtonsLayout->addWidget(MinimizeButton);
+  MinimizeDropDownButton = new QToolButton(this);
+  MinimizeDropDownButton->setObjectName(QStringLiteral("MinimizeDropDownButton"));
+  MinimizeDropDownButton->setArrowType(Qt::DownArrow);
+  MinimizeMenu = new QMenu(this);
+  MinimizeMenu->setObjectName(QStringLiteral("MinimizeMenu"));
+  QAction * MinimizeItem = MinimizeMenu->addAction(tr("&Minimize"));
+  MinimizeItem->setObjectName(QStringLiteral("Minimize1"));
+  connect(MinimizeItem, &QAction::triggered, this, [this]() { Minimize(false); });
+  QAction * MinimizeToTrayItem = MinimizeMenu->addAction(tr("Minimize to System &Tray"));
+  MinimizeToTrayItem->setObjectName(QStringLiteral("MinimizetoTray1"));
+  connect(MinimizeToTrayItem, &QAction::triggered, this, [this]() { Minimize(true); });
+  connect(MinimizeDropDownButton, &QToolButton::clicked, this, [this]()
+  {
+    MinimizeMenu->popup(MinimizeDropDownButton->mapToGlobal(QPoint(0, MinimizeDropDownButton->height())));
+  });
+  ButtonsLayout->addWidget(MinimizeDropDownButton);
   CancelButton = CreateButton(this, "CancelButton", tr("Close"));
   connect(CancelButton, &QPushButton::clicked, this, &QDialog::reject);
   ButtonsLayout->addWidget(CancelButton);
@@ -350,6 +370,8 @@ void TSynchronizeDialog::UpdateControls()
   OptionsGroup->setEnabled(!FSynchronizing);
   CopyParamGroup->setEnabled(!FSynchronizing);
   MinimizeButton->setVisible(FSynchronizing && FLAGCLEAR(FOptions, soNoMinimize));
+  MinimizeDropDownButton->setVisible(
+    MinimizeButton->isVisible() && !AppConfiguration->MinimizeToTray && IsSystemTrayAvailable());
   SynchronizeSelectedOnlyCheck->setEnabled(OptionsGroup->isEnabled() && FLAGSET(FOptions, soAllowSelectedOnly));
 
   UnicodeString InfoStr = FCopyParams.GetInfoStr(L"; ", ActualCopyParamAttrs());
@@ -657,28 +679,15 @@ void TSynchronizeDialog::Stop()
   if (FMinimizedByMe)
   {
     FMinimizedByMe = false;
-    QWidget * MainWindow = (parentWidget() != nullptr) ? parentWidget()->window() : nullptr;
-    if ((MainWindow != nullptr) && MainWindow->isMinimized())
-    {
-      MainWindow->showNormal();
-    }
-    if (isMinimized())
-    {
-      showNormal();
-    }
+    RestoreApplication();
     activateWindow();
   }
 }
 //---------------------------------------------------------------------------
-void TSynchronizeDialog::Minimize()
+void TSynchronizeDialog::Minimize(bool ToTray)
 {
   // Upstream minimizes the application
-  QWidget * MainWindow = (parentWidget() != nullptr) ? parentWidget()->window() : nullptr;
-  if (MainWindow != nullptr)
-  {
-    MainWindow->showMinimized();
-  }
-  showMinimized();
+  MinimizeApplication(ToTray);
   FMinimizedByMe = true;
 }
 //---------------------------------------------------------------------------

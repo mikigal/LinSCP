@@ -220,14 +220,9 @@ bool TScpCommanderForm::CommandLineFromAnotherInstance(const QStringList & Argum
     QTimer::singleShot(0, this, [this, Arguments, ActivationToken]()
     {
       // This action is initiated from another process, so it's likely that
-      // our window is not visible, and user won't see what is going on;
-      // the token (of the other instance's launcher) allows activating it
-      if (!ActivationToken.isEmpty())
-      {
-        qputenv("XDG_ACTIVATION_TOKEN", ActivationToken.toUtf8());
-      }
-      activateWindow();
-      raise();
+      // our window is not visible, and user won't see what is going on
+      // (the token of the other instance's launcher allows activating it)
+      ActivateFromOtherApplication(ActivationToken);
       if (CanCommandLineFromAnotherInstance())
       {
         TOptions Params;

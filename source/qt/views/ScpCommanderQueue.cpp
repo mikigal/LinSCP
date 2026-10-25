@@ -252,6 +252,7 @@ void TScpCommanderForm::UpdateQueueStatus(bool QueueChanging)
     TAutoFlag Flag(FQueueStatusUpdating);
     FQueueController->UpdateQueueStatus(FQueueStatus);
   }
+  SetQueueProgress();
   UpdateQueueLabel();
 
   UpdateQueueView();
@@ -391,6 +392,7 @@ void TScpCommanderForm::RefreshQueueItems()
     if (Updated)
     {
       UpdateQueueActions();
+      SetQueueProgress();
       UpdateQueueLabel();
     }
   }
@@ -525,20 +527,49 @@ void TScpCommanderForm::AddQueueItem(TTransferDirection Direction, TStrings * Fi
   FQueue->AddItem(QueueItem);
 }
 //---------------------------------------------------------------------------
-void TScpCommanderForm::QueueEvent(TTerminal * /*Terminal*/, TTerminalQueue * /*Queue*/, TQueueEvent Event)
+void TScpCommanderForm::QueueEvent(TTerminal * ATerminal, TTerminalQueue * /*Queue*/, TQueueEvent Event)
 {
-  // Upstream notifies (a balloon of the tray icon) that the queue got
-  // empty or waits for the user, and signals the completion of the
-  // operation (a beep); the notifications are of milestone M7
+  UnicodeString Message;
+  TNotificationClickEvent OnClick = nullptr;
+  // Upstream: the queue panel is hidden or the window minimized; on Wayland
+  // the window does not know it is minimized, it is in the background
+  bool QueueInvisible = !QueuePanel->isVisible() || !isActiveWindow();
   switch (Event)
   {
     case qeEmptyButMonitored:
+      if ((ATerminal != GetTerminal()) || QueueInvisible)
+      {
+        Message = LoadStr(BALLOON_QUEUE_EMPTY);
+        OnClick = [this](const QString & ActivationToken)
+        {
+          ActivateFromOtherApplication(ActivationToken);
+          if (!QueuePanel->isVisible() && !IsBusy())
+          {
+            QueueViewShowChange(qvShow);
+          }
+        };
+      }
+      break;
+
     case qeEmpty:
+      // Upstream beeps once a long operation completes (off by default)
+      break;
+
     case qePendingUserAction:
+      if ((ATerminal != GetTerminal()) ||
+          (QueueInvisible && !GUIConfiguration->QueueAutoPopup))
+      {
+        Message = LoadStr(BALLOON_QUEUE_USER_ACTION);
+      }
       break;
 
     default:
       DebugFail();
+  }
+
+  if (!Message.IsEmpty())
+  {
+    Notify(ATerminal, Message, qtInformation, false, OnClick);
   }
 }
 //---------------------------------------------------------------------------

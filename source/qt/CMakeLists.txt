@@ -9,11 +9,13 @@ add_library(openscp_qt STATIC
   app/ExportedFiles.cpp
   app/LocalFiles.cpp
   app/LocalProcesses.cpp
+  app/Notifications.cpp
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
   app/ShortCuts.cpp
   app/SingleInstance.cpp
+  app/TaskbarProgress.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
   dialogs/ConsoleDialog.cpp
@@ -46,6 +48,7 @@ add_library(openscp_qt STATIC
   views/ScpCommanderClipboard.cpp
   views/ScpCommanderCommandLine.cpp
   views/ScpCommanderCustomCommands.cpp
+  views/ScpCommanderDesktop.cpp
   views/ScpCommanderDragDrop.cpp
   views/ScpCommanderEditor.cpp
   views/ScpCommanderQueue.cpp

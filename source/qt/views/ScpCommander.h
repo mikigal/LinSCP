@@ -15,7 +15,10 @@
 
 #include "QueueController.h"
 
+#include <Notifications.h>
+
 #include <QMainWindow>
+#include <QPointer>
 #include <QStringList>
 
 #include <mutex>
@@ -27,6 +30,7 @@ class QLabel;
 class QMenu;
 class QMimeData;
 class QSplitter;
+class QSystemTrayIcon;
 class QUrl;
 class QTimer;
 class QToolBar;
@@ -44,6 +48,7 @@ class TPasteWatcher;
 class TProgressForm;
 class TRemoteDirPanel;
 class TSynchronizeProgressForm;
+class TTaskbarProgress;
 class TTerminal;
 //---------------------------------------------------------------------------
 // How a transfer was started (upstream's TTransferOperationParam)
@@ -73,6 +78,11 @@ public:
   // The command line of another instance: false when it cannot be taken
   // now, its session is opened later
   bool CommandLineFromAnotherInstance(const QStringList & Arguments, const QString & ActivationToken);
+  // Minimizes the application (upstream's ApplicationMinimize), to the
+  // system tray when asked or configured (ScpCommanderDesktop.cpp)
+  void MinimizeApplication(bool ToTray);
+  void RestoreApplication();
+  static bool IsSystemTrayAvailable();
   // The active session changed (opened, closed)
   void TerminalChanged();
   void OperationProgress(TFileOperationProgressType & ProgressData);
@@ -94,6 +104,7 @@ public:
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
+  virtual void changeEvent(QEvent * Event) override;
   virtual bool eventFilter(QObject * Object, QEvent * Event) override;
 
 private:
@@ -148,6 +159,13 @@ private:
   // The temporary directories of the files downloaded for other
   // applications, deleted after a while
   std::vector<UnicodeString> FDelayedDeletionList;
+  // The desktop integration (ScpCommanderDesktop.cpp)
+  std::unique_ptr<TNotifications> FNotifications;
+  std::unique_ptr<TTaskbarProgress> FTaskbarProgress;
+  QSystemTrayIcon * FTrayIcon;
+  // The windows hidden to the system tray or minimized with the application
+  std::vector<QPointer<QWidget>> FHiddenWindows;
+  std::vector<QPointer<QWidget>> FMinimizedWindows;
   // The remote files copied to the clipboard, of the session
   std::unique_ptr<TStrings> FClipboardFileList;
   TTerminal * FClipboardTerminal;
@@ -427,6 +445,19 @@ private:
   QList<QUrl> TemporarilyDownloadForOtherApplication(TStrings * FileList);
   void AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay);
   void DoDelayedDeletion();
+  // The desktop integration (ScpCommanderDesktop.cpp)
+  // A notification (upstream's Notify and PopupTrayBalloon), of the session
+  void Notify(TTerminal * ATerminal, const UnicodeString & Message, TQueryType Type,
+    bool Important = false, TNotificationClickEvent OnClick = nullptr);
+  // The application wants the attention of the user, when in the
+  // background
+  void FlashOnBackground();
+  // Restores and activates the application for another application (with
+  // its activation token)
+  void ActivateFromOtherApplication(const QString & ActivationToken);
+  void UpdateTrayIcon();
+  void SetTaskbarProgress(TFileOperationProgressType * ProgressData);
+  void SetQueueProgress();
   // The command line (ScpCommanderCommandLine.cpp)
   // Opens the session of the command line (upstream's GetLoginData), with
   // the site manager when it is not complete; false when not opened

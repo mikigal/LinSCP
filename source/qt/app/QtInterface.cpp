@@ -170,3 +170,26 @@ bool __fastcall TextFromClipboard(UnicodeString & Text, bool Trim)
   return Result;
 }
 //---------------------------------------------------------------------------
+void MinimizeApplication(bool ToTray)
+{
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  if ((Manager != NULL) && (Manager->ScpExplorer != NULL))
+  {
+    Manager->ScpExplorer->MinimizeApplication(ToTray);
+  }
+}
+//---------------------------------------------------------------------------
+void RestoreApplication()
+{
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  if ((Manager != NULL) && (Manager->ScpExplorer != NULL))
+  {
+    Manager->ScpExplorer->RestoreApplication();
+  }
+}
+//---------------------------------------------------------------------------
+bool IsSystemTrayAvailable()
+{
+  return TScpCommanderForm::IsSystemTrayAvailable();
+}
+//---------------------------------------------------------------------------

@@ -98,6 +98,14 @@ public:
   void SetDefaultKeyFile(const UnicodeString & value) { FDefaultKeyFile = value; }
   bool GetExternalSessionInExistingInstance() const { return FExternalSessionInExistingInstance; }
   void SetExternalSessionInExistingInstance(bool value);
+  bool GetBalloonNotifications() const { return FBalloonNotifications; }
+  void SetBalloonNotifications(bool value);
+  int GetNotificationsTimeout() const { return FNotificationsTimeout; }
+  void SetNotificationsTimeout(int value);
+  bool GetMinimizeToTray() const { return FMinimizeToTray; }
+  void SetMinimizeToTray(bool value);
+  bool GetFlashTaskbar() const { return FFlashTaskbar; }
+  void SetFlashTaskbar(bool value);
   TBookmarkList * GetBookmarks(UnicodeString Key);
   void SetBookmarks(UnicodeString Key, TBookmarkList * value);
   TBookmarkList * GetSharedBookmarks();
@@ -166,6 +174,16 @@ public:
   // already, if it can
   __declspec(property(get = GetExternalSessionInExistingInstance, put = SetExternalSessionInExistingInstance))
     bool ExternalSessionInExistingInstance;
+  // The notifications of the desktop are shown (upstream's balloons of the
+  // tray icon), for the seconds
+  __declspec(property(get = GetBalloonNotifications, put = SetBalloonNotifications)) bool BalloonNotifications;
+  __declspec(property(get = GetNotificationsTimeout, put = SetNotificationsTimeout)) int NotificationsTimeout;
+  // Minimizing the application (by its own commands) hides it to the
+  // system tray
+  __declspec(property(get = GetMinimizeToTray, put = SetMinimizeToTray)) bool MinimizeToTray;
+  // The button of the task manager asks for attention when the application
+  // needs the user in the background
+  __declspec(property(get = GetFlashTaskbar, put = SetFlashTaskbar)) bool FlashTaskbar;
   // The bookmarks of a site (by its session key), copied when set
   __declspec(property(get = GetBookmarks, put = SetBookmarks)) TBookmarkList * Bookmarks[];
   __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
@@ -216,6 +234,10 @@ private:
   bool FDDFakeFile;
   int FDDDeleteDelay;
   bool FExternalSessionInExistingInstance;
+  bool FBalloonNotifications;
+  int FNotificationsTimeout;
+  bool FMinimizeToTray;
+  bool FFlashTaskbar;
   UnicodeString FDefaultKeyFile;
   TBookmarks * FBookmarks;
   TCustomCommandList * FCustomCommandList;

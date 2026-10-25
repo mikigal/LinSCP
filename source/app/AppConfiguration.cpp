@@ -103,6 +103,10 @@ void __fastcall TAppConfiguration::Default()
   FDDFakeFile = IsKdeDesktop();
   FDDDeleteDelay = 120;
   FExternalSessionInExistingInstance = true;
+  FBalloonNotifications = true;
+  FNotificationsTimeout = 10;
+  FMinimizeToTray = false;
+  FFlashTaskbar = true;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -204,6 +208,10 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(Enum,  FDDTransferConfirmation, L"DDTransferConfirmation2"); \
     KEY(Bool,    FDDFakeFile); \
     KEY(Bool,    FExternalSessionInExistingInstance); \
+    KEY(Bool,    FBalloonNotifications); \
+    KEY(Integer, FNotificationsTimeout); \
+    KEY(Bool,    FMinimizeToTray); \
+    KEY(Bool,    FFlashTaskbar); \
   ); \
   BLOCK(L"Interface\\Editor", CANCREATE, \
     KEYEX(String,  FEditor.FontName, L"FontName2"); \
@@ -561,6 +569,26 @@ UnicodeString __fastcall TAppConfiguration::GetDefaultKeyFile()
 void TAppConfiguration::SetExternalSessionInExistingInstance(bool value)
 {
   SET_CONFIG_PROPERTY(ExternalSessionInExistingInstance);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetBalloonNotifications(bool value)
+{
+  SET_CONFIG_PROPERTY(BalloonNotifications);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetNotificationsTimeout(int value)
+{
+  SET_CONFIG_PROPERTY(NotificationsTimeout);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetMinimizeToTray(bool value)
+{
+  SET_CONFIG_PROPERTY(MinimizeToTray);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetFlashTaskbar(bool value)
+{
+  SET_CONFIG_PROPERTY(FlashTaskbar);
 }
 //---------------------------------------------------------------------------
 TBookmarkList * TAppConfiguration::GetBookmarks(UnicodeString Key)

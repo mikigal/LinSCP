@@ -7,11 +7,14 @@ headless KWin session; its files are found over AT-SPI.
 """
 
 import json
+import os
+import sys
 import time
 import unittest
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+import desktop_services
 import guitests
 import test_gui_ssh as ssh
 import wlharness
@@ -62,6 +65,26 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.session.wait_for_window(title)
         return log
 
+    def start_desktop_services(self):
+        """The notification server, the tray and the task manager of a desktop
+        shell (tools/testenv/desktop_services.py)."""
+        log = self.session.logs / ('%s-desktop.events' % self.test_name)
+        process = self.session.spawn([sys.executable, desktop_services.__file__, '--log', str(log)],
+                                     log_name='%s-desktop' % self.test_name)
+
+        def stop():
+            process.terminate()
+            process.wait(10)
+
+        self.addCleanup(stop)
+        wlharness._wait_for(lambda: self.probe_events(log, 'ready'), 20, 'the desktop services')
+        return log
+
+    def desktop_call(self, method, *args):
+        self.session.run(['gdbus', 'call', '--session', '--dest', 'org.openscp.TestDesktop',
+                          '--object-path', '/org/openscp/TestDesktop', '--method', 'org.openscp.TestDesktop.' + method,
+                          *map(str, args)])
+
     @staticmethod
     def probe_events(log, name):
         if not log.exists():
@@ -86,6 +109,7 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         (local / 'up.txt').write_text('uploaded')
         (remote / 'down.txt').write_text('downloaded')
         (remote / 'sub').mkdir()
+        log = self.start_desktop_services()
         gui = self.start_commander(remote, local)
 
         # Upload: the copy dialog of drag and drop has "do not show again"
@@ -100,6 +124,11 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         gui.wait_idle()
         self.assertEqual((remote / 'up.txt').read_text(), 'uploaded')
         self.assertIn('up.txt', gui.names(W + 'RemoteDirView'))
+        # Which a notification tells (a click turns the dialog on again)
+        gui.wait_for(lambda: self.probe_events(log, 'notify'), what='the notification')
+        notification = self.probe_events(log, 'notify')[0]
+        self.assertEqual(notification['summary'], 'Transfer confirmation turned off')
+        self.assertIn('Click here to undo.', notification['body'])
 
         # Download without the dialog now
         gui.drag_real(gui.row_point(W + 'RemoteDirView', 'down.txt'), gui.screen_point(W + 'LocalDirView'))
@@ -346,6 +375,87 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.session.input('move', x, y, 'click', 'sleep', 300, 'key', 'ctrl+v')
         self.accept_host_key(gui)
         self.wait_remote_directory(gui, remote)
+        self.assertEqual(gui.quit(), 0)
+
+    def test_notifications(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'up.txt').write_text('in the background')
+        log = self.start_desktop_services()
+        # The queue is hidden
+        gui = self.start_commander(remote, local, '[Configuration\\Interface\\QueueView]\nShow=2\n')
+
+        # Notified once the background transfer is done
+        self.select(gui, 'Local', 'up.txt')
+        gui.trigger(W + 'CurrentCopyAction')
+        gui.wait_window('CopyDialog')
+        gui.set('CopyDialog/QueueCheck2', True)
+        gui.click('CopyDialog/OkButton')
+        gui.wait_for(lambda: self.probe_events(log, 'notify'), 60, 'the notification')
+        notification = self.probe_events(log, 'notify')[0]
+        self.assertEqual(notification['summary'], 'local \u2013 Information')
+        self.assertEqual(notification['body'], 'Transfer queue is empty.')
+        self.assertEqual(notification['app_name'], 'OpenSCP')
+        self.assertEqual(notification['hints']['desktop-entry'], 'openscp')
+        self.assertIn('default', notification['actions'])
+        self.assertEqual((remote / 'up.txt').read_text(), 'in the background')
+        self.assertFalse(gui.get(W + 'QueuePanel')['visible'])
+
+        # A click shows the queue
+        self.desktop_call('ClickNotification', notification['id'])
+        gui.wait_for(lambda: gui.get(W + 'QueuePanel')['visible'], what='the queue')
+        self.assertEqual(gui.quit(), 0)
+
+    def test_taskbar_progress(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'big.bin').write_bytes(os.urandom(1024 * 1024))
+        log = self.start_desktop_services()
+        # 256 KB/s
+        gui = self.start_commander(remote, local, '[Configuration\\Interface\\CopyParam]\nCPSLimit=262144\n')
+
+        self.select(gui, 'Local', 'big.bin')
+        gui.trigger(W + 'CurrentCopyAction')
+        self.confirm_copy(gui, "Upload file 'big.bin' to remote directory:")
+        self.assertEqual((remote / 'big.bin').stat().st_size, 1024 * 1024)
+        updates = [event for event in self.probe_events(log, 'launcher')]
+        self.assertTrue(all(update['uri'] == 'application://openscp.desktop' for update in updates))
+        shown = [update['properties']['progress'] for update in updates if update['properties']['progress-visible']]
+        self.assertTrue(any(0 < progress < 1 for progress in shown), updates)
+        self.assertEqual(shown, sorted(shown))
+        # Hidden once done
+        self.assertFalse(updates[-1]['properties']['progress-visible'])
+        self.assertEqual(gui.quit(), 0)
+
+    def test_minimize_to_tray(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        log = self.start_desktop_services()
+        gui = self.start_commander(remote, local)
+
+        D = 'SynchronizeDialog/'
+        gui.trigger(W + 'SynchronizeAction')
+        gui.wait_window('SynchronizeDialog')
+        gui.set(D + 'SynchronizeSynchronizeCheck', False)
+        gui.click(D + 'StartButton')
+        gui.wait_for(lambda: gui.get(D + 'StopButton')['visible'], 60, 'watching')
+        self.assertTrue(gui.get(D + 'MinimizeDropDownButton')['visible'])
+
+        gui.trigger(D + 'MinimizetoTray1')
+        gui.wait_for(lambda: self.probe_events(log, 'tray_register'), 30, 'the tray icon')
+        gui.wait_for(lambda: not gui.get('ScpCommanderForm')['visible'], what='the hidden window')
+        # Still watching
+        (local / 'new.txt').write_text('new')
+        gui.wait_for(lambda: (remote / 'new.txt').exists(), 60, 'the upload of the new file')
+
+        # A click on the icon restores the application
+        self.desktop_call('ActivateTrayItem')
+        gui.wait_for(lambda: gui.get('ScpCommanderForm')['visible'], what='the restored window')
+        gui.wait_for(lambda: self.probe_events(log, 'tray_unregister'), 30, 'the hidden tray icon')
+        gui.click(D + 'StopButton')
+        gui.wait_for(lambda: gui.get(D + 'StartButton')['visible'], what='stopped watching')
+        gui.click(D + 'CancelButton')
+        gui.wait_no_window('SynchronizeDialog')
         self.assertEqual(gui.quit(), 0)
 
 

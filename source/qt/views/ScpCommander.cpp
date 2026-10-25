@@ -7,6 +7,7 @@
 #include <ExportedFiles.h>
 #include <FileSystems.h>
 #include <LocalFiles.h>
+#include <TaskbarProgress.h>
 #include <TerminalManager.h>
 
 #include "DirModel.h"
@@ -61,6 +62,9 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FDragging = false;
   FDragExtracted = false;
   FClipboardTerminal = NULL;
+  FNotifications.reset(new TNotifications(nullptr));
+  FTaskbarProgress.reset(new TTaskbarProgress());
+  FTrayIcon = nullptr;
   CreateEditorManager();
 
   // The file panels, the queue below them
@@ -629,6 +633,7 @@ void TScpCommanderForm::UpdateCaption()
   TTerminal * Terminal = GetTerminal();
   UnicodeString SessionName = ((Terminal != NULL) && Terminal->Active) ? Terminal->SessionData->SessionName : UnicodeString();
   setWindowTitle(ToQString(FormatMainFormCaption(UnicodeString(), SessionName)));
+  UpdateTrayIcon();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::TerminalChanged()
@@ -772,6 +777,14 @@ void TScpCommanderForm::HandleDoNotShowCopyDialogAgain(bool DragDrop, bool DoNot
   {
     if (DragDrop)
     {
+      if (AppConfiguration->DDTransferConfirmation == asAuto)
+      {
+        Notify(NULL, LoadStr(DD_TRANSFER_CONFIRM_OFF2), qtInformation, false, [this](const QString & ActivationToken)
+        {
+          AppConfiguration->DDTransferConfirmation = asOn;
+          ActivateFromOtherApplication(ActivationToken);
+        });
+      }
       AppConfiguration->DDTransferConfirmation = asOff;
     }
     else
@@ -810,6 +823,8 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
       FLAGMASK(DisableNewerOnly, cpaNoNewerOnly);
     int OutputOptions =
       FLAGMASK(DragDrop && (AppConfiguration->DDTransferConfirmation == asAuto), cooDoNotShowAgain);
+    // Particularly when called for another application (a drop, a paste)
+    FlashOnBackground();
     Result = DoCopyDialog(Direction == tdToRemote, Type == ttMove,
       FileList, TargetDirectory, &CopyParam, Options, CopyParamAttrs, &OutputOptions);
 
@@ -1606,6 +1621,8 @@ void TScpCommanderForm::DestroyProgressForm()
 {
   delete FProgressForm;
   FProgressForm = nullptr;
+  // The progress of the queue, if any
+  SetQueueProgress();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateProgressForm(TSynchronizeProgress * SynchronizeProgress)
@@ -1633,6 +1650,7 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
 
   if ((FProgressForm != nullptr) && ProgressData.InProgress)
   {
+    SetTaskbarProgress(&ProgressData);
     FProgressForm->SetProgressData(ProgressData);
     // The form is freed when the operation finishes while the events are
     // processed

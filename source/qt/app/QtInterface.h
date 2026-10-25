@@ -150,6 +150,14 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
 
+// app/QtInterface.cpp: minimizing the whole application (upstream's
+// ApplicationMinimize and ApplicationRestore), to the system tray when
+// asked or configured; done by the main window
+void MinimizeApplication(bool ToTray = false);
+void RestoreApplication();
+// The desktop has a system tray (a StatusNotifierWatcher)
+bool IsSystemTrayAvailable();
+
 // dialogs/ConsoleDialog.cpp
 void DoConsoleDialog(TTerminal * Terminal, const UnicodeString & Command = UnicodeString(),
   const TStrings * Log = NULL);
