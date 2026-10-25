@@ -1,6 +1,7 @@
-"""End-to-end tests of the GUI against the test VM (milestone M5): the
+"""End-to-end tests of the GUI against the test VM (milestones M5 and M6): the
 authentication window with password and keyboard-interactive prompts, which
-the local sshd cannot do without root, and transfers over a real network.
+the local sshd cannot do without root, transfers over a real network, and
+the properties of S3 objects (their ACL and tags).
 
 Skipped without the VM (OPENSCP_TEST_VM, see vmtests) or the GUI
 (OPENSCP_GUI).
@@ -12,9 +13,10 @@ import uuid
 
 import vmtests
 from guitests import GuiTestCase
-from vmtests import FileSystemFiles, setting
+from vmtests import FileSystemFiles, S3Objects, setting
 
 W = 'ScpCommanderForm/'
+P = 'PropertiesDialog/'
 
 
 def setUpModule():
@@ -133,6 +135,86 @@ class GuiVmTest(GuiTestCase):
         gui.click('LoginDialog/CloseButton')
         gui.wait_no_window('LoginDialog')
         self.assertTrue(gui.get(W + 'RemoteNoSessionPage')['visible'])
+        self.assertEqual(gui.quit(), 0)
+
+
+class GuiS3Test(GuiTestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not vmtests.VM.services_active('openscp-s3'):
+            raise unittest.SkipTest('the S3 server of the test VM is not active')
+        super().setUpClass()
+
+    def setUp(self):
+        self.access_key, self.secret_key = vmtests.VM.output('cat /etc/openscp/s3-credentials').split()
+        self.bucket = 'gui-%s' % uuid.uuid4().hex[:8]
+        self.objects = S3Objects()
+        self.objects.make_dir('/' + self.bucket)
+        self.addCleanup(self.objects.remove, '/' + self.bucket)
+
+    def connect(self):
+        ini = '\n'.join([
+            '[Sessions\\s3]', 'HostName=%s' % vmtests.VM.host, 'PortNumber=%s' % setting('S3_PORT'),
+            'FSProtocol=7', 'UserName=%s' % self.access_key, 'S3UrlStyle=1',
+            'RemoteDirectory=/%s' % self.bucket]) + '\n'
+        gui = self.start_gui(ini=ini)
+        gui.wait_window('LoginDialog')
+        gui.select('LoginDialog/SessionTree', 's3')
+        gui.click('LoginDialog/LoginButton')
+        gui.wait_for(lambda: (gui.window('AuthenticateForm') is not None) and
+                     gui.get('AuthenticateForm/PasswordPanel')['visible'], 60, 'the secret key prompt')
+        gui.set('AuthenticateForm/PromptEdit1', self.secret_key)
+        gui.click('AuthenticateForm/PasswordOKButton')
+        gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
+        gui.wait_idle()
+        return gui
+
+    def open_properties(self, gui, name):
+        gui.focus(W + 'RemoteDirView')
+        gui.select(W + 'RemoteDirView', name)
+        gui.wait_idle()
+        gui.trigger(W + 'CurrentPropertiesAction')
+        gui.wait_window('PropertiesDialog')
+
+    def submit_properties(self, gui):
+        gui.click(P + 'OkButton')
+        gui.wait_no_window('PropertiesDialog')
+        gui.wait_idle()
+
+    def test_acl_and_tags(self):
+        self.objects.write('/%s/file.txt' % self.bucket, b'data')
+        gui = self.connect()
+        self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'file.txt'])
+
+        # Everyone may read the object
+        self.open_properties(gui, 'file.txt')
+        self.assertEqual(gui.get(P + 'RightsLabel')['text'], 'ACL:')
+        self.assertEqual(gui.get(P + 'OthersButton')['text'], '&Everyone')
+        self.assertFalse(gui.get(P + 'OthersWriteCheck')['visible'])
+        self.assertFalse(gui.get(P + 'OctalEdit')['visible'])
+        self.assertIn('Tags', gui.get(P + 'PageControl')['items'])
+        self.assertFalse(gui.get(P + 'OthersReadCheck')['checked'])
+        gui.click(P + 'OthersReadCheck')
+        self.screenshot('acl')
+        self.submit_properties(gui)
+        acl = vmtests.VM.output('openscp-s3 acl %s file.txt' % self.bucket).splitlines()
+        self.assertIn('http://acs.amazonaws.com/groups/global/AllUsers READ', acl)
+
+        # A tag
+        self.open_properties(gui, 'file.txt')
+        self.assertTrue(gui.get(P + 'OthersReadCheck')['checked'])
+        gui.set(P + 'PageControl', 'Tags')
+        self.assertEqual(gui.rows(P + 'TagsView'), [])
+        gui.click(P + 'AddTagButton')
+        gui.wait_window('TagDialog')
+        gui.set('TagDialog/KeyEdit', 'project')
+        gui.set('TagDialog/ValueEdit', 'openscp')
+        gui.click('TagDialog/OKButton')
+        gui.wait_no_window('TagDialog')
+        self.assertEqual(gui.rows(P + 'TagsView'), [['project', 'openscp']])
+        self.submit_properties(gui)
+        tags = vmtests.VM.output('openscp-s3 tags %s file.txt' % self.bucket).splitlines()
+        self.assertEqual(tags, ['project=openscp'])
         self.assertEqual(gui.quit(), 0)
 
 

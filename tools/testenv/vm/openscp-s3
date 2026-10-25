@@ -6,6 +6,9 @@
     openscp-s3 rb BUCKET             removes the bucket with its objects
     openscp-s3 put BUCKET KEY        stores standard input as the object
     openscp-s3 tree BUCKET [PREFIX]  prints "KEY SHA256" of the objects
+    openscp-s3 acl BUCKET KEY        prints "GRANTEE PERMISSION" of the object's
+                                     grants (the URI of a group, or the ID)
+    openscp-s3 tags BUCKET KEY       prints "KEY=VALUE" of the object's tags
 """
 
 import hashlib
@@ -48,6 +51,13 @@ def main(args):
         for key in objects(s3, bucket, args[2] if len(args) > 2 else ''):
             body = s3.get_object(Bucket=bucket, Key=key)['Body'].read()
             print('%s %s' % (key, hashlib.sha256(body).hexdigest()))
+    elif command == 'acl':
+        for grant in s3.get_object_acl(Bucket=bucket, Key=args[2])['Grants']:
+            grantee = grant['Grantee']
+            print('%s %s' % (grantee.get('URI') or grantee.get('ID'), grant['Permission']))
+    elif command == 'tags':
+        for tag in s3.get_object_tagging(Bucket=bucket, Key=args[2])['TagSet']:
+            print('%s=%s' % (tag['Key'], tag['Value']))
     else:
         raise SystemExit('unknown command %s' % command)
 
