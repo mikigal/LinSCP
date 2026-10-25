@@ -47,6 +47,14 @@ upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
   drop-down menu (Save As, Set Defaults), Login with its own (Login, Open in SSH Client), Close
   and Help (the documentation of the dialog); the split buttons are push buttons with a
   drop-down arrow (`dialogs/SplitButton.cpp`), so Login stays the default button.
+- The buttons of the dialogs as upstream's: a Help button wherever upstream has one, right of the
+  other buttons, opening the page of upstream's documentation of the dialog (or of the page of
+  the preferences and of the advanced site settings): the keywords are the `HelpKeyword`s of the
+  forms, which `tools/dfm2cpp` keeps with their texts (`FormHelpKeyword`); the split buttons of
+  upstream (Transfer settings with the presets, OK of the checklist, Minimize of keeping up to
+  date) are split buttons, not two. The synchronization dialog has upstream's layout (the
+  direction and the mode in rows, upstream's order of the options); the "do not show again" of
+  the copy dialog is below its buttons.
 
 Decisions:
 
@@ -56,6 +64,8 @@ Decisions:
   buttons of the toolbars have upstream's narrower drop-down arrows and separators (a proxy
   of the desktop's style). The window is 1200 pixels wide by default (upstream's 1090 for the
   wider fonts of the desktops), so that the panels' toolbars fit.
+- Help buttons are right of the other buttons, as upstream's, not where the desktop's button
+  boxes put them (left on KDE).
 - The local path combo box has the drives of Linux, not all the mount points: the root and the
   media mounted for the user; the home and the documents and desktop folders are upstream's
   special folders.

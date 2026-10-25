@@ -85,6 +85,7 @@ TCleanupDialog::TCleanupDialog() :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"Cleanup.dfm"));
 
   FindData();
   for (int Column = 0; Column < DataListView->columnCount(); Column++)

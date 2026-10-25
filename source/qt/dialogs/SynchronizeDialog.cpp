@@ -11,6 +11,7 @@
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
+#include "SplitButton.h"
 #include "RightsFrame.h"
 
 #include <QApplication>
@@ -103,12 +104,10 @@ private:
   QCheckBox * SaveSettingsCheck;
   QGroupBox * CopyParamGroup;
   QLabel * CopyParamLabel;
-  QPushButton * TransferSettingsButton;
-  QToolButton * TransferSettingsDropDownButton;
+  TSplitButton * TransferSettingsButton;
   QPushButton * StartButton;
   QPushButton * StopButton;
-  QPushButton * MinimizeButton;
-  QToolButton * MinimizeDropDownButton;
+  TSplitButton * MinimizeButton;
   QMenu * MinimizeMenu;
   QPushButton * CancelButton;
   QWidget * LogPanel;
@@ -241,17 +240,17 @@ TSynchronizeDialog::TSynchronizeDialog() :
   }
 
   QHBoxLayout * ButtonsLayout = new QHBoxLayout();
-  TransferSettingsButton = CreateButton(this, "TransferSettingsButton", tr("Transfer settin&gs..."));
+  // upstream's split button: the presets in its drop-down menu
+  TransferSettingsButton = new TSplitButton(this);
+  TransferSettingsButton->setText(tr("Transfer settin&gs..."));
+  TransferSettingsButton->setObjectName(QStringLiteral("TransferSettingsButton"));
+  TransferSettingsButton->setAutoDefault(false);
   connect(TransferSettingsButton, &QPushButton::clicked, this, [this]() { CopyParamGroupClick(); });
-  ButtonsLayout->addWidget(TransferSettingsButton);
-  TransferSettingsDropDownButton = new QToolButton(this);
-  TransferSettingsDropDownButton->setObjectName(QStringLiteral("TransferSettingsDropDownButton"));
-  TransferSettingsDropDownButton->setArrowType(Qt::DownArrow);
-  connect(TransferSettingsDropDownButton, &QToolButton::clicked, this, [this]()
+  connect(TransferSettingsButton, &TSplitButton::DropDownRequested, this, [this]()
   {
     CopyParamListPopup(TransferSettingsButton->mapToGlobal(QPoint(0, TransferSettingsButton->height())));
   });
-  ButtonsLayout->addWidget(TransferSettingsDropDownButton);
+  ButtonsLayout->addWidget(TransferSettingsButton);
   ButtonsLayout->addStretch(1);
   StartButton = CreateButton(this, "StartButton", tr("&Start"));
   connect(StartButton, &QPushButton::clicked, this, [this]() { Start(); });
@@ -262,12 +261,12 @@ TSynchronizeDialog::TSynchronizeDialog() :
   ButtonsLayout->addWidget(StopButton);
   // Upstream's split button: the drop down minimizes to the system tray
   // too (unless that is what the button does already)
-  MinimizeButton = CreateButton(this, "MinimizeButton", tr("&Minimize"));
+  MinimizeButton = new TSplitButton(this);
+  MinimizeButton->setText(tr("&Minimize"));
+  MinimizeButton->setObjectName(QStringLiteral("MinimizeButton"));
+  MinimizeButton->setAutoDefault(false);
   connect(MinimizeButton, &QPushButton::clicked, this, [this]() { Minimize(false); });
   ButtonsLayout->addWidget(MinimizeButton);
-  MinimizeDropDownButton = new QToolButton(this);
-  MinimizeDropDownButton->setObjectName(QStringLiteral("MinimizeDropDownButton"));
-  MinimizeDropDownButton->setArrowType(Qt::DownArrow);
   MinimizeMenu = new QMenu(this);
   MinimizeMenu->setObjectName(QStringLiteral("MinimizeMenu"));
   QAction * MinimizeItem = MinimizeMenu->addAction(tr("&Minimize"));
@@ -276,14 +275,13 @@ TSynchronizeDialog::TSynchronizeDialog() :
   QAction * MinimizeToTrayItem = MinimizeMenu->addAction(tr("Minimize to System &Tray"));
   MinimizeToTrayItem->setObjectName(QStringLiteral("MinimizetoTray1"));
   connect(MinimizeToTrayItem, &QAction::triggered, this, [this]() { Minimize(true); });
-  connect(MinimizeDropDownButton, &QToolButton::clicked, this, [this]()
-  {
-    MinimizeMenu->popup(MinimizeDropDownButton->mapToGlobal(QPoint(0, MinimizeDropDownButton->height())));
-  });
-  ButtonsLayout->addWidget(MinimizeDropDownButton);
+  MinimizeButton->SetDropDownMenu(MinimizeMenu);
   CancelButton = CreateButton(this, "CancelButton", tr("Close"));
   connect(CancelButton, &QPushButton::clicked, this, &QDialog::reject);
   ButtonsLayout->addWidget(CancelButton);
+  QPushButton * HelpButton = CreateButton(this, "HelpButton", tr("&Help"));
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"Synchronize.dfm")); });
+  ButtonsLayout->addWidget(HelpButton);
   MainLayout->addLayout(ButtonsLayout);
 
   LogPanel = new QWidget(this);
@@ -362,16 +360,14 @@ void TSynchronizeDialog::UpdateControls()
   UnicodeString SessionName = (Terminal != NULL) ? Terminal->SessionData->SessionName : UnicodeString();
   setWindowTitle(ToQString(FormatMainFormCaption(Title, SessionName)));
   TransferSettingsButton->setEnabled(!FSynchronizing);
-  TransferSettingsDropDownButton->setEnabled(!FSynchronizing);
-  TransferSettingsDropDownButton->setVisible(FLAGCLEAR(FOptions, soDoNotUsePresets));
+  TransferSettingsButton->SetDropDownVisible(FLAGCLEAR(FOptions, soDoNotUsePresets));
   CancelButton->setVisible(!FSynchronizing || FLAGSET(FOptions, soNoMinimize));
   CancelButton->setEnabled(!FSynchronizing);
   DirectoriesGroup->setEnabled(!FSynchronizing);
   OptionsGroup->setEnabled(!FSynchronizing);
   CopyParamGroup->setEnabled(!FSynchronizing);
   MinimizeButton->setVisible(FSynchronizing && FLAGCLEAR(FOptions, soNoMinimize));
-  MinimizeDropDownButton->setVisible(
-    MinimizeButton->isVisible() && !AppConfiguration->MinimizeToTray && IsSystemTrayAvailable());
+  MinimizeButton->SetDropDownVisible(!AppConfiguration->MinimizeToTray && IsSystemTrayAvailable());
   SynchronizeSelectedOnlyCheck->setEnabled(OptionsGroup->isEnabled() && FLAGSET(FOptions, soAllowSelectedOnly));
 
   UnicodeString InfoStr = FCopyParams.GetInfoStr(L"; ", ActualCopyParamAttrs());

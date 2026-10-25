@@ -6,6 +6,7 @@
 #include <AppConfiguration.h>
 #include <Cryptography.h>
 #include <FileMasks.h>
+#include <HelpWin.h>
 #include <PuttyTools.h>
 
 #include "CustomDialog.h"
@@ -50,6 +51,11 @@ void TCustomDialog::AddDialogButton(QPushButton * Button)
 {
   Button->setAutoDefault(false);
   FButtons->addButton(Button, QDialogButtonBox::ActionRole);
+}
+//---------------------------------------------------------------------------
+void TCustomDialog::SetHelpKeyword(const UnicodeString & HelpKeyword)
+{
+  AddHelpButton(FButtons, HelpKeyword);
 }
 //---------------------------------------------------------------------------
 QLabel * TCustomDialog::CreateLabel(const UnicodeString & Caption)
@@ -329,6 +335,7 @@ TSaveSessionDialog::TSaveSessionDialog(
   bool CanSavePassword, bool NotRecommendedSavingPassword, TStrings * AdditionalFolders)
 {
   setObjectName(QStringLiteral("SaveSessionDialog"));
+  SetHelpKeyword(HELP_SESSION_SAVE);
   setWindowTitle(ToQString(LoadStr(SAVE_SESSION_CAPTION)));
 
   SessionNameEdit = new QLineEdit(this);
@@ -504,6 +511,7 @@ TSaveWorkspaceDialog::TSaveWorkspaceDialog(
     bool CanSavePasswords, bool NotRecommendedSavingPasswords)
 {
   setObjectName(QStringLiteral("SaveWorkspaceDialog"));
+  SetHelpKeyword(HELP_WORKSPACE_SAVE);
   setWindowTitle(ToQString(LoadStr(SAVE_WORKSPACE_CAPTION)));
 
   WorkspaceNameCombo = new QComboBox(this);
@@ -638,6 +646,7 @@ private:
 TMasterPasswordDialog::TMasterPasswordDialog(bool Current)
 {
   setObjectName(QStringLiteral("MasterPasswordDialog"));
+  SetHelpKeyword(Current ? HELP_MASTER_PASSWORD_CURRENT : HELP_MASTER_PASSWORD_CHANGE);
   setWindowTitle(ToQString(LoadStr(MASTER_PASSWORD_CAPTION)));
 
   CurrentEdit = CreatePasswordEdit("CurrentEdit", MASTER_PASSWORD_CURRENT);
@@ -790,6 +799,7 @@ private:
 TSshHostCADialog::TSshHostCADialog(bool Add)
 {
   setObjectName(QStringLiteral("SshHostCADialog"));
+  SetHelpKeyword(HELP_SSH_HOST_CA);
   setWindowTitle(ToQString(LoadStr(Add ? SSH_HOST_CA_ADD : SSH_HOST_CA_EDIT)));
 
   NameEdit = new QLineEdit(this);
@@ -991,6 +1001,7 @@ private:
 TTagDialog::TTagDialog(bool Add, TStrings * Tags)
 {
   setObjectName(QStringLiteral("TagDialog"));
+  SetHelpKeyword(HELP_TAG);
   setWindowTitle(ToQString(LoadStr(Add ? TAG_ADD : TAG_EDIT)));
   FTags = Tags;
 
@@ -1098,6 +1109,7 @@ private:
 TRemoteMoveDialog::TRemoteMoveDialog(bool Multi, TDirectoryExistsEvent OnDirectoryExists)
 {
   setObjectName(QStringLiteral("RemoteMoveDialog"));
+  SetHelpKeyword(HELP_REMOTE_MOVE);
   setWindowTitle(ToQString(LoadStr(REMOTE_MOVE_TITLE)));
   FMulti = Multi;
   FOnDirectoryExists = OnDirectoryExists;
@@ -1243,6 +1255,7 @@ private:
 TSiteRawDialog::TSiteRawDialog()
 {
   setObjectName(QStringLiteral("SiteRawDialog"));
+  SetHelpKeyword(HELP_SITE_RAW);
   setWindowTitle(ToQString(LoadStr(SITE_RAW_CAPTION)));
   setMinimumWidth(fontMetrics().averageCharWidth() * 70);
 

@@ -161,6 +161,7 @@ TSelectMaskDialog::TSelectMaskDialog(QWidget * Parent, TMode Mode) :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"SelectMask.dfm"));
   setMinimumWidth(fontMetrics().averageCharWidth() * 60);
 }
 //---------------------------------------------------------------------------

@@ -367,6 +367,8 @@ TSiteAdvancedDialog::TSiteAdvancedDialog(QWidget * Parent) :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   ButtonsLayout->addWidget(Buttons);
+  // The page of the documentation of the current page (upstream's FormHelp)
+  AddHelpButton(Buttons, [this]() { return FormHelpKeyword(L"SiteAdvanced.dfm", ActiveSheetName()); });
   MainLayout()->addLayout(ButtonsLayout);
 
   ConnectControls();

@@ -124,6 +124,7 @@ TImportSessionsDialog::TImportSessionsDialog(QWidget * Parent) :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"ImportSessions.dfm"));
 
   connect(SourceComboBox, &QComboBox::currentIndexChanged, this, [this]()
   {

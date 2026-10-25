@@ -53,6 +53,7 @@ TCopyParamCustomDialog::TCopyParamCustomDialog(int CopyParamAttrs) :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"CopyParamCustom.dfm"));
 }
 //---------------------------------------------------------------------------
 bool TCopyParamCustomDialog::Execute(TCopyParamType & CopyParam)
@@ -200,6 +201,7 @@ TCopyParamPresetDialog::TCopyParamPresetDialog(TCopyParamPresetMode Mode, TCopyP
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons, 5, 0, 1, 2);
+  AddHelpButton(Buttons, FormHelpKeyword(L"CopyParamPreset.dfm"));
 }
 //---------------------------------------------------------------------------
 void TCopyParamPresetDialog::UpdateControls()

@@ -9,6 +9,7 @@
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
+#include "SplitButton.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -83,8 +84,7 @@ private:
   QCheckBox * SaveSettingsCheck;
   QGroupBox * CopyParamGroup;
   QLabel * CopyParamLabel;
-  QPushButton * TransferSettingsButton;
-  QToolButton * TransferSettingsDropDownButton;
+  TSplitButton * TransferSettingsButton;
   QPushButton * OkButton;
   int FUpdating;
 
@@ -160,35 +160,37 @@ TFullSynchronizeDialog::TFullSynchronizeDialog() :
   }
   MainLayout->addWidget(DirectoriesGroup);
 
+  // upstream's layout: the direction and the mode in rows of the width of
+  // the dialog, the options and the criteria next to each other
   QGridLayout * GroupsLayout = new QGridLayout();
   QGroupBox * DirectionGroup = new QGroupBox(tr("Direction/Target directory"), this);
   DirectionGroup->setObjectName(QStringLiteral("DirectionGroup"));
-  QVBoxLayout * DirectionLayout = new QVBoxLayout(DirectionGroup);
+  QHBoxLayout * DirectionLayout = new QHBoxLayout(DirectionGroup);
   SynchronizeBothButton = CreateRadio(DirectionGroup, DirectionLayout, "SynchronizeBothButton", tr("&Both"));
   SynchronizeRemoteButton = CreateRadio(DirectionGroup, DirectionLayout, "SynchronizeRemoteButton", tr("&Remote"));
   SynchronizeLocalButton = CreateRadio(DirectionGroup, DirectionLayout, "SynchronizeLocalButton", tr("&Local"));
-  GroupsLayout->addWidget(DirectionGroup, 0, 0);
+  GroupsLayout->addWidget(DirectionGroup, 0, 0, 1, 2);
 
   QGroupBox * ModeGroup = new QGroupBox(tr("Mode"), this);
   ModeGroup->setObjectName(QStringLiteral("ModeGroup"));
-  QVBoxLayout * ModeLayout = new QVBoxLayout(ModeGroup);
+  QHBoxLayout * ModeLayout = new QHBoxLayout(ModeGroup);
   SynchronizeFilesButton = CreateRadio(ModeGroup, ModeLayout, "SynchronizeFilesButton", tr("Synchronize &files"));
   MirrorFilesButton = CreateRadio(ModeGroup, ModeLayout, "MirrorFilesButton", tr("&Mirror files"));
   SynchronizeTimestampsButton =
     CreateRadio(ModeGroup, ModeLayout, "SynchronizeTimestampsButton", tr("Synchronize &timestamps"));
-  GroupsLayout->addWidget(ModeGroup, 0, 1);
+  GroupsLayout->addWidget(ModeGroup, 1, 0, 1, 2);
 
   QGroupBox * OptionsGroup = new QGroupBox(tr("Synchronize options"), this);
   OptionsGroup->setObjectName(QStringLiteral("OptionsGroup"));
   QVBoxLayout * OptionsLayout = new QVBoxLayout(OptionsGroup);
   SynchronizeDeleteCheck = CreateCheck(OptionsGroup, OptionsLayout, "SynchronizeDeleteCheck", tr("&Delete files"));
-  SynchronizeSelectedOnlyCheck =
-    CreateCheck(OptionsGroup, OptionsLayout, "SynchronizeSelectedOnlyCheck", tr("Selected files o&nly"));
-  SynchronizeExistingOnlyCheck =
-    CreateCheck(OptionsGroup, OptionsLayout, "SynchronizeExistingOnlyCheck", tr("E&xisting files only"));
   SynchronizePreviewChangesCheck =
     CreateCheck(OptionsGroup, OptionsLayout, "SynchronizePreviewChangesCheck", tr("Pre&view changes"));
-  GroupsLayout->addWidget(OptionsGroup, 1, 0);
+  SynchronizeExistingOnlyCheck =
+    CreateCheck(OptionsGroup, OptionsLayout, "SynchronizeExistingOnlyCheck", tr("E&xisting files only"));
+  SynchronizeSelectedOnlyCheck =
+    CreateCheck(OptionsGroup, OptionsLayout, "SynchronizeSelectedOnlyCheck", tr("Selected files o&nly"));
+  GroupsLayout->addWidget(OptionsGroup, 2, 0);
 
   QGroupBox * CompareCriterionsGroup = new QGroupBox(tr("Comparison criteria"), this);
   CompareCriterionsGroup->setObjectName(QStringLiteral("CompareCriterionsGroup"));
@@ -199,7 +201,7 @@ TFullSynchronizeDialog::TFullSynchronizeDialog() :
   SynchronizeByChecksumCheck = CreateCheck(CompareCriterionsGroup, CompareLayout, "SynchronizeByChecksumCheck", tr("Checks&um"));
   SynchronizeCaseSensitiveCheck =
     CreateCheck(CompareCriterionsGroup, CompareLayout, "SynchronizeCaseSensitiveCheck", tr("C&ase sensitive"));
-  GroupsLayout->addWidget(CompareCriterionsGroup, 1, 1);
+  GroupsLayout->addWidget(CompareCriterionsGroup, 2, 1);
   MainLayout->addLayout(GroupsLayout);
 
   SaveSettingsCheck = new QCheckBox(tr("Use &same options next time"), this);
@@ -229,19 +231,17 @@ TFullSynchronizeDialog::TFullSynchronizeDialog() :
   }
 
   QHBoxLayout * ButtonsLayout = new QHBoxLayout();
-  TransferSettingsButton = new QPushButton(tr("Transfer settin&gs..."), this);
+  // upstream's split button: the presets in its drop-down menu
+  TransferSettingsButton = new TSplitButton(this);
+  TransferSettingsButton->setText(tr("Transfer settin&gs..."));
   TransferSettingsButton->setObjectName(QStringLiteral("TransferSettingsButton"));
   TransferSettingsButton->setAutoDefault(false);
   connect(TransferSettingsButton, &QPushButton::clicked, this, [this]() { CopyParamGroupClick(); });
-  ButtonsLayout->addWidget(TransferSettingsButton);
-  TransferSettingsDropDownButton = new QToolButton(this);
-  TransferSettingsDropDownButton->setObjectName(QStringLiteral("TransferSettingsDropDownButton"));
-  TransferSettingsDropDownButton->setArrowType(Qt::DownArrow);
-  connect(TransferSettingsDropDownButton, &QToolButton::clicked, this, [this]()
+  connect(TransferSettingsButton, &TSplitButton::DropDownRequested, this, [this]()
   {
     CopyParamListPopup(TransferSettingsButton->mapToGlobal(QPoint(0, TransferSettingsButton->height())));
   });
-  ButtonsLayout->addWidget(TransferSettingsDropDownButton);
+  ButtonsLayout->addWidget(TransferSettingsButton);
   ButtonsLayout->addStretch(1);
   QDialogButtonBox * Buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
   OkButton = Buttons->button(QDialogButtonBox::Ok);
@@ -251,6 +251,7 @@ TFullSynchronizeDialog::TFullSynchronizeDialog() :
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   ButtonsLayout->addWidget(Buttons);
   MainLayout->addLayout(ButtonsLayout);
+  AddHelpButton(Buttons, FormHelpKeyword(L"FullSynchronize.dfm"));
   setMinimumWidth(fontMetrics().averageCharWidth() * 72);
 }
 //---------------------------------------------------------------------------
@@ -276,14 +277,12 @@ void TFullSynchronizeDialog::Init(int Options, const TUsableCopyParamAttrs & Cop
     SynchronizeLocalButton->setText(ToQString(LoadStr(SYNCHRONIZE_LEFT)));
     CopyParamGroup->setVisible(false);
     TransferSettingsButton->setVisible(false);
-    TransferSettingsDropDownButton->setVisible(false);
   }
   else
   {
     OtherLocalDirectoryBrowseButton->setVisible(false);
   }
-  TransferSettingsDropDownButton->setVisible(
-    TransferSettingsButton->isVisibleTo(this) && FLAGCLEAR(FOptions, fsoDoNotUsePresets));
+  TransferSettingsButton->SetDropDownVisible(FLAGCLEAR(FOptions, fsoDoNotUsePresets));
 
   UpdateControls();
 }

@@ -265,6 +265,7 @@ TGenerateUrlDialog::TGenerateUrlDialog(TSessionData * Data, TStrings * Paths) :
   });
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"GenerateUrl.dfm"));
   resize(fontMetrics().averageCharWidth() * 90, fontMetrics().height() * 26);
 }
 //---------------------------------------------------------------------------

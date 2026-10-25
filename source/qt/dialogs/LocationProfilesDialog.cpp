@@ -365,6 +365,7 @@ TLocationProfilesDialog::TLocationProfilesDialog() :
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   ButtonsLayout->addWidget(Buttons);
   MainLayout->addLayout(ButtonsLayout);
+  AddHelpButton(Buttons, FormHelpKeyword(L"LocationProfiles.dfm"));
 }
 //---------------------------------------------------------------------------
 void TLocationProfilesDialog::CreatePage(TProfilesPage & Page, const char * Prefix, const QString & Caption, bool ShortCut)

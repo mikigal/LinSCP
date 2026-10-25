@@ -7,14 +7,19 @@
 #include "ComputerPower.h"
 #include "ScpCommander.h"
 #include "TerminalManager.h"
+#include "FormTexts.h"
 
 #include <AppConfiguration.h>
 
 #include <QApplication>
 #include <QClipboard>
 #include <QDesktopServices>
+#include <QBoxLayout>
+#include <QDialogButtonBox>
+#include <QGridLayout>
 #include <QGuiApplication>
 #include <QMimeData>
+#include <QPushButton>
 #include <QUrl>
 
 #include <chrono>
@@ -248,6 +253,147 @@ void ShowHelp(const UnicodeString & HelpKeyword)
   // The documentation of the upstream application applies (the keywords
   // are the names of its pages, with their anchors)
   OpenBrowser(L"https://winscp.net/eng/docs/" + HelpKeyword);
+}
+//---------------------------------------------------------------------------
+UnicodeString FormHelpKeyword(const UnicodeString & Form, const QString & Component)
+{
+  // tools/dfm2cpp keeps the keywords of the forms with their texts
+  std::wstring FormName(Form.c_str());
+  std::wstring Suffix = Component.isEmpty() ? std::wstring() : (L"." + Component.toStdWString() + L".HelpKeyword");
+  UnicodeString Result;
+  for (size_t Index = 0; Index < FormTextCount; Index++)
+  {
+    const TFormText & Text = FormTexts[Index];
+    if (FormName == Text.Form)
+    {
+      std::wstring Key(Text.Key);
+      if (Key == L"HelpKeyword")
+      {
+        if (Result.IsEmpty())
+        {
+          Result = Text.Text;
+        }
+      }
+      else if (!Suffix.empty() && (Key.size() > Suffix.size()) &&
+               (Key.compare(Key.size() - Suffix.size(), Suffix.size(), Suffix) == 0))
+      {
+        return Text.Text;
+      }
+    }
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+// The layout that has the widget, in the layouts of its parent, and the
+// widget's index in it
+static QLayout * LayoutOf(QLayout * Layout, QWidget * Widget, int & Index)
+{
+  for (int I = 0; (Layout != nullptr) && (I < Layout->count()); I++)
+  {
+    QLayoutItem * Item = Layout->itemAt(I);
+    if (Item->widget() == Widget)
+    {
+      Index = I;
+      return Layout;
+    }
+    if (QLayout * Result = LayoutOf(Item->layout(), Widget, Index))
+    {
+      return Result;
+    }
+  }
+  return nullptr;
+}
+//---------------------------------------------------------------------------
+// Puts the Help button right of the box: next to it in a row, or in a row
+// with it; false when the box is not in a layout of its window yet
+static bool PlaceHelpButton(QDialogButtonBox * Buttons, QPushButton * Button)
+{
+  int Index = -1;
+  QWidget * Parent = Buttons->parentWidget();
+  QLayout * Layout = (Parent != nullptr) ? LayoutOf(Parent->layout(), Buttons, Index) : nullptr;
+  QBoxLayout * Box = qobject_cast<QBoxLayout *>(Layout);
+  QGridLayout * Grid = qobject_cast<QGridLayout *>(Layout);
+  if ((Box != nullptr) && ((Box->direction() == QBoxLayout::LeftToRight) || (Box->direction() == QBoxLayout::RightToLeft)))
+  {
+    Box->insertWidget(Index + 1, Button);
+  }
+  else if ((Box != nullptr) || (Grid != nullptr))
+  {
+    QHBoxLayout * Row = new QHBoxLayout();
+    if (Box != nullptr)
+    {
+      Box->removeWidget(Buttons);
+      Box->insertLayout(Index, Row);
+    }
+    else
+    {
+      int RowIndex, Column, RowSpan, ColumnSpan;
+      Grid->getItemPosition(Index, &RowIndex, &Column, &RowSpan, &ColumnSpan);
+      Grid->removeWidget(Buttons);
+      Grid->addLayout(Row, RowIndex, Column, RowSpan, ColumnSpan);
+    }
+    Row->addWidget(Buttons, 1);
+    Row->addWidget(Button);
+  }
+  else
+  {
+    return false;
+  }
+  Button->show();
+  return true;
+}
+//---------------------------------------------------------------------------
+namespace
+{
+// Places the Help button once the window shows (its layouts complete)
+class THelpButtonPlacer : public QObject
+{
+public:
+  THelpButtonPlacer(QDialogButtonBox * Buttons, QPushButton * Button) :
+    QObject(Button), FButtons(Buttons), FButton(Button)
+  {
+  }
+
+  virtual bool eventFilter(QObject * Object, QEvent * Event) override
+  {
+    if (Event->type() == QEvent::Show)
+    {
+      Object->removeEventFilter(this);
+      if (!PlaceHelpButton(FButtons, FButton))
+      {
+        FButtons->addButton(FButton, QDialogButtonBox::HelpRole);
+        FButton->show();
+      }
+      deleteLater();
+    }
+    return false;
+  }
+
+private:
+  QDialogButtonBox * FButtons;
+  QPushButton * FButton;
+};
+}
+//---------------------------------------------------------------------------
+QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const std::function<UnicodeString()> & HelpKeyword)
+{
+  // Right of the other buttons, as upstream's (the desktop's button boxes
+  // put it to the left)
+  QPushButton * Button = new QPushButton(QDialogButtonBox::tr("&Help"), Buttons->parentWidget());
+  Button->setObjectName(QStringLiteral("HelpButton"));
+  Button->setAutoDefault(false);
+  QObject::connect(Button, &QPushButton::clicked, Buttons, [HelpKeyword]() { ShowHelp(HelpKeyword()); });
+  if (!PlaceHelpButton(Buttons, Button))
+  {
+    Button->hide();
+    Buttons->window()->installEventFilter(new THelpButtonPlacer(Buttons, Button));
+  }
+  return Button;
+}
+//---------------------------------------------------------------------------
+QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & HelpKeyword)
+{
+  return AddHelpButton(Buttons, [HelpKeyword]() { return HelpKeyword; });
 }
 //---------------------------------------------------------------------------
 void __fastcall CopyToClipboard(UnicodeString Text)

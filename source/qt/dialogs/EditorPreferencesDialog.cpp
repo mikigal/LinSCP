@@ -147,6 +147,7 @@ TEditorPreferencesDialog::TEditorPreferencesDialog(TEditorPreferencesMode Mode, 
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"EditorPreferences.dfm"));
 
   for (QRadioButton * Button : { EditorInternalButton, EditorExternalButton, EditorOpenButton })
   {

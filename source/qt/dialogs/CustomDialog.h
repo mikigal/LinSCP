@@ -36,6 +36,8 @@ protected:
   void AddWidget(QWidget * Widget);
   // A button with OK and Cancel
   void AddDialogButton(QPushButton * Button);
+  // upstream's Help button, of the keyword (upstream's TCustomDialog(HelpKeyword))
+  void SetHelpKeyword(const UnicodeString & HelpKeyword);
   // Updates the state of the controls (the OK button with CanSubmit)
   void Change();
 

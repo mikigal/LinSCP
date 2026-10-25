@@ -265,6 +265,15 @@ QJsonObject Describe(QObject * Object, bool Children)
     Geometry[QStringLiteral("width")] = Widget->width();
     Geometry[QStringLiteral("height")] = Widget->height();
     Result[QStringLiteral("geometry")] = Geometry;
+    // The state of the widgets of OpenSCP's own (the drop-down part of a
+    // split button)
+    for (const QByteArray & Property : Widget->dynamicPropertyNames())
+    {
+      if (Property.startsWith("automation"))
+      {
+        Result[QString::fromLatin1(Property.mid(10))] = QJsonValue::fromVariant(Widget->property(Property));
+      }
+    }
   }
 
   if (QLineEdit * Edit = qobject_cast<QLineEdit *>(Object))

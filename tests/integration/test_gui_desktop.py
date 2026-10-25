@@ -450,7 +450,7 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         gui.set(D + 'SynchronizeSynchronizeCheck', False)
         gui.click(D + 'StartButton')
         gui.wait_for(lambda: gui.get(D + 'StopButton')['visible'], 60, 'watching')
-        self.assertTrue(gui.get(D + 'MinimizeDropDownButton')['visible'])
+        self.assertTrue(gui.get(D + 'MinimizeButton')['DropDown'])
 
         gui.trigger(D + 'MinimizetoTray1')
         gui.wait_for(lambda: self.probe_events(log, 'tray_register'), 30, 'the tray icon')

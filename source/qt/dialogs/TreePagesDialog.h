@@ -41,6 +41,8 @@ protected:
   QTreeWidgetItem * NodeOf(int Tag);
   void SetActivePage(int Tag);
   int ActivePage();
+  // The name of the page shown (upstream's of its sheet)
+  QString ActiveSheetName() const;
   // Shown in the tree (the pages that do not apply are not)
   void SetPageVisible(int Tag, bool Visible);
   // The changes of the controls update the others (UpdateControls)

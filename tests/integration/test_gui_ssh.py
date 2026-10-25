@@ -468,7 +468,7 @@ class GuiSshTest(GuiSshTestCase):
         # A preset saved from the copy dialog
         self.open_copy(gui, 'Local', 'a.txt')
         # Popup menus need the real input
-        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.click_real_drop_down(C + 'TransferSettingsButton')
         gui.wait_window('CopyParamListMenu')
         self.assertTrue(gui.get('CopyParamListMenu/CustomItem')['checked'] is False)
         self.assertTrue(gui.get('CopyParamListMenu/DefaultItem')['checked'])
@@ -486,7 +486,7 @@ class GuiSshTest(GuiSshTestCase):
         self.assertNotIn('timestamp', gui.get(C + 'CopyParamLabel')['text'])
 
         # The preset selected
-        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.click_real_drop_down(C + 'TransferSettingsButton')
         gui.wait_window('CopyParamListMenu')
         items = gui.get('CopyParamListMenu', children=True)['children']
         preset = 'CopyParamListMenu/' + next(item['name'] for item in items if item.get('text') == 'No time')
@@ -494,7 +494,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.trigger(preset)
         gui.wait_no_window('CopyParamListMenu')
         self.assertIn('Do not preserve timestamp', gui.get(C + 'CopyParamLabel')['text'])
-        gui.click_real(C + 'TransferSettingsDropDownButton')
+        gui.click_real_drop_down(C + 'TransferSettingsButton')
         gui.wait_window('CopyParamListMenu')
         self.assertTrue(gui.get(preset)['checked'])
         gui.key('Escape', 'CopyParamListMenu')
@@ -801,7 +801,7 @@ class GuiSshTest(GuiSshTestCase):
         # Without deleting, the obsolete file is listed unchecked
         checked = {row['cells'][0]: row['checked'] for row in gui.get(K + 'ListView2')['rows']}
         self.assertEqual(checked, {'later.txt': True, 'obsolete.txt': False})
-        gui.click_real(K + 'OkDropDownButton')
+        gui.click_real_drop_down(K + 'OkButton')
         gui.wait_window('OkPopupMenu')
         gui.trigger(K + 'StartQueueItem')
         gui.wait_no_window('SynchronizeChecklistDialog')

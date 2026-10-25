@@ -175,6 +175,7 @@ TOpenDirectoryDialog::TOpenDirectoryDialog() :
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   ButtonsLayout->addWidget(Buttons);
   MainLayout->addLayout(ButtonsLayout);
+  AddHelpButton(Buttons, FormHelpKeyword(L"OpenDirectory.dfm"));
 
   SetOperationSide(osLocal);
 }

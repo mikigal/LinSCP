@@ -108,6 +108,7 @@ TRemoteTransferDialog::TRemoteTransferDialog() :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"RemoteTransfer.dfm"));
   setMinimumWidth(fontMetrics().averageCharWidth() * 70);
 }
 //---------------------------------------------------------------------------

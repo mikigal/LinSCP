@@ -17,12 +17,20 @@ public:
   explicit TSplitButton(QWidget * Parent);
 
   void SetDropDownMenu(QMenu * Menu) { FMenu = Menu; }
+  // Without the drop-down part, a plain push button
+  void SetDropDownVisible(bool Visible);
+  bool IsDropDownVisible() const { return FDropDownVisible; }
   QMenu * GetDropDownMenu() const { return FMenu; }
   // Shows the menu below the button
   void ShowDropDownMenu();
 
   virtual QSize sizeHint() const override;
   virtual QSize minimumSizeHint() const override;
+
+Q_SIGNALS:
+  // The arrow was clicked, without a menu of the button (the menu is
+  // created when shown)
+  void DropDownRequested();
 
 protected:
   virtual void paintEvent(QPaintEvent * Event) override;
@@ -31,6 +39,7 @@ protected:
 
 private:
   QMenu * FMenu;
+  bool FDropDownVisible;
 
   int ArrowWidth() const;
 };

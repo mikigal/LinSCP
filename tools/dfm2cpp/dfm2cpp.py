@@ -16,7 +16,10 @@ import sys
 from pathlib import Path
 
 # The properties with texts the translations translate
-TEXT_PROPERTIES = {'Caption', 'Hint', 'Text', 'Filter', 'DialogTitle', 'DialogText', 'EditCaption', 'ButtonHint'}
+# HelpKeyword: the pages of upstream's documentation of the forms and their
+# pages (not translated)
+TEXT_PROPERTIES = {'Caption', 'Hint', 'Text', 'Filter', 'DialogTitle', 'DialogText', 'EditCaption', 'ButtonHint',
+                   'HelpKeyword'}
 LIST_PROPERTIES = {'Items.Strings'}
 
 _TOKEN_RE = re.compile(r'''

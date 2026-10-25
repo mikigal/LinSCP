@@ -196,6 +196,11 @@ TFileFindDialog::TFileFindDialog() :
   StartStopButton->setDefault(true);
   connect(StartStopButton, &QPushButton::clicked, this, [this]() { StartStopButtonClick(); });
   StartLayout->addWidget(StartStopButton);
+  QPushButton * HelpButton = new QPushButton(tr("&Help"), this);
+  HelpButton->setObjectName(QStringLiteral("HelpButton"));
+  HelpButton->setAutoDefault(false);
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"FileFind.dfm")); });
+  StartLayout->addWidget(HelpButton);
   StartLayout->addStretch(1);
   TopLayout->addLayout(StartLayout);
   MainLayout->addLayout(TopLayout);

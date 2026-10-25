@@ -11,6 +11,8 @@
 #include <SynchronizeController.h>
 #include <Terminal.h>
 
+#include <QString>
+
 #include <functional>
 #include <map>
 #include <vector>
@@ -21,7 +23,9 @@ class TCustomCommandType;
 class TFileMasks;
 class TRemoteTokenList;
 class TTerminal;
+class QDialogButtonBox;
 class QPoint;
+class QPushButton;
 class QWidget;
 struct TCopyParamRuleData;
 struct TCalculateSizeStats;
@@ -265,6 +269,12 @@ void ExecuteHandler(const std::function<void()> & Handler);
 // documentation of the keyword (upstream's help, WinSCP's documentation)
 void OpenBrowser(const UnicodeString & Url);
 void ShowHelp(const UnicodeString & HelpKeyword);
+// The help keyword of upstream's form (L"Copy.dfm") or of its component
+// (a page of the preferences), else of the form
+UnicodeString FormHelpKeyword(const UnicodeString & Form, const QString & Component = QString());
+// upstream's Help button of a dialog, of the keyword (asked when clicked)
+QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const std::function<UnicodeString()> & HelpKeyword);
+QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & HelpKeyword);
 
 // app/QtInterface.cpp: minimizing the whole application (upstream's
 // ApplicationMinimize and ApplicationRestore), to the system tray when

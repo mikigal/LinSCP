@@ -9,6 +9,7 @@
 
 #include "CustomDialog.h"
 #include "HistoryComboBox.h"
+#include "SplitButton.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -105,8 +106,7 @@ private:
   QPushButton * LocalDirectoryBrowseButton;
   QGroupBox * CopyParamGroup;
   QLabel * CopyParamLabel;
-  QPushButton * TransferSettingsButton;
-  QToolButton * TransferSettingsDropDownButton;
+  TSplitButton * TransferSettingsButton;
   QCheckBox * QueueCheck2;
   QCheckBox * NeverShowAgainCheck;
   QPushButton * OkButton;
@@ -177,25 +177,20 @@ TCopyDialog::TCopyDialog(bool ToRemote, bool Move, TStrings * FileList, int Opti
     FSaveSettings = NeverShowAgainCheck->isChecked();
     UpdateControls();
   });
-  MainLayout->addWidget(NeverShowAgainCheck);
   MainLayout->addStretch(1);
 
   QHBoxLayout * ButtonsLayout = new QHBoxLayout();
-  TransferSettingsButton = new QPushButton(tr("Transfer settin&gs..."), this);
+  // upstream's split button: the presets in its drop-down menu
+  TransferSettingsButton = new TSplitButton(this);
+  TransferSettingsButton->setText(tr("Transfer settin&gs..."));
   TransferSettingsButton->setObjectName(QStringLiteral("TransferSettingsButton"));
   TransferSettingsButton->setAutoDefault(false);
   connect(TransferSettingsButton, &QPushButton::clicked, this, [this]() { CopyParamGroupClick(); });
-  ButtonsLayout->addWidget(TransferSettingsButton);
-  // The drop down part of upstream's split button: the presets
-  TransferSettingsDropDownButton = new QToolButton(this);
-  TransferSettingsDropDownButton->setObjectName(QStringLiteral("TransferSettingsDropDownButton"));
-  TransferSettingsDropDownButton->setArrowType(Qt::DownArrow);
-  TransferSettingsDropDownButton->setToolTip(tr("Transfer settings presets"));
-  connect(TransferSettingsDropDownButton, &QToolButton::clicked, this, [this]()
+  connect(TransferSettingsButton, &TSplitButton::DropDownRequested, this, [this]()
   {
     CopyParamListPopup(TransferSettingsButton->mapToGlobal(QPoint(0, TransferSettingsButton->height())), cplCustomizeDefault);
   });
-  ButtonsLayout->addWidget(TransferSettingsDropDownButton);
+  ButtonsLayout->addWidget(TransferSettingsButton);
   ButtonsLayout->addStretch(1);
   QDialogButtonBox * Buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
   OkButton = Buttons->button(QDialogButtonBox::Ok);
@@ -205,6 +200,9 @@ TCopyDialog::TCopyDialog(bool ToRemote, bool Move, TStrings * FileList, int Opti
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   ButtonsLayout->addWidget(Buttons);
   MainLayout->addLayout(ButtonsLayout);
+  AddHelpButton(Buttons, FormHelpKeyword(L"Copy.dfm"));
+  // Below the buttons, as upstream's
+  MainLayout->addWidget(NeverShowAgainCheck);
   setMinimumWidth(fontMetrics().averageCharWidth() * 70);
 
   AdjustControls();
@@ -524,6 +522,7 @@ private:
 TCreateDirectoryDialog::TCreateDirectoryDialog()
 {
   setObjectName(QStringLiteral("CreateDirectoryDialog"));
+  SetHelpKeyword(FormHelpKeyword(L"CreateDirectory.dfm"));
   setWindowTitle(tr("Create folder"));
   QLabel * EditLabel = CreateLabel(L"New &folder name:");
   EditLabel->setObjectName(QStringLiteral("EditLabel"));

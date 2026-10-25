@@ -67,6 +67,12 @@ QWidget * TTreePagesDialog::AddSheet(const char * Name, const QString & Caption,
   return Sheet;
 }
 //---------------------------------------------------------------------------
+QString TTreePagesDialog::ActiveSheetName() const
+{
+  QScrollArea * Scroll = qobject_cast<QScrollArea *>(PageControl->currentWidget());
+  return ((Scroll != nullptr) && (Scroll->widget() != nullptr)) ? Scroll->widget()->objectName() : QString();
+}
+//---------------------------------------------------------------------------
 QTreeWidgetItem * TTreePagesDialog::NodeOf(int Tag)
 {
   for (QTreeWidgetItemIterator It(NavigationTree); *It != nullptr; ++It)

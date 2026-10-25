@@ -10,6 +10,7 @@
 #include <AppConfiguration.h>
 #include <Bookmarks.h>
 #include <CustomCommands.h>
+#include <HelpWin.h>
 #include <Terminal.h>
 
 #include "CustomDialog.h"
@@ -192,6 +193,7 @@ TCustomCommandDialog::TCustomCommandDialog(const TCustomCommandList * CustomComm
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"CustomCommand.dfm"));
 
   connect(DescriptionEdit, &QLineEdit::textChanged, this, [this]() { UpdateControls(); });
   connect(CommandEdit, &QComboBox::currentTextChanged, this, [this]() { UpdateControls(); });
@@ -375,6 +377,7 @@ TCustomCommandPromptsDialog::TCustomCommandPromptsDialog(const UnicodeString & C
   const std::vector<UnicodeString> & Prompts, const std::vector<UnicodeString> & Defaults)
 {
   setObjectName(QStringLiteral("CustomCommandPromptsDialog"));
+  SetHelpKeyword(HELP_CUSTOM_COMMAND_PARAM);
   setWindowTitle(ToQString(FMTLOAD(CUSTOM_COMMANDS_PARAMS_TITLE, (CustomCommandName))));
 
   DebugAssert(Prompts.size() == Defaults.size());

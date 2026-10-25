@@ -106,6 +106,7 @@ TEditMaskDialog::TEditMaskDialog() :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"EditMask.dfm"));
   setMinimumWidth(fontMetrics().averageCharWidth() * 70);
 }
 //---------------------------------------------------------------------------

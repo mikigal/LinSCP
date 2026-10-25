@@ -183,6 +183,7 @@ TFileSystemInfoDialog::TFileSystemInfoDialog(QWidget * Parent, TGetSpaceAvailabl
   });
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"FileSystemInfo.dfm"));
 
   resize(fontMetrics().averageCharWidth() * 80, fontMetrics().height() * 32);
 }

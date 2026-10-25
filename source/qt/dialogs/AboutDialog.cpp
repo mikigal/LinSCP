@@ -203,6 +203,7 @@ void DoAboutDialog()
   QObject::connect(LicenseButton, &QPushButton::clicked, &Dialog, [&Dialog]() { DoLicenseDialog(&Dialog); });
   QObject::connect(Buttons, &QDialogButtonBox::accepted, &Dialog, &QDialog::accept);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"About.dfm"));
   Dialog.resize(Dialog.fontMetrics().averageCharWidth() * 70, Dialog.fontMetrics().height() * 32);
   Dialog.exec();
 }

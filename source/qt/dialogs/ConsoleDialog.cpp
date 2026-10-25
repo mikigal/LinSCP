@@ -148,6 +148,11 @@ TConsoleDialog::TConsoleDialog() :
   CancelBtn->setAutoDefault(false);
   connect(CancelBtn, &QPushButton::clicked, this, &QDialog::reject);
   ButtonsLayout->addWidget(CancelBtn);
+  QPushButton * HelpButton = new QPushButton(tr("&Help"), this);
+  HelpButton->setObjectName(QStringLiteral("HelpButton"));
+  HelpButton->setAutoDefault(false);
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"Console.dfm")); });
+  ButtonsLayout->addWidget(HelpButton);
   MainLayout->addLayout(ButtonsLayout);
 
   resize(fontMetrics().averageCharWidth() * 100, fontMetrics().height() * 30);

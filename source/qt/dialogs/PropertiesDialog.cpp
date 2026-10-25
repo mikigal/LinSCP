@@ -317,6 +317,7 @@ void TPropertiesDialog::CreateControls()
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"Properties.dfm"));
   setMinimumWidth(fontMetrics().averageCharWidth() * 64);
 }
 //---------------------------------------------------------------------------

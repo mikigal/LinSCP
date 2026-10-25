@@ -79,6 +79,7 @@ TSymlinkDialog::TSymlinkDialog(bool Edit, bool AllowHardLink) :
   connect(Buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(Buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
   MainLayout->addWidget(Buttons);
+  AddHelpButton(Buttons, FormHelpKeyword(L"Symlink.dfm"));
 
   connect(FileNameEdit, &QLineEdit::textChanged, this, [this]() { UpdateControls(); });
   connect(PointToEdit, &QLineEdit::textChanged, this, [this]() { UpdateControls(); });

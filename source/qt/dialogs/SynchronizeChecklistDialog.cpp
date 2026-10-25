@@ -11,6 +11,7 @@
 #include <Terminal.h>
 
 #include "DirModel.h"
+#include "SplitButton.h"
 
 #include <QAction>
 #include <QApplication>
@@ -80,8 +81,8 @@ private:
   QTreeWidget * ListView2;
   QWidget * FStatusPanels[1 + TSynchronizeChecklist::ActionCount];
   QLabel * FStatusTexts[1 + TSynchronizeChecklist::ActionCount];
-  QPushButton * OkButton;
-  QToolButton * OkDropDownButton;
+  TSplitButton * OkButton;
+
   QPushButton * CancelButton;
   QAction * CheckAction;
   QAction * UncheckAction;
@@ -198,34 +199,36 @@ TSynchronizeChecklistDialog::TSynchronizeChecklistDialog(TSynchronizeMode Mode, 
   ContentLayout->addWidget(ListView2, 1);
 
   QVBoxLayout * ButtonsLayout = new QVBoxLayout();
-  QHBoxLayout * OkLayout = new QHBoxLayout();
-  OkButton = new QPushButton(tr("OK"), this);
+  // upstream's split button with OkPopupMenu (in the queue)
+  OkButton = new TSplitButton(this);
+  OkButton->setText(tr("OK"));
   OkButton->setObjectName(QStringLiteral("OkButton"));
   OkButton->setDefault(true);
   connect(OkButton, &QPushButton::clicked, StartItem, &QAction::trigger);
-  OkLayout->addWidget(OkButton, 1);
-  OkDropDownButton = new QToolButton(this);
-  OkDropDownButton->setObjectName(QStringLiteral("OkDropDownButton"));
-  OkDropDownButton->setArrowType(Qt::DownArrow);
-  OkDropDownButton->setPopupMode(QToolButton::InstantPopup);
-  QMenu * OkPopupMenu = new QMenu(OkDropDownButton);
+  QMenu * OkPopupMenu = new QMenu(OkButton);
   OkPopupMenu->setObjectName(QStringLiteral("OkPopupMenu"));
   OkPopupMenu->addAction(StartItem);
   OkPopupMenu->addAction(StartQueueItem);
-  OkDropDownButton->setMenu(OkPopupMenu);
-  OkDropDownButton->setVisible(static_cast<bool>(FOnQueueSynchronize));
-  OkLayout->addWidget(OkDropDownButton);
-  ButtonsLayout->addLayout(OkLayout);
+  OkButton->SetDropDownMenu(OkPopupMenu);
+  OkButton->SetDropDownVisible(static_cast<bool>(FOnQueueSynchronize));
+  ButtonsLayout->addWidget(OkButton);
   CancelButton = new QPushButton(tr("Cancel"), this);
   CancelButton->setObjectName(QStringLiteral("CancelButton"));
   CancelButton->setAutoDefault(false);
   connect(CancelButton, &QPushButton::clicked, this, &QDialog::reject);
   ButtonsLayout->addWidget(CancelButton);
+  // upstream's order of the buttons
+  QPushButton * HelpButton = new QPushButton(tr("&Help"), this);
+  HelpButton->setObjectName(QStringLiteral("HelpButton"));
+  HelpButton->setAutoDefault(false);
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(FormHelpKeyword(L"SynchronizeChecklist.dfm")); });
+  ButtonsLayout->addWidget(HelpButton);
   ButtonsLayout->addSpacing(fontMetrics().lineSpacing());
-  CreateButton(ButtonsLayout, "CheckAllButton", CheckAllAction);
-  CreateButton(ButtonsLayout, "UncheckAllButton", UncheckAllAction);
   CreateButton(ButtonsLayout, "CheckButton", CheckAction);
   CreateButton(ButtonsLayout, "UncheckButton", UncheckAction);
+  CreateButton(ButtonsLayout, "CheckAllButton", CheckAllAction);
+  CreateButton(ButtonsLayout, "UncheckAllButton", UncheckAllAction);
+  ButtonsLayout->addSpacing(fontMetrics().lineSpacing());
   CreateButton(ButtonsLayout, "ReverseButton", ReverseAction);
   QPushButton * ToolsMenuButton = new QPushButton(tr("&Tools"), this);
   ToolsMenuButton->setObjectName(QStringLiteral("ToolsMenuButton"));

@@ -12,11 +12,25 @@ TSplitButton::TSplitButton(QWidget * Parent) :
   QPushButton(Parent)
 {
   FMenu = nullptr;
+  FDropDownVisible = true;
+  // For the end-to-end tests (the automation hook of the test builds)
+  setProperty("automationDropDown", true);
+}
+//---------------------------------------------------------------------------
+void TSplitButton::SetDropDownVisible(bool Visible)
+{
+  if (FDropDownVisible != Visible)
+  {
+    FDropDownVisible = Visible;
+    setProperty("automationDropDown", Visible);
+    updateGeometry();
+    update();
+  }
 }
 //---------------------------------------------------------------------------
 int TSplitButton::ArrowWidth() const
 {
-  return style()->pixelMetric(QStyle::PM_MenuButtonIndicator, nullptr, this) + 4;
+  return FDropDownVisible ? (style()->pixelMetric(QStyle::PM_MenuButtonIndicator, nullptr, this) + 4) : 0;
 }
 //---------------------------------------------------------------------------
 QSize TSplitButton::sizeHint() const
@@ -29,8 +43,13 @@ QSize TSplitButton::minimumSizeHint() const
   return QPushButton::minimumSizeHint() + QSize(ArrowWidth(), 0);
 }
 //---------------------------------------------------------------------------
-void TSplitButton::paintEvent(QPaintEvent * /*Event*/)
+void TSplitButton::paintEvent(QPaintEvent * Event)
 {
+  if (!FDropDownVisible)
+  {
+    QPushButton::paintEvent(Event);
+    return;
+  }
   // The style's button with a menu, its arrow, and the line that splits it
   QStylePainter Painter(this);
   QStyleOptionButton Option;
@@ -46,10 +65,17 @@ void TSplitButton::paintEvent(QPaintEvent * /*Event*/)
 //---------------------------------------------------------------------------
 void TSplitButton::ShowDropDownMenu()
 {
-  if ((FMenu != nullptr) && isEnabled())
+  if (isEnabled())
   {
     setDown(true);
-    FMenu->exec(mapToGlobal(QPoint(0, height())));
+    if (FMenu != nullptr)
+    {
+      FMenu->exec(mapToGlobal(QPoint(0, height())));
+    }
+    else
+    {
+      Q_EMIT DropDownRequested();
+    }
     setDown(false);
   }
 }
@@ -58,7 +84,7 @@ void TSplitButton::mousePressEvent(QMouseEvent * Event)
 {
   int X = Event->position().toPoint().x();
   bool OnArrow = (layoutDirection() == Qt::RightToLeft) ? (X < ArrowWidth()) : (X >= width() - ArrowWidth());
-  if ((Event->button() == Qt::LeftButton) && OnArrow && (FMenu != nullptr))
+  if ((Event->button() == Qt::LeftButton) && OnArrow && FDropDownVisible)
   {
     ShowDropDownMenu();
     Event->accept();
@@ -72,7 +98,7 @@ void TSplitButton::mousePressEvent(QMouseEvent * Event)
 void TSplitButton::keyPressEvent(QKeyEvent * Event)
 {
   // As a split button of Windows: Alt+Down shows the menu
-  if ((Event->key() == Qt::Key_Down) && (Event->modifiers() & Qt::AltModifier))
+  if ((Event->key() == Qt::Key_Down) && (Event->modifiers() & Qt::AltModifier) && FDropDownVisible)
   {
     ShowDropDownMenu();
   }

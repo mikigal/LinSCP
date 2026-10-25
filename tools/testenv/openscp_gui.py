@@ -264,6 +264,15 @@ class OpenScpGui:
         x, y = self.screen_point(target)
         self.session.input('move', x, y, 'click')
 
+    def click_real_drop_down(self, target):
+        """Clicks the drop-down arrow of a split button (its right end) with
+        the real input of the compositor."""
+        window_name = target.split('/')[0]
+        x, y = self.client_origin(window_name)
+        geometry = self.get(target)['geometry']
+        self.session.input('move', x + geometry['x'] + geometry['width'] - 6,
+                           y + geometry['y'] + geometry['height'] // 2, 'click')
+
     def quit(self, timeout=60):
         """Quits the application; returns its exit code."""
         self.call('quit')
