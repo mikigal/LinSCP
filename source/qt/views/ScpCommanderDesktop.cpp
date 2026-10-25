@@ -118,7 +118,7 @@ void TScpCommanderForm::MinimizeApplication(bool ToTray)
     {
       FTrayIcon = new QSystemTrayIcon(this);
       FTrayIcon->setObjectName(QStringLiteral("TrayIcon"));
-      FTrayIcon->setIcon(QIcon::fromTheme(QStringLiteral("folder-remote")));
+      FTrayIcon->setIcon(ApplicationIcon());
       connect(FTrayIcon, &QSystemTrayIcon::activated, this, [this]() { RestoreApplication(); });
     }
     UpdateTrayIcon();

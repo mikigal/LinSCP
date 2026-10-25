@@ -109,6 +109,7 @@ private:
   QRadioButton * PathInCaptionShortButton;
   QRadioButton * PathInCaptionNoneButton;
   QCheckBox * MinimizeToTrayCheck;
+  QCheckBox * DesktopIconsCheck;
   QCheckBox * ExternalSessionInExistingInstanceCheck;
   QCheckBox * KeepOpenWhenNoSessionCheck;
   QCheckBox * ShowLoginWhenNoSessionCheck;
@@ -541,6 +542,9 @@ void TPreferencesDialog::CreateWindowSheet()
     AddCheck(WindowMiscellaneousGroup, "SessionTabCaptionTruncationCheck", tr("&Truncate tab titles when they do not fit to window"));
   SessionSilentDisconnectCheck =
     AddCheck(WindowMiscellaneousGroup, "SessionSilentDisconnectCheck", tr("Do not p&opup error message when idle session is disconnected"));
+  // OpenSCP's own icons are in the style of upstream's
+  DesktopIconsCheck =
+    AddCheck(WindowMiscellaneousGroup, "DesktopIconsCheck", tr("Use &icons of the desktop theme (applied on the next start)"));
   static_cast<QVBoxLayout *>(WindowSheet->layout())->addStretch(1);
 }
 //---------------------------------------------------------------------------
@@ -1502,6 +1506,7 @@ void TPreferencesDialog::LoadConfiguration()
   BOOLPROP(ExternalSessionInExistingInstance);
   BOOLPROP(ShowLoginWhenNoSession);
   BOOLPROP(KeepOpenWhenNoSession);
+  BOOLPROP(DesktopIcons);
   SessionSilentDisconnectCheck->setChecked(GUIConfiguration->SessionSilentDisconnect);
   BOOLPROP(SessionTabCaptionTruncation);
 
@@ -1815,6 +1820,7 @@ void TPreferencesDialog::SaveConfiguration()
   BOOLPROP(ExternalSessionInExistingInstance);
   BOOLPROP(ShowLoginWhenNoSession);
   BOOLPROP(KeepOpenWhenNoSession);
+  BOOLPROP(DesktopIcons);
   GUIConfiguration->SessionSilentDisconnect = SessionSilentDisconnectCheck->isChecked();
   BOOLPROP(SessionTabCaptionTruncation);
 

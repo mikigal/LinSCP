@@ -9,7 +9,7 @@ pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a p
 arch=('x86_64' 'aarch64')
 url='https://github.com/mikigal/openscp'
 license=('GPL-3.0-or-later')
-depends=('expat' 'gcc-libs' 'glibc' 'openssl' 'qt6-base')
+depends=('expat' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'openssl' 'qt6-base' 'qt6-svg')
 makedepends=('clang' 'cmake' 'ninja' 'python')
 optdepends=(
   'openssh: opening sessions in ssh'

@@ -15,8 +15,8 @@ TOpenScpApplication::TOpenScpApplication(int & argc, char ** argv) :
   // Matches the .desktop file, so that the compositor finds the icon
   setDesktopFileName(QStringLiteral("openscp"));
   // The icon of the .desktop file, for the platforms that take it from the
-  // application
-  setWindowIcon(QIcon::fromTheme(QStringLiteral("folder-remote")));
+  // application (again once the icons are installed)
+  setWindowIcon(ApplicationIcon());
   // The captions of the windows are formatted by the windows themselves
   // (FormatMainFormCaption), not suffixed by Qt
   setQuitOnLastWindowClosed(true);

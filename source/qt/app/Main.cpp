@@ -159,6 +159,8 @@ int main(int argc, char ** argv)
       ApplyCommandLineConfiguration(Params);
       // Before the windows are created
       InstallTranslation();
+      InstallIconTheme();
+      QApplication::setWindowIcon(ApplicationIcon());
       Result = Execute();
     }
     catch (Exception & E)

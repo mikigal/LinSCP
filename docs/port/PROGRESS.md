@@ -55,6 +55,13 @@ upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
   date) are split buttons, not two. The synchronization dialog has upstream's layout (the
   direction and the mode in rows, upstream's order of the options); the "do not show again" of
   the copy dialog is below its buttons.
+- OpenSCP's icons (`tools/icons/make_icons.py` generates `source/qt/icons/openscp`, an icon
+  theme in the resources): colorful flat icons in the style of upstream's (yellow folders,
+  white pages, green and blue arrows, red crosses), drawn from scratch, named as the freedesktop
+  icons the GUI asks for, over the desktop's theme (which has the icons of the file types and
+  the others OpenSCP has not); the desktop's icons by a preference (Window > Use icons of the
+  desktop theme, `DesktopIcons`). The application has an icon of its own (`openscp`, installed
+  to the hicolor theme) instead of the theme's `folder-remote`.
 
 Decisions:
 

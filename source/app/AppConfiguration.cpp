@@ -219,6 +219,7 @@ void __fastcall TAppConfiguration::Default()
   FLockToolbars = false;
   FSelectiveToolbarText = true;
   FLargerToolbar = 1;
+  FDesktopIcons = false;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -432,6 +433,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FLockToolbars); \
     KEY(Bool,    FSelectiveToolbarText); \
     KEY(Integer, FLargerToolbar); \
+    KEY(Bool,    FDesktopIcons); \
     KEY(Integer, FGenerateUrlComponents); \
     KEY(Enum,    FGenerateUrlCodeTarget); \
     KEY(Enum,    FGenerateUrlScriptFormat); \

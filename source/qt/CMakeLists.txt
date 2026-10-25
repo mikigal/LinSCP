@@ -92,6 +92,12 @@ add_custom_command(
   VERBATIM)
 target_sources(openscp_qt PRIVATE "${OPENSCP_FORM_TEXTS}")
 
+# OpenSCP's icon theme (tools/icons/make_icons.py) in the resources
+set(OPENSCP_ICONS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/icons/openscp")
+file(GLOB OPENSCP_ICONS CONFIGURE_DEPENDS "${OPENSCP_ICONS_DIR}/scalable/*.svg")
+qt_add_resources(openscp_qt "openscp_icons" PREFIX "/icons/openscp" BASE "${OPENSCP_ICONS_DIR}"
+  FILES "${OPENSCP_ICONS_DIR}/index.theme" "${OPENSCP_ICONS_DIR}/openscp.svg" ${OPENSCP_ICONS})
+
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
 target_include_directories(openscp_qt PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/app"
@@ -123,6 +129,7 @@ target_link_libraries(openscp PRIVATE openscp_qt openscp::options)
 include(GNUInstallDirs)
 install(TARGETS openscp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES desktop/openscp.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+install(FILES icons/openscp/openscp.svg DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 install(FILES "${PROJECT_SOURCE_DIR}/license.txt" DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/openscp")
 # Upstream's translations (app/Translations.cpp finds them next to the
 # binaries)

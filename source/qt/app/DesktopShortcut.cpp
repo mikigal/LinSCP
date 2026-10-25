@@ -62,7 +62,7 @@ static void CreateDesktopShortCut(const QString & Name, const QStringList & Argu
                    "Version=1.0\n"
                    "Name=%1\n"
                    "Exec=%2\n"
-                   "Icon=folder-remote\n"
+                   "Icon=openscp\n"
                    "Terminal=false\n").arg(EscapeValue(Name), Exec);
 
   QFile File(FileName);

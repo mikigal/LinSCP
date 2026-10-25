@@ -39,6 +39,12 @@ QFont PanelFont(const TFontConfiguration & Font);
 // A file of the data of the application: installed (share/INSTALLED next to
 // the binaries), else of the source tree (a build that is not installed)
 QString ApplicationDataFile(const QString & Installed, const QString & Source);
+// OpenSCP's icons (source/qt/icons/openscp, in the resources) over the
+// desktop's theme, which has the icons OpenSCP has not, unless the
+// desktop's are preferred (DesktopIcons); before the windows are created
+void InstallIconTheme();
+// The icon of OpenSCP (of the desktop's theme when installed there)
+QIcon ApplicationIcon();
 //---------------------------------------------------------------------------
 bool IsMainThread();
 //---------------------------------------------------------------------------
