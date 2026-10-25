@@ -101,6 +101,7 @@ private:
   QAction * ImportAction;
   QAction * ExportAction;
   QAction * CleanUpAction;
+  QAction * AboutAction;
   QAction * SessionAdvancedAction;
   QAction * SessionRawAction;
   QAction * CopyParamRuleAction;
@@ -233,6 +234,7 @@ private:
   void ImportActionExecute();
   void ExportActionExecute();
   void CleanUpActionExecute();
+  void AboutActionExecute() { DoAboutDialog(); }
   void PreferencesLoggingActionExecute();
 };
 //---------------------------------------------------------------------------

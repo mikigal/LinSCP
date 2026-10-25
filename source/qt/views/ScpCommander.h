@@ -265,6 +265,12 @@ private:
   QAction * SiteManagerAction;
   QAction * SessionsTabsAction2;
   QAction * PreferencesAction;
+  // The Help menu
+  QAction * TableOfContentsAction;
+  QAction * HomepageAction;
+  QAction * ForumPageAction;
+  QAction * AboutAction;
+  QMenu * FHelpMenu;
   // Alt+1..9, Alt+0 activate the tabs (upstream's OpenSessionShortCut)
   std::vector<QAction *> FOpenedTabActions;
   QAction * CloseApplicationAction;
@@ -447,6 +453,10 @@ private:
   void SaveWorkspaceActionExecute();
   void SessionsTabsActionExecute();
   void PreferencesActionExecute();
+  void TableOfContentsActionExecute() { ShowHelp(UnicodeString()); }
+  void HomepageActionExecute() { OpenHomepage(); }
+  void ForumPageActionExecute() { OpenSupportForum(); }
+  void AboutActionExecute() { DoAboutDialog(); }
   void OpenedTabActionExecute(int Index);
   void NewSessionActionExecute() { NewSession(); }
   void CloseTabActionExecute();

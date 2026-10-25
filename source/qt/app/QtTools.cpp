@@ -6,6 +6,8 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <QFontDatabase>
 #include <QPainter>
 #include <QThread>
@@ -204,5 +206,17 @@ UnicodeString FormatBytes(__int64 Bytes, TFormatBytesStyle Style, bool UseUnitsF
 UnicodeString FormatPanelBytes(__int64 Bytes, TFormatBytesStyle Style)
 {
   return FormatBytes(Bytes, Style, (Style != fbNone));
+}
+//---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+QString ApplicationDataFile(const QString & Installed, const QString & Source)
+{
+  QDir BinaryDirectory(QCoreApplication::applicationDirPath());
+  QString Result = BinaryDirectory.absoluteFilePath(QStringLiteral("../share/") + Installed);
+  if (!QFileInfo::exists(Result))
+  {
+    Result = QDir(QStringLiteral(OPENSCP_SOURCE_DIR)).filePath(Source);
+  }
+  return Result;
 }
 //---------------------------------------------------------------------------

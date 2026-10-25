@@ -36,6 +36,9 @@ struct TEditorConfiguration;
 struct TFontConfiguration;
 QFont EditorFont(const TEditorConfiguration & Editor);
 QFont PanelFont(const TFontConfiguration & Font);
+// A file of the data of the application: installed (share/INSTALLED next to
+// the binaries), else of the source tree (a build that is not installed)
+QString ApplicationDataFile(const QString & Installed, const QString & Source);
 //---------------------------------------------------------------------------
 bool IsMainThread();
 //---------------------------------------------------------------------------

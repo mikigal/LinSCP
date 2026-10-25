@@ -24,6 +24,7 @@ add_library(openscp_qt STATIC
   app/TaskbarProgress.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
+  dialogs/AboutDialog.cpp
   dialogs/CleanupDialog.cpp
   dialogs/ColorMenu.cpp
   dialogs/ConsoleDialog.cpp
@@ -97,6 +98,8 @@ target_include_directories(openscp_qt PUBLIC
 # Q_SIGNALS, Q_SLOTS and Q_EMIT cannot clash with the headers of the core
 # and the libraries it includes
 target_compile_definitions(openscp_qt PUBLIC QT_NO_KEYWORDS)
+# The data of the source tree, for the builds that are not installed
+target_compile_definitions(openscp_qt PRIVATE OPENSCP_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(openscp_qt
   PRIVATE openscp::options
   PUBLIC openscp::app Qt6::DBus Qt6::Widgets)
@@ -116,6 +119,7 @@ target_link_libraries(openscp PRIVATE openscp_qt openscp::options)
 include(GNUInstallDirs)
 install(TARGETS openscp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES desktop/openscp.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+install(FILES "${PROJECT_SOURCE_DIR}/license.txt" DESTINATION "${CMAKE_INSTALL_DATADIR}/licenses/openscp")
 # Upstream's translations (app/Translations.cpp finds them next to the
 # binaries)
 install(DIRECTORY "${PROJECT_SOURCE_DIR}/translations/" DESTINATION "${CMAKE_INSTALL_DATADIR}/openscp/translations"

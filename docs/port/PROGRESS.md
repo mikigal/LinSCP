@@ -139,7 +139,11 @@ packaging (PLAN.md, section 7).
   the panels) from the `[WinSCP_DRC.rc]` section; Qt's own translations; right-to-left
   languages. The CLI is translated too (its tests run in English, as do the GUI tests).
 - Branding: the name of the application in upstream's texts is OpenSCP (`rc2cpp --brand`, and
-  the translations when loaded).
+  the translations when loaded). The About dialog (`dialogs/AboutDialog.cpp`, the site
+  manager's Tools and the Help menu, with Contents (F1, the documentation), Product Homepage
+  and Support Forum, the project's GitHub pages): the version (upstream's, of the core), the
+  copyright of WinSCP, the translators, the third-party components (Qt in place of upstream's
+  VCL libraries) and the license (installed to `share/licenses/openscp`).
 
 Decisions:
 

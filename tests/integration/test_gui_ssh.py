@@ -1645,7 +1645,8 @@ class GuiSshTest(GuiSshTestCase):
         self.assertTrue(gui.get(W + 'ButtonsToolbar')['visible'])
         self.assertFalse(gui.get(W + 'HotkeysToolbar')['visible'])
         menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
-        self.assertEqual(menus, ['ExplorerFilesMenu', 'ExplorerCommandsMenu', 'MarkMenu', 'TabsMenu', 'ViewMenu'])
+        self.assertEqual(menus, ['ExplorerFilesMenu', 'ExplorerCommandsMenu', 'MarkMenu', 'TabsMenu', 'ViewMenu',
+                                 'HelpMenu'])
         self.assertEqual(gui.get(W + 'CurrentCopyAction')['shortcut'], 'Ctrl+T')
         self.screenshot('explorer')
 
@@ -2003,6 +2004,25 @@ class GuiSshTest(GuiSshTestCase):
         menus = [item['text'] for item in gui.get(W + 'MenuToolbar')['menus']]
         self.assertIn('Pliki', menus)
         self.screenshot('commander')
+        self.assertEqual(gui.quit(), 0)
+
+    def test_about(self):
+        gui = self.start_gui(ini=site_ini())
+        gui.wait_window('LoginDialog')
+        gui.trigger('LoginDialog/AboutAction')
+        gui.wait_window('AboutDialog')
+        self.assertEqual(gui.get('AboutDialog/ApplicationLabel')['text'], 'OpenSCP')
+        self.screenshot('about')
+        gui.click('AboutDialog/OKButton')
+        gui.wait_no_window('AboutDialog')
+        self.login(gui, 'local')
+        # The Help menu of both interfaces
+        menus = [item['name'] for item in gui.get(W + 'MenuToolbar')['menus']]
+        self.assertEqual(menus[-1], 'HelpMenu')
+        gui.trigger(W + 'AboutAction')
+        gui.wait_window('AboutDialog')
+        gui.click('AboutDialog/OKButton')
+        gui.wait_no_window('AboutDialog')
         self.assertEqual(gui.quit(), 0)
 
     def test_connection_refused(self):

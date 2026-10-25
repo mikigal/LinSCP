@@ -181,6 +181,12 @@ typedef std::function<void(const UnicodeString & Path, TSpaceAvailable & ASpaceA
 void DoFileSystemInfoDialog(const TSessionInfo & SessionInfo, const TFileSystemInfo & FileSystemInfo,
   const UnicodeString & SpaceAvailablePath, TGetSpaceAvailableEvent OnGetSpaceAvailable);
 
+// dialogs/AboutDialog.cpp: the About dialog (with the license), the pages
+// of the project in the browser
+void DoAboutDialog();
+void OpenHomepage();
+void OpenSupportForum();
+
 // dialogs/CleanupDialog.cpp: the application data removed, as selected
 bool DoCleanupDialog();
 

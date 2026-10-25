@@ -210,6 +210,18 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   PreferencesAction = CreateAction("PreferencesAction", tr("&Preferences..."), QStringLiteral("configure"),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_P) }, &TScpCommanderForm::PreferencesActionExecute);
   PreferencesAction->setToolTip(tr("Show/change user preferences"));
+  TableOfContentsAction = CreateAction("TableOfContentsAction", tr("&Contents"), QStringLiteral("help-contents"),
+    { QKeySequence(Qt::Key_F1) }, &TScpCommanderForm::TableOfContentsActionExecute);
+  TableOfContentsAction->setToolTip(tr("Opens the documentation in the web browser"));
+  HomepageAction = CreateAction("HomepageAction", tr("Product &Homepage"), QStringLiteral("internet-web-browser"),
+    {}, &TScpCommanderForm::HomepageActionExecute);
+  HomepageAction->setToolTip(tr("Opens web browser and points it to project homepage"));
+  ForumPageAction = CreateAction("ForumPageAction", tr("&Support Forum"), QString(),
+    {}, &TScpCommanderForm::ForumPageActionExecute);
+  ForumPageAction->setToolTip(tr("Opens web browser and points it to support forum page"));
+  AboutAction = CreateAction("AboutAction", tr("&About..."), QStringLiteral("help-about"),
+    {}, &TScpCommanderForm::AboutActionExecute);
+  AboutAction->setToolTip(tr("Show About box"));
   SessionsPageControl->setVisible(AppConfiguration->SessionsTabs);
   for (int Index = 0; Index < 10; Index++)
   {
@@ -550,6 +562,14 @@ void TScpCommanderForm::CreateMenus()
   FOptionsMenu->addSeparator();
   FOptionsMenu->addAction(PreferencesAction);
 
+  FHelpMenu = NewMenu(tr("&Help"), "HelpMenu");
+  FHelpMenu->addAction(TableOfContentsAction);
+  FHelpMenu->addSeparator();
+  FHelpMenu->addAction(HomepageAction);
+  FHelpMenu->addAction(ForumPageAction);
+  FHelpMenu->addSeparator();
+  FHelpMenu->addAction(AboutAction);
+
   FRemoteMenu = NewMenu(tr("&Remote"), "RemoteMenuButton");
   FRemotePanel->FillMenu(FRemoteMenu, RemotePathToClipboardAction2);
 
@@ -614,11 +634,11 @@ void TScpCommanderForm::ArrangeMenus()
   std::vector<QMenu *> Menus;
   if (IsExplorer())
   {
-    Menus = { FExplorerFilesMenu, FExplorerCommandsMenu, FMarkMenu, FTabsMenu, FViewMenu };
+    Menus = { FExplorerFilesMenu, FExplorerCommandsMenu, FMarkMenu, FTabsMenu, FViewMenu, FHelpMenu };
   }
   else
   {
-    Menus = { FLocalMenu, FMarkMenu, FFilesMenu, FCommandsMenu, FTabsMenu, FOptionsMenu, FRemoteMenu };
+    Menus = { FLocalMenu, FMarkMenu, FFilesMenu, FCommandsMenu, FTabsMenu, FOptionsMenu, FRemoteMenu, FHelpMenu };
   }
   for (QMenu * AMenu : Menus)
   {

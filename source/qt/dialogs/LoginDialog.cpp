@@ -132,6 +132,7 @@ void TLoginDialog::CreateControls()
   ExportAction =
     CreateAction("ExportAction", tr("&Export/Backup Configuration..."), &TLoginDialog::ExportActionExecute);
   CleanUpAction = CreateAction("CleanUpAction", tr("&Clean Up..."), &TLoginDialog::CleanUpActionExecute);
+  AboutAction = CreateAction("AboutAction", tr("&About..."), &TLoginDialog::AboutActionExecute);
   CopyParamRuleAction =
     CreateAction("CopyParamRuleAction", tr("Transfer Settings &Rule..."), &TLoginDialog::CopyParamRuleActionExecute);
   PreferencesLoggingAction =
@@ -403,6 +404,7 @@ void TLoginDialog::CreateControls()
   ToolsPopupMenu->addAction(CleanUpAction);
   ToolsPopupMenu->addSeparator();
   ToolsPopupMenu->addAction(PreferencesAction);
+  ToolsPopupMenu->addAction(AboutAction);
   ToolsMenuButton->setMenu(ToolsPopupMenu);
   ButtonLayout->addWidget(ToolsMenuButton);
   ButtonLayout->addStretch(1);
