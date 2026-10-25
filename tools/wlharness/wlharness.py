@@ -218,6 +218,10 @@ class Session:
             "WAYLAND_DISPLAY": WAYLAND_SOCKET,
             "QT_QPA_PLATFORM": "wayland",
             "DBUS_SESSION_BUS_ADDRESS": f"unix:path={self.runtime_dir / 'bus'}",
+            # The system bus of the session (start_system_bus), never the
+            # real one: nothing in a test may suspend or power off the
+            # computer, mount its drives, ...
+            "DBUS_SYSTEM_BUS_ADDRESS": f"unix:path={self.runtime_dir / 'system_bus'}",
             # Qt logs to the systemd journal when stderr is not a terminal; keep logs in the session
             "QT_FORCE_STDERR_LOGGING": "1",
         })
@@ -389,6 +393,36 @@ class Session:
 
     def input(self, *commands):
         self.run([_default_tool("wlh-input"), *[str(c) for c in commands]], timeout=60)
+
+    # --- system bus ------------------------------------------------------
+
+    def start_system_bus(self):
+        """Starts the system bus of the session (DBUS_SYSTEM_BUS_ADDRESS of its
+        environment), for fake system services: the applications of a session
+        never reach the real system bus."""
+        if self.state.get("system_bus"):
+            return
+        socket_path = self.runtime_dir / "system_bus"
+        config = self.dir / "dbus-system.conf"
+        config.write_text(f"""<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>system</type>
+  <listen>unix:path={socket_path}</listen>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+""")
+        process = self.spawn(["dbus-daemon", f"--config-file={config}", "--nofork", "--nopidfile"], log_name="dbus-system")
+        self._system_bus = process
+        self.state["system_bus"] = process.pid
+        self._save()
+        _wait_for(lambda: socket_path.exists() or process.poll() is not None, 10, "the system bus")
+        if process.poll() is not None:
+            raise HarnessError(f"the system bus exited; see {self.logs / 'dbus-system.log'}")
 
     # --- accessibility ---------------------------------------------------
 
