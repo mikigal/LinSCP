@@ -7,6 +7,7 @@
 #include <AppPCH.h>
 
 #include <SessionInfo.h>
+#include <Terminal.h>
 
 #include <functional>
 //---------------------------------------------------------------------------
@@ -130,6 +131,29 @@ void HideFileFindDialog();
 
 // dialogs/EditMaskDialog.cpp
 bool DoEditMaskDialog(TFileMasks & Mask);
+
+// dialogs/FullSynchronizeDialog.cpp
+enum TSynchronizeMode { smRemote, smLocal, smBoth };
+const int fsoDisableTimestamp = 0x01;
+const int fsoDoNotUsePresets = 0x02;
+const int fsoAllowSelectedOnly = 0x04;
+const int fsoDisableByChecksum = 0x08;
+const int fsoLocalLocal = 0x10;
+bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
+  UnicodeString & Directory1, UnicodeString & Directory2,
+  TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
+  const TUsableCopyParamAttrs & CopyParamAttrs);
+
+// dialogs/SynchronizeChecklistDialog.cpp
+typedef std::function<void(void * Token, TProcessedSynchronizationChecklistItem OnProcessedItem,
+  TUpdatedSynchronizationChecklistItems OnUpdatedSynchronizationChecklistItems)> TFullSynchronizeEvent;
+typedef std::function<void(void * Token)> TQueueSynchronizeEvent;
+typedef std::function<void(TSynchronizeChecklist * Checklist,
+  const TSynchronizeChecklist::TItemList & Items, void * Token)> TSynchronizeChecklistCalculateSize;
+bool DoSynchronizeChecklistDialog(TSynchronizeChecklist * Checklist, TSynchronizeMode Mode, int Params,
+  const UnicodeString & Directory1, const UnicodeString & Directory2,
+  TFullSynchronizeEvent OnSynchronize, TQueueSynchronizeEvent OnQueueSynchronize,
+  TSynchronizeChecklistCalculateSize OnSynchronizeChecklistCalculateSize, void * Token);
 
 // dialogs/RemoteTransferDialog.cpp
 enum TDirectRemoteCopy { drcDisallow, drcAllow, drcConfirmCommandSession, drcConfirmCommandSessionDirs };

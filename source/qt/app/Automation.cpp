@@ -200,6 +200,10 @@ QJsonArray DescribeRows(QAbstractItemView * View, const QModelIndex & Parent, in
     Item[QStringLiteral("cells")] = Cells;
     Item[QStringLiteral("selected")] = (Selection != nullptr) && Selection->isSelected(Index);
     Item[QStringLiteral("current")] = (Index == View->currentIndex());
+    if (Model->flags(Index).testFlag(Qt::ItemIsUserCheckable))
+    {
+      Item[QStringLiteral("checked")] = (Index.data(Qt::CheckStateRole).toInt() == Qt::Checked);
+    }
     if ((Tree != nullptr) && (Tree->isRowHidden(Row, Parent)))
     {
       Item[QStringLiteral("hidden")] = true;

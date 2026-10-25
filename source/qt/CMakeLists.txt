@@ -17,6 +17,7 @@ add_library(openscp_qt STATIC
   dialogs/CustomDialog.cpp
   dialogs/EditMaskDialog.cpp
   dialogs/FileFindDialog.cpp
+  dialogs/FullSynchronizeDialog.cpp
   dialogs/HistoryComboBox.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
@@ -24,11 +25,14 @@ add_library(openscp_qt STATIC
   dialogs/PropertiesDialog.cpp
   dialogs/RemoteTransferDialog.cpp
   dialogs/RightsFrame.cpp
+  dialogs/SynchronizeChecklistDialog.cpp
+  dialogs/SynchronizeProgressForm.cpp
   models/DirModel.cpp
   views/DirPanel.cpp
   views/QueueController.cpp
   views/ScpCommander.cpp
-  views/ScpCommanderQueue.cpp)
+  views/ScpCommanderQueue.cpp
+  views/ScpCommanderSynchronize.cpp)
 
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
 target_include_directories(openscp_qt PUBLIC

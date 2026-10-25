@@ -15,13 +15,16 @@
 class QLabel;
 class QProgressBar;
 class QPushButton;
+class TSynchronizeProgress;
 //---------------------------------------------------------------------------
 class TProgressForm : public QDialog
 {
   Q_OBJECT
 
 public:
-  TProgressForm(QWidget * Parent, bool AllowSkip);
+  // With the progress of a synchronization, its overall progress is
+  // shown
+  TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgress * SynchronizeProgress = nullptr);
 
   // Shown while the operation runs, blocking the other windows, without a
   // modal event loop of its own (the operation runs in the main thread)
@@ -29,7 +32,9 @@ public:
   void SetProgressData(TFileOperationProgressType & AData);
   TCancelStatus GetCancel() const { return FCancel; }
   void ClearCancel();
-  static UnicodeString ProgressStr(const TFileOperationProgressType * ProgressData);
+  static UnicodeString ProgressStr(
+    const TSynchronizeProgress * SynchronizeProgress, const TFileOperationProgressType * ProgressData);
+  TSynchronizeProgress * GetSynchronizeProgress() const { return FSynchronizeProgress; }
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -40,6 +45,7 @@ private:
   bool FDataGot;
   TCancelStatus FCancel;
   bool FAllowSkip;
+  TSynchronizeProgress * FSynchronizeProgress;
   TFileOperation FLastOperation;
   TOperationSide FLastSide;
   QElapsedTimer FSinceLastUpdate;

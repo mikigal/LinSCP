@@ -30,6 +30,7 @@ class TDirPanel;
 class TLocalDirPanel;
 class TProgressForm;
 class TRemoteDirPanel;
+class TSynchronizeProgressForm;
 class TTerminal;
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
@@ -66,6 +67,7 @@ private:
   TRemoteDirPanel * FRemotePanel;
   TDirPanel * FCurrentPanel;
   TProgressForm * FProgressForm;
+  TSynchronizeProgressForm * FSynchronizeProgressForm;
   QLabel * FSessionStatusLabel;
   QComboBox * FTransferList;
   int FBusy;
@@ -113,6 +115,7 @@ private:
   QAction * CurrentCreateDirAction;
   QAction * CurrentPropertiesAction;
   QAction * RemoteFindFilesAction2;
+  QAction * FullSynchronizeAction2;
   QAction * ShowHiddenFilesAction;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
@@ -149,6 +152,7 @@ private:
   // The selected files of the panel: full paths (and the remote files)
   TStrings * CreateFileList(TDirPanel * Panel);
   void DestroyProgressForm();
+  void CreateProgressForm(TSynchronizeProgress * SynchronizeProgress);
   void Idle();
 
   // The transfer queue (ScpCommanderQueue.cpp)
@@ -189,6 +193,31 @@ private:
   void CurrentCreateDirActionExecute();
   void CurrentPropertiesActionExecute();
   void RemoteFindFilesActionExecute();
+  void FullSynchronizeActionExecute();
+
+  // The synchronization (ScpCommanderSynchronize.cpp)
+  struct TSynchronizeParams
+  {
+    TSynchronizeMode Mode;
+    const TCopyParamType * CopyParam;
+    int Params;
+    TSynchronizeChecklist * Checklist;
+    TDateTime CollectElapsed;
+    TDateTime * StartTime;
+    TProcessedSynchronizationChecklistItem OnProcessedItem;
+  };
+  int DoFullSynchronizeDirectories(UnicodeString & Directory1, UnicodeString & Directory2,
+    TSynchronizeMode & Mode, int Params, bool & SaveMode);
+  void FullSynchronize(TSynchronizeParams & Params, TProcessedSynchronizationChecklistItem OnProcessedItem,
+    TUpdatedSynchronizationChecklistItems OnUpdatedSynchronizationChecklistItems);
+  void SynchronizeProcessedItem(void * Token, const TSynchronizeChecklist::TItem * ChecklistItem);
+  void DoQueueSynchronize(void * Token);
+  void DoSynchronizeChecklistCalculateSize(
+    TSynchronizeChecklist * Checklist, const TSynchronizeChecklist::TItemList & Items, void * Token);
+  void TerminalSynchronizeDirectory(const UnicodeString & LocalDirectory, const UnicodeString & RemoteDirectory,
+    bool & Continue, bool Collect, const TSynchronizeOptions * Options);
+  bool SynchronizeAllowSelectedOnly();
+  void GetSynchronizeOptions(int Params, TSynchronizeOptions & Options);
   void DoFindFiles(TTerminal * ATerminal, UnicodeString Directory, const TFileMasks & FileMask,
     TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile);
   void DoFocusRemotePath(TTerminal * ATerminal, const UnicodeString & Path);

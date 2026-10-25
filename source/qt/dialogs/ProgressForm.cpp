@@ -4,6 +4,8 @@
 
 #include "ProgressForm.h"
 
+#include <RemoteFiles.h>
+
 #include <QApplication>
 #include <QCloseEvent>
 #include <QGridLayout>
@@ -25,13 +27,29 @@ static QLabel * CreateLabel(QWidget * Parent, const char * Name, const QString &
   return Label;
 }
 //---------------------------------------------------------------------------
-TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip) :
+static bool IsIndeterminate(const TSynchronizeProgress * SynchronizeProgress, const TFileOperationProgressType * ProgressData)
+{
+  bool Result;
+  // TSynchronizeProgress has its own way how to take atomic operations into account
+  if (SynchronizeProgress != NULL)
+  {
+    Result = TFileOperationProgressType::IsIndeterminateOperation(ProgressData->Operation);
+  }
+  else
+  {
+    Result = ProgressData->IsIndeterminate();
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgress * SynchronizeProgress) :
   QDialog(Parent)
 {
   setObjectName(QStringLiteral("ProgressForm"));
   FDataGot = false;
   FCancel = csContinue;
   FAllowSkip = AllowSkip;
+  FSynchronizeProgress = SynchronizeProgress;
   FLastOperation = foNone;
   FLastSide = osCurrent;
 
@@ -111,7 +129,8 @@ void TProgressForm::ShowAsModal()
   activateWindow();
 }
 //---------------------------------------------------------------------------
-UnicodeString TProgressForm::ProgressStr(const TFileOperationProgressType * ProgressData)
+UnicodeString TProgressForm::ProgressStr(
+  const TSynchronizeProgress * SynchronizeProgress, const TFileOperationProgressType * ProgressData)
 {
   static const int Captions[] = { 0, 0, PROGRESS_DELETE,
     PROGRESS_SETPROPERTIES, 0, PROGRESS_CUSTOM_COMAND, PROGRESS_CALCULATE_SIZE,
@@ -128,9 +147,22 @@ UnicodeString TProgressForm::ProgressStr(const TFileOperationProgressType * Prog
     Id = ((Index >= 0) && (Index < static_cast<int>(std::size(Captions)))) ? Captions[Index] : 0;
   }
   UnicodeString Result = (Id != 0) ? LoadStr(Id) : UnicodeString();
-  if (!ProgressData->IsIndeterminate())
+  if (SynchronizeProgress != NULL)
   {
-    Result = FORMAT(L"%d%% %s", (ProgressData->OverallProgress(), Result));
+    Result = LoadStr(SYNCHRONIZE_PROGRESS_SYNCHRONIZE2) + TitleSeparator + Result;
+  }
+  if (!IsIndeterminate(SynchronizeProgress, ProgressData))
+  {
+    int OverallProgress;
+    if (SynchronizeProgress != NULL)
+    {
+      OverallProgress = SynchronizeProgress->Progress(ProgressData);
+    }
+    else
+    {
+      OverallProgress = ProgressData->OverallProgress();
+    }
+    Result = FORMAT(L"%d%% %s", (OverallProgress, Result));
   }
   return Result;
 }
@@ -153,7 +185,7 @@ void TProgressForm::SetProgressData(TFileOperationProgressType & AData)
 void TProgressForm::UpdateControls()
 {
   bool TransferOperation = FData.IsTransfer();
-  bool Indeterminate = FData.IsIndeterminate();
+  bool Indeterminate = IsIndeterminate(FSynchronizeProgress, &FData);
 
   CancelItem->setEnabled(FCancel < csCancel);
   SkipItem->setVisible(TransferOperation && FAllowSkip);
@@ -190,6 +222,8 @@ void TProgressForm::UpdateControls()
   }
   FileLabel->setText(ToQString(FileCaption));
 
+  // as a side effect this prevents calling TSynchronizeProgress::Progress when we do not know total size yet
+  // (what would cache wrong values forever)
   if (Indeterminate)
   {
     OperationProgress->setRange(0, 0);
@@ -197,9 +231,10 @@ void TProgressForm::UpdateControls()
   else
   {
     OperationProgress->setRange(0, 100);
-    OperationProgress->setValue(std::max(0, FData.OverallProgress()));
+    int OverallProgress = (FSynchronizeProgress != NULL) ? FSynchronizeProgress->Progress(&FData) : FData.OverallProgress();
+    OperationProgress->setValue(std::max(0, OverallProgress));
   }
-  setWindowTitle(ToQString(FormatMainFormCaption(ProgressStr(&FData))));
+  setWindowTitle(ToQString(FormatMainFormCaption(ProgressStr(FSynchronizeProgress, &FData))));
 
   if (TransferOperation)
   {
@@ -212,7 +247,8 @@ void TProgressForm::UpdateControls()
       // As upstream's CanShowTimeEstimate
       if (SecondsBetween(FData.StartTime, Now()) >= 3)
       {
-        TimeLeftCaption = FormatDateTimeSpan(FData.TotalTimeLeft());
+        TimeLeftCaption = FormatDateTimeSpan(
+          (FSynchronizeProgress != NULL) ? FSynchronizeProgress->TimeLeft(&FData) : FData.TotalTimeLeft());
       }
       else
       {

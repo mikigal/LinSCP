@@ -38,6 +38,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   setObjectName(QStringLiteral("ScpCommanderForm"));
   resize(1100, 720);
   FProgressForm = nullptr;
+  FSynchronizeProgressForm = nullptr;
   FBusy = 0;
   FUpdatingTransferList = 0;
   FLocalDirectoryTerminal = NULL;
@@ -114,6 +115,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::Key_F9) }, &TScpCommanderForm::CurrentPropertiesActionExecute);
   RemoteFindFilesAction2 = CreateAction("RemoteFindFilesAction2", tr("&Find Files..."), QStringLiteral("edit-find"),
     { QKeySequence(Qt::ALT | Qt::Key_F7) }, &TScpCommanderForm::RemoteFindFilesActionExecute);
+  FullSynchronizeAction2 = CreateAction("FullSynchronizeAction2", tr("&Synchronize..."), QStringLiteral("folder-sync"),
+    { QKeySequence(Qt::CTRL | Qt::Key_S) }, &TScpCommanderForm::FullSynchronizeActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -230,6 +233,7 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
   CommandsMenu->addAction(CurrentCreateDirAction);
   CommandsMenu->addAction(RemoteFindFilesAction2);
+  CommandsMenu->addAction(FullSynchronizeAction2);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
   CommandsMenu->addSeparator();
@@ -364,6 +368,7 @@ void TScpCommanderForm::UpdateActions()
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
   CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
   RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
+  FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ConfigurationChanged()
@@ -1427,6 +1432,13 @@ void TScpCommanderForm::DestroyProgressForm()
   FProgressForm = nullptr;
 }
 //---------------------------------------------------------------------------
+void TScpCommanderForm::CreateProgressForm(TSynchronizeProgress * SynchronizeProgress)
+{
+  DebugAssert(FProgressForm == nullptr);
+  FProgressForm = new TProgressForm(this, true, SynchronizeProgress);
+  FProgressForm->ShowAsModal();
+}
+//---------------------------------------------------------------------------
 void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressData)
 {
   // The operation runs and the progress is not shown yet
@@ -1436,7 +1448,8 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
     FProgressForm->ShowAsModal();
   }
   // The operation finished (or was cancelled)
-  else if (!ProgressData.InProgress && (FProgressForm != nullptr))
+  // The progress of a synchronization stays over the operations of its items
+  else if (!ProgressData.InProgress && (FProgressForm != nullptr) && (FProgressForm->GetSynchronizeProgress() == nullptr))
   {
     DestroyProgressForm();
   }

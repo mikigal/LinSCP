@@ -81,6 +81,7 @@ void __fastcall TAppConfiguration::Default()
   FQueueViewShow = qvHideWhenEmpty;
   FQueueViewHeight = 140;
   FSelectMask = AnyMask;
+  FSynchronizeSummary = true;
   FShowHiddenFiles = false;
   FLastStoredSession = L"";
   FOpenedStoredSessionFolders = L"";
@@ -127,6 +128,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FEnableQueueByDefault); \
     KEY(Bool,    FConfirmExitOnCompletion); \
     KEY(String,  FSelectMask); \
+    KEY(Bool,    FSynchronizeSummary); \
     KEY(Bool,    FShowHiddenFiles); \
     KEY(String,  FLastStoredSession); \
     KEY(String,  FOpenedStoredSessionFolders); \
@@ -327,6 +329,11 @@ void TAppConfiguration::SetQueueViewHeight(int value)
 void TAppConfiguration::SetSelectMask(UnicodeString value)
 {
   SET_CONFIG_PROPERTY(SelectMask);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetSynchronizeSummary(bool value)
+{
+  SET_CONFIG_PROPERTY(SynchronizeSummary);
 }
 //---------------------------------------------------------------------------
 TStrings * TAppConfiguration::GetHistory(const UnicodeString Index)

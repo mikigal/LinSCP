@@ -695,6 +695,88 @@ class GuiSshTest(GuiTestCase):
         gui.wait_no_window('FileFindDialog')
         self.assertEqual(gui.quit(), 0)
 
+    def test_synchronize(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        old, new = 1500000000, 1600000000
+        for directory in (local, remote):
+            (directory / 'same.txt').write_text('same')
+            os.utime(directory / 'same.txt', (old, old))
+        (local / 'changed.txt').write_text('local version')
+        os.utime(local / 'changed.txt', (new, new))
+        (remote / 'changed.txt').write_text('remote')
+        os.utime(remote / 'changed.txt', (old, old))
+        (local / 'new.txt').write_text('new')
+        (remote / 'obsolete.txt').write_text('obsolete')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        S = 'FullSynchronizeDialog/'
+        gui.focus(W + 'LocalDirView')
+        gui.wait_idle()
+        gui.trigger(W + 'FullSynchronizeAction2')
+        gui.wait_window('FullSynchronizeDialog')
+        self.assertEqual(gui.get(S + 'LocalDirectoryEdit')['text'], str(local))
+        self.assertEqual(gui.get(S + 'RemoteDirectoryEdit')['text'], str(remote))
+        self.assertTrue(gui.get(S + 'SynchronizeRemoteButton')['checked'])
+        self.assertTrue(gui.get(S + 'SynchronizePreviewChangesCheck')['checked'])
+        gui.set(S + 'SynchronizeDeleteCheck', True)
+        self.screenshot('synchronize')
+        gui.click(S + 'OkButton')
+        gui.wait_window('SynchronizeChecklistDialog', 60)
+        K = 'SynchronizeChecklistDialog/'
+        rows = {row[0]: row for row in gui.rows(K + 'ListView2')}
+        self.assertEqual(sorted(rows), ['changed.txt', 'new.txt', 'obsolete.txt'])
+        self.assertEqual(gui.get(K + 'StatusText0')['text'], '3 of 3 (16 B)')
+        self.assertEqual(gui.get(K + 'StatusText1')['text'], '1 of 1 (3 B)')
+        self.assertEqual(gui.get(K + 'StatusText5')['text'], '1 of 1')
+        self.assertEqual(gui.get(K + 'StatusText2')['text'], 'N/A')
+
+        # The obsolete file stays
+        gui.select(K + 'ListView2', 'obsolete.txt')
+        gui.wait_idle()
+        gui.click(K + 'UncheckButton')
+        self.assertEqual(gui.get(K + 'StatusText0')['text'], '2 of 3 (16 B)')
+        # Reversed and back
+        gui.select(K + 'ListView2', 'changed.txt')
+        gui.wait_idle()
+        gui.click(K + 'ReverseButton')
+        self.assertEqual(gui.get(K + 'StatusText4')['text'], '1 of 1 (6 B)')
+        gui.click(K + 'ReverseButton')
+        self.assertEqual(gui.get(K + 'StatusText3')['text'], '1 of 1 (13 B)')
+        self.screenshot('checklist')
+        gui.click(K + 'OkButton')
+        gui.wait_window('MessageForm', 60)
+        self.assertEqual(gui.get('MessageForm/MainMessage')['text'], 'Synchronization was completed.')
+        gui.click('MessageForm/OK')
+        gui.wait_no_window('MessageForm')
+        gui.wait_no_window('SynchronizeChecklistDialog')
+        gui.wait_idle()
+        self.assertEqual((remote / 'new.txt').read_text(), 'new')
+        self.assertEqual((remote / 'changed.txt').read_text(), 'local version')
+        self.assertEqual(int((remote / 'changed.txt').stat().st_mtime), new)
+        self.assertTrue((remote / 'obsolete.txt').exists())
+
+        # Again, in the background (the queue)
+        (local / 'later.txt').write_text('later')
+        gui.trigger(W + 'LocalRefreshAction')
+        gui.wait_idle()
+        gui.trigger(W + 'FullSynchronizeAction2')
+        gui.wait_window('FullSynchronizeDialog')
+        gui.set(S + 'SynchronizeDeleteCheck', False)
+        gui.click(S + 'OkButton')
+        gui.wait_window('SynchronizeChecklistDialog', 60)
+        # Without deleting, the obsolete file is listed unchecked
+        checked = {row['cells'][0]: row['checked'] for row in gui.get(K + 'ListView2')['rows']}
+        self.assertEqual(checked, {'later.txt': True, 'obsolete.txt': False})
+        gui.click_real(K + 'OkDropDownButton')
+        gui.wait_window('OkPopupMenu')
+        gui.trigger(K + 'StartQueueItem')
+        gui.wait_no_window('SynchronizeChecklistDialog')
+        gui.wait_for(lambda: (remote / 'later.txt').exists(), 60, 'the queued synchronization')
+        self.assertEqual((remote / 'later.txt').read_text(), 'later')
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))
