@@ -2,11 +2,50 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M6 — the features of the GUI
+## M6 — the features of the GUI (in progress)
 
 Queue, copy dialog with options, properties/chmod, rename, find files, synchronization +
 checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor +
 external editing.
+
+Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit/qt`):
+
+- The properties dialog (`TPropertiesDialog`, F9) with the permissions editor
+  (`TRightsFrame`): size calculation, owner and group (by ID where the protocol needs it),
+  permissions, recursion, checksums (with the separate shell session where the protocol has
+  none), S3 tags and ACL. Local files get the same dialog (upstream shows the shell's), their
+  permissions are changed as `chmod -R` would (`app/LocalFiles.cpp`).
+- The copy dialog with the transfer settings (`TCopyParamsFrame`, the custom settings and
+  preset dialogs, the presets menu, the file mask editor), move (F6), the duplication
+  (Shift+F5: directly, via the separate shell session or a local temporary copy) and move
+  (Shift+F6) of remote files, the transfer settings toolbar with presets selected by their
+  rules. Histories of combo boxes are kept in the configuration (`History\<name>`).
+- The transfer queue (`TQueueController`, `views/ScpCommanderQueue.cpp`): background
+  transfers from the copy dialog, the queue panel with its toolbar (process queue, query,
+  error, prompt, execute now, suspend, resume, cancel, move up/down, delete completed, once
+  empty: stay idle or disconnect), pending user actions popped up automatically, the panel
+  shown always, when not empty or never. The session upkeep runs on a timer
+  (`TTerminalManager::Idle`: keepalives of the session, the queue, its events), which M5
+  lacked.
+
+Decisions:
+
+- Popup menus and shortcuts need the real input of the compositor: the automation hook
+  reports the geometry of widgets and `OpenScpGui.click_real` clicks them with `wlh-input`;
+  items of open popup menus are activated by the hook. `wlharness` lists dialogs among the
+  windows.
+- Ctrl+Q stays the Quit of the Linux desktops; upstream's "go to queue" has no shortcut.
+- Notifications of the queue (empty, pending user action) and shutting down or suspending
+  the computer once it is empty are left for M7. With a single session (no tabs), a session
+  closed once the queue got empty is freed, so it is not offered to reconnect.
+- On Linux, the transfer mode is disabled for Unix servers (the same line endings), as
+  upstream's attributes say; "Clear archive attribute" is hidden.
+
+Manual edits in upstream directories since M5:
+
+- `core/Terminal.cpp`: `TCalculateSizeParams` zeroes itself with `memset`, which corrupted
+  its `UnicodeString` member (a pointer in C++Builder, a `std::wstring` here); the member is
+  constructed again (parallel downloads of the queue crashed).
 
 ## M5 — GUI skeleton (done, 2026-10-25)
 

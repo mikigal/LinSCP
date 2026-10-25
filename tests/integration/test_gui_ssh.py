@@ -27,6 +27,7 @@ STATE = None
 W = 'ScpCommanderForm/'
 P = 'PropertiesDialog/'
 C = 'CopyDialog/'
+Q = W + 'QueueView3'
 
 
 def setUpModule():
@@ -349,7 +350,8 @@ class GuiSshTest(GuiTestCase):
         # A file mask and no timestamps, in the transfer settings
         self.open_copy(gui, 'Local', 'a.txt', 'b.bin', 'sub')
         self.assertEqual(gui.get(C + 'RemoteDirectoryEdit')['text'], str(remote) + '/*.*')
-        self.assertFalse(gui.get(C + 'QueueCheck2')['enabled'])
+        self.assertTrue(gui.get(C + 'QueueCheck2')['enabled'])
+        self.assertFalse(gui.get(C + 'QueueCheck2')['checked'])
         gui.click(C + 'TransferSettingsButton')
         gui.wait_window('CopyParamCustomDialog')
         T = 'CopyParamCustomDialog/'
@@ -543,6 +545,96 @@ class GuiSshTest(GuiTestCase):
         gui.wait_idle()
         self.assertEqual((remote / 'target' / 'copy.txt').read_text(), 'file')
         self.assertFalse((remote / 'copy.txt').exists())
+        self.assertEqual(gui.quit(), 0)
+
+    def queue_copy(self, gui, side, *names):
+        """A transfer in the background."""
+        self.open_copy(gui, side, *names)
+        self.assertTrue(gui.get(C + 'QueueCheck2')['enabled'])
+        gui.set(C + 'QueueCheck2', True)
+        self.submit_copy(gui)
+
+    def queue_rows(self, gui):
+        return gui.rows(Q)
+
+    def test_queue(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        for name in ('a.txt', 'b.txt', 'c.txt'):
+            (local / name).write_text(name)
+        (remote / 'existing.txt').write_text('remote')
+        (local / 'existing.txt').write_text('local')
+        # Queue items confirm overwrites
+        ini = site_ini(remote=remote, local=local) + '[Configuration\\Interface\\CopyParam]\nQueueNoConfirmation=0\n'
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local')
+        self.assertFalse(gui.get(W + 'QueuePanel')['visible'])
+
+        # An upload in the background: the queue shows, the item completes
+        self.queue_copy(gui, 'Local', 'a.txt', 'b.txt')
+        gui.wait_for(lambda: (remote / 'b.txt').exists() and (remote / 'b.txt').read_text() == 'b.txt', 60, 'the upload')
+        gui.wait_for(lambda: self.queue_rows(gui) and self.queue_rows(gui)[0][6] == 'Completed', 30, 'the completed item')
+        self.assertTrue(gui.get(W + 'QueuePanel')['visible'])
+        row = self.queue_rows(gui)[0]
+        self.assertEqual(row[1], str(local))
+        self.assertEqual(row[2], str(remote) + '/*.*')
+        self.assertEqual(gui.get(W + 'QueueLabel')['text'], 'Queue')
+        gui.wait_for(lambda: 'b.txt' in gui.names(W + 'RemoteDirView'), what='the reloaded remote panel')
+        self.screenshot('queue')
+
+        # With the queue disabled, the item waits
+        gui.trigger(W + 'QueueDeleteAllDoneAction')
+        gui.wait_for(lambda: not self.queue_rows(gui), what='the queue to be cleared')
+        gui.trigger(W + 'QueueEnableAction')
+        self.assertFalse(gui.get(W + 'QueueEnableAction')['checked'])
+        self.queue_copy(gui, 'Local', 'c.txt')
+        gui.wait_for(lambda: self.queue_rows(gui) and self.queue_rows(gui)[0][6] == 'Waiting...', 30, 'the pending item')
+        self.assertEqual(gui.get(W + 'QueueLabel')['text'], 'Queue (1)')
+        self.assertFalse((remote / 'c.txt').exists())
+        # Cancelled
+        gui.select(Q, '')
+        gui.wait_idle()
+        self.assertTrue(gui.get(W + 'QueueItemExecuteAction')['enabled'])
+        gui.trigger(W + 'QueueItemDeleteAction')
+        gui.wait_for(lambda: not self.queue_rows(gui), what='the cancelled item')
+        gui.wait_for(lambda: not gui.get(W + 'QueuePanel')['visible'], what='the hidden queue')
+        # Executed now
+        self.queue_copy(gui, 'Local', 'c.txt')
+        gui.wait_for(lambda: self.queue_rows(gui), 30, 'the pending item')
+        gui.select(Q, '')
+        gui.wait_idle()
+        gui.trigger(W + 'QueueItemExecuteAction')
+        gui.wait_for(lambda: (remote / 'c.txt').exists(), 60, 'the executed upload')
+        gui.trigger(W + 'QueueEnableAction')
+        self.assertTrue(gui.get(W + 'QueueEnableAction')['checked'])
+
+        # A query of the queue (overwrite) pops up automatically
+        self.queue_copy(gui, 'Remote', 'existing.txt')
+        gui.wait_window('MessageForm', 60)
+        self.assertIn('existing.txt', gui.get('MessageForm', children=True)['children'][0].get('text', '') +
+                      ' '.join(child.get('text', '') for child in gui.get('MessageForm', children=True)['children']))
+        gui.click('MessageForm/Yes')
+        gui.wait_no_window('MessageForm')
+        gui.wait_for(lambda: (local / 'existing.txt').read_text() == 'remote', 60, 'the overwritten file')
+
+        # Disconnect once the queue is empty
+        gui.trigger(W + 'QueueDeleteAllDoneAction')
+        gui.trigger(W + 'QueueEnableAction')
+        (local / 'd.txt').write_text('d')
+        gui.trigger(W + 'LocalRefreshAction')
+        gui.wait_idle()
+        self.queue_copy(gui, 'Local', 'd.txt')
+        gui.wait_for(lambda: self.queue_rows(gui), 30, 'the pending item')
+        gui.trigger(W + 'QueueDisconnectOnceEmptyAction2')
+        gui.trigger(W + 'QueueEnableAction')
+        gui.wait_window('MessageForm', 60)
+        self.assertIn('All background transfers were finished', ' '.join(
+            child.get('text', '') for child in gui.get('MessageForm', children=True)['children']))
+        self.screenshot('once-empty')
+        gui.click('MessageForm/No')
+        gui.wait_no_window('MessageForm')
+        gui.wait_for(lambda: gui.get(W + 'RemoteNoSessionPage')['visible'], what='the disconnected session')
+        self.assertEqual((remote / 'd.txt').read_text(), 'd')
         self.assertEqual(gui.quit(), 0)
 
     def test_connection_refused(self):

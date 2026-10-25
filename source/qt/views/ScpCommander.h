@@ -8,14 +8,24 @@
 //---------------------------------------------------------------------------
 #include <QtInterface.h>
 
+#include <AppConfiguration.h>
 #include <FileOperationProgress.h>
+#include <Queue.h>
+
+#include "QueueController.h"
 
 #include <QMainWindow>
+
+#include <mutex>
 //---------------------------------------------------------------------------
 class QAction;
+class QActionGroup;
 class QComboBox;
 class QLabel;
 class QSplitter;
+class QTimer;
+class QToolBar;
+class QTreeWidget;
 class TDirPanel;
 class TLocalDirPanel;
 class TProgressForm;
@@ -43,6 +53,8 @@ public:
   bool IsBusy() const { return (FBusy > 0); }
   // The configuration changed (the presets, ...)
   void ConfigurationChanged();
+  // An event of the queue of the session (TTerminalManager::Idle)
+  void QueueEvent(TTerminal * Terminal, TTerminalQueue * Queue, TQueueEvent Event);
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -63,6 +75,27 @@ private:
   UnicodeString FCopyParamAutoSelected;
   // The session whose local directory the local panel went to
   TTerminal * FLocalDirectoryTerminal;
+  QTimer * FIdleTimer;
+  bool FRefreshLocalDirectory;
+  bool FRefreshRemoteDirectory;
+
+  // The transfer queue (ScpCommanderQueue.cpp)
+  QSplitter * FQueueSplitter;
+  QWidget * QueuePanel;
+  QLabel * QueueLabel;
+  QToolBar * QueueToolbar;
+  QTreeWidget * QueueView3;
+  TQueueController * FQueueController;
+  TTerminalQueue * FQueue;
+  TTerminalQueueStatus * FQueueStatus;
+  // The status is updated from the threads of the queue
+  std::mutex FQueueStatusSection;
+  bool FQueueStatusInvalidated;
+  bool FQueueItemInvalidated;
+  bool FQueueStatusUpdating;
+  TQueueItemProxy * FPendingQueueActionItem;
+  QActionGroup * FQueueShowGroup;
+  QActionGroup * FQueueOnceEmptyGroup;
 
   QAction * NewSessionAction;
   QAction * DisconnectSessionAction;
@@ -77,6 +110,26 @@ private:
   QAction * CurrentCreateDirAction;
   QAction * CurrentPropertiesAction;
   QAction * ShowHiddenFilesAction;
+  QAction * QueueEnableAction;
+  QAction * QueueGoToAction;
+  QAction * QueueItemQueryAction;
+  QAction * QueueItemErrorAction;
+  QAction * QueueItemPromptAction;
+  QAction * QueueItemExecuteAction;
+  QAction * QueueItemPauseAction;
+  QAction * QueueItemResumeAction;
+  QAction * QueueItemDeleteAction;
+  QAction * QueueItemUpAction;
+  QAction * QueueItemDownAction;
+  QAction * QueuePauseAllAction;
+  QAction * QueueResumeAllAction;
+  QAction * QueueDeleteAllDoneAction;
+  QAction * QueueDeleteAllAction;
+  QAction * QueueIdleOnceEmptyAction;
+  QAction * QueueDisconnectOnceEmptyAction2;
+  QAction * QueueShowAction;
+  QAction * QueueHideWhenEmptyAction;
+  QAction * QueueHideAction;
 
   QAction * CreateAction(const char * Name, const QString & Caption, const QString & IconName,
     const QList<QKeySequence> & ShortCuts, void (TScpCommanderForm::*Method)());
@@ -92,6 +145,32 @@ private:
   // The selected files of the panel: full paths (and the remote files)
   TStrings * CreateFileList(TDirPanel * Panel);
   void DestroyProgressForm();
+  void Idle();
+
+  // The transfer queue (ScpCommanderQueue.cpp)
+  void CreateQueueActions();
+  void CreateQueuePanel();
+  QMenu * CreateQueueMenu();
+  void SetQueue(TTerminalQueue * Value);
+  void QueueListUpdate(TTerminalQueue * Queue);
+  void QueueItemUpdate(TTerminalQueue * Queue, TQueueItem * Item);
+  void UpdateQueueStatus(bool QueueChanging);
+  void QueueChanged();
+  void UpdateQueueView();
+  void UpdateQueueLabel();
+  void UpdateQueueActions();
+  void RefreshQueueItems();
+  void UserActionTimer();
+  bool IsAnythingQueued();
+  // The queue is empty, or its items may be abandoned
+  bool CanCloseQueue();
+  void AddQueueItem(TTransferDirection Direction, TStrings * FileList,
+    const UnicodeString & TargetDirectory, TGUICopyParamType & CopyParam, int Params);
+  bool AllowQueueOperation(TQueueOperation Operation);
+  void ExecuteQueueOperation(TQueueOperation Operation);
+  TOnceDoneOperation CurrentQueueOnceEmptyOperation();
+  void ResetQueueOnceEmptyOperation();
+  void QueueViewShowChange(TQueueViewShow Show);
 
   void NewSessionActionExecute() { NewSession(); }
   void DisconnectSessionActionExecute();

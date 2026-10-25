@@ -76,6 +76,10 @@ void __fastcall TAppConfiguration::Default()
   FConfirmDeleting = true;
   FConfirmTransferring = true;
   FCopyParamAutoSelectNotice = true;
+  FEnableQueueByDefault = true;
+  FConfirmExitOnCompletion = true;
+  FQueueViewShow = qvHideWhenEmpty;
+  FQueueViewHeight = 140;
   FShowHiddenFiles = false;
   FLastStoredSession = L"";
   FOpenedStoredSessionFolders = L"";
@@ -119,9 +123,15 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FConfirmDeleting); \
     KEY(Bool,    FConfirmTransferring); \
     KEY(Bool,    FCopyParamAutoSelectNotice); \
+    KEY(Bool,    FEnableQueueByDefault); \
+    KEY(Bool,    FConfirmExitOnCompletion); \
     KEY(Bool,    FShowHiddenFiles); \
     KEY(String,  FLastStoredSession); \
     KEY(String,  FOpenedStoredSessionFolders); \
+  ); \
+  BLOCK(L"Interface\\QueueView", CANCREATE, \
+    KEYEX(Integer, FQueueViewHeight, L"Height"); \
+    KEYEX(Integer, FQueueViewShow, L"Show"); \
   ); \
   BLOCK(L"Security", CANCREATE, \
     KEY(Bool,    FUseMasterPassword); \
@@ -290,6 +300,26 @@ void TAppConfiguration::SetConfirmTransferring(bool value)
 void TAppConfiguration::SetCopyParamAutoSelectNotice(bool value)
 {
   SET_CONFIG_PROPERTY(CopyParamAutoSelectNotice);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetEnableQueueByDefault(bool value)
+{
+  SET_CONFIG_PROPERTY(EnableQueueByDefault);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetConfirmExitOnCompletion(bool value)
+{
+  SET_CONFIG_PROPERTY(ConfirmExitOnCompletion);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetQueueViewShow(TQueueViewShow value)
+{
+  SET_CONFIG_PROPERTY(QueueViewShow);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetQueueViewHeight(int value)
+{
+  SET_CONFIG_PROPERTY(QueueViewHeight);
 }
 //---------------------------------------------------------------------------
 TStrings * TAppConfiguration::GetHistory(const UnicodeString Index)

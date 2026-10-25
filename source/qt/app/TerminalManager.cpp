@@ -42,6 +42,7 @@ TTerminalManager::TTerminalManager()
 {
   FScpExplorer = NULL;
   FActiveTerminal = NULL;
+  FActiveQueue = NULL;
   FAuthenticateForm = NULL;
   FAuthenticating = 0;
   FBusyToken = NULL;
@@ -60,7 +61,10 @@ TTerminalManager::~TTerminalManager()
   if (FActiveTerminal != NULL)
   {
     TManagedTerminal * Terminal = FActiveTerminal;
+    TTerminalQueue * Queue = FActiveQueue;
     FActiveTerminal = NULL;
+    FActiveQueue = NULL;
+    delete Queue;
     delete Terminal;
   }
   CloseAuthenticateForm();
@@ -76,9 +80,16 @@ void TTerminalManager::ConfigurationChange(TObject * /*Sender*/)
   {
     QMetaObject::invokeMethod(QCoreApplication::instance(), [this]() { ConfigurationChange(NULL); }, Qt::QueuedConnection);
   }
-  else if (FScpExplorer != NULL)
+  else
   {
-    FScpExplorer->ConfigurationChanged();
+    if (FActiveQueue != NULL)
+    {
+      SetQueueConfiguration(FActiveQueue);
+    }
+    if (FScpExplorer != NULL)
+    {
+      FScpExplorer->ConfigurationChanged();
+    }
   }
 }
 //---------------------------------------------------------------------------
@@ -108,6 +119,31 @@ void TTerminalManager::SetupTerminal(TTerminal * Terminal)
   Terminal->OnCustomCommand = ::rtl::MethodPtr(this, &TTerminalManager::TerminalCustomCommand);
 }
 //---------------------------------------------------------------------------
+void TTerminalManager::SetQueueConfiguration(TTerminalQueue * Queue)
+{
+  Queue->TransfersLimit = Configuration->QueueTransfersLimit;
+  Queue->KeepDoneItemsFor =
+    (GUIConfiguration->QueueKeepDoneItems ? GUIConfiguration->QueueKeepDoneItemsFor : 0);
+}
+//---------------------------------------------------------------------------
+TTerminalQueue * TTerminalManager::NewQueue(TTerminal * Terminal)
+{
+  TTerminalQueue * Queue = new TTerminalQueue(Terminal, Configuration);
+  SetQueueConfiguration(Queue);
+  Queue->Enabled = AppConfiguration->EnableQueueByDefault;
+  Queue->OnQueryUser = ::rtl::MethodPtr(this, &TTerminalManager::TerminalQueryUser);
+  Queue->OnPromptUser = ::rtl::MethodPtr(this, &TTerminalManager::TerminalPromptUser);
+  Queue->OnShowExtendedException = ::rtl::MethodPtr(this, &TTerminalManager::TerminalShowExtendedException);
+  Queue->OnEvent = ::rtl::MethodPtr(this, &TTerminalManager::QueueEvent);
+  return Queue;
+}
+//---------------------------------------------------------------------------
+void TTerminalManager::QueueEvent(TTerminalQueue * Queue, TQueueEvent Event)
+{
+  std::lock_guard<std::mutex> Guard(FQueueSection);
+  FQueueEvents.push_back(std::make_pair(Queue, Event));
+}
+//---------------------------------------------------------------------------
 TManagedTerminal * TTerminalManager::NewSession(TSessionData * Data)
 {
   if (FActiveTerminal != NULL)
@@ -116,6 +152,7 @@ TManagedTerminal * TTerminalManager::NewSession(TSessionData * Data)
   }
   FActiveTerminal = new TManagedTerminal(Data, Configuration);
   SetupTerminal(FActiveTerminal);
+  FActiveQueue = NewQueue(FActiveTerminal);
   UpdateScpExplorer();
   return FActiveTerminal;
 }
@@ -125,9 +162,13 @@ void TTerminalManager::FreeActiveTerminal()
   if (FTerminalPendingAction == tpNull)
   {
     std::unique_ptr<TManagedTerminal> Terminal(FActiveTerminal);
+    std::unique_ptr<TTerminalQueue> Queue(FActiveQueue);
     FActiveTerminal = NULL;
+    FActiveQueue = NULL;
     // The window lets the terminal go before it is freed
     UpdateScpExplorer();
+    // only now all references to/from queue (particularly events to explorer) are cleared
+    Queue.reset(NULL);
     // The site manager opens on the site of the last session
     if (StoredSessions->FindSame(Terminal->SessionData) != NULL)
     {
@@ -287,6 +328,61 @@ void TTerminalManager::HandleException(Exception * E)
 bool TTerminalManager::IsBusy()
 {
   return (FOpeningTerminal != NULL) || (FAuthenticating > 0);
+}
+//---------------------------------------------------------------------------
+void TTerminalManager::Idle()
+{
+  TManagedTerminal * Terminal = FActiveTerminal;
+  if ((Terminal != NULL) && (FOpeningTerminal == NULL))
+  {
+    try
+    {
+      // make sure Idle is called on the thread that runs the terminal
+      if (Terminal->TerminalThread != NULL)
+      {
+        Terminal->TerminalThread->Idle();
+      }
+      else if (Terminal->Active)
+      {
+        Terminal->Idle();
+      }
+
+      if ((FActiveTerminal == Terminal) && Terminal->Active && (FActiveQueue != NULL))
+      {
+        FActiveQueue->Idle();
+      }
+    }
+    catch (Exception & E)
+    {
+      // throw further, so that the exception is handled in proper place
+      // (a lost connection is offered to reconnect)
+      HandleException(&E);
+    }
+  }
+
+  TTerminalQueue * QueueWithEvent;
+  do
+  {
+    QueueWithEvent = NULL;
+    TQueueEvent QueueEvent = TQueueEvent(); // shut up
+
+    {
+      std::lock_guard<std::mutex> Guard(FQueueSection);
+      if (!FQueueEvents.empty())
+      {
+        QueueWithEvent = FQueueEvents[0].first;
+        QueueEvent = FQueueEvents[0].second;
+        FQueueEvents.erase(FQueueEvents.begin());
+      }
+    }
+
+    // the session may not exist anymore
+    if ((QueueWithEvent != NULL) && (QueueWithEvent == FActiveQueue) && (FScpExplorer != NULL))
+    {
+      FScpExplorer->QueueEvent(FActiveTerminal, QueueWithEvent, QueueEvent);
+    }
+  }
+  while (QueueWithEvent != NULL);
 }
 //---------------------------------------------------------------------------
 void TTerminalManager::TerminalQueryUser(TObject * /*Sender*/,

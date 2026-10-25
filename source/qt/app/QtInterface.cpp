@@ -4,7 +4,10 @@
 //---------------------------------------------------------------------------
 #include "QtTools.h"
 #include "QtInterface.h"
+#include "ScpCommander.h"
 #include "TerminalManager.h"
+
+#include <AppConfiguration.h>
 
 #include <QApplication>
 #include <QClipboard>
@@ -28,8 +31,58 @@ void ShowExtendedExceptionEx(TTerminal * Terminal, Exception * E)
   // A fatal error of the session (a lost or failed connection)
   bool ForActiveTerminal =
     (dynamic_cast<EFatal *>(E) != NULL) && (Manager != NULL) && Manager->IsActiveTerminal(Terminal);
+  // The session was closed once an operation completed
+  ESshTerminate * Terminate = dynamic_cast<ESshTerminate *>(E);
 
-  if (ForActiveTerminal)
+  if (Terminate != NULL)
+  {
+    if (ForActiveTerminal)
+    {
+      DebugAssert(!Terminal->Active);
+      // Upstream keeps the session disconnected in its tab; there are no
+      // tabs yet
+      Manager->FreeActiveTerminal();
+    }
+
+    // Upstream also shuts down or suspends the computer (not offered)
+    unsigned int Result = qaNo;
+    bool ConfirmExitOnCompletion =
+      (Terminate->Operation == odoDisconnect) && AppConfiguration->ConfirmExitOnCompletion;
+    if (ConfirmExitOnCompletion)
+    {
+      TMessageParams Params(mpNeverAskAgainCheck);
+      if (ForActiveTerminal)
+      {
+        // Remove the leading "%s\n\n" (not to change the translation originals - previously the error message was prepended)
+        UnicodeString MessageFormat = FORMAT(LoadStr(EXIT_ON_COMPLETION), (UnicodeString())).Trim();
+        MessageFormat = MainInstructions(MessageFormat) + L"\n\n%s";
+        // Upstream offers to reconnect the session kept disconnected in
+        // its tab; it is freed here
+        Result = ExceptionMessageDialog(E, qtInformation, MessageFormat, qaYes | qaNo, &Params);
+      }
+      else
+      {
+        Result = ExceptionMessageDialog(E, qtInformation, L"", qaOK, &Params);
+      }
+
+      if (Result == qaNeverAskAgain)
+      {
+        Result = qaYes;
+        AppConfiguration->ConfirmExitOnCompletion = false;
+      }
+    }
+    else if (Terminate->Operation != odoIdle)
+    {
+      Result = qaYes;
+    }
+
+    if ((Result == qaYes) && ForActiveTerminal && (Manager->ScpExplorer != NULL))
+    {
+      // TerminateApplication
+      QMetaObject::invokeMethod(Manager->ScpExplorer, "close", Qt::QueuedConnection);
+    }
+  }
+  else if (ForActiveTerminal)
   {
     unsigned int Answer = qaOK;
     if (Show)

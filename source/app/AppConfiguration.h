@@ -9,6 +9,8 @@
 #include "GUIConfiguration.h"
 //---------------------------------------------------------------------------
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
+// When the queue list is shown (upstream's WinConfiguration.h)
+enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
 //---------------------------------------------------------------------------
 class TAppConfiguration : public TGUIConfiguration
 {
@@ -33,6 +35,14 @@ public:
   void SetConfirmTransferring(bool value);
   bool GetCopyParamAutoSelectNotice() const { return FCopyParamAutoSelectNotice; }
   void SetCopyParamAutoSelectNotice(bool value);
+  bool GetEnableQueueByDefault() const { return FEnableQueueByDefault; }
+  void SetEnableQueueByDefault(bool value);
+  bool GetConfirmExitOnCompletion() const { return FConfirmExitOnCompletion; }
+  void SetConfirmExitOnCompletion(bool value);
+  TQueueViewShow GetQueueViewShow() const { return static_cast<TQueueViewShow>(FQueueViewShow); }
+  void SetQueueViewShow(TQueueViewShow value);
+  int GetQueueViewHeight() const { return FQueueViewHeight; }
+  void SetQueueViewHeight(int value);
   bool GetShowHiddenFiles() const { return FShowHiddenFiles; }
   void SetShowHiddenFiles(bool value);
   UnicodeString GetLastStoredSession() const { return FLastStoredSession; }
@@ -53,6 +63,12 @@ public:
   // A transfer settings preset selected by its rule is announced
   __declspec(property(get = GetCopyParamAutoSelectNotice, put = SetCopyParamAutoSelectNotice))
     bool CopyParamAutoSelectNotice;
+  // The queues of new sessions process their items
+  __declspec(property(get = GetEnableQueueByDefault, put = SetEnableQueueByDefault)) bool EnableQueueByDefault;
+  // The application is closed once the queue gets empty only when confirmed
+  __declspec(property(get = GetConfirmExitOnCompletion, put = SetConfirmExitOnCompletion)) bool ConfirmExitOnCompletion;
+  __declspec(property(get = GetQueueViewShow, put = SetQueueViewShow)) TQueueViewShow QueueViewShow;
+  __declspec(property(get = GetQueueViewHeight, put = SetQueueViewHeight)) int QueueViewHeight;
   __declspec(property(get = GetShowHiddenFiles, put = SetShowHiddenFiles)) bool ShowHiddenFiles;
   // The site or site folder (with a trailing slash) last selected in the
   // site manager
@@ -79,6 +95,11 @@ private:
   bool FConfirmDeleting;
   bool FConfirmTransferring;
   bool FCopyParamAutoSelectNotice;
+  bool FEnableQueueByDefault;
+  bool FConfirmExitOnCompletion;
+  // TQueueViewShow
+  int FQueueViewShow;
+  int FQueueViewHeight;
   bool FShowHiddenFiles;
   // The histories (their names, the strings with the "modified" flag as the
   // objects of the names)

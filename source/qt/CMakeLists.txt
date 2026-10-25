@@ -25,7 +25,9 @@ add_library(openscp_qt STATIC
   dialogs/RightsFrame.cpp
   models/DirModel.cpp
   views/DirPanel.cpp
-  views/ScpCommander.cpp)
+  views/QueueController.cpp
+  views/ScpCommander.cpp
+  views/ScpCommanderQueue.cpp)
 
 set_target_properties(openscp_qt PROPERTIES AUTOMOC ON)
 target_include_directories(openscp_qt PUBLIC

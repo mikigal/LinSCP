@@ -10,6 +10,10 @@
 
 #include <Queue.h>
 #include <Terminal.h>
+
+#include <mutex>
+#include <utility>
+#include <vector>
 //---------------------------------------------------------------------------
 class TAuthenticateForm;
 class TScpCommanderForm;
@@ -51,8 +55,12 @@ public:
   void HandleException(Exception * E);
   // A connection is opening (for the automation's "wait-idle")
   bool IsBusy();
+  // The upkeep of the session and its queue, the events of the queue
+  // (periodically, upstream calls it when the application is idle too)
+  void Idle();
 
   TManagedTerminal * GetActiveTerminal() { return FActiveTerminal; }
+  TTerminalQueue * GetActiveQueue() { return FActiveQueue; }
   TScpCommanderForm * GetScpExplorer() { return FScpExplorer; }
   void SetScpExplorer(TScpCommanderForm * Value);
   // The fatal exception of the active terminal was shown, with its answer
@@ -60,12 +68,18 @@ public:
   bool IsActiveTerminal(TTerminal * Terminal) { return (Terminal != NULL) && (Terminal == FActiveTerminal); }
 
   __declspec(property(get = GetActiveTerminal)) TManagedTerminal * ActiveTerminal;
+  // The transfer queue of the active session
+  __declspec(property(get = GetActiveQueue)) TTerminalQueue * ActiveQueue;
   __declspec(property(get = GetScpExplorer, put = SetScpExplorer)) TScpCommanderForm * ScpExplorer;
 
 private:
   static TTerminalManager * FInstance;
   TScpCommanderForm * FScpExplorer;
   TManagedTerminal * FActiveTerminal;
+  TTerminalQueue * FActiveQueue;
+  // The events of the queues come from their threads
+  std::mutex FQueueSection;
+  std::vector<std::pair<TTerminalQueue *, TQueueEvent>> FQueueEvents;
   TAuthenticateForm * FAuthenticateForm;
   int FAuthenticating;
   void * FBusyToken;
@@ -74,6 +88,9 @@ private:
   TTerminalPendingAction FTerminalPendingAction;
 
   void SetupTerminal(TTerminal * Terminal);
+  TTerminalQueue * NewQueue(TTerminal * Terminal);
+  void SetQueueConfiguration(TTerminalQueue * Queue);
+  void QueueEvent(TTerminalQueue * Queue, TQueueEvent Event);
   void DoConnectTerminal(TTerminal * Terminal, bool Reopen);
   bool ConnectActiveTerminalImpl(bool Reopen);
   void UpdateScpExplorer();

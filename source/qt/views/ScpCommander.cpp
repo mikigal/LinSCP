@@ -13,6 +13,8 @@
 #include "ScpCommander.h"
 
 #include <QAction>
+#include <QActionGroup>
+#include <QApplication>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDir>
@@ -21,8 +23,10 @@
 #include <QMenuBar>
 #include <QSplitter>
 #include <QStatusBar>
+#include <QTimer>
 #include <QToolBar>
 #include <QTreeView>
+#include <QTreeWidget>
 //---------------------------------------------------------------------------
 // Upstream's DeleteToRecycleBin preference (on by default): Delete moves
 // local files to the trash, Shift+Delete deletes them
@@ -37,14 +41,32 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FBusy = 0;
   FUpdatingTransferList = 0;
   FLocalDirectoryTerminal = NULL;
+  FRefreshLocalDirectory = false;
+  FRefreshRemoteDirectory = false;
+  FQueue = NULL;
+  FQueueStatus = NULL;
+  FQueueStatusInvalidated = false;
+  FQueueItemInvalidated = false;
+  FQueueStatusUpdating = false;
+  FPendingQueueActionItem = NULL;
 
-  FPanelSplitter = new QSplitter(Qt::Horizontal, this);
+  // The file panels, the queue below them
+  FQueueSplitter = new QSplitter(Qt::Vertical, this);
+  FQueueSplitter->setObjectName(QStringLiteral("QueueSplitter"));
+  FQueueSplitter->setChildrenCollapsible(false);
+  FPanelSplitter = new QSplitter(Qt::Horizontal, FQueueSplitter);
   FPanelSplitter->setObjectName(QStringLiteral("PanelSplitter"));
   FLocalPanel = new TLocalDirPanel(FPanelSplitter);
   FRemotePanel = new TRemoteDirPanel(FPanelSplitter);
   FPanelSplitter->addWidget(FLocalPanel);
   FPanelSplitter->addWidget(FRemotePanel);
-  setCentralWidget(FPanelSplitter);
+  FQueueSplitter->addWidget(FPanelSplitter);
+  CreateQueueActions();
+  CreateQueuePanel();
+  FQueueSplitter->addWidget(QueuePanel);
+  FQueueSplitter->setStretchFactor(0, 1);
+  QueuePanel->setVisible(false);
+  setCentralWidget(FQueueSplitter);
   FCurrentPanel = FLocalPanel;
 
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
@@ -107,11 +129,61 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 
   TerminalChanged();
   FLocalPanel->GetDirView()->setFocus();
+
+  // Upstream's SessionIdleTimer
+  FIdleTimer = new QTimer(this);
+  FIdleTimer->setObjectName(QStringLiteral("SessionIdleTimer"));
+  FIdleTimer->setInterval(250);
+  connect(FIdleTimer, &QTimer::timeout, this, [this]() { Idle(); });
+  FIdleTimer->start();
 }
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
   DestroyProgressForm();
+  SetQueue(NULL);
+  delete FQueueStatus;
+  FQueueStatus = NULL;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::Idle()
+{
+  // Not reentered from the nested event loops of what it shows
+  static bool Executing = false;
+  if (Executing)
+  {
+    return;
+  }
+  TAutoFlag ExecutingFlag(Executing);
+
+  // make sure that Idle is called before update queue, as it may invoke QueueEvent
+  // that needs to know if queue view is visible (and it may be closed after queue update)
+  TTerminalManager::Instance()->Idle();
+
+  if (!IsBusy() && (QApplication::activeModalWidget() == nullptr))
+  {
+    if (FRefreshRemoteDirectory)
+    {
+      TTerminal * Terminal = GetTerminal();
+      if ((Terminal != NULL) && (Terminal->Status == ssOpened))
+      {
+        Terminal->RefreshDirectory();
+      }
+      FRefreshRemoteDirectory = false;
+    }
+    if (FRefreshLocalDirectory)
+    {
+      FLocalPanel->Reload();
+      FRefreshLocalDirectory = false;
+    }
+  }
+
+  if (FQueueStatusInvalidated)
+  {
+    UpdateQueueStatus(false);
+  }
+
+  RefreshQueueItems();
 }
 //---------------------------------------------------------------------------
 QAction * TScpCommanderForm::CreateAction(const char * Name, const QString & Caption, const QString & IconName,
@@ -154,6 +226,8 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
   CommandsMenu->addAction(CurrentCreateDirAction);
   CommandsMenu->addSeparator();
+  CommandsMenu->addMenu(CreateQueueMenu());
+  CommandsMenu->addSeparator();
   CommandsMenu->addAction(CloseApplicationAction);
 
   QMenu * SessionMenu = Menu->addMenu(tr("&Session"));
@@ -164,6 +238,9 @@ void TScpCommanderForm::CreateMenus()
   QMenu * OptionsMenu = Menu->addMenu(tr("&Options"));
   OptionsMenu->setObjectName(QStringLiteral("OptionsMenu"));
   OptionsMenu->addAction(ShowHiddenFilesAction);
+  QMenu * QueueViewMenu = OptionsMenu->addMenu(tr("&Queue"));
+  QueueViewMenu->setObjectName(QStringLiteral("QueueViewMenu"));
+  QueueViewMenu->addActions(FQueueShowGroup->actions());
 
   QMenu * RemoteMenu = Menu->addMenu(tr("&Remote"));
   RemoteMenu->setObjectName(QStringLiteral("RemoteMenuButton"));
@@ -185,7 +262,9 @@ void TScpCommanderForm::CreateToolbars()
   Toolbar->addAction(CurrentCreateDirAction);
   Toolbar->addAction(CurrentPropertiesAction);
 
-  // The transfer settings presets (upstream's TransferDropDown)
+  // The transfer settings presets (upstream's TransferDropDown), in a row
+  // of their own
+  addToolBarBreak();
   QToolBar * TransferToolbar = addToolBar(tr("Transfer Settings"));
   TransferToolbar->setObjectName(QStringLiteral("TransferToolbar"));
   QLabel * TransferLabel = new QLabel(tr("Transfer Settings"), TransferToolbar);
@@ -414,6 +493,8 @@ void TScpCommanderForm::TerminalChanged()
 {
   TTerminal * Terminal = GetTerminal();
   FRemotePanel->SetTerminal(Terminal);
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  SetQueue((Manager != NULL) ? Manager->ActiveQueue : NULL);
   UnicodeString Status;
   UnicodeString Hint;
   if ((Terminal != NULL) && Terminal->Active)
@@ -482,7 +563,7 @@ void TScpCommanderForm::NewSession()
 void TScpCommanderForm::DisconnectSessionActionExecute()
 {
   TTerminalManager * Manager = TTerminalManager::Instance();
-  if (!IsBusy() && (Manager->ActiveTerminal != NULL))
+  if (!IsBusy() && (Manager->ActiveTerminal != NULL) && CanCloseQueue())
   {
     Manager->FreeActiveTerminal();
   }
@@ -496,7 +577,7 @@ void TScpCommanderForm::CloseApplicationActionExecute()
 void TScpCommanderForm::closeEvent(QCloseEvent * Event)
 {
   // The operation in progress is to be cancelled first
-  if (IsBusy())
+  if (IsBusy() || !CanCloseQueue())
   {
     Event->ignore();
   }
@@ -543,8 +624,9 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
   {
     bool DisableNewerOnly =
       (!Terminal->IsCapable[fcNewerOnlyUpload] && (Direction == tdToRemote));
-    // The queue is not there yet
-    int Options = coDisableQueue | coDoNotShowAgain;
+    int Options =
+      FLAGMASK(!Terminal->IsCapable[fcBackgroundTransfers], coDisableQueue) |
+      coDoNotShowAgain;
     TUsableCopyParamAttrs UsableCopyParamAttrs = Terminal->UsableCopyParamAttrs(Params);
     int CopyParamAttrs = (Direction == tdToRemote ?
       UsableCopyParamAttrs.Upload : UsableCopyParamAttrs.Download) |
@@ -557,6 +639,22 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
     {
       AppConfiguration->ConfirmTransferring = false;
     }
+  }
+
+  if (Result && CopyParam.Queue && Terminal->IsCapable[fcBackgroundTransfers])
+  {
+    Configuration->Usage->Inc(L"TransfersOnBackground");
+
+    // these parameter are known only after transfer dialog
+    Params |=
+      (CopyParam.QueueNoConfirmation ? cpNoConfirmation : 0);
+
+    AddQueueItem(Direction, FileList, TargetDirectory, CopyParam, Params);
+    Result = false;
+
+    // The files of the source panel are unselected (upstream's ClearTransferSourceSelection)
+    TDirPanel * Source = (Direction == tdToRemote) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
+    Source->GetDirView()->selectionModel()->clearSelection();
   }
 
   return Result;

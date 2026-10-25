@@ -45,6 +45,7 @@ class OpenScpGui:
         extra_env = {
             'OPENSCP_AUTOMATION_SOCKET': str(self.socket_path),
             'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS,
+            'UBSAN_OPTIONS': 'print_stacktrace=1',
         }
         extra_env.update(env or {})
         self.process = self.session.spawn([self.binary, *map(str, args)], log_name=log_name, extra_env=extra_env)
