@@ -552,8 +552,8 @@ void TTagDialog::ValidateTag(QLineEdit * Edit)
   // there are lot more in various scripts
   UnicodeString InvalidChars =
     L"!\"#$%&'()*,;<>?[\\]^`{|}~"
-    L"¡¢£¤¥¦§¨©«¬­®¯"
-    L"°±´¶·¸»¿×÷";
+    L"\u00A1\u00A2\u00A3\u00A4\u00A5\u00A6\u00A7\u00A8\u00A9\u00AB\u00AC\u00AD\u00AE\u00AF"
+    L"\u00B0\u00B1\u00B4\u00B6\u00B7\u00B8\u00BB\u00BF\u00D7\u00F7";
   UnicodeString Text = ToUnicodeString(Edit->text());
   for (int Index = 1; Index <= Text.Length(); Index++)
   {
