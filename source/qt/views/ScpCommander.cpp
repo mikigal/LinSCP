@@ -4,6 +4,7 @@
 
 #include <AppConfiguration.h>
 #include <EditorManager.h>
+#include <ExportedFiles.h>
 #include <FileSystems.h>
 #include <LocalFiles.h>
 #include <TerminalManager.h>
@@ -16,6 +17,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <QComboBox>
 #include <QDir>
@@ -58,6 +60,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FDragSourcePanel = NULL;
   FDragging = false;
   FDragExtracted = false;
+  FClipboardTerminal = NULL;
   CreateEditorManager();
 
   // The file panels, the queue below them
@@ -155,6 +158,18 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   CustomCommandsLastAction->setVisible(false);
   CustomCommandsCustomizeAction = CreateAction("CustomCommandsCustomizeAction", tr("&Customize..."), QString(),
     {}, &TScpCommanderForm::CustomCommandsCustomize);
+  CurrentCopyToClipboardAction2 = CreateAction("CurrentCopyToClipboardAction2", tr("&Copy to Clipboard"),
+    QStringLiteral("edit-copy"), { QKeySequence(Qt::CTRL | Qt::Key_C) }, &TScpCommanderForm::CurrentCopyToClipboardActionExecute);
+  PasteAction3 = CreateAction("PasteAction3", tr("&Paste from Clipboard"), QStringLiteral("edit-paste"),
+    { QKeySequence(Qt::CTRL | Qt::Key_V) }, &TScpCommanderForm::PasteActionExecute);
+  FileListToClipboardAction = CreateAction("FileListToClipboardAction", tr("Copy to &Clipboard"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C) }, &TScpCommanderForm::FileListToClipboardActionExecute);
+  FullFileListToClipboardAction = CreateAction("FullFileListToClipboardAction", tr("Copy to Clipboard (Include &Paths)"),
+    QString(), { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_C) }, &TScpCommanderForm::FullFileListToClipboardActionExecute);
+  LocalPathToClipboardAction2 = CreateAction("LocalPathToClipboardAction2", tr("Copy &Path to Clipboard"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::Key_BracketLeft) }, &TScpCommanderForm::LocalPathToClipboardActionExecute);
+  RemotePathToClipboardAction2 = CreateAction("RemotePathToClipboardAction2", tr("Copy &Path to Clipboard"), QString(),
+    { QKeySequence(Qt::CTRL | Qt::Key_BracketRight) }, &TScpCommanderForm::RemotePathToClipboardActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -176,6 +191,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   TerminalChanged();
   FLocalPanel->GetDirView()->setFocus();
 
+  connect(QApplication::clipboard(), &QClipboard::dataChanged, this, [this]() { ClipboardChanged(); });
+
   // Upstream's SessionIdleTimer
   FIdleTimer = new QTimer(this);
   FIdleTimer->setObjectName(QStringLiteral("SessionIdleTimer"));
@@ -186,6 +203,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
 //---------------------------------------------------------------------------
 TScpCommanderForm::~TScpCommanderForm()
 {
+  // The remote files of the clipboard cannot be downloaded any more
+  ClipboardTerminalChanged(NULL);
   DoDelayedDeletion();
   ForceCloseEditors();
   HideFileFindDialog();
@@ -267,6 +286,7 @@ void TScpCommanderForm::CreateMenus()
   QMenu * LocalMenu = Menu->addMenu(tr("&Local"));
   LocalMenu->setObjectName(QStringLiteral("LocalMenuButton"));
   LocalMenu->addActions(FLocalPanel->actions());
+  LocalMenu->addAction(LocalPathToClipboardAction2);
 
   QMenu * FilesMenu = Menu->addMenu(tr("&Files"));
   FilesMenu->setObjectName(QStringLiteral("FilesMenu"));
@@ -287,6 +307,14 @@ void TScpCommanderForm::CreateMenus()
   FilesMenu->addAction(CurrentRenameAction);
   FilesMenu->addAction(CurrentDeleteAction);
   FilesMenu->addAction(CurrentDeleteAlternativeAction);
+  FilesMenu->addSeparator();
+  FilesMenu->addAction(CurrentCopyToClipboardAction2);
+  FilesMenu->addAction(PasteAction3);
+  FilesMenu->addSeparator();
+  QMenu * FileNamesMenu = FilesMenu->addMenu(tr("&File Names"));
+  FileNamesMenu->setObjectName(QStringLiteral("FileNamesMenu"));
+  FileNamesMenu->addAction(FileListToClipboardAction);
+  FileNamesMenu->addAction(FullFileListToClipboardAction);
   FilesMenu->addSeparator();
   FilesMenu->addAction(CurrentPropertiesAction);
 
@@ -325,6 +353,7 @@ void TScpCommanderForm::CreateMenus()
   QMenu * RemoteMenu = Menu->addMenu(tr("&Remote"));
   RemoteMenu->setObjectName(QStringLiteral("RemoteMenuButton"));
   RemoteMenu->addActions(FRemotePanel->actions());
+  RemoteMenu->addAction(RemotePathToClipboardAction2);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateToolbars()
@@ -443,6 +472,12 @@ void TScpCommanderForm::UpdateActions()
   CurrentDeleteAlternativeAction->setEnabled(!Busy && HasSelection);
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
   CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
+  CurrentCopyToClipboardAction2->setEnabled(!Busy && HasSelection && ((FCurrentPanel == FLocalPanel) || Connected));
+  PasteAction3->setEnabled(CanPasteFromClipboard());
+  FileListToClipboardAction->setEnabled(HasSelection);
+  FullFileListToClipboardAction->setEnabled(HasSelection);
+  LocalPathToClipboardAction2->setEnabled(FLocalPanel->IsReady());
+  RemotePathToClipboardAction2->setEnabled(FRemotePanel->IsReady());
   RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
@@ -609,6 +644,7 @@ void TScpCommanderForm::TerminalChanged()
     HideFileFindDialog();
   }
   EditedFilesTerminalChanged(Terminal);
+  ClipboardTerminalChanged(Terminal);
   // Keeping the remote directory of a session that is gone up to date
   if ((FOnSynchronizeAbort != nullptr) && (FSynchronizeTerminal != Terminal))
   {

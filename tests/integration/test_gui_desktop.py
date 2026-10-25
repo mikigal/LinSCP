@@ -173,6 +173,82 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         self.assertEqual(gui.quit(), 0)
         self.assertFalse(path.parent.exists())
 
+    def test_clipboard_with_file_manager(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        target = self.work_dir('dolphin')
+        (remote / 'remote.txt').write_text('pasted to the file manager')
+        (target / 'local.txt').write_text('pasted from the file manager')
+        gui = self.start_commander(remote, local)
+        self.place_commander(gui, 0, 0, 800, 860)
+        dolphin = self.start_dolphin(target)
+
+        # Copied in Dolphin, pasted to the remote panel: uploaded
+        x, y = dolphin.item_point('local.txt')
+        self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+c')
+        x, y = gui.screen_point(W + 'RemoteDirView')
+        self.session.input('move', x, y, 'click', 'sleep', 300, 'key', 'ctrl+v')
+        self.confirm_copy(gui, 'Upload file \'local.txt\' to remote directory:')
+        self.assertEqual((remote / 'local.txt').read_text(), 'pasted from the file manager')
+
+        # Copied in the remote panel, pasted in Dolphin: downloaded to its
+        # directory, where the fake directory of the clipboard was pasted
+        x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
+        self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+c')
+        x, y = dolphin.view_point()
+        self.session.input('move', x, y, 'click', 'sleep', 300)
+        self.assertEqual(dolphin.paste(), 'Paste One Folder')
+        gui.wait_window('CopyDialog')
+        self.assertEqual(gui.get('CopyDialog/LocalDirectoryEdit')['text'], str(target) + '/*.*')
+        self.assertTrue(gui.get('CopyDialog/NeverShowAgainCheck')['checked'])
+        self.screenshot('paste')
+        gui.click('CopyDialog/OkButton')
+        gui.wait_no_window('CopyDialog')
+        gui.wait_idle()
+        self.assertEqual((target / 'remote.txt').read_text(), 'pasted to the file manager')
+        self.assertEqual(sorted(p.name for p in target.iterdir()), ['local.txt', 'remote.txt'])
+
+        # Pasted in the local panel: downloaded
+        x, y = gui.screen_point(W + 'LocalDirView')
+        self.session.input('move', x, y, 'click', 'sleep', 300, 'key', 'ctrl+v')
+        self.confirm_copy(gui, 'Download file \'remote.txt\' to local directory:')
+        self.assertEqual((local / 'remote.txt').read_text(), 'pasted to the file manager')
+        self.assertEqual(gui.quit(), 0)
+
+    def test_clipboard_temporary(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (remote / 'remote.txt').write_text('through a temporary directory')
+        (remote / 'with space.txt').write_text('second')
+        gui = self.start_commander(remote, local, TEMPORARY_MODE_INI)
+        self.place_commander(gui, 0, 0, 800, 860)
+        log = self.start_probe('probe-paste')
+        probe = self.session.place_window('probe-paste', 900, 100, 500, 400)['client']
+
+        def paste():
+            self.session.input('move', probe['x'] + 100, probe['y'] + 100, 'click', 'sleep', 300, 'type', 'v')
+            count = len(self.probe_events(log, 'paste'))
+            return gui.wait_for(lambda: self.probe_events(log, 'paste')[count - 1:] and
+                                self.probe_events(log, 'paste')[-1], what='the paste')
+
+        # The file is downloaded once the target asks for it
+        x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
+        self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+c')
+        pasted = paste()
+        self.assertEqual(len(pasted['urls']), 1)
+        path = Path(unquote(urlparse(pasted['urls'][0]).path))
+        self.assertEqual(path.read_text(), 'through a temporary directory')
+
+        # The names of the files as text
+        gui.select(W + 'RemoteDirView', 'remote.txt', 'with space.txt')
+        x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
+        self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+a', 'key', 'ctrl+shift+c')
+        self.assertEqual(paste()['text'], 'remote.txt\n"with space.txt"')
+        x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
+        self.session.input('move', x, y, 'click', 'sleep', 200, 'key', 'ctrl+bracketright')
+        self.assertEqual(paste()['text'], str(remote))
+        self.assertEqual(gui.quit(), 0)
+
 
 if __name__ == '__main__':
     unittest.main()

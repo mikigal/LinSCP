@@ -38,6 +38,7 @@ class TBookmarkList;
 class TDirPanel;
 struct TDropParams;
 class TLocalDirPanel;
+class TPasteWatcher;
 class TProgressForm;
 class TRemoteDirPanel;
 class TSynchronizeProgressForm;
@@ -138,6 +139,12 @@ private:
   // The temporary directories of the files downloaded for other
   // applications, deleted after a while
   std::vector<UnicodeString> FDelayedDeletionList;
+  // The remote files copied to the clipboard, of the session
+  std::unique_ptr<TStrings> FClipboardFileList;
+  TTerminal * FClipboardTerminal;
+  // The fake directory of the clipboard, found where it is pasted
+  UnicodeString FClipboardFakeDirectory;
+  std::unique_ptr<TPasteWatcher> FPasteWatcher;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -169,6 +176,12 @@ private:
   QAction * CurrentDeleteAlternativeAction;
   QAction * CurrentCreateDirAction;
   QAction * CurrentPropertiesAction;
+  QAction * CurrentCopyToClipboardAction2;
+  QAction * PasteAction3;
+  QAction * FileListToClipboardAction;
+  QAction * FullFileListToClipboardAction;
+  QAction * LocalPathToClipboardAction2;
+  QAction * RemotePathToClipboardAction2;
   QAction * RemoteFindFilesAction2;
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
@@ -405,6 +418,26 @@ private:
   QList<QUrl> TemporarilyDownloadForOtherApplication(TStrings * FileList);
   void AddDelayedDirectoryDeletion(const UnicodeString & Directory, int SecDelay);
   void DoDelayedDeletion();
+  // The clipboard (ScpCommanderClipboard.cpp)
+  void CopyFilesToClipboard();
+  void ClipboardStop();
+  void ClipboardChanged();
+  void ClipboardTerminalChanged(TTerminal * ATerminal);
+  // The clipboard has the remote files of the session copied by us
+  bool DoesClipboardContainOurFiles();
+  void ClipboardPasted(const UnicodeString & Directory);
+  void ClipboardDownload(const UnicodeString & TargetDirectory, bool DragDrop);
+  bool CanPasteFromClipboard();
+  void PasteFromClipboard();
+  void CopyTextToClipboard(TStrings * Strings);
+  void FileListToClipboard(bool FullPath);
+  void PathToClipboard(TDirPanel * APanel);
+  void CurrentCopyToClipboardActionExecute() { CopyFilesToClipboard(); }
+  void PasteActionExecute() { PasteFromClipboard(); }
+  void FileListToClipboardActionExecute() { FileListToClipboard(false); }
+  void FullFileListToClipboardActionExecute() { FileListToClipboard(true); }
+  void LocalPathToClipboardActionExecute();
+  void RemotePathToClipboardActionExecute();
   bool DoDirectoryExists(void * Session, const UnicodeString & Directory);
   bool NeedSecondarySessionForRemoteCopy(TStrings * FileList);
   TCopyParamType TemporaryFileCopyParam(bool ForceText);

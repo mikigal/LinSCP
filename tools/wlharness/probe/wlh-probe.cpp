@@ -7,6 +7,8 @@
 //   --log FILE           append events to FILE instead of stdout
 //   --drag-source FILE   offer FILE (repeatable) as a drag source: pressing the
 //                        mouse and moving it starts a drag with the files' URIs
+//
+// Typing "v" in the window reads the clipboard and logs its content ("paste").
 
 #include <QApplication>
 #include <QClipboard>
@@ -163,6 +165,15 @@ protected:
       { QStringLiteral("key"), Event->key() },
       { QStringLiteral("text"), Event->text() },
       { QStringLiteral("modifiers"), static_cast<int>(Event->modifiers()) } });
+    // "v" pastes: the content of the clipboard is read and logged
+    if (Event->text() == QLatin1String("v"))
+    {
+      const QMimeData * Data = QApplication::clipboard()->mimeData();
+      FLog.Write(QStringLiteral("paste"), {
+        { QStringLiteral("formats"), FormatsToJson(Data) },
+        { QStringLiteral("urls"), UrlsToJson(Data) },
+        { QStringLiteral("text"), (Data != nullptr) ? Data->text() : QString() } });
+    }
   }
 
   void dragEnterEvent(QDragEnterEvent * Event) override

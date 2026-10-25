@@ -63,3 +63,18 @@ class Dolphin:
         view = self.session.wait_for_accessible('dolphin', self.directory.name, 'list', timeout)
         x, y = self._to_screen(view, center=False)
         return x + view['width'] * 3 // 4, y + view['height'] * 3 // 4
+
+    def paste(self, timeout=20):
+        """Pastes the clipboard to the directory of the view (the action of
+        its menu, whose name tells what the clipboard has: "Paste One File",
+        ...)."""
+        found = []
+
+        def present():
+            found[:] = [a['name'] for a in self.session.accessibles('dolphin', role='menu item')
+                        if a['name'].startswith('Paste') and 'Clipboard' not in a['name']]
+            return bool(found)
+
+        wlharness._wait_for(present, timeout, 'the paste action of Dolphin')
+        self.session.do_accessible_action('dolphin', found[0], 'Press', role='menu item')
+        return found[0]
