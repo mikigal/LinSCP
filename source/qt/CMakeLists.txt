@@ -92,9 +92,10 @@ add_custom_command(
   VERBATIM)
 target_sources(openscp_qt PRIVATE "${OPENSCP_FORM_TEXTS}")
 
-# OpenSCP's icon theme (tools/icons/make_icons.py) in the resources
+# OpenSCP's icon theme and the images of the dialogs (tools/icons/make_icons.py)
+# in the resources
 set(OPENSCP_ICONS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/icons/openscp")
-file(GLOB OPENSCP_ICONS CONFIGURE_DEPENDS "${OPENSCP_ICONS_DIR}/scalable/*.svg")
+file(GLOB OPENSCP_ICONS CONFIGURE_DEPENDS "${OPENSCP_ICONS_DIR}/scalable/*.svg" "${OPENSCP_ICONS_DIR}/dialogs/*.svg")
 qt_add_resources(openscp_qt "openscp_icons" PREFIX "/icons/openscp" BASE "${OPENSCP_ICONS_DIR}"
   FILES "${OPENSCP_ICONS_DIR}/index.theme" "${OPENSCP_ICONS_DIR}/openscp.svg" ${OPENSCP_ICONS})
 

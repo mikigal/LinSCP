@@ -16,8 +16,10 @@
 #include <QDesktopServices>
 #include <QBoxLayout>
 #include <QDialogButtonBox>
+#include <QFileInfo>
 #include <QGridLayout>
 #include <QGuiApplication>
+#include <QLabel>
 #include <QMimeData>
 #include <QPushButton>
 #include <QUrl>
@@ -394,6 +396,31 @@ QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const std::function<Unic
 QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & HelpKeyword)
 {
   return AddHelpButton(Buttons, [HelpKeyword]() { return HelpKeyword; });
+}
+//---------------------------------------------------------------------------
+QIcon DialogImage(const UnicodeString & ImageName)
+{
+  QString Name = ToQString(LowerCase(ImageName)).replace(QLatin1Char(' '), QLatin1Char('-'));
+  QString FileName = QStringLiteral(":/icons/openscp/dialogs/%1.svg").arg(Name);
+  DebugAssert(QFileInfo::exists(FileName));
+  return QIcon(FileName);
+}
+//---------------------------------------------------------------------------
+void LoadDialogImage(QLabel * Image, const UnicodeString & ImageName)
+{
+  const int Size = 32;
+  Image->setPixmap(DialogImage(ImageName).pixmap(QSize(Size, Size), Image->devicePixelRatioF()));
+  Image->setFixedSize(Size, Size);
+  // For the tests (Automation.cpp)
+  Image->setProperty("automationImageName", ToQString(ImageName));
+}
+//---------------------------------------------------------------------------
+QLabel * CreateDialogImage(QWidget * Parent, const UnicodeString & ImageName)
+{
+  QLabel * Image = new QLabel(Parent);
+  Image->setObjectName(QStringLiteral("Image"));
+  LoadDialogImage(Image, ImageName);
+  return Image;
 }
 //---------------------------------------------------------------------------
 void __fastcall CopyToClipboard(UnicodeString Text)

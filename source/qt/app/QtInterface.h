@@ -24,6 +24,8 @@ class TFileMasks;
 class TRemoteTokenList;
 class TTerminal;
 class QDialogButtonBox;
+class QIcon;
+class QLabel;
 class QPoint;
 class QPushButton;
 class QWidget;
@@ -53,6 +55,8 @@ struct TMessageParams
   UnicodeString NeverAskAgainTitle;
   unsigned int NeverAskAgainAnswer;
   bool NeverAskAgainCheckedInitially;
+  // upstream's dialog image (LoadDialogImage) instead of the one of the type
+  UnicodeString ImageName;
   UnicodeString CustomCaption;
 
 private:
@@ -275,6 +279,12 @@ UnicodeString FormHelpKeyword(const UnicodeString & Form, const QString & Compon
 // upstream's Help button of a dialog, of the keyword (asked when clicked)
 QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const std::function<UnicodeString()> & HelpKeyword);
 QPushButton * AddHelpButton(QDialogButtonBox * Buttons, const UnicodeString & HelpKeyword);
+// upstream's 32-pixel pictures of the dialogs (its DialogImages) by their
+// names (L"Upload File"); OpenSCP's own (source/qt/icons/openscp/dialogs)
+QIcon DialogImage(const UnicodeString & ImageName);
+void LoadDialogImage(QLabel * Image, const UnicodeString & ImageName);
+// A label with the picture, named Image as upstream's
+QLabel * CreateDialogImage(QWidget * Parent, const UnicodeString & ImageName);
 
 // app/QtInterface.cpp: minimizing the whole application (upstream's
 // ApplicationMinimize and ApplicationRestore), to the system tray when

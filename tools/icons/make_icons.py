@@ -42,6 +42,9 @@ SCREEN = '#253040'
 PURPLE = '#8a5ad8'
 BROWN = '#a8743c'
 BROWN_DARK = '#6e4518'
+AMBER = '#f9b928'
+AMBER_DARK = '#a8720a'
+PAGE_FADED = '#b9c1cb'
 
 
 def svg(*parts):
@@ -108,20 +111,32 @@ def page(x=3.5, y=1.5, w=9, h=13, lines=True):
     return s
 
 
-def arrow(direction, cx, cy, size, fill, stroke):
-    # A block arrow pointing to the direction (up, down, left, right)
+def arrow(direction, cx, cy, size, fill, stroke, width=1):
+    # A block arrow pointing to the direction (up, down, left, right, or the
+    # degrees clockwise from up)
     h = size / 2.0
     t = size * 0.22
     pts = [(0, -h), (h, 0), (t, 0), (t, h), (-t, h), (-t, 0), (-h, 0)]
-    angle = {'up': 0, 'right': 90, 'down': 180, 'left': 270}[direction]
+    angle = {'up': 0, 'right': 90, 'down': 180, 'left': 270}.get(direction, direction)
     a = math.radians(angle)
     out = []
     for px, py in pts:
         rx = px * math.cos(a) - py * math.sin(a)
         ry = px * math.sin(a) + py * math.cos(a)
         out.append('%.2f,%.2f' % (cx + rx, cy + ry))
-    return '<polygon points="%s" fill="%s" stroke="%s" stroke-width="1" stroke-linejoin="round"/>' % (
-        ' '.join(out), fill, stroke)
+    return '<polygon points="%s" fill="%s" stroke="%s" stroke-width="%g" stroke-linejoin="round"/>' % (
+        ' '.join(out), fill, stroke, width)
+
+
+def arrow_head(x, y, dx, dy, size, fill, stroke, width=1):
+    # The head of a curved arrow ending at x, y in the direction dx, dy
+    n = math.hypot(dx, dy)
+    ux, uy = dx / n, dy / n
+    tip = (x + ux * size, y + uy * size)
+    p1 = (x - uy * size, y + ux * size)
+    p2 = (x + uy * size, y - ux * size)
+    return '<polygon points="%.2f,%.2f %.2f,%.2f %.2f,%.2f" fill="%s" stroke="%s" stroke-width="%g" ' \
+           'stroke-linejoin="round"/>' % (p1[0], p1[1], tip[0], tip[1], p2[0], p2[1], fill, stroke, width)
 
 
 def chevron(direction, cx, cy, size, stroke, width=2):
@@ -506,8 +521,10 @@ ICONS = {
     'view-calendar-day': svg(calendar()),
     'window-duplicate': svg(duplicate_windows()),
     # Transfers
-    'cloud-upload': svg(page(1.5, 3.5, 8, 11), arrow('up', 11.5, 6.5, 8.5, GREEN, GREEN_DARK)),
-    'download': svg(page(1.5, 1.5, 8, 11), arrow('down', 11.5, 9.5, 8.5, BLUE, BLUE_DARK)),
+    'cloud-upload': svg(page(6.5, 0.5, 8, 10, False), page(1.5, 4.5, 8, 11),
+                        arrow(45, 11, 11, 8, BLUE, BLUE_DARK)),
+    'download': svg(page(6.5, 0.5, 8, 10, False), page(1.5, 4.5, 8, 11),
+                    arrow(225, 10.5, 11.5, 8, GREEN, GREEN_DARK)),
     # Sessions
     'network-connect': svg(plug(True)),
     'network-disconnect': svg(plug(False)),
@@ -541,6 +558,130 @@ ICONS = {
     'object-unlocked': svg(padlock(True)),
 }
 
+# The dialog images ----------------------------------------------------------
+# The 32-pixel pictures of upstream's dialogs (its DialogImages), named as
+# upstream's (LoadDialogImage), lowercase with dashes; they are not a part of
+# the theme, a dialog shows them whatever the icons are.
+
+def svg32(*parts):
+    return ('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">\n' +
+            '\n'.join(parts) + '\n</svg>\n')
+
+
+def page32(x, y, w=16, h=21, faded=False):
+    fold = 5
+    stroke, fold_fill, lines = (PAGE_FADED, '#eef1f4', '#dde2e8') if faded else (PAGE_STROKE, PAGE_FOLD, PAGE_LINE)
+    s = path('M%g,%g h%g l%g,%g v%g h%g z' % (x, y, w - fold, fold, fold, h - fold, -w), PAGE, stroke)
+    s += path('M%g,%g v%g h%g' % (x + w - fold, y, fold, fold), fold_fill, stroke)
+    ly = y + 8
+    while ly < y + h - 2.5:
+        s += line(x + 3, ly, x + w - 3, ly, lines, 1.2)
+        ly += 3
+    return s
+
+
+def folder32(x, y, w, h, open_=False):
+    tab = w * 0.36
+    back = path('M%g,%g h%g l%g,%g h%g v%g h%g z' % (x, y, tab, h * 0.18, h * 0.18, w - tab - h * 0.18, h, -w),
+                FOLDER_BACK, FOLDER_STROKE)
+    top = y + h * 0.32
+    if open_:
+        front = path('M%g,%g h%g l%g,%g h%g z' % (x + w * 0.16, top + h * 0.08, w * 0.98, -w * 0.16, h * 0.92 - h * 0.08,
+                                                    -w * 0.98), FOLDER_FRONT, FOLDER_STROKE)
+    else:
+        front = rect(x, top, w, h + y - top, FOLDER_FRONT, FOLDER_STROKE)
+    return back + front
+
+
+def curved_arrow32(d, end, direction, color, dark):
+    # A thick curve with its head at the end
+    return (path(d, 'none', dark, 5) + path(d, 'none', color, 3) +
+            arrow_head(end[0], end[1], direction[0], direction[1], 4, color, dark))
+
+
+def transfer_pages(faded_source, source_back):
+    # A page copied from the back one to the front one, or the other way
+    return (page32(12.5, 1.5, faded=faded_source and source_back) +
+            page32(3.5, 8.5, faded=faded_source and not source_back))
+
+
+def side_pages(faded_source):
+    return page32(2.5, 4.5, 15, 20, faded_source) + page32(14.5, 1.5, 15, 20)
+
+
+def circle_sign32(fill, stroke, sign):
+    s = circle(16, 16, 13.5, fill, stroke, 1.2)
+    if sign == 'i':
+        s += circle(16, 9.3, 2.3, '#ffffff') + rect(13.9, 13.4, 4.2, 11.2, '#ffffff', None, 1.2)
+    elif sign == '?':
+        s += path('M11.4,12.2 a4.8,4.8 0 1 1 7.2,4.1 c-1.7,1 -2.6,1.9 -2.6,3.9', 'none', '#ffffff', 3.6)
+        s += circle(16, 24.6, 2.2, '#ffffff')
+    elif sign == 'x':
+        s += line(10.5, 10.5, 21.5, 21.5, '#ffffff', 3.6) + line(21.5, 10.5, 10.5, 21.5, '#ffffff', 3.6)
+    return s
+
+
+def window32(fill='#ffffff', title=BLUE, title_dark=BLUE_DARK, frame=GRAY_DARK):
+    return rect(2.5, 4.5, 27, 23, fill, frame, 1, 1.2) + rect(2.5, 4.5, 27, 4.5, title, title_dark, 1)
+
+
+TILE_COLORS = (FOLDER_FRONT, GREEN, BLUE, RED, PURPLE, ORANGE)
+
+
+def commander32():
+    s = window32() + line(16, 9, 16, 27.5, GRAY_DARK)
+    for i, y in enumerate((12.5, 16, 19.5, 23)):
+        for x in (4.5, 18):
+            s += rect(x, y - 1.2, 2.4, 2.4, TILE_COLORS[(i + int(x)) % len(TILE_COLORS)])
+            s += line(x + 4, y, x + 9.5, y, PAGE_LINE, 1.4)
+    return s
+
+
+def explorer32():
+    s = window32() + line(10, 9, 10, 27.5, GRAY_DARK)
+    for y in (12.5, 16, 19.5):
+        s += line(4.5, y, 8, y, PAGE_LINE, 1.4)
+    for row, y in enumerate((11.5, 18.5)):
+        for col, x in enumerate((12.5, 18.5, 24.5)):
+            s += rect(x, y, 4, 4, TILE_COLORS[(row * 3 + col) % len(TILE_COLORS)], None, 0.6)
+            s += line(x, y + 6, x + 4, y + 6, PAGE_LINE, 1)
+    return s
+
+
+def console32():
+    return (rect(2.5, 4.5, 27, 23, SCREEN, '#111820', 1.2, 1.2) + rect(2.5, 4.5, 27, 4.5, GRAY, GRAY_DARK, 1) +
+            path('M7.5,14 l4.5,3.8 l-4.5,3.8', 'none', '#7CFC72', 2.2) + line(14.5, 22.5, 20.5, 22.5, '#7CFC72', 2.2))
+
+
+DIALOG_IMAGES = {
+    'download-file': svg32(transfer_pages(False, True), arrow(225, 20.5, 21.5, 17, GREEN, GREEN_DARK, 1.2)),
+    'download-file-remove-original': svg32(transfer_pages(True, True),
+                                           arrow(225, 20.5, 21.5, 17, GREEN, GREEN_DARK, 1.2)),
+    'upload-file': svg32(transfer_pages(False, False), arrow(45, 22.5, 20, 17, BLUE, BLUE_DARK, 1.2)),
+    'upload-file-remove-original': svg32(transfer_pages(True, False), arrow(45, 22.5, 20, 17, BLUE, BLUE_DARK, 1.2)),
+    'duplicate-l-to-r': svg32(side_pages(False), arrow(90, 22.5, 22.5, 17, AMBER, AMBER_DARK, 1.2)),
+    'move-l-to-r': svg32(side_pages(True), arrow(90, 22.5, 22.5, 17, AMBER, AMBER_DARK, 1.2)),
+    'multiple-files': svg32(page32(12.5, 1.5, 16, 20), page32(8, 5.5, 16, 20), page32(3.5, 9.5, 16, 20)),
+    'delete-file': svg32(line(7.5, 7.5, 24.5, 24.5, RED_DARK, 7.4), line(24.5, 7.5, 7.5, 24.5, RED_DARK, 7.4),
+                         line(7.5, 7.5, 24.5, 24.5, RED, 5), line(24.5, 7.5, 7.5, 24.5, RED, 5)),
+    'open-folder': svg32(folder32(2.5, 12.5, 25, 16, True),
+                         curved_arrow32('M8.5,11.5 C10,3.5 20,1.5 25,7', (25, 7), (5, 5.5), BLUE, BLUE_DARK)),
+    'synchronize-directories': svg32(folder32(2.5, 5.5, 27, 22),
+                                     group('translate(5,7.5) scale(1.38)', refresh_arrows(8, 8, 5, GREEN, GREEN_DARK))),
+    'keep-remote-directory-up-to-date': svg32(
+        folder32(1.5, 2.5, 13, 10), folder32(17.5, 19.5, 13, 10),
+        curved_arrow32('M17,5.5 C22.5,4 26.5,7.5 26.5,13.5', (26.5, 13.5), (0, 1), GREEN, GREEN_DARK),
+        curved_arrow32('M15,26.5 C9.5,28 5.5,24.5 5.5,18.5', (5.5, 18.5), (0, -1), ORANGE, ORANGE_DARK)),
+    'open-console-window': svg32(console32()),
+    'commander': svg32(commander32()),
+    'explorer': svg32(explorer32()),
+    'error': svg32(circle_sign32(RED, RED_DARK, 'x')),
+    'help-blue': svg32(circle_sign32(BLUE, BLUE_DARK, '?')),
+    'information': svg32(circle_sign32(BLUE, BLUE_DARK, 'i')),
+    'warning': svg32(path('M16,2.5 L30,27.5 H2 Z', YELLOW, YELLOW_DARK, 1.4),
+                     rect(14.4, 10, 3.2, 10, '#4a3b00', None, 1.2), circle(16, 23.4, 1.9, '#4a3b00')),
+}
+
 INDEX_THEME = """[Icon Theme]
 Name=OpenSCP
 Comment=The icons of OpenSCP
@@ -562,6 +703,9 @@ def write(output):
     (output / 'index.theme').write_text(INDEX_THEME)
     for name, content in sorted(ICONS.items()):
         (output / 'scalable' / (name + '.svg')).write_text(content)
+    (output / 'dialogs').mkdir()
+    for name, content in sorted(DIALOG_IMAGES.items()):
+        (output / 'dialogs' / (name + '.svg')).write_text(content)
     (output / 'openscp.svg').write_text(app_icon())
 
 
@@ -577,6 +721,12 @@ def sheet(png):
                 subprocess.run(['rsvg-convert', '-w', str(size), '-h', str(size), '-o', str(target), str(source)],
                                check=True)
             files.append(str(tmp / (name + '-32.png')))
+        for name, content in sorted(DIALOG_IMAGES.items()):
+            source = tmp / ('dialog-%s.svg' % name)
+            source.write_text(content)
+            target = tmp / ('dialog-%s.png' % name)
+            subprocess.run(['rsvg-convert', '-w', '32', '-h', '32', '-o', str(target), str(source)], check=True)
+            files.append(str(target))
         app = tmp / 'openscp.svg'
         app.write_text(app_icon())
         subprocess.run(['rsvg-convert', '-w', '64', '-h', '64', '-o', str(tmp / 'app.png'), str(app)], check=True)
