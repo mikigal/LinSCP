@@ -84,6 +84,13 @@ mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tes
   Some of their files are converted copies of upstream's `source/windows`
   (`PORTED_FILES` in `tools/bcb2clang/convert.py`): edit them minimally, mark edits with
   `OpenSCP:` comments. Upstream files use CRLF line endings; keep them.
+- `source/qt`: the GUI `openscp` (Qt 6 Widgets): `app/` (application, `TTerminalManager`,
+  the automation hook `Automation.h` of test builds), `dialogs/`, `models/`, `views/`. Object
+  names are the component names of upstream's `.dfm` files, which are the specification.
+  L3 tests in `tests/unit/qt` (offscreen platform).
+- L4 tests: `tests/integration/test_gui*.py` (base `guitests.py`) run `openscp` in the
+  headless KWin and drive it through `tools/testenv/openscp_gui.py`; `OPENSCP_GUI_KEEP=1`
+  keeps the sessions with their logs and screenshots.
 - L2 tests: `tests/integration/test_cli_ssh.py` runs `openscp-cli` against the local sshd
   through `tools/testenv/openscp_cli.py` (isolated environment, pseudo terminals);
   `test_cli_vm*.py` against the test VM, with the matrix shared by the protocols in

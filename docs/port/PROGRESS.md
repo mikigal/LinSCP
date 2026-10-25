@@ -2,25 +2,76 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M5 — GUI skeleton
+## Next: M6 — the features of the GUI
 
-Qt 6 application, site manager (Login), Commander window with panels, navigation, basic
-operations, progress, authentication prompts; the automation hook for the E2E tests.
+Queue, copy dialog with options, properties/chmod, rename, find files, synchronization +
+checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor +
+external editing.
 
-In progress. Done: `source/qt` (`openscp_qt` library and `openscp`), the automation hook
-(`OPENSCP_AUTOMATION`, `tools/testenv/openscp_gui.py`, `tests/integration/guitests.py`),
-message and input dialogs (L3 tests in `tests/unit/qt`), the site manager, connecting
-(`TTerminalManager`, `TAuthenticateForm`), the local and remote panels (`DirModel`,
-`DirPanel`) with navigation and history. Left: the Commander's menus, toolbars and
-commands; copy (upload/download), delete, rename, create directory with the progress
-window (`Progress.dfm`); E2E tests against the local sshd and the VM; screenshots.
+## M5 — GUI skeleton (done, 2026-10-25)
 
-Findings so far:
+Exit criteria met: the E2E tests connect from the site manager, browse, upload, download
+and operate on files, in the headless KWin, against the local sshd (SFTP with a key file
+and with an SSH agent) and against the test VM (banner, password and keyboard-interactive
+prompts); the screenshots were reviewed. All tests pass under ASan/UBSan (260 with the
+VM); the release build runs.
 
-- `TTerminalThread` read `FPendingIdle` uninitialized (fixed in `core/Queue.cpp`).
+- `source/qt` (Qt 6 Widgets): the `openscp_qt` library and `openscp`. The application
+  object shows the exceptions that escape event handlers (as the VCL does); `ProcessGUI`
+  processes the Qt events. Object names are the component names of upstream's `.dfm` files.
+  - `app/`: `TTerminalManager` (one session yet: connecting in a `TTerminalThread`, the
+    handlers of the terminal's events, reconnecting after a fatal error, the master
+    password prompt), the Qt parts of `core/Interface.h`, helpers.
+  - `dialogs/`: the message dialog (`TMessageForm`: answers with aliases and submit
+    handlers, never ask again, timer, timeout, Ctrl+C), simple dialogs and the input
+    dialog, the site manager (`TLoginDialog`: the tree of sites, folders and workspaces,
+    the basic settings, save/edit/delete/rename in place/clone/new folder/defaults/paste
+    URL), the save site dialog, the authentication window (`TAuthenticateForm`: log,
+    prompts, banner), the progress window (`TProgressForm`), the copy and create
+    directory dialogs (without the transfer settings and attributes yet).
+  - `models/`, `views/`: the file panels (`TDirModel`, `TDirPanel`): local directories
+    read with POSIX calls (names keep their bytes), a copy of the terminal's remote
+    directory; directories first, the parent directory, history, path box, focus kept
+    over reloads; the Commander window (`TScpCommanderForm`) with menus, toolbars, the
+    current panel and the commands: copy (upload/download), rename in place, delete
+    (local files to the trash), create directory, show hidden files.
+- The automation hook (`OPENSCP_AUTOMATION`, on in the `dev` preset; `app/Automation.h`):
+  a Unix socket with a JSON API to describe and drive the widgets by object names.
+  `tools/testenv/openscp_gui.py` runs the GUI in a harness session and drives it;
+  `tests/integration/guitests.py` is the base of the L4 tests (`test_gui`, `test_gui_ssh`,
+  `test_gui_vm`); `OPENSCP_GUI_KEEP` keeps the sessions with their screenshots. L3 tests
+  of components on the offscreen platform: `tests/unit/qt` (`openscp_qt_tests`).
+- `TAppConfiguration` stores the settings of the GUI under the keys of `WinSCP.ini`
+  (`Interface`: `ConfirmDeleting`, `ShowHiddenFiles`, `LastStoredSession`,
+  `OpenedStoredSessionFolders`).
+
+Decisions:
+
+- **A single session** until the tabs (M8); a failed connection opens the site manager
+  again, a lost one offers to reconnect, and the session is closed otherwise.
+- **Qt keywords off** (`QT_NO_KEYWORDS`): `Q_SIGNALS`, `Q_SLOTS`, `Q_EMIT`.
+- **Commands of the automation that act reply before they act**, so that a modal window
+  they open serves the next requests. Key events of the hook are synthetic (no shortcuts);
+  shortcuts and drag and drop need the real input of `wlh-input`.
+- Delphi-style objects in new code are allocated on the heap (zero-filled), also the
+  exceptions the GUI creates.
+- LeakSanitizer ignores what Qt's Wayland plugin leaves at exit (`libwayland-client`).
+
+Manual edits in upstream directories since M4:
+
+- `core/Queue.cpp`: `TTerminalThread` read `FPendingIdle` uninitialized (the thread is not
+  a Delphi object, its memory is not zero-filled).
+- `core/SecureShell.cpp`: the error of PuTTY's `backend_init` is freed.
+
+Findings for later milestones:
+
 - The XDG portal sometimes does not know OpenSCP's app ID when the application starts
   right after the harness session (a race in the portal; matters for D&D in M7).
 - Core strings mention WinSCP (e.g. the host key prompt); a branding pass with M8.
+- The advanced site settings, the transfer settings of the copy dialog, the attributes of
+  new directories, the editor/open actions on double click and grouped buttons of the
+  message dialog (upstream's drop-down menus) are M6/M8.
+- Upstream remembers the last local directory of the panels and their columns; not yet.
 
 ## M4 — FTP/FTPS, WebDAV, S3 (done, 2026-10-24)
 

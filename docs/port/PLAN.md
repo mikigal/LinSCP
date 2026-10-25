@@ -346,4 +346,6 @@ GUI on top of a verified core.
 - 2026-10-24: the FTP servers of the test VM are vsftpd, ProFTPD and Pure-FTPd; the S3
   server is moto (Debian has no MinIO), with authentication enforced.
 - 2026-10-24: ASCII transfers convert to LF line endings locally.
+- 2026-10-25: the GUI has a single session until the tabs (M8); the E2E tests drive it
+  through an automation hook built only with `OPENSCP_AUTOMATION` (dev preset).
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.
