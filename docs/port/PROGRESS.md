@@ -2,11 +2,119 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## Next: M7 — desktop integration
+## Next: M8 — completeness
 
-Drag and drop (both modes), the file clipboard, URL handlers, a single instance,
-notifications, the tray, taskbar progress, the `.desktop` file, the Dolphin service menu,
-the terminal (PLAN.md, section 7).
+Preferences, the Explorer interface, tabs and workspaces, session import, translations,
+packaging (PLAN.md, section 7).
+
+## M7 — desktop integration (done, 2026-10-25)
+
+Exit criteria met: files are dragged and dropped and copied and pasted between OpenSCP and
+Dolphin in the headless KWin (`test_gui_desktop`, against the local sshd); the other
+integrations have their E2E tests there too, with fake services of the desktop shell. All
+tests (294) pass under ASan/UBSan, with the VM; the release build compiles without warnings.
+
+- Drag and drop (`views/ScpCommanderDragDrop.cpp`, `TDirView` of `views/DirPanel.cpp`): the
+  panels drag their selected files and take drops on their free space or on their
+  directories (highlighted): uploads and downloads between the panels, moves (copies with
+  Ctrl) within the remote panel, uploads of the files of other applications. The operations
+  run once the drop ends, with the copy dialog of drag and drop (upstream's
+  `DDTransferConfirmation`: "do not show again" checked until turned off, which a
+  notification tells and undoes).
+- Remote files offered to other applications (`app/ExportedFiles.cpp`), in upstream's two
+  modes (`DDFakeFile`, on by default on KDE Plasma):
+  - the target tells the directory: drags speak Ark's drop protocol (the MIME types
+    `application/x-kde-ark-dndextract-service` and `-path`; Dolphin and the other KIO
+    applications call `org.kde.ark.DndExtract.extractSelectedFilesTo` with the directory of
+    the drop), the clipboard has a fake empty directory as upstream, whose copy is found by
+    KIO's notifications of added files (`org.kde.KDirNotify.FilesAdded`), removed, and the
+    files are downloaded there;
+  - otherwise the files are downloaded to a temporary directory once the target asks for
+    their URLs (deleted after two minutes or with the application).
+- The file clipboard (`views/ScpCommanderClipboard.cpp`): upstream's Copy to Clipboard
+  (Ctrl+C) and Paste from Clipboard (Ctrl+V), file names (Shift+Ctrl+C, Ctrl+Alt+C) and
+  panel paths (Ctrl+[, Ctrl+]) as text. Pasting downloads our remote files (local panel),
+  duplicates them (remote panel), uploads files of other applications (moved when cut:
+  `application/x-kde-cutselection`, `x-special/gnome-copied-files`), opens a session URL or
+  a path.
+- The command line (`views/ScpCommanderCommandLine.cpp`, upstream's `Execute` and
+  `GetLoginData`): a site, a URL or a folder of sites, `/upload` (`/uploadifany`,
+  `/defaults`) and the file of a URL downloaded, then the application closes (the once done
+  operation of the progress window now reaches the core); `/privatekey` is the default key
+  of sessions (upstream's `DefaultKeyFile`).
+- A single instance (`app/SingleInstance.cpp`): a session without an operation goes to a
+  running instance (`ExternalSessionInExistingInstance`, not with `/newinstance`) over
+  `org.openscp.OpenSCP` on the session bus, which the instances queue for; the XDG
+  activation token of the launcher is passed along.
+- `source/qt/desktop/openscp.desktop`: the URL schemes upstream registers (sftp, scp, ftp,
+  ftps, ftpes, dav, davs, s3) and a New Window action; `openscp-upload.desktop`: Dolphin's
+  service menu "Upload with OpenSCP" (`openscp /upload -- %F`, upstream's Send To). Install
+  rules for the binaries and the files of the desktop.
+- Notifications (`app/Notifications.cpp`, upstream's balloons, `BalloonNotifications`,
+  `NotificationsTimeout`): the queue got empty or needs the user while hidden or in the
+  background (a click shows the queue), the transfer confirmation turned off; a click passes
+  the activation token of the server to the window. Without them the application asks for
+  attention (`FlashTaskbar`).
+- The system tray (`views/ScpCommanderDesktop.cpp`): minimizing the application by its own
+  commands (keep up to date's Minimize to System Tray, the progress window's Minimize, with
+  `MinimizeToTray`) hides its windows behind a StatusNotifierItem.
+- The progress in the task manager (`app/TaskbarProgress.cpp`): the operation in the
+  foreground, the synchronization or the single active queue item, as
+  `com.canonical.Unity.LauncherEntry` updates.
+- Sleep and shut down once done (`app/ComputerPower.cpp`): the queue's once empty choices and
+  the progress window's Once Finished, through systemd-logind, interactively (polkit asks).
+- Open in SSH Client (Ctrl+P, upstream's Open in PuTTY; `app/OpenInPutty.cpp`): the command
+  of `PuttyPath`, by default PuTTY when installed, else ssh in the terminal emulator of the
+  desktop; the parameters of the session are added in the syntax of the client (OpenSSH or
+  PuTTY's command line), unless the command has the patterns of the site.
+- Harness: other applications are inspected and driven over AT-SPI (`wlh-atspi.py`,
+  `Session.accessibles`, `do_popup_action` for context menus, which Qt keeps out of the
+  tree), `tools/testenv/dolphin.py` drives Dolphin, `desktop_services.py` fakes the
+  notification server, the tray watcher, the task manager and logind; the probe pastes and
+  copies text.
+
+Decisions:
+
+- **Two modes of offering remote files**, as upstream's two drag and drop modes. Qt 6.12
+  reads the URLs of data it offers at once (for the document portal), and targets of Qt wait
+  for data a second only and read the clipboard as soon as they are focused (Dolphin); so a
+  download on demand works only for fast transfers and targets without that limit (GTK).
+  The KDE mode needs no data: its drags carry only Ark's MIME types (Dolphin reads the URLs
+  of a drag while hovering, which would start the download).
+- **Sessions of other instances only when no session is open** (no tabs yet); the other
+  instance opens its own window otherwise.
+- **The harness has a system bus of its own**: nothing in a test reaches the real one (which
+  could suspend or power off the computer); `start_system_bus` serves fake system services.
+- **Exceptions do not cross Qt's code**: the handlers of actions pass their exceptions to
+  `HandleApplicationException` (`ExecuteHandler`); Qt is not built for exceptions and
+  skipped the guards on its stack.
+- **Minimizing to the tray is by OpenSCP's own commands**: Wayland does not tell a window it
+  was minimized. Windows of modal loops are minimized instead of hidden (hiding ends the
+  loop).
+- Notifications go only to a running server (no D-Bus activation: Plasma's activatable one
+  waits for a shell).
+- The icon of the desktop file and of the tray is the theme's `folder-remote` until the
+  branding (M8).
+- `PuttyPath` keeps upstream's key; its default is detected (PuTTY is rarely installed).
+
+Not ported yet (or not possible):
+
+- The local panel does not take files of other applications (dropped or pasted): it has no
+  local file operations (upstream leaves them to Explorer).
+- Drops of data without files (an image of a browser), drops on the queue, the command line
+  switches `/synchronize`, `/keepuptodate`, `/edit`, `/refresh`, `/explore`; upstream's beep
+  once an operation completes (`BeepOnFinish`).
+- Open in SSH Client does not export host keys to the client nor use PuTTY's `-pwfile`
+  (`PuttyPassword` passes `-pw`); no Nautilus action.
+
+Findings for M8:
+
+- The preferences need the options of M7: `DDFakeFile`, `DDTransferConfirmation`,
+  `BalloonNotifications`, `NotificationsTimeout`, `MinimizeToTray`, `FlashTaskbar`,
+  `ExternalSessionInExistingInstance`, `PuttyPath`.
+- With tabs, the sessions of other instances open in new tabs.
+- In a fresh profile in the harness, Dolphin reports Ctrl+V as an ambiguous shortcut; the
+  tests paste through its menu action.
 
 ## M6 — the features of the GUI (done, 2026-10-25)
 

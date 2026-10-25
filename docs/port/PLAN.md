@@ -201,10 +201,13 @@ license attribution).
   X11 only). Two modes, analogous to WinSCP:
   1. **KDE**: the protocol used by Ark — MIME types `application/x-kde-ark-dndextract-service`
      and `…-path`; after the drop, Dolphin calls a D-Bus method with the target directory →
-     we download straight to the target through the queue, without blocking. To be verified
-     on Plasma 6.8.
+     we download straight to the target, with the copy dialog. Verified with Dolphin 26.08
+     (M7). The clipboard has upstream's fake directory instead, found where it was pasted by
+     KIO's `org.kde.KDirNotify.FilesAdded` signals.
   2. **Universal**: lazy `QMimeData::retrieveData()` — only when the target requests the data,
      we download to a temporary directory (with a progress window) and hand over `file://` URIs.
+     Targets of Qt wait for the data a second only, so this suits fast transfers and GTK
+     targets (M7).
 - D&D within the application (panel ↔ panel, onto the directory tree) — standard Qt.
 - D&D is tested only with real input from the compositor (section 6.4), because on Wayland a
   drag requires the serial of a real pointer event.
@@ -348,4 +351,11 @@ GUI on top of a verified core.
 - 2026-10-24: ASCII transfers convert to LF line endings locally.
 - 2026-10-25: the GUI has a single session until the tabs (M8); the E2E tests drive it
   through an automation hook built only with `OPENSCP_AUTOMATION` (dev preset).
+- 2026-10-25: remote files go to other applications in upstream's two modes (`DDFakeFile`,
+  on by default on KDE): Ark's drop protocol and a fake directory found by KIO's
+  notifications, else downloads to a temporary directory on demand (see section 5).
+- 2026-10-25: the harness isolates the system bus too; fake desktop services
+  (notifications, tray, task manager, logind) run in the session for the tests.
+- 2026-10-25: a session of the command line goes to a running instance (D-Bus,
+  `org.openscp.OpenSCP`) only while it has no session, until the tabs (M8).
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

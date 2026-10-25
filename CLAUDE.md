@@ -60,7 +60,11 @@ mouse, keyboard, drag & drop and clipboard events as JSON lines. From Python tes
 `wlharness.Session` directly (see `tests/integration/test_wlharness.py`). Other applications
 are inspected over AT-SPI: `Session.start_accessibility()`, then start them with
 `wlharness.ACCESSIBILITY_ENV` and find their widgets with `Session.accessibles` (window
-coordinates); `tools/testenv/dolphin.py` drives Dolphin this way.
+coordinates; `do_popup_action` for context menus); `tools/testenv/dolphin.py` drives Dolphin
+this way. The applications of a session never reach the real system bus;
+`Session.start_system_bus()` serves fake system services, and
+`tools/testenv/desktop_services.py` fakes the desktop shell (notifications, tray, task manager,
+logind).
 
 ## Test servers (`tools/testenv`)
 
