@@ -1,0 +1,42 @@
+# The package of OpenSCP for Arch Linux, built from the checkout this file is
+# in (OPENSCP_SOURCE overrides it):
+#   cd packaging/arch && makepkg -si
+pkgname=openscp
+# The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
+pkgver=6.7.1
+pkgrel=1
+pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/mikigal/openscp'
+license=('GPL-3.0-or-later')
+depends=('expat' 'gcc-libs' 'glibc' 'openssl' 'qt6-base')
+makedepends=('clang' 'cmake' 'ninja' 'python')
+optdepends=(
+  'openssh: opening sessions in ssh'
+  'putty: opening sessions in PuTTY'
+  'qt6-translations: translations of the standard dialogs'
+  'xdg-utils: the default handler of the URLs of the protocols'
+  'libcanberra: the sound once an operation completes'
+)
+# The core relies on Clang's extensions, the options of LTO differ
+options=('!lto')
+
+_source="${OPENSCP_SOURCE:-$(realpath "${startdir}/../..")}"
+
+build() {
+  cmake -S "${_source}" -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
+    -DOPENSCP_SANITIZE=OFF \
+    -DOPENSCP_BUILD_TESTS=OFF \
+    -DOPENSCP_BUILD_HARNESS=OFF \
+    -DOPENSCP_AUTOMATION=OFF \
+    -DOPENSCP_RELEASE_BUILD=ON
+  cmake --build build
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+}

@@ -2,7 +2,7 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## M8 — completeness (in progress)
+## M8 — completeness (done, 2026-10-25)
 
 Preferences, the Explorer interface, tabs and workspaces, session import, translations,
 packaging (PLAN.md, section 7).
@@ -144,6 +144,10 @@ packaging (PLAN.md, section 7).
   and Support Forum, the project's GitHub pages): the version (upstream's, of the core), the
   copyright of WinSCP, the translators, the third-party components (Qt in place of upstream's
   VCL libraries) and the license (installed to `share/licenses/openscp`).
+- Packaging (`packaging/arch/PKGBUILD`): the package of Arch Linux, built from the checkout
+  (`makepkg -si`): the binaries, the desktop entry, the translations, the license; built with
+  `OPENSCP_RELEASE_BUILD` (upstream's `BUILD_OFFICIAL`: the version is not a development
+  build's, not to be distributed).
 
 Decisions:
 

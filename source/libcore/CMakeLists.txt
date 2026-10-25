@@ -47,6 +47,11 @@ add_library(openscp_core STATIC
   ${OPENSCP_CORE_DIR}/Usage.cpp
   ${OPENSCP_CORE_DIR}/WebDAVFileSystem.cpp)
 add_library(openscp::core ALIAS openscp_core)
+# Upstream's official builds: the version is not tagged as a development
+# build not to be distributed
+if(OPENSCP_RELEASE_BUILD)
+  target_compile_definitions(openscp_core PRIVATE BUILD_OFFICIAL)
+endif()
 
 target_include_directories(openscp_core PRIVATE "${OPENSCP_CORE_DIR}" "${OPENSCP_RESOURCE_DIR}")
 # For consumers, the core's headers are system headers: their upstream

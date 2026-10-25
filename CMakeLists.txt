@@ -26,6 +26,7 @@ option(OPENSCP_BUILD_TESTS "Build unit and integration tests" ON)
 option(OPENSCP_BUILD_HARNESS "Build the Wayland test harness tools" ON)
 option(OPENSCP_AUTOMATION "Build the GUI with the automation hook of the end-to-end tests" OFF)
 option(OPENSCP_SANITIZE "Build OpenSCP targets with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(OPENSCP_RELEASE_BUILD "A build for distribution (packages): the version is not a development build's" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(OpenSCPOptions)

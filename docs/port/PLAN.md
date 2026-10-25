@@ -361,4 +361,9 @@ GUI on top of a verified core.
 - 2026-10-25: no Dolphin service menu ("Upload with OpenSCP"); the user does not want it.
 - 2026-10-25: the tabs (M8) hold remote sessions only, no local browser tabs; the sessions
   of the command line and of other instances open in new tabs.
+- 2026-10-25: the GUI is translated by upstream's translations as they are: its texts are
+  the English texts of upstream's forms, matched by a `QTranslator` (M8).
+- 2026-10-25: the help opens upstream's online documentation; the project's pages are its
+  GitHub pages; the version is the core's (upstream's).
+- 2026-10-25: the package is a PKGBUILD in `packaging/arch`, built from the checkout.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

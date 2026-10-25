@@ -42,6 +42,16 @@ directories are our own.
 To port another file, add it to `PORTED_FILES`, run `update-upstream.sh` for the revision
 that is already converted (see below) and merge, then edit the copy.
 
+## Texts and translations
+
+The GUI is written in Qt, but its texts are the English texts of upstream's forms
+(`source/forms/*.dfm`) and its resource strings are upstream's (`source/resource/*.rc`):
+upstream's translations (`translations/*.ini`, kept as they are) translate them, through the
+keys of the forms (`tools/dfm2cpp` generates the English texts at build time) and the names of
+the strings (`tools/rc2cpp`). When a merge changes the English text of a form, change the
+same text of the Qt dialog, or it stays untranslated. The name of the application in
+upstream's texts is replaced (`rc2cpp --brand`, `BrandText`).
+
 ## Converter
 
 `tools/bcb2clang/convert.py ROOT` converts a tree in place: `source/core` from the C++Builder
