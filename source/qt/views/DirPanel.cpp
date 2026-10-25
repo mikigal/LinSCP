@@ -1199,12 +1199,6 @@ void TDirPanel::SetCalculatedSize(const UnicodeString & FileName, __int64 Size)
   }
 }
 //---------------------------------------------------------------------------
-void TDirPanel::FillOptionsMenu(QMenu * Menu)
-{
-  Menu->addAction(TreeAction);
-  Menu->addAction(StatusBarAction);
-}
-//---------------------------------------------------------------------------
 void TDirPanel::StartRename()
 {
   QModelIndex Current = DirView->currentIndex();

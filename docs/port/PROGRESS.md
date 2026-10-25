@@ -2,11 +2,15 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
-## M9 — fidelity to upstream (in progress)
+## M9 — fidelity to upstream (done, 2026-10-25)
 
-The main window and the site manager as upstream's: the toolbars, the panels, the status bar
-(PLAN.md, section 7). Compared with upstream's `.dfm` files and with the screenshots of
-upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
+Exit criteria met: the Commander, the Explorer, the site manager and the dialogs reviewed have
+upstream's layout (their `.dfm` files and the screenshots of upstream's documentation:
+`ui_commander`, `ui_explorer`, `ui_login`, `ui_copy`, `ui_properties`, `ui_synchronize`), checked
+in screenshots of the headless KWin; the new controls have their L3 and E2E tests (`test_toolbars`,
+`test_command_line`, `test_explorer`, `ToolbarsTest`, `PathLabelTest`, `HelpButtonTest`,
+`IconThemeTest`). All tests pass under ASan/UBSan, with the VM; the release build compiles
+without warnings.
 
 - Toolbars (`views/Toolbars.cpp`, `views/ScpCommanderToolbars.cpp`): upstream's toolbars of the
   Commander with their names, buttons and drop-down menus: Commands, Preferences (with the
@@ -73,6 +77,9 @@ Decisions:
   wider fonts of the desktops), so that the panels' toolbars fit.
 - Help buttons are right of the other buttons, as upstream's, not where the desktop's button
   boxes put them (left on KDE).
+- Not ported: the Updates toolbar and the view styles of the panels (M8's decisions), the
+  32-pixel images of the copy, synchronization and find dialogs, the file list of the queue
+  (`QueueFileListAction`), the gaps between the toolbars of a row (Qt packs them).
 - The local path combo box has the drives of Linux, not all the mount points: the root and the
   media mounted for the user; the home and the documents and desktop folders are upstream's
   special folders.

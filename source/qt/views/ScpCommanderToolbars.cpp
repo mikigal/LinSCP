@@ -19,9 +19,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
-#include <QMenuBar>
 #include <QStatusBar>
-#include <QToolButton>
 
 #include <algorithm>
 #include <functional>

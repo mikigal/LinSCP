@@ -219,10 +219,8 @@ public:
   QAction * GetStatusBarAction() const { return StatusBarAction; }
 
   // The menu of the panel (upstream's Local and Remote menus: Go To, the
-  // bookmarks, Sort, Columns, Filter); the options of the panel (the tree,
-  // the status bar)
+  // bookmarks, Sort, Columns, Filter)
   void FillMenu(QMenu * Menu, QAction * PathToClipboardAction);
-  void FillOptionsMenu(QMenu * Menu);
   // The commands of the directory in the popup menu out of the files
   // (upstream's DirViewPopup: Go To, Refresh, the bookmark, the filter)
   void FillDirViewPopup(QMenu * Menu, QAction * PathToClipboardAction);
