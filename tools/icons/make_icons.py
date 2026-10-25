@@ -111,13 +111,12 @@ def page(x=3.5, y=1.5, w=9, h=13, lines=True):
     return s
 
 
-def arrow(direction, cx, cy, size, fill, stroke, width=1, tail=1.0):
+def arrow(direction, cx, cy, size, fill, stroke, width=1):
     # A block arrow pointing to the direction (up, down, left, right, or the
-    # degrees clockwise from up); tail is the length of its shaft, relative
-    # to its head's
+    # degrees clockwise from up)
     h = size / 2.0
     t = size * 0.22
-    pts = [(0, -h), (h, 0), (t, 0), (t, h * tail), (-t, h * tail), (-t, 0), (-h, 0)]
+    pts = [(0, -h), (h, 0), (t, 0), (t, h), (-t, h), (-t, 0), (-h, 0)]
     angle = {'up': 0, 'right': 90, 'down': 180, 'left': 270}.get(direction, direction)
     a = math.radians(angle)
     out = []
@@ -449,20 +448,17 @@ def app_icon():
         gradient('download', '#a6e852', '#2f8f14', 1, 1),
         gradient('body', '#fbfcfd', '#a9b2bc'),
         gradient('shackle', '#f2f4f6', '#9aa4ae', 1, 0))
-    # The lock in the middle, its keyhole on its axis; the shafts of the
-    # arrows short enough not to cover the keyhole
+    # The lock in the middle, plain as upstream's
     shackle = 'M22.5,32 V22.5 a9.5,9.5 0 0 1 19,0 V32'
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">\n' +
             defs + '\n<g transform="translate(32,32) scale(1.12) translate(-32,-32)">\n' +
             '\n'.join([
-                arrow(45, 46.5, 17.5, 31, 'url(#upload)', '#0f4f9e', 2, 0.6),
+                arrow(45, 46.5, 17.5, 31, 'url(#upload)', '#0f4f9e', 2),
                 path(shackle, 'none', '#56606b', 9),
                 path(shackle, 'none', 'url(#shackle)', 5.5),
                 rect(15, 30, 34, 25, 'url(#body)', '#56606b', 4.5, 2),
                 path('M18.5,34.3 h27', 'none', '#ffffffcc', 1.5),
-                circle(32, 39.5, 3.6, '#56606b'),
-                path('M30,40.5 h4 l1.4,7.5 h-6.8 z', '#56606b'),
-                arrow(225, 17.5, 46.5, 31, 'url(#download)', '#2a6e12', 2, 0.6),
+                arrow(225, 17.5, 46.5, 31, 'url(#download)', '#2a6e12', 2),
             ]) + '\n</g>\n</svg>\n')
 
 
