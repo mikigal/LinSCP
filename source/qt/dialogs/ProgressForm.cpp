@@ -149,7 +149,7 @@ TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgr
   MinimizeItem = new QPushButton(tr("&Minimize"), this);
   MinimizeItem->setObjectName(QStringLiteral("MinimizeItem"));
   MinimizeItem->setAutoDefault(false);
-  connect(MinimizeItem, &QPushButton::clicked, this, [this]() { MinimizeApplication(); });
+  connect(MinimizeItem, &QPushButton::clicked, this, []() { MinimizeApplication(); });
   ButtonLayout->addWidget(MinimizeItem);
   SkipItem = new QPushButton(tr("&Skip this file"), this);
   SkipItem->setObjectName(QStringLiteral("SkipItem"));
