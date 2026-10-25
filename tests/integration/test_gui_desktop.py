@@ -19,9 +19,10 @@ import guitests
 import test_gui_ssh as ssh
 import wlharness
 from dolphin import Dolphin
-from openscp_gui import LSAN_SUPPRESSIONS
+from openscp_gui import LSAN_SUPPRESSIONS, OpenScpGui
 
 W = 'ScpCommanderForm/'
+SOURCE = Path(__file__).resolve().parents[2]
 # Downloads for other applications go to a temporary directory
 TEMPORARY_MODE_INI = '[Configuration\\Interface]\nDDFakeFile=0\n'
 # The application closes once the operation of its command line is done
@@ -102,8 +103,8 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         client = self.session.place_window(title, x, y, width, height)['client']
         gui.wait_for(lambda: gui.get('ScpCommanderForm')['geometry']['width'] == client['width'], what='the placed window')
 
-    def start_dolphin(self, directory):
-        dolphin = Dolphin(self.session, directory, log_name='%s-dolphin' % self.test_name).start()
+    def start_dolphin(self, directory, env=None):
+        dolphin = Dolphin(self.session, directory, log_name='%s-dolphin' % self.test_name, env=env).start()
         self.addCleanup(dolphin.stop)
         dolphin.place(820, 0, 780, 860)
         return dolphin
@@ -515,6 +516,83 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         gui.click('MessageForm/No')
         gui.wait_no_window('MessageForm')
         self.assertEqual((remote / 'big.bin').stat().st_size, 1024 * 1024)
+        self.assertEqual(gui.quit(), 0)
+
+    def test_service_menu_upload(self):
+        remote = self.work_dir('remote')
+        source = self.work_dir('dolphin')
+        (source / 'sent.txt').write_text('sent from Dolphin')
+        gui = OpenScpGui(self.session, guitests.GUI)
+        self.addCleanup(gui.stop)
+        gui.socket_path.unlink(missing_ok=True)
+        gui.config_file.parent.mkdir(parents=True, exist_ok=True)
+        gui.config_file.write_text(ssh.site_ini(remote=remote) + EXIT_ON_COMPLETION_INI)
+        # The action of the context menu, starting the binary under test
+        menus = self.session.home / '.local/share/kio/servicemenus'
+        menus.mkdir(parents=True, exist_ok=True)
+        menu = menus / 'openscp-upload.desktop'
+        self.addCleanup(menu.unlink)
+        text = (SOURCE / 'source/qt/desktop/openscp-upload.desktop').read_text()
+        menu.write_text(text.replace('=openscp', '=%s' % guitests.GUI))
+        # Dolphin runs the actions of the user's directory when executable
+        menu.chmod(0o755)
+        dolphin = self.start_dolphin(source, env=gui.automation_env())
+
+        x, y = dolphin.item_point('sent.txt')
+        self.session.do_popup_action('dolphin', 'Upload with OpenSCP', 'Press',
+                                     lambda: self.session.input('move', x, y, 'click', 'sleep', 200, 'click', 'right'))
+
+        # The site manager, the upload, then the application closes
+        gui.attach()
+        self.login(gui, 'local')
+        gui.wait_window('CopyDialog')
+        self.assertEqual(gui.get('CopyDialog/DirectoryLabel')['text'], "Upload file 'sent.txt' to remote directory:")
+        gui.click('CopyDialog/OkButton')
+        gui.wait_for(lambda: (remote / 'sent.txt').exists() and not gui.socket_path.exists(), 60, 'the upload')
+        self.assertEqual((remote / 'sent.txt').read_text(), 'sent from Dolphin')
+
+    def client_script(self, name):
+        """A fake SSH client that records its arguments."""
+        directory = self.work_dir('client')
+        record = directory / 'arguments.json'
+        script = directory / name
+        script.write_text('#!%s\nimport json, sys\njson.dump(sys.argv[1:], open(%r, "w"))\n' % (sys.executable, str(record)))
+        script.chmod(0o755)
+        return script, record
+
+    def open_in_client(self, client):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        ini = '[Configuration\\Interface]\nPuttyPath=%s\n' % client
+        gui = self.start_commander(remote, local, ini)
+        self.assertTrue(gui.get(W + 'PuttyAction')['enabled'])
+        gui.trigger(W + 'PuttyAction')
+        return gui
+
+    def test_open_in_ssh_client(self):
+        script, record = self.client_script('terminal')
+        gui = self.open_in_client('%s -e ssh' % script)
+        gui.wait_for(record.exists, 30, 'the client')
+        # The session in the syntax of OpenSSH (it does not read PuTTY's keys)
+        self.assertEqual(json.loads(record.read_text()),
+                         ['-e', 'ssh', '-p', str(ssh.SSHD.port), '-l', ssh.SSHD.user, '--', '127.0.0.1'])
+        self.assertEqual(gui.quit(), 0)
+
+    def test_open_in_putty(self):
+        script, record = self.client_script('putty')
+        gui = self.open_in_client(script)
+        gui.wait_for(record.exists, 30, 'the client')
+        self.assertEqual(json.loads(record.read_text()),
+                         ['-ssh', '127.0.0.1', '-l', ssh.SSHD.user, '-P', str(ssh.SSHD.port),
+                          '-i', str(ssh.key_file()), '-agent', '-a'])
+        self.assertEqual(gui.quit(), 0)
+
+    def test_open_in_client_command(self):
+        # The patterns of the site: the command is the user's
+        script, record = self.client_script('client')
+        gui = self.open_in_client('%s !U@!@ !#' % script)
+        gui.wait_for(record.exists, 30, 'the client')
+        self.assertEqual(json.loads(record.read_text()), ['%s@127.0.0.1' % ssh.SSHD.user, str(ssh.SSHD.port)])
         self.assertEqual(gui.quit(), 0)
 
 

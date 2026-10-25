@@ -9,6 +9,9 @@
 #include "AppConfiguration.h"
 #include "GUIConfiguration.h"
 #include "ProgParams.h"
+
+#include <string>
+#include <unistd.h>
 //---------------------------------------------------------------------------
 bool __fastcall CheckSafe(TOptions * Params)
 {
@@ -167,6 +170,58 @@ bool IsKdeDesktop()
   List->StrictDelimiter = true;
   List->DelimitedText = UnicodeString((Desktops != NULL) ? Desktops : "");
   return (List->IndexOf(L"KDE") >= 0);
+}
+//---------------------------------------------------------------------------
+static bool IsInPath(const char * Program)
+{
+  const char * Path = getenv("PATH");
+  std::string Directories = (Path != NULL) ? Path : "/usr/bin:/bin";
+  size_t Start = 0;
+  while (Start <= Directories.size())
+  {
+    size_t End = Directories.find(':', Start);
+    if (End == std::string::npos)
+    {
+      End = Directories.size();
+    }
+    std::string Directory = Directories.substr(Start, End - Start);
+    if (!Directory.empty() && (access((Directory + "/" + Program).c_str(), X_OK) == 0))
+    {
+      return true;
+    }
+    Start = End + 1;
+  }
+  return false;
+}
+//---------------------------------------------------------------------------
+UnicodeString DefaultPuttyPath()
+{
+  if (IsInPath("putty"))
+  {
+    return L"putty";
+  }
+  // The terminal emulator of the desktop: the freedesktop's launcher of
+  // the preferred one, then the usual ones (of the desktop first)
+  bool Kde = IsKdeDesktop();
+  const struct { const char * Program; const wchar_t * Command; } Terminals[] =
+  {
+    { "xdg-terminal-exec", L"xdg-terminal-exec ssh" },
+    { Kde ? "konsole" : "kgx", Kde ? L"konsole -e ssh" : L"kgx -- ssh" },
+    { "gnome-terminal", L"gnome-terminal -- ssh" },
+    { "konsole", L"konsole -e ssh" },
+    { "xfce4-terminal", L"xfce4-terminal -x ssh" },
+    { "foot", L"foot ssh" },
+    { "kitty", L"kitty ssh" },
+    { "alacritty", L"alacritty -e ssh" },
+  };
+  for (const auto & Terminal : Terminals)
+  {
+    if (IsInPath(Terminal.Program))
+    {
+      return Terminal.Command;
+    }
+  }
+  return L"xterm -e ssh";
 }
 //---------------------------------------------------------------------------
 static bool __fastcall IsEligibleForApplyingTabs(

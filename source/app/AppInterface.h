@@ -56,6 +56,9 @@ UnicodeString __fastcall UniqTempDir(const UnicodeString BaseDir,
   const UnicodeString Identity, bool Mask = false);
 // The desktop session is KDE Plasma (XDG_CURRENT_DESKTOP)
 bool IsKdeDesktop();
+// The SSH client to open the sessions in (upstream's PuttyPath, putty.exe):
+// PuTTY when installed, else OpenSSH's ssh in a terminal emulator
+UnicodeString DefaultPuttyPath();
 typedef int __fastcall (*TCalculateWidth)(UnicodeString Text, void * Arg);
 // Aligns the parts of lines after a tab
 void __fastcall ApplyTabs(

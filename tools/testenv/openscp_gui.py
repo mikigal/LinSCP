@@ -42,11 +42,7 @@ class OpenScpGui:
 
     def start(self, *args, env=None, log_name='openscp', timeout=60):
         self.socket_path.unlink(missing_ok=True)
-        extra_env = {
-            'OPENSCP_AUTOMATION_SOCKET': str(self.socket_path),
-            'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS,
-            'UBSAN_OPTIONS': 'print_stacktrace=1',
-        }
+        extra_env = self.automation_env()
         extra_env.update(env or {})
         self.process = self.session.spawn([self.binary, *map(str, args)], log_name=log_name, extra_env=extra_env)
         self.log = self.session.logs / ('%s.log' % log_name)
@@ -66,6 +62,31 @@ class OpenScpGui:
                 raise AutomationError('the automation socket did not appear; see %s' % self.log)
             time.sleep(0.05)
         return self
+
+    def attach(self, timeout=60):
+        """Connects to an instance started by another application (with
+        OPENSCP_AUTOMATION_SOCKET set to socket_path)."""
+        deadline = time.monotonic() + timeout
+        while True:
+            if self.socket_path.exists():
+                try:
+                    self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                    self._socket.connect(str(self.socket_path))
+                    return self
+                except OSError:
+                    self._socket.close()
+                    self._socket = None
+            if time.monotonic() > deadline:
+                raise AutomationError('the automation socket %s did not appear' % self.socket_path)
+            time.sleep(0.05)
+
+    def automation_env(self):
+        """The environment of an instance to attach to."""
+        return {
+            'OPENSCP_AUTOMATION_SOCKET': str(self.socket_path),
+            'LSAN_OPTIONS': 'suppressions=%s:print_suppressions=0' % LSAN_SUPPRESSIONS,
+            'UBSAN_OPTIONS': 'print_stacktrace=1',
+        }
 
     def stop(self):
         """Ends the application if it still runs."""

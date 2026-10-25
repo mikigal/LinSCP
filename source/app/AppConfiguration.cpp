@@ -78,6 +78,8 @@ void TAppConfiguration::DefaultHistory()
 void __fastcall TAppConfiguration::Default()
 {
   TGUIConfiguration::Default();
+  // OpenSCP: PuTTY is rarely installed, ssh in a terminal emulator then
+  PuttyPath = ::DefaultPuttyPath();
 
   FUseMasterPassword = false;
   FPlainMasterPasswordEncrypt = L"";

@@ -14,10 +14,12 @@ import wlharness
 
 
 class Dolphin:
-    def __init__(self, session, directory, log_name='dolphin'):
+    def __init__(self, session, directory, log_name='dolphin', env=None):
         self.session = session
         self.directory = Path(directory)
         self.log_name = log_name
+        # Of Dolphin and the applications it starts
+        self.env = dict(wlharness.ACCESSIBILITY_ENV, **(env or {}))
         self.process = None
 
     @property
@@ -26,7 +28,7 @@ class Dolphin:
 
     def start(self, timeout=60):
         self.process = self.session.spawn(['dolphin', '--new-window', str(self.directory)],
-                                          log_name=self.log_name, extra_env=wlharness.ACCESSIBILITY_ENV)
+                                          log_name=self.log_name, extra_env=self.env)
         self.session.wait_for_window(self.caption, timeout)
         # The view lists the files once it is accessible
         self.session.wait_for_accessible('dolphin', self.directory.name, 'list', timeout)

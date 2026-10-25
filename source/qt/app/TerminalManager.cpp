@@ -7,6 +7,7 @@
 #include "AuthenticateForm.h"
 #include "ScpCommander.h"
 #include "TerminalManager.h"
+#include "OpenInPutty.h"
 
 #include <QCoreApplication>
 //---------------------------------------------------------------------------
@@ -573,5 +574,24 @@ void TTerminalManager::MasterPasswordPrompt()
   {
     Abort();
   }
+}
+//---------------------------------------------------------------------------
+bool TTerminalManager::CanOpenInPutty()
+{
+  return (ActiveTerminal != NULL) && ActiveTerminal->Active && !GUIConfiguration->PuttyPath.Trim().IsEmpty();
+}
+//---------------------------------------------------------------------------
+void TTerminalManager::OpenInPutty()
+{
+  Configuration->Usage->Inc(L"OpenInPutty");
+
+  std::unique_ptr<TSessionData> Data(new TSessionData(L""));
+  Data->Assign(ActiveTerminal->SessionData);
+  ActiveTerminal->UpdateSessionCredentials(Data.get());
+  if (ActiveTerminal->TunnelLocalPortNumber != 0)
+  {
+    Data->ConfigureTunnel(ActiveTerminal->TunnelLocalPortNumber);
+  }
+  OpenSessionInPutty(Data.get());
 }
 //---------------------------------------------------------------------------

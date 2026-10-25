@@ -58,6 +58,9 @@ public:
   // The upkeep of the session and its queue, the events of the queue
   // (periodically, upstream calls it when the application is idle too)
   void Idle();
+  // The session is opened in an SSH client (upstream's "Open in PuTTY")
+  bool CanOpenInPutty();
+  void OpenInPutty();
 
   TManagedTerminal * GetActiveTerminal() { return FActiveTerminal; }
   TTerminalQueue * GetActiveQueue() { return FActiveQueue; }

@@ -155,6 +155,10 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     QStringLiteral("view-refresh"), { QKeySequence(Qt::CTRL | Qt::Key_U) }, &TScpCommanderForm::SynchronizeActionExecute);
   ConsoleAction = CreateAction("ConsoleAction", tr("Open &Terminal"), QStringLiteral("utilities-terminal"),
     { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T) }, &TScpCommanderForm::ConsoleActionExecute);
+  // Upstream's "Open in PuTTY": PuTTY or OpenSSH in a terminal emulator
+  PuttyAction = CreateAction("PuttyAction", tr("Open in SSH &Client"), QStringLiteral("utilities-terminal"),
+    { QKeySequence(Qt::CTRL | Qt::Key_P) }, &TScpCommanderForm::PuttyActionExecute);
+  PuttyAction->setToolTip(tr("Open the session in an SSH client (PuTTY, or ssh in a terminal emulator)"));
   CustomCommandsEnterAction = CreateAction("CustomCommandsEnterAction", tr("&Enter..."), QString(),
     {}, &TScpCommanderForm::AdHocCustomCommand);
   CustomCommandsLastAction = CreateAction("CustomCommandsLastAction", QStringLiteral("CustomCommandsLastAction"), QString(),
@@ -337,6 +341,7 @@ void TScpCommanderForm::CreateMenus()
     CreateCustomCommandsMenu(CustomCommandsMenu);
   });
   CommandsMenu->addAction(ConsoleAction);
+  CommandsMenu->addAction(PuttyAction);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
   CommandsMenu->addSeparator();
@@ -486,6 +491,8 @@ void TScpCommanderForm::UpdateActions()
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   ConsoleAction->setEnabled(!Busy && CanConsole());
+  TTerminalManager * Manager = TTerminalManager::Instance(false);
+  PuttyAction->setEnabled(!Busy && (Manager != NULL) && Manager->CanOpenInPutty());
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::CanConsole()
@@ -501,6 +508,15 @@ void TScpCommanderForm::OpenConsole(const UnicodeString & Command)
   if (!IsBusy() && CanConsole() && EnsureCommandSessionFallback(fcAnyCommand))
   {
     DoConsoleDialog(GetTerminal(), Command);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::PuttyActionExecute()
+{
+  TTerminalManager * Manager = TTerminalManager::Instance();
+  if (!IsBusy() && Manager->CanOpenInPutty())
+  {
+    Manager->OpenInPutty();
   }
 }
 //---------------------------------------------------------------------------

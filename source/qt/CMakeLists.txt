@@ -11,6 +11,7 @@ add_library(openscp_qt STATIC
   app/LocalFiles.cpp
   app/LocalProcesses.cpp
   app/Notifications.cpp
+  app/OpenInPutty.cpp
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
@@ -84,3 +85,6 @@ target_link_libraries(openscp PRIVATE openscp_qt openscp::options)
 include(GNUInstallDirs)
 install(TARGETS openscp RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 install(FILES desktop/openscp.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+# The action of Dolphin's context menu (upstream's "Send To" shortcut)
+install(FILES desktop/openscp-upload.desktop DESTINATION "${CMAKE_INSTALL_DATADIR}/kio/servicemenus"
+  PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)

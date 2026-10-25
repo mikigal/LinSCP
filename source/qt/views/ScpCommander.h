@@ -213,6 +213,7 @@ private:
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
   QAction * ConsoleAction;
+  QAction * PuttyAction;
   QAction * CurrentEditAction;
   QAction * CurrentEditInternalAction;
   QAction * CurrentOpenAction;
@@ -303,6 +304,7 @@ private:
   void FullSynchronizeActionExecute();
   void SynchronizeActionExecute();
   void ConsoleActionExecute() { OpenConsole(); }
+  void PuttyActionExecute();
   bool CanConsole();
   void OpenConsole(const UnicodeString & Command = UnicodeString());
 
