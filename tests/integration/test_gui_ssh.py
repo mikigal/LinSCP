@@ -1740,6 +1740,65 @@ class GuiSshTest(GuiSshTestCase):
         gui.click(D + 'CancelButton')
         self.assertEqual(gui.quit(), 0)
 
+    def test_session_info(self):
+        remote = self.work_dir('remote')
+        (remote / 'sub').mkdir()
+        gui = self.start_gui(ini=site_ini(remote=remote))
+        self.login(gui, 'local')
+        F = 'FileSystemInfoDialog/'
+
+        # The server and the protocol
+        gui.trigger(W + 'FileSystemInfoAction')
+        gui.wait_window('FileSystemInfoDialog')
+        server = dict(gui.rows(F + 'ServerView'))
+        self.assertEqual(server['File transfer protocol'], 'SFTP-3')
+        self.assertEqual(server['Cryptographic protocol'], 'SSH-2')
+        self.assertIn('OpenSSH', server['SSH implementation'])
+        self.assertEqual(gui.get(F + 'HostKeyAlgorithmEdit')['text'], 'ssh-ed25519 255')
+        result = subprocess.run(['ssh-keygen', '-l', '-f', str(SSHD.host_key)], check=True, capture_output=True,
+                                text=True)
+        fingerprint = result.stdout.split()[1].removeprefix('SHA256:')
+        self.assertIn(fingerprint, gui.get(F + 'HostKeyFingerprintSHA256Edit')['text'])
+        self.assertFalse(gui.get(F + 'CertificateGroup')['visible'])
+        capabilities = dict(gui.rows(F + 'ProtocolView'))
+        self.assertEqual(capabilities['Can check available space'], 'Yes')
+        # The space available of the current directory (the statvfs
+        # extension of OpenSSH)
+        gui.set(F + 'PageControl', 2)
+        gui.wait_for(lambda: dict(gui.rows(F + 'SpaceAvailableView'))['Total bytes on device'] != 'Unknown',
+                     what='the space available')
+        self.assertEqual(gui.get(F + 'SpaceAvailablePathEdit')['text'], str(remote))
+        self.screenshot('fsinfo')
+        gui.click(F + 'CloseButton')
+        gui.wait_no_window('FileSystemInfoDialog')
+
+        # The caches are cleared
+        gui.activate(W + 'RemoteDirView', 'sub')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'sub'), what='the subdirectory')
+        gui.wait_idle()
+        self.assertTrue(gui.get(W + 'ClearCachesAction')['enabled'])
+        gui.trigger(W + 'ClearCachesAction')
+        gui.wait_for(lambda: not gui.get(W + 'ClearCachesAction')['enabled'], what='the empty caches')
+
+        # The color of the tab is saved with the session (popups need real
+        # input on Wayland)
+        self.open_menu(gui, 'TabsMenu')
+        gui.trigger(W + 'ColorMenuAction2')
+        gui.wait_window('ColorMenu')
+        gui.click('ColorMenu/ColorCC99FF')
+        gui.wait_no_window('ColorMenu')
+        self.screenshot('tab_color')
+        gui.trigger(W + 'SaveCurrentSessionAction2')
+        gui.wait_window('SaveSessionDialog')
+        gui.set('SaveSessionDialog/SessionNameEdit', 'colored')
+        gui.click('SaveSessionDialog/OKButton')
+        gui.wait_no_window('SaveSessionDialog')
+        gui.wait_idle()
+        ini = gui.config_file.read_text()
+        section = ini[ini.index('[Sessions\\colored]'):]
+        self.assertIn('Color=13408767', section)
+        self.assertEqual(gui.quit(), 0)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

@@ -250,6 +250,11 @@ private:
   QAction * DisconnectSessionAction;
   QAction * ReconnectSessionAction;
   QAction * SaveCurrentSessionAction2;
+  QAction * ColorMenuAction2;
+  QAction * FileSystemInfoAction;
+  QAction * ChangePasswordAction;
+  QAction * PrivateKeyUploadAction;
+  QAction * ClearCachesAction;
   QAction * SaveWorkspaceAction;
   QAction * SiteManagerAction;
   QAction * SessionsTabsAction2;
@@ -438,6 +443,14 @@ private:
   void DisconnectSessionActionExecute();
   void ReconnectSessionActionExecute();
   void SaveCurrentSessionActionExecute();
+  // The color of the current tab (upstream's SessionColor)
+  void ColorMenuActionExecute();
+  void FileSystemInfoActionExecute();
+  bool CanChangePassword();
+  void ChangePasswordActionExecute();
+  bool CanPrivateKeyUpload();
+  void PrivateKeyUploadActionExecute();
+  void ClearCachesActionExecute();
   void CloseApplicationActionExecute();
   void CurrentCopyActionExecute() { ExecuteCopyMoveFileOperation(foCopy); }
   void CurrentMoveActionExecute() { ExecuteCopyMoveFileOperation(foMove); }

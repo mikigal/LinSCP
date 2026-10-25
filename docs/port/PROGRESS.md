@@ -100,6 +100,11 @@ packaging (PLAN.md, section 7).
   the host keys of `sshhostkeys`, `TAppConfiguration::SelectPuttySessionsForImport`),
   FileZilla (`~/.config/filezilla/sitemanager.xml`), OpenSSH's `~/.ssh/config` (its keys
   converted to PuTTY's), an INI file and the hosts of `known_hosts` (also pasted).
+- Commands of the session (the Tabs menu, the menu of the tabs): the server and protocol
+  information (`dialogs/FileSystemInfoDialog.cpp`: the protocol, the host key and certificate
+  fingerprints, the capabilities, the space available, copied to the clipboard), the color of
+  the tab (kept in the state of the session, saved with it and its workspace), Change
+  Password, Install Public Key into Server, Clear Caches.
 
 Decisions:
 

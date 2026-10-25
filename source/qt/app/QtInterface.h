@@ -172,6 +172,15 @@ bool DoEditMaskDialog(TFileMasks & Mask);
 // imported, the new sites are added to the list
 bool DoImportSessionsDialog(TList * Imported);
 
+// dialogs/FileSystemInfoDialog.cpp: the information about the server and
+// the protocol of the session; OnGetSpaceAvailable is NULL when the space
+// available cannot be checked (Close set closes the dialog, upstream's
+// TGetSpaceAvailable)
+typedef std::function<void(const UnicodeString & Path, TSpaceAvailable & ASpaceAvailable, bool & Close)>
+  TGetSpaceAvailableEvent;
+void DoFileSystemInfoDialog(const TSessionInfo & SessionInfo, const TFileSystemInfo & FileSystemInfo,
+  const UnicodeString & SpaceAvailablePath, TGetSpaceAvailableEvent OnGetSpaceAvailable);
+
 // dialogs/SiteAdvancedDialog.cpp
 bool DoSiteAdvancedDialog(TSessionData * SessionData);
 // dialogs/CustomDialog.cpp: the settings of the site that differ from the

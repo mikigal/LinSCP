@@ -164,6 +164,21 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   SaveCurrentSessionAction2 = CreateAction("SaveCurrentSessionAction2", tr("&Save Session as Site..."),
     QStringLiteral("document-save"), {}, &TScpCommanderForm::SaveCurrentSessionActionExecute);
   SaveCurrentSessionAction2->setToolTip(tr("Save current session as site"));
+  ColorMenuAction2 = CreateAction("ColorMenuAction2", tr("C&olor"), QStringLiteral("color-management"),
+    {}, &TScpCommanderForm::ColorMenuActionExecute);
+  ColorMenuAction2->setToolTip(tr("Change color of the current tab"));
+  FileSystemInfoAction = CreateAction("FileSystemInfoAction", tr("Server/Protocol &Information"),
+    QStringLiteral("documentinfo"), {}, &TScpCommanderForm::FileSystemInfoActionExecute);
+  FileSystemInfoAction->setToolTip(tr("Display server/protocol information"));
+  ChangePasswordAction = CreateAction("ChangePasswordAction", tr("&Change Password..."), QString(),
+    {}, &TScpCommanderForm::ChangePasswordActionExecute);
+  ChangePasswordAction->setToolTip(tr("Change account password"));
+  PrivateKeyUploadAction = CreateAction("PrivateKeyUploadAction", tr("&Install Public Key into Server..."), QString(),
+    {}, &TScpCommanderForm::PrivateKeyUploadActionExecute);
+  PrivateKeyUploadAction->setToolTip(tr("Install public key for authentication into the server"));
+  ClearCachesAction = CreateAction("ClearCachesAction", tr("Clea&r Caches"), QString(),
+    {}, &TScpCommanderForm::ClearCachesActionExecute);
+  ClearCachesAction->setToolTip(tr("Clear directory listing and directory changes caches"));
   SaveWorkspaceAction = CreateAction("SaveWorkspaceAction", tr("Save Wor&kspace..."), QStringLiteral("document-save-all"),
     {}, &TScpCommanderForm::SaveWorkspaceActionExecute);
   SaveWorkspaceAction->setToolTip(tr("Save workspace"));
@@ -442,6 +457,8 @@ void TScpCommanderForm::CreateMenus()
   FCommandsMenu->addSeparator();
   FCommandsMenu->addMenu(QueueMenu);
   FCommandsMenu->addSeparator();
+  FCommandsMenu->addAction(ClearCachesAction);
+  FCommandsMenu->addSeparator();
   FCommandsMenu->addAction(CloseApplicationAction);
 
   FTabsMenu = NewMenu(tr("&Tabs"), "TabsMenu");
@@ -450,9 +467,15 @@ void TScpCommanderForm::CreateMenus()
   FTabsMenu->addAction(DuplicateTabAction);
   FTabsMenu->addAction(RenameTabAction);
   FTabsMenu->addSeparator();
+  FTabsMenu->addAction(ColorMenuAction2);
+  FTabsMenu->addSeparator();
   FTabsMenu->addAction(DisconnectSessionAction);
   FTabsMenu->addAction(ReconnectSessionAction);
   FTabsMenu->addAction(SaveCurrentSessionAction2);
+  FTabsMenu->addSeparator();
+  FTabsMenu->addAction(FileSystemInfoAction);
+  FTabsMenu->addAction(ChangePasswordAction);
+  FTabsMenu->addAction(PrivateKeyUploadAction);
   FTabsMenu->addSeparator();
   QMenu * OpenedTabsMenu = FTabsMenu->addMenu(tr("&Opened Tabs"));
   OpenedTabsMenu->setObjectName(QStringLiteral("OpenedTabsMenu"));
@@ -537,6 +560,8 @@ void TScpCommanderForm::CreateMenus()
   FExplorerCommandsMenu->addSeparator();
   FExplorerCommandsMenu->addAction(ConsoleAction);
   FExplorerCommandsMenu->addAction(PuttyAction);
+  FExplorerCommandsMenu->addSeparator();
+  FExplorerCommandsMenu->addAction(ClearCachesAction);
 
   FViewMenu = NewMenu(tr("&View"), "ViewMenu");
   FViewMenu->addAction(SessionsTabsAction2);
@@ -723,6 +748,11 @@ void TScpCommanderForm::UpdateActions()
   ReconnectSessionAction->setEnabled(!Busy && HasSession && !Connected);
   ReconnectSessionAction->setVisible(HasSession && !Connected);
   SaveCurrentSessionAction2->setEnabled(!Busy && HasSession);
+  ColorMenuAction2->setEnabled(!Busy && HasSession);
+  FileSystemInfoAction->setEnabled(!Busy && Connected);
+  ChangePasswordAction->setEnabled(!Busy && CanChangePassword());
+  PrivateKeyUploadAction->setEnabled(!Busy && CanPrivateKeyUpload());
+  ClearCachesAction->setEnabled(!Busy && Connected && !Terminal->AreCachesEmpty);
   SaveWorkspaceAction->setEnabled(!Busy && HasSession);
   SiteManagerAction->setEnabled(!Busy);
   bool CanTransfer = !Busy && HasSelection && Connected && OtherPanel(FCurrentPanel)->IsReady();

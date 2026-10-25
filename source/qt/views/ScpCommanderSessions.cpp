@@ -15,6 +15,7 @@
 
 #include <QActionGroup>
 #include <QApplication>
+#include <QCursor>
 #include <QLabel>
 #include <QMenu>
 #include <QMouseEvent>
@@ -97,9 +98,13 @@ void TScpCommanderForm::CreateSessionsPageControl()
           Menu.addAction(DuplicateTabAction);
           Menu.addAction(RenameTabAction);
           Menu.addSeparator();
+          Menu.addAction(ColorMenuAction2);
+          Menu.addSeparator();
           Menu.addAction(DisconnectSessionAction);
           Menu.addAction(ReconnectSessionAction);
           Menu.addAction(SaveCurrentSessionAction2);
+          Menu.addSeparator();
+          Menu.addAction(FileSystemInfoAction);
           Menu.addSeparator();
           Menu.addAction(NewSessionAction);
           Menu.exec(SessionsPageControl->mapToGlobal(Pos));
@@ -342,6 +347,8 @@ void TScpCommanderForm::UpdateSessionData(TSessionData * Data)
   }
 
   Data->LocalDirectory = FLocalPanel->GetPath();
+  // The color of the tab is kept in the state data (upstream's SessionColor)
+  Data->Color = FManagedSession->StateData->Color;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::RestoreSessionLocalDirectory(const UnicodeString & LocalDirectory)
@@ -698,6 +705,123 @@ void TScpCommanderForm::SaveCurrentSessionActionExecute()
     std::unique_ptr<TSessionData> SessionData(CloneCurrentSessionData());
     TSessionData * EditingSessionData = StoredSessions->FindSame(SessionData.get());
     DoSaveSession(SessionData.get(), EditingSessionData, true, NULL);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ColorMenuActionExecute()
+{
+  if (!IsBusy() && (FManagedSession != NULL))
+  {
+    TColor Color = static_cast<TColor>(FManagedSession->StateData->Color);
+    if (ColorMenuPopup(QCursor::pos(), Color, true) && (FManagedSession != NULL))
+    {
+      FManagedSession->StateData->Color = Color;
+      int Index = TTerminalManager::Instance()->IndexOf(FManagedSession);
+      if (DebugAlwaysTrue((Index >= 0) && (Index < SessionsPageControl->count())))
+      {
+        UpdateSessionTab(Index);
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::FileSystemInfoActionExecute()
+{
+  TTerminal * Terminal = GetTerminal();
+  if (!IsBusy() && (Terminal != NULL) && Terminal->Active)
+  {
+    const TSessionInfo & SessionInfo = Terminal->GetSessionInfo();
+    const TFileSystemInfo & FileSystemInfo = Terminal->GetFileSystemInfo(true);
+    TGetSpaceAvailableEvent OnGetSpaceAvailable;
+    if (Terminal->IsCapable[fcCheckingSpaceAvailable])
+    {
+      // upstream's GetSpaceAvailable
+      OnGetSpaceAvailable = [this](const UnicodeString & Path, TSpaceAvailable & ASpaceAvailable, bool & Close)
+      {
+        // The session can be already closed (e.g. a dropped connection)
+        TTerminal * ATerminal = GetTerminal();
+        if ((ATerminal != NULL) && ATerminal->Active && ATerminal->IsCapable[fcCheckingSpaceAvailable])
+        {
+          Configuration->Usage->Inc(L"SpaceAvailableChecks");
+          try
+          {
+            ATerminal->SpaceAvailable(Path, ASpaceAvailable);
+          }
+          catch (...)
+          {
+            if (!ATerminal->Active)
+            {
+              Close = true;
+            }
+            throw;
+          }
+        }
+      };
+    }
+    DoFileSystemInfoDialog(SessionInfo, FileSystemInfo, Terminal->CurrentDirectory, OnGetSpaceAvailable);
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanChangePassword()
+{
+  TTerminal * Terminal = GetTerminal();
+  return
+    (FManagedSession != NULL) && TTerminalManager::Instance()->IsAvailableTerminal(FManagedSession) &&
+    Terminal->IsCapable[fcChangePassword];
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ChangePasswordActionExecute()
+{
+  if (!IsBusy() && CanChangePassword())
+  {
+    TTerminal * Terminal = GetTerminal();
+    Configuration->Usage->Inc(L"PasswordChanges");
+    std::unique_ptr<TSessionData> ChangePasswordData(Terminal->SessionData->Clone());
+    ChangePasswordData->DisableAuthentationsExceptPassword();
+    ChangePasswordData->ChangePassword = true;
+
+    std::unique_ptr<TTerminal> ChangePasswordSession(
+      Terminal->CreateSecondarySession(L"ChangePassword", ChangePasswordData.get()));
+    ChangePasswordSession->AutoReadDirectory = false;
+
+    if (TTerminalManager::Instance()->ConnectTerminal(ChangePasswordSession.get()))
+    {
+      MessageDialog(MainInstructions(LoadStr(PASSWORD_CHANGED)), qtInformation, qaOK);
+    }
+    else
+    {
+      Configuration->Usage->Inc(L"PasswordChangesFailed");
+    }
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanPrivateKeyUpload()
+{
+  // No nice way to assert SSH2
+  TTerminal * Terminal = GetTerminal();
+  return
+    (FManagedSession != NULL) && TTerminalManager::Instance()->IsAvailableTerminal(FManagedSession) &&
+    (Terminal->FSProtocol == cfsSFTP);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::PrivateKeyUploadActionExecute()
+{
+  if (!IsBusy() && CanPrivateKeyUpload())
+  {
+    TTerminal * Terminal = GetTerminal();
+    UnicodeString FileName = Terminal->SessionData->PublicKeyFile;
+    TTerminalManager::Instance()->UploadPublicKey(Terminal, NULL, FileName);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ClearCachesActionExecute()
+{
+  TTerminal * Terminal = GetTerminal();
+  if (!IsBusy() && (Terminal != NULL) && Terminal->Active)
+  {
+    Terminal->ClearCaches();
+    // Upstream updates its actions when idle
+    UpdateActions();
   }
 }
 //---------------------------------------------------------------------------
