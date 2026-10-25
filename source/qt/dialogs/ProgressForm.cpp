@@ -50,6 +50,7 @@ TProgressForm::TProgressForm(QWidget * Parent, bool AllowSkip, TSynchronizeProgr
   FCancel = csContinue;
   FAllowSkip = AllowSkip;
   FSynchronizeProgress = SynchronizeProgress;
+  FOnceDoneOperation = odoIdle;
   FLastOperation = foNone;
   FLastSide = osCurrent;
 

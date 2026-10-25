@@ -1621,6 +1621,7 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
   if (ProgressData.InProgress && (FProgressForm == nullptr))
   {
     FProgressForm = new TProgressForm(this, ProgressData.IsTransfer() && (ProgressData.Count > 1));
+    FProgressForm->SetOnceDoneOperation(ProgressData.InitialOnceDoneOperation);
     FProgressForm->ShowAsModal();
   }
   // The operation finished (or was cancelled)
@@ -1652,7 +1653,7 @@ void TScpCommanderForm::OperationProgress(TFileOperationProgressType & ProgressD
 //---------------------------------------------------------------------------
 void TScpCommanderForm::OperationFinished(TFileOperation Operation, TOperationSide Side,
   bool Temp, const UnicodeString & FileName, bool Success, bool NotCancelled,
-  TOnceDoneOperation & /*OnceDoneOperation*/)
+  TOnceDoneOperation & OnceDoneOperation)
 {
   // The operations on the files of the file find dialog report to it
   if (FOnFileOperationFinished)
@@ -1687,6 +1688,11 @@ void TScpCommanderForm::OperationFinished(TFileOperation Operation, TOperationSi
       DebugAssert(Side == osRemote);
       FSynchronizeController->LogOperation(soDelete, FileName);
     }
+  }
+
+  if (FProgressForm != nullptr)
+  {
+    OnceDoneOperation = FProgressForm->GetOnceDoneOperation();
   }
 }
 //---------------------------------------------------------------------------

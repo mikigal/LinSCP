@@ -35,6 +35,10 @@ public:
   static UnicodeString ProgressStr(
     const TSynchronizeProgress * SynchronizeProgress, const TFileOperationProgressType * ProgressData);
   TSynchronizeProgress * GetSynchronizeProgress() const { return FSynchronizeProgress; }
+  // What is done once the operation finishes (disconnect: the application
+  // closes)
+  TOnceDoneOperation GetOnceDoneOperation() const { return FOnceDoneOperation; }
+  void SetOnceDoneOperation(TOnceDoneOperation Value) { FOnceDoneOperation = Value; }
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -46,6 +50,7 @@ private:
   TCancelStatus FCancel;
   bool FAllowSkip;
   TSynchronizeProgress * FSynchronizeProgress;
+  TOnceDoneOperation FOnceDoneOperation;
   TFileOperation FLastOperation;
   TOperationSide FLastSide;
   QElapsedTimer FSinceLastUpdate;
