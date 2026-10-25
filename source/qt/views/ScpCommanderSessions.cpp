@@ -789,8 +789,15 @@ void TScpCommanderForm::OpenedTabActionExecute(int Index)
 //---------------------------------------------------------------------------
 void TScpCommanderForm::SessionsTabsActionExecute()
 {
-  AppConfiguration->SessionsTabs = SessionsTabsAction2->isChecked();
-  SessionsPageControl->setVisible(AppConfiguration->SessionsTabs);
+  if (IsExplorer())
+  {
+    AppConfiguration->ExplorerSessionsTabs = SessionsTabsAction2->isChecked();
+  }
+  else
+  {
+    AppConfiguration->SessionsTabs = SessionsTabsAction2->isChecked();
+  }
+  SessionsPageControl->setVisible(SessionsTabsAction2->isChecked());
 }
 //---------------------------------------------------------------------------
 UnicodeString TScpCommanderForm::WorkspaceName()

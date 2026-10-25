@@ -1625,6 +1625,53 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(gui.names(W + 'RemoteDirView')[-2:], ['small.bin', 'big.bin'])
         self.assertEqual(gui.quit(), 0)
 
+    def test_explorer(self):
+        remote = self.work_dir('remote')
+        (remote / 'sub').mkdir()
+        (remote / 'file.txt').write_text('content')
+        local = self.work_dir('local')
+        ini = site_ini(remote=remote) + (
+            '[Configuration\\Interface]\nInterface=1\n'
+            '[Configuration\\Interface\\Explorer]\nLastLocalTargetDirectory=%s\n' % local)
+        gui = self.start_gui(ini=ini)
+        self.login(gui, 'local')
+
+        # Only the remote panel, with its tree on the left
+        self.assertFalse(gui.get(W + 'LocalPanel')['visible'])
+        self.assertTrue(gui.get(W + 'RemoteDriveView')['visible'])
+        tree = gui.get(W + 'RemoteDriveView')['geometry']
+        view = gui.get(W + 'RemoteDirView')['geometry']
+        self.assertLess(tree['x'], view['x'])
+        self.assertTrue(gui.get(W + 'ButtonsToolbar')['visible'])
+        self.assertFalse(gui.get(W + 'HotkeysToolbar')['visible'])
+        menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
+        self.assertEqual(menus, ['ExplorerFilesMenu', 'ExplorerCommandsMenu', 'MarkMenu', 'TabsMenu', 'ViewMenu'])
+        self.assertEqual(gui.get(W + 'CurrentCopyAction')['shortcut'], 'Ctrl+T')
+        self.screenshot('explorer')
+
+        # Downloaded to the last local directory
+        self.select(gui, 'Remote', 'file.txt')
+        gui.trigger(W + 'CurrentCopyAction')
+        self.confirm_copy(gui, 'Download file \'file.txt\' to local directory:')
+        gui.wait_for(lambda: (local / 'file.txt').exists(), 30, 'the download')
+
+        # Back to the Commander
+        R = 'PreferencesDialog/'
+        gui.trigger(W + 'PreferencesAction')
+        gui.wait_window('PreferencesDialog')
+        gui.select(R + 'NavigationTree', ['Environment', 'Interface'])
+        self.assertTrue(gui.get(R + 'ExplorerInterfaceButton2')['checked'])
+        gui.set(R + 'CommanderInterfaceButton2', True)
+        gui.click(R + 'OKButton')
+        gui.wait_no_window('PreferencesDialog')
+        gui.wait_for(lambda: gui.get(W + 'LocalPanel')['visible'], what='the local panel')
+        self.assertTrue(gui.get(W + 'HotkeysToolbar')['visible'])
+        self.assertEqual(gui.get(W + 'CurrentCopyAction')['shortcut'], 'F5')
+        menus = [menu['name'] for menu in gui.get(W + 'MenuToolbar')['menus']]
+        self.assertEqual(menus[0], 'LocalMenuButton')
+        self.assertEqual(gui.quit(), 0)
+        self.assertIn('Interface=0', gui.config_file.read_text())
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

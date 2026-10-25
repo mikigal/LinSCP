@@ -375,10 +375,20 @@ public:
   APP_CONFIG_PROPERTY(bool, CompareBySize)
   // The keyboard shortcuts of the Explorer interface (F5 refreshes, ...)
   APP_CONFIG_PROPERTY(bool, ExplorerKeyboardShortcuts)
+  // The Commander or the Explorer
+  APP_CONFIG_PROPERTY(TInterface, Interface)
   // The directory trees are left of the files, not above them
   APP_CONFIG_PROPERTY(bool, TreeOnLeft)
   APP_CONFIG_PROPERTY(TPanelConfiguration, LocalPanel)
   APP_CONFIG_PROPERTY(TPanelConfiguration, RemotePanel)
+
+  // The Explorer (Interface\Explorer): its panel, the local directory of
+  // the downloads and the synchronizations, the full path in the address
+  // bar, the tabs of the sessions
+  APP_CONFIG_PROPERTY(TPanelConfiguration, ExplorerPanel)
+  APP_CONFIG_PROPERTY(UnicodeString, ExplorerLastLocalTargetDirectory)
+  APP_CONFIG_PROPERTY(bool, ExplorerShowFullAddress)
+  APP_CONFIG_PROPERTY(bool, ExplorerSessionsTabs)
 
 protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);

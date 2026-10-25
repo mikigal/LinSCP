@@ -138,6 +138,21 @@ protected:
 private:
   // The session shown, NULL while the active one connects
   TManagedTerminal * FManagedSession;
+  // The Commander or the Explorer (only the remote panel)
+  TInterface FInterface;
+  QMenu * FLocalMenu;
+  QMenu * FMarkMenu;
+  QMenu * FFilesMenu;
+  QMenu * FCommandsMenu;
+  QMenu * FTabsMenu;
+  QMenu * FOptionsMenu;
+  QMenu * FRemoteMenu;
+  QMenu * FExplorerFilesMenu;
+  QMenu * FExplorerCommandsMenu;
+  QMenu * FViewMenu;
+  QToolBar * FCommandsToolbar;
+  QToolBar * FButtonsToolbar;
+  QToolBar * FHotkeysToolbar;
   // The tabs of the sessions and the "new tab" tab (ScpCommanderSessions.cpp)
   QTabBar * SessionsPageControl;
   bool FUpdatingSessionTabs;
@@ -307,6 +322,8 @@ private:
   QAction * CreateAction(const char * Name, const QString & Caption, const QString & IconName,
     const QList<QKeySequence> & ShortCuts, void (TScpCommanderForm::*Method)());
   void CreateMenus();
+  // The menus of the interface in the menu bar
+  void ArrangeMenus();
   void CreateToolbars();
   void UpdateActions();
   void UpdateTransferList();
@@ -317,11 +334,18 @@ private:
   TDirPanel * Panel(TOperationSide Side) const;
   TTerminal * GetTerminal() const;
   UnicodeString PathForCaption();
+  bool IsExplorer() const { return (FInterface == ifExplorer); }
+  // The layout, the menus, the toolbars and the keys of the interface
+  void ApplyInterface();
+  // The local directory of the Explorer's downloads and synchronizations,
+  // the directory of the local panel of the Commander
+  UnicodeString LocalDirectory();
   // The order of the panels (SwappedPanels)
   void UpdatePanelsLayout();
   // The layout of the panels (their columns, trees, status bars)
   void RestorePanelsParams();
   void StorePanelsParams();
+  TPanelConfiguration PanelParams(TDirPanel * Panel);
   // The keys of the Commander or of the Explorer (ExplorerKeyboardShortcuts)
   void UpdateKeyboardShortcuts();
   // The operation took long enough to beep (BeepOnFinish)

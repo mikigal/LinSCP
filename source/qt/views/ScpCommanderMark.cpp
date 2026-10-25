@@ -81,7 +81,7 @@ void TScpCommanderForm::UpdateMarkActions()
   bool FocusedFile = !IsBusy() && FCurrentPanel->HasFocusedFile();
   SelectSameExtAction->setEnabled(FocusedFile);
   UnselectSameExtAction->setEnabled(FocusedFile);
-  CompareDirectoriesAction2->setEnabled(FLocalPanel->IsReady() && FRemotePanel->IsReady());
+  CompareDirectoriesAction2->setEnabled(!IsExplorer() && FLocalPanel->IsReady() && FRemotePanel->IsReady());
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::SelectOneActionExecute()

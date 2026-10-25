@@ -157,9 +157,16 @@ void __fastcall TAppConfiguration::Default()
   FCompareByTime = true;
   FCompareBySize = false;
   FExplorerKeyboardShortcuts = false;
+  FInterface = ifCommander;
   FTreeOnLeft = false;
   FLocalPanel = TPanelConfiguration();
   FRemotePanel = TPanelConfiguration();
+  FExplorerPanel = TPanelConfiguration();
+  FExplorerPanel.DriveView = true;
+  FExplorerPanel.DriveViewWidth = 180;
+  FExplorerLastLocalTargetDirectory = L"";
+  FExplorerShowFullAddress = true;
+  FExplorerSessionsTabs = true;
 
   FBookmarks->Clear();
   FCustomCommandsDefaults = true;
@@ -368,6 +375,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEYEX(Integer, FPanelFont.FontStyle, L"PanelFontStyle"); \
     KEYEX(Integer, FPanelFont.FontCharset, L"PanelFontCharset"); \
     KEY(Bool,    FEditorCheckNotModified); \
+    KEY(Enum,    FInterface); \
     KEY(Bool,    FSelectDirectories); \
     KEY(String,  FFileColors); \
     KEY(String,  FSessionColors); \
@@ -382,6 +390,15 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
     KEY(Bool,    FCompareBySize); \
     KEY(Bool,    FExplorerKeyboardShortcuts); \
     KEY(Bool,    FTreeOnLeft); \
+  ); \
+  BLOCK(L"Interface\\Explorer", CANCREATE, \
+    KEYEX(String,  FExplorerPanel.DirViewParams, L"DirViewParams"); \
+    KEYEX(Bool,    FExplorerPanel.StatusBar, L"StatusBar"); \
+    KEYEX(Bool,    FExplorerPanel.DriveView, L"DriveView"); \
+    KEYEX(Integer, FExplorerPanel.DriveViewWidth, L"DriveViewWidth"); \
+    KEYEX(String,  FExplorerLastLocalTargetDirectory, L"LastLocalTargetDirectory"); \
+    KEYEX(Bool,    FExplorerShowFullAddress, L"ShowFullAddress"); \
+    KEYEX(Bool,    FExplorerSessionsTabs, L"SessionsTabs"); \
   ); \
   BLOCK(L"Interface\\Commander\\LocalPanel", CANCREATE, \
     KEYEX(String,  FLocalPanel.DirViewParams, L"DirViewParams"); \

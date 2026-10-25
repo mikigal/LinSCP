@@ -88,6 +88,13 @@ packaging (PLAN.md, section 7).
   upstream's panels (the extension, the group, the link target and the type of the remote
   files hidden by default), all kept in upstream's format (`DirViewParams`, `DriveView`,
   `StatusBar` of `Interface\Commander\LocalPanel` and `RemotePanel`).
+- The Explorer interface (`Interface`, the Interface page of the preferences, applied at once):
+  the same window with the remote panel only, its tree on the left, the menus (Files,
+  Commands, Mark, Tabs, View) and the standard buttons of upstream's Explorer, the address
+  bar of the panel (the full path or the name only, `ShowFullAddress` of the Explorer page),
+  upstream's Explorer keys (`ExplorerShortcuts`: Ctrl+T downloads, F5 refreshes, ...), the
+  downloads and the synchronizations with the last local directory
+  (`LastLocalTargetDirectory`), its own layout of the panel and tabs (`Interface\Explorer`).
 
 Decisions:
 
@@ -108,6 +115,10 @@ Decisions:
   shortcuts without the keypad modifier on xkb, as the keys of the main keyboard, which the
   incremental search needs. The directory trees of the Commander (`TreeOnLeft`) come with the
   Explorer interface.
+- **The Explorer is a layout of the main window**, not another window (upstream's
+  TScpExplorerForm next to TScpCommanderForm on their common base): the interface is switched
+  at once, the hidden local panel keeps the local directory of the session; there are no icon
+  and thumbnail views of the files (the report view only).
 - Advanced site settings not ported: PuTTY's terminal settings of the site (upstream edits
   them in PuTTY through its registry; PuTTY on Linux keeps its sessions in files and the
   sessions open in it by their command line) and the generation of a key by PuTTYgen (a

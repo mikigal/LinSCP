@@ -267,9 +267,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FLocalPanel->ApplyConfiguration();
   FRemotePanel->ApplyConfiguration();
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
-  UpdatePanelsLayout();
-  UpdateKeyboardShortcuts();
-  RestorePanelsParams();
+  FInterface = AppConfiguration->Interface;
+  ApplyInterface();
   FLocalPanel->ChangeDirectory(ToUnicodeString(QDir::homePath()));
 
   SessionChanged();
@@ -377,95 +376,101 @@ QAction * TScpCommanderForm::CreateAction(const char * Name, const QString & Cap
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateMenus()
 {
-  QMenuBar * Menu = menuBar();
-  Menu->setObjectName(QStringLiteral("MenuToolbar"));
+  // The menus of both interfaces, arranged in the menu bar by the
+  // interface (ArrangeMenus)
+  menuBar()->setObjectName(QStringLiteral("MenuToolbar"));
+  auto NewMenu = [this](const QString & Title, const char * Name)
+  {
+    QMenu * Menu = new QMenu(Title, this);
+    Menu->setObjectName(QString::fromLatin1(Name));
+    return Menu;
+  };
 
-  QMenu * LocalMenu = Menu->addMenu(tr("&Local"));
-  LocalMenu->setObjectName(QStringLiteral("LocalMenuButton"));
-  FLocalPanel->FillMenu(LocalMenu, LocalPathToClipboardAction2);
+  FLocalMenu = NewMenu(tr("&Local"), "LocalMenuButton");
+  FLocalPanel->FillMenu(FLocalMenu, LocalPathToClipboardAction2);
 
-  Menu->addMenu(CreateMarkMenu());
+  FMarkMenu = CreateMarkMenu();
 
-  QMenu * FilesMenu = Menu->addMenu(tr("&Files"));
-  FilesMenu->setObjectName(QStringLiteral("FilesMenu"));
-  QMenu * NewMenu = FilesMenu->addMenu(tr("&New"));
-  NewMenu->setObjectName(QStringLiteral("NewMenu"));
-  NewMenu->addAction(NewFileAction);
-  FilesMenu->addSeparator();
-  FilesMenu->addAction(CurrentOpenAction);
-  FilesMenu->addAction(CurrentEditAction);
-  QMenu * EditWithMenu = FilesMenu->addMenu(tr("Edi&t With"));
-  EditWithMenu->setObjectName(QStringLiteral("CurrentEditWithMenu"));
+  QMenu * NewFilesMenu = NewMenu(tr("&New"), "NewMenu");
+  NewFilesMenu->addAction(NewFileAction);
+  NewFilesMenu->addAction(CurrentCreateDirAction);
+  QMenu * EditWithMenu = NewMenu(tr("Edi&t With"), "CurrentEditWithMenu");
   EditWithMenu->addAction(CurrentEditInternalAction);
-  FilesMenu->addSeparator();
-  FilesMenu->addAction(CurrentCopyAction);
-  FilesMenu->addAction(CurrentMoveAction);
-  FilesMenu->addAction(RemoteCopyToAction);
-  FilesMenu->addAction(RemoteMoveToAction);
-  FilesMenu->addAction(CurrentRenameAction);
-  FilesMenu->addAction(CurrentDeleteAction);
-  FilesMenu->addAction(CurrentDeleteAlternativeAction);
-  FilesMenu->addSeparator();
-  FilesMenu->addAction(CurrentCopyToClipboardAction2);
-  FilesMenu->addAction(PasteAction3);
-  FilesMenu->addSeparator();
-  QMenu * FileNamesMenu = FilesMenu->addMenu(tr("&File Names"));
-  FileNamesMenu->setObjectName(QStringLiteral("FileNamesMenu"));
+  QMenu * FileNamesMenu = NewMenu(tr("&File Names"), "FileNamesMenu");
   FileNamesMenu->addAction(FileListToClipboardAction);
   FileNamesMenu->addAction(FullFileListToClipboardAction);
-  FilesMenu->addSeparator();
-  FilesMenu->addAction(CurrentPropertiesAction);
-
-  QMenu * CommandsMenu = Menu->addMenu(tr("&Commands"));
-  CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
-  CommandsMenu->addAction(CurrentCreateDirAction);
-  CommandsMenu->addAction(RemoteFindFilesAction2);
-  CommandsMenu->addAction(CompareDirectoriesAction2);
-  CommandsMenu->addAction(FullSynchronizeAction2);
-  CommandsMenu->addAction(SynchronizeAction);
-  CommandsMenu->addSeparator();
-  QMenu * CustomCommandsMenu = CommandsMenu->addMenu(tr("&Custom Commands"));
-  CustomCommandsMenu->setObjectName(QStringLiteral("CustomCommandsMenu"));
+  QMenu * CustomCommandsMenu = NewMenu(tr("&Custom Commands"), "CustomCommandsMenu");
   connect(CustomCommandsMenu, &QMenu::aboutToShow, this, [this, CustomCommandsMenu]()
   {
     CustomCommandsMenu->clear();
     CreateCustomCommandsMenu(CustomCommandsMenu);
   });
-  CommandsMenu->addAction(ConsoleAction);
-  CommandsMenu->addAction(PuttyAction);
-  CommandsMenu->addSeparator();
-  CommandsMenu->addMenu(CreateQueueMenu());
-  CommandsMenu->addSeparator();
-  CommandsMenu->addAction(CloseApplicationAction);
+  QMenu * QueueMenu = CreateQueueMenu();
 
-  QMenu * TabsMenu = Menu->addMenu(tr("&Tabs"));
-  TabsMenu->setObjectName(QStringLiteral("TabsMenu"));
-  TabsMenu->addAction(NewSessionAction);
-  TabsMenu->addAction(CloseTabAction);
-  TabsMenu->addAction(DuplicateTabAction);
-  TabsMenu->addAction(RenameTabAction);
-  TabsMenu->addSeparator();
-  TabsMenu->addAction(DisconnectSessionAction);
-  TabsMenu->addAction(ReconnectSessionAction);
-  TabsMenu->addAction(SaveCurrentSessionAction2);
-  TabsMenu->addSeparator();
-  QMenu * OpenedTabsMenu = TabsMenu->addMenu(tr("&Opened Tabs"));
+  FFilesMenu = NewMenu(tr("&Files"), "FilesMenu");
+  FFilesMenu->addMenu(NewFilesMenu);
+  FFilesMenu->addSeparator();
+  FFilesMenu->addAction(CurrentOpenAction);
+  FFilesMenu->addAction(CurrentEditAction);
+  FFilesMenu->addMenu(EditWithMenu);
+  FFilesMenu->addSeparator();
+  FFilesMenu->addAction(CurrentCopyAction);
+  FFilesMenu->addAction(CurrentMoveAction);
+  FFilesMenu->addAction(RemoteCopyToAction);
+  FFilesMenu->addAction(RemoteMoveToAction);
+  FFilesMenu->addAction(CurrentRenameAction);
+  FFilesMenu->addAction(CurrentDeleteAction);
+  FFilesMenu->addAction(CurrentDeleteAlternativeAction);
+  FFilesMenu->addSeparator();
+  FFilesMenu->addAction(CurrentCopyToClipboardAction2);
+  FFilesMenu->addAction(PasteAction3);
+  FFilesMenu->addSeparator();
+  FFilesMenu->addMenu(FileNamesMenu);
+  FFilesMenu->addSeparator();
+  FFilesMenu->addAction(CurrentPropertiesAction);
+
+  FCommandsMenu = NewMenu(tr("&Commands"), "CommandsMenu");
+  FCommandsMenu->addAction(CurrentCreateDirAction);
+  FCommandsMenu->addAction(RemoteFindFilesAction2);
+  FCommandsMenu->addAction(CompareDirectoriesAction2);
+  FCommandsMenu->addAction(FullSynchronizeAction2);
+  FCommandsMenu->addAction(SynchronizeAction);
+  FCommandsMenu->addSeparator();
+  FCommandsMenu->addMenu(CustomCommandsMenu);
+  FCommandsMenu->addAction(ConsoleAction);
+  FCommandsMenu->addAction(PuttyAction);
+  FCommandsMenu->addSeparator();
+  FCommandsMenu->addMenu(QueueMenu);
+  FCommandsMenu->addSeparator();
+  FCommandsMenu->addAction(CloseApplicationAction);
+
+  FTabsMenu = NewMenu(tr("&Tabs"), "TabsMenu");
+  FTabsMenu->addAction(NewSessionAction);
+  FTabsMenu->addAction(CloseTabAction);
+  FTabsMenu->addAction(DuplicateTabAction);
+  FTabsMenu->addAction(RenameTabAction);
+  FTabsMenu->addSeparator();
+  FTabsMenu->addAction(DisconnectSessionAction);
+  FTabsMenu->addAction(ReconnectSessionAction);
+  FTabsMenu->addAction(SaveCurrentSessionAction2);
+  FTabsMenu->addSeparator();
+  QMenu * OpenedTabsMenu = FTabsMenu->addMenu(tr("&Opened Tabs"));
   OpenedTabsMenu->setObjectName(QStringLiteral("OpenedTabsMenu"));
   connect(OpenedTabsMenu, &QMenu::aboutToShow, this, [this, OpenedTabsMenu]()
   {
     OpenedTabsMenu->clear();
     CreateOpenedTabsMenu(OpenedTabsMenu);
   });
-  QMenu * WorkspacesMenu = TabsMenu->addMenu(tr("&Workspaces"));
+  QMenu * WorkspacesMenu = FTabsMenu->addMenu(tr("&Workspaces"));
   WorkspacesMenu->setObjectName(QStringLiteral("WorkspacesMenu"));
   connect(WorkspacesMenu, &QMenu::aboutToShow, this, [this, WorkspacesMenu]()
   {
     WorkspacesMenu->clear();
     ExecuteHandler([this, WorkspacesMenu]() { CreateWorkspacesMenu(WorkspacesMenu); });
   });
-  TabsMenu->addAction(SaveWorkspaceAction);
-  TabsMenu->addSeparator();
-  QMenu * SavedSessionsMenu = TabsMenu->addMenu(tr("Si&tes"));
+  FTabsMenu->addAction(SaveWorkspaceAction);
+  FTabsMenu->addSeparator();
+  QMenu * SavedSessionsMenu = FTabsMenu->addMenu(tr("Si&tes"));
   SavedSessionsMenu->setObjectName(QStringLiteral("SavedSessionsMenu"));
   connect(SavedSessionsMenu, &QMenu::aboutToShow, this, [this, SavedSessionsMenu]()
   {
@@ -476,30 +481,97 @@ void TScpCommanderForm::CreateMenus()
     });
   });
 
-  QMenu * OptionsMenu = Menu->addMenu(tr("&Options"));
-  OptionsMenu->setObjectName(QStringLiteral("OptionsMenu"));
-  OptionsMenu->addAction(ShowHiddenFilesAction);
-  OptionsMenu->addAction(SessionsTabsAction2);
-  QMenu * LocalPanelMenu = OptionsMenu->addMenu(tr("&Local Panel"));
+  QMenu * QueueViewMenu = NewMenu(tr("&Queue"), "QueueViewMenu");
+  QueueViewMenu->addActions(FQueueShowGroup->actions());
+
+  FOptionsMenu = NewMenu(tr("&Options"), "OptionsMenu");
+  FOptionsMenu->addAction(ShowHiddenFilesAction);
+  FOptionsMenu->addAction(SessionsTabsAction2);
+  QMenu * LocalPanelMenu = FOptionsMenu->addMenu(tr("&Local Panel"));
   LocalPanelMenu->setObjectName(QStringLiteral("CommanderLocalPanelMenu"));
   FLocalPanel->FillOptionsMenu(LocalPanelMenu);
-  QMenu * RemotePanelMenu = OptionsMenu->addMenu(tr("&Remote Panel"));
+  QMenu * RemotePanelMenu = FOptionsMenu->addMenu(tr("&Remote Panel"));
   RemotePanelMenu->setObjectName(QStringLiteral("CommanderRemotePanelMenu"));
   FRemotePanel->FillOptionsMenu(RemotePanelMenu);
-  QMenu * QueueViewMenu = OptionsMenu->addMenu(tr("&Queue"));
-  QueueViewMenu->setObjectName(QStringLiteral("QueueViewMenu"));
-  QueueViewMenu->addActions(FQueueShowGroup->actions());
-  OptionsMenu->addSeparator();
-  OptionsMenu->addAction(PreferencesAction);
+  FOptionsMenu->addMenu(QueueViewMenu);
+  FOptionsMenu->addSeparator();
+  FOptionsMenu->addAction(PreferencesAction);
 
-  QMenu * RemoteMenu = Menu->addMenu(tr("&Remote"));
-  RemoteMenu->setObjectName(QStringLiteral("RemoteMenuButton"));
-  FRemotePanel->FillMenu(RemoteMenu, RemotePathToClipboardAction2);
+  FRemoteMenu = NewMenu(tr("&Remote"), "RemoteMenuButton");
+  FRemotePanel->FillMenu(FRemoteMenu, RemotePathToClipboardAction2);
+
+  // The Explorer's (upstream's ScpExplorer.dfm)
+  FExplorerFilesMenu = NewMenu(tr("&Files"), "ExplorerFilesMenu");
+  FExplorerFilesMenu->addMenu(NewFilesMenu);
+  FExplorerFilesMenu->addSeparator();
+  FExplorerFilesMenu->addAction(CurrentOpenAction);
+  FExplorerFilesMenu->addAction(CurrentEditAction);
+  FExplorerFilesMenu->addMenu(EditWithMenu);
+  FExplorerFilesMenu->addAction(CurrentDeleteAction);
+  FExplorerFilesMenu->addAction(CurrentDeleteAlternativeAction);
+  FExplorerFilesMenu->addAction(CurrentRenameAction);
+  FExplorerFilesMenu->addAction(CurrentPropertiesAction);
+  FExplorerFilesMenu->addSeparator();
+  FExplorerFilesMenu->addAction(CurrentCopyAction);
+  FExplorerFilesMenu->addAction(CurrentMoveAction);
+  FExplorerFilesMenu->addAction(RemoteCopyToAction);
+  FExplorerFilesMenu->addAction(RemoteMoveToAction);
+  FExplorerFilesMenu->addSeparator();
+  FExplorerFilesMenu->addAction(CurrentCopyToClipboardAction2);
+  FExplorerFilesMenu->addAction(PasteAction3);
+  FExplorerFilesMenu->addSeparator();
+  FExplorerFilesMenu->addMenu(FileNamesMenu);
+  FExplorerFilesMenu->addSeparator();
+  FExplorerFilesMenu->addAction(CloseTabAction);
+  FExplorerFilesMenu->addAction(CloseApplicationAction);
+
+  FExplorerCommandsMenu = NewMenu(tr("&Commands"), "ExplorerCommandsMenu");
+  FExplorerCommandsMenu->addAction(SynchronizeAction);
+  FExplorerCommandsMenu->addAction(FullSynchronizeAction2);
+  FExplorerCommandsMenu->addAction(RemoteFindFilesAction2);
+  FExplorerCommandsMenu->addSeparator();
+  FExplorerCommandsMenu->addMenu(QueueMenu);
+  FExplorerCommandsMenu->addSeparator();
+  FExplorerCommandsMenu->addMenu(CustomCommandsMenu);
+  FExplorerCommandsMenu->addAction(RemotePathToClipboardAction2);
+  FExplorerCommandsMenu->addSeparator();
+  FExplorerCommandsMenu->addAction(ConsoleAction);
+  FExplorerCommandsMenu->addAction(PuttyAction);
+
+  FViewMenu = NewMenu(tr("&View"), "ViewMenu");
+  FViewMenu->addAction(SessionsTabsAction2);
+  FRemotePanel->FillOptionsMenu(FViewMenu);
+  FViewMenu->addMenu(QueueViewMenu);
+  FViewMenu->addSeparator();
+  FRemotePanel->FillMenu(FViewMenu, nullptr);
+  FViewMenu->addAction(ShowHiddenFilesAction);
+  FViewMenu->addSeparator();
+  FViewMenu->addAction(PreferencesAction);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ArrangeMenus()
+{
+  QMenuBar * Menu = menuBar();
+  Menu->clear();
+  std::vector<QMenu *> Menus;
+  if (IsExplorer())
+  {
+    Menus = { FExplorerFilesMenu, FExplorerCommandsMenu, FMarkMenu, FTabsMenu, FViewMenu };
+  }
+  else
+  {
+    Menus = { FLocalMenu, FMarkMenu, FFilesMenu, FCommandsMenu, FTabsMenu, FOptionsMenu, FRemoteMenu };
+  }
+  for (QMenu * AMenu : Menus)
+  {
+    Menu->addMenu(AMenu);
+  }
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::CreateToolbars()
 {
   QToolBar * Toolbar = addToolBar(tr("Commands"));
+  FCommandsToolbar = Toolbar;
   Toolbar->setObjectName(QStringLiteral("CommandsToolbar"));
   Toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   Toolbar->addAction(NewSessionAction);
@@ -511,6 +583,25 @@ void TScpCommanderForm::CreateToolbars()
   Toolbar->addAction(CurrentDeleteAction);
   Toolbar->addAction(CurrentCreateDirAction);
   Toolbar->addAction(CurrentPropertiesAction);
+
+  // The Explorer's standard buttons (upstream's ButtonsToolbar), with the
+  // address bar of the remote panel
+  FButtonsToolbar = addToolBar(tr("Standard Buttons"));
+  FButtonsToolbar->setObjectName(QStringLiteral("ButtonsToolbar"));
+  FButtonsToolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+  FButtonsToolbar->addAction(NewSessionAction);
+  FButtonsToolbar->addSeparator();
+  FButtonsToolbar->addAction(RemoteFindFilesAction2);
+  FButtonsToolbar->addAction(CurrentCopyAction);
+  FButtonsToolbar->addAction(CurrentEditAction);
+  FButtonsToolbar->addAction(CurrentDeleteAction);
+  FButtonsToolbar->addAction(CurrentPropertiesAction);
+  FButtonsToolbar->addAction(CurrentRenameAction);
+  FButtonsToolbar->addAction(CurrentCreateDirAction);
+  FButtonsToolbar->addSeparator();
+  FButtonsToolbar->addAction(ConsoleAction);
+  FButtonsToolbar->addAction(SynchronizeAction);
+  FButtonsToolbar->addAction(FullSynchronizeAction2);
 
   // The transfer settings presets (upstream's TransferDropDown), in a row
   // of their own
@@ -531,6 +622,7 @@ void TScpCommanderForm::CreateToolbars()
 
   // The keys of the commands, at the bottom, as in upstream's Commander
   QToolBar * Hotkeys = new QToolBar(tr("Hotkeys"), this);
+  FHotkeysToolbar = Hotkeys;
   Hotkeys->setObjectName(QStringLiteral("HotkeysToolbar"));
   Hotkeys->setToolButtonStyle(Qt::ToolButtonTextOnly);
   addToolBar(Qt::BottomToolBarArea, Hotkeys);
@@ -583,7 +675,7 @@ bool TScpCommanderForm::EventFilterPanels(QObject * Object, QEvent * Event)
     {
       TDirPanel * Other =
         (Object == FLocalPanel->GetDirView()) ? static_cast<TDirPanel *>(FRemotePanel) : static_cast<TDirPanel *>(FLocalPanel);
-      if (Other->IsReady())
+      if (Other->IsReady() && !Other->isHidden())
       {
         Other->GetDirView()->setFocus();
       }
@@ -721,10 +813,62 @@ void TScpCommanderForm::ConfigurationChanged()
   SessionsPageControl->setElideMode(AppConfiguration->SessionTabCaptionTruncation ? Qt::ElideRight : Qt::ElideNone);
   UpdateQueueView();
   UpdateCaption();
+  if (AppConfiguration->Interface != FInterface)
+  {
+    // The layout of the interface is kept for the next time
+    StorePanelsParams();
+    FInterface = AppConfiguration->Interface;
+    ApplyInterface();
+  }
+  else
+  {
+    UpdatePanelsLayout();
+    UpdateKeyboardShortcuts();
+  }
+  FLocalPanel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+  FRemotePanel->SetTreeOnLeft(IsExplorer() || AppConfiguration->TreeOnLeft);
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::ApplyInterface()
+{
+  bool Explorer = IsExplorer();
+  ArrangeMenus();
+  FCommandsToolbar->setVisible(!Explorer);
+  FHotkeysToolbar->setVisible(!Explorer);
+  FButtonsToolbar->setVisible(Explorer);
+  FLocalPanel->setVisible(!Explorer);
+  if (Explorer)
+  {
+    SetCurrentPanel(FRemotePanel);
+  }
+  SessionsTabsAction2->setChecked(Explorer ? AppConfiguration->ExplorerSessionsTabs : AppConfiguration->SessionsTabs);
+  SessionsPageControl->setVisible(SessionsTabsAction2->isChecked());
+  // upstream's RemoteCopyAction of the Explorer
+  CurrentCopyAction->setText(Explorer ? tr("&Download...") : tr("&Copy..."));
+  CurrentMoveAction->setText(Explorer ? tr("Download and D&elete...") : tr("&Move..."));
+  FRemotePanel->SetShowFullAddress(!Explorer || AppConfiguration->ExplorerShowFullAddress);
   UpdatePanelsLayout();
   UpdateKeyboardShortcuts();
-  FLocalPanel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
-  FRemotePanel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+  RestorePanelsParams();
+  UpdateActions();
+}
+//---------------------------------------------------------------------------
+UnicodeString TScpCommanderForm::LocalDirectory()
+{
+  UnicodeString Result;
+  if (IsExplorer())
+  {
+    Result = AppConfiguration->ExplorerLastLocalTargetDirectory;
+    if (Result.IsEmpty() || !DirectoryExists(Result))
+    {
+      Result = ToUnicodeString(QDir::homePath());
+    }
+  }
+  else
+  {
+    Result = FLocalPanel->GetPath();
+  }
+  return Result;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::RestorePanelsParams()
@@ -732,14 +876,22 @@ void TScpCommanderForm::RestorePanelsParams()
   // upstream's RestoreParams of the panels
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
   {
-    TPanelConfiguration PanelConfiguration =
-      (Panel == FLocalPanel) ? AppConfiguration->LocalPanel : AppConfiguration->RemotePanel;
+    TPanelConfiguration PanelConfiguration = PanelParams(Panel);
+    // The tree of the Explorer is left of the files
+    bool TreeOnLeft = AppConfiguration->TreeOnLeft || (IsExplorer() && (Panel == FRemotePanel));
     Panel->SetDirViewParams(PanelConfiguration.DirViewParams);
     Panel->SetStatusBarVisible(PanelConfiguration.StatusBar);
-    Panel->SetTreeOnLeft(AppConfiguration->TreeOnLeft);
+    Panel->SetTreeOnLeft(TreeOnLeft);
     Panel->SetTreeVisible(PanelConfiguration.DriveView);
-    Panel->SetTreeSize(AppConfiguration->TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight);
+    Panel->SetTreeSize(TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight);
   }
+}
+//---------------------------------------------------------------------------
+TPanelConfiguration TScpCommanderForm::PanelParams(TDirPanel * Panel)
+{
+  return
+    (Panel == FLocalPanel) ? AppConfiguration->LocalPanel :
+      (IsExplorer() ? AppConfiguration->ExplorerPanel : AppConfiguration->RemotePanel);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::StorePanelsParams()
@@ -748,24 +900,31 @@ void TScpCommanderForm::StorePanelsParams()
   ::rtl::TFinally Finally([&]() { Configuration->EndUpdate(); });
   for (TDirPanel * Panel : { static_cast<TDirPanel *>(FLocalPanel), static_cast<TDirPanel *>(FRemotePanel) })
   {
-    TPanelConfiguration PanelConfiguration =
-      (Panel == FLocalPanel) ? AppConfiguration->LocalPanel : AppConfiguration->RemotePanel;
+    TPanelConfiguration PanelConfiguration = PanelParams(Panel);
+    bool TreeOnLeft = AppConfiguration->TreeOnLeft || (IsExplorer() && (Panel == FRemotePanel));
     PanelConfiguration.DirViewParams = Panel->GetDirViewParams();
     PanelConfiguration.StatusBar = Panel->GetStatusBarVisible();
     PanelConfiguration.DriveView = Panel->GetTreeVisible();
     if (Panel->GetTreeVisible())
     {
-      (AppConfiguration->TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight) =
-        Panel->GetTreeSize();
+      (TreeOnLeft ? PanelConfiguration.DriveViewWidth : PanelConfiguration.DriveViewHeight) = Panel->GetTreeSize();
     }
     if (Panel == FLocalPanel)
     {
       AppConfiguration->LocalPanel = PanelConfiguration;
     }
+    else if (IsExplorer())
+    {
+      AppConfiguration->ExplorerPanel = PanelConfiguration;
+    }
     else
     {
       AppConfiguration->RemotePanel = PanelConfiguration;
     }
+  }
+  if (IsExplorer())
+  {
+    AppConfiguration->ExplorerSessionsTabs = SessionsTabsAction2->isChecked();
   }
 }
 //---------------------------------------------------------------------------
@@ -784,20 +943,60 @@ void TScpCommanderForm::UpdatePanelsLayout()
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateKeyboardShortcuts()
 {
-  // upstream's CommanderShortcuts: the Explorer's keys for copying,
-  // refreshing and finding files
-  bool Explorer = AppConfiguration->ExplorerKeyboardShortcuts;
-  CurrentCopyAction->setShortcut(Explorer ? QKeySequence(Qt::CTRL | Qt::Key_K) : QKeySequence(Qt::Key_F5));
-  QKeySequence RefreshShortCut = Explorer ? QKeySequence(Qt::Key_F5) : QKeySequence(Qt::CTRL | Qt::Key_R);
+  typedef QList<QKeySequence> TKeys;
+  QKeySequence RefreshShortCut;
+  if (IsExplorer())
+  {
+    // upstream's ExplorerShortcuts
+    CurrentCreateDirAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_D) });
+    CurrentEditAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_E) });
+    CurrentEditInternalAction->setShortcuts(TKeys());
+    CurrentCopyAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_T) });
+    CurrentMoveAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_M) });
+    CurrentDeleteAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_Delete) });
+    CurrentDeleteAlternativeAction->setShortcuts(TKeys{ QKeySequence(Qt::SHIFT | Qt::Key_Delete) });
+    CurrentPropertiesAction->setShortcuts(TKeys{ QKeySequence(Qt::ALT | Qt::Key_Return) });
+    RemoteMoveToAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_M) });
+    RemoteCopyToAction->setShortcuts(TKeys());
+    RemotePathToClipboardAction2->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P) });
+    NewFileAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_E) });
+    RemoteFindFilesAction2->setShortcuts(TKeys{ QKeySequence(Qt::Key_F3) });
+    CloseApplicationAction->setShortcuts(TKeys{ QKeySequence(Qt::ALT | Qt::Key_F4) });
+    SelectOneAction->setShortcuts(TKeys());
+    RefreshShortCut = QKeySequence(Qt::Key_F5);
+    CloseTabAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) });
+  }
+  else
+  {
+    // upstream's CommanderShortcuts, with the Explorer's keys for copying,
+    // refreshing and finding files (ExplorerKeyboardShortcuts)
+    bool Explorer = AppConfiguration->ExplorerKeyboardShortcuts;
+    CurrentCreateDirAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F7) });
+    CurrentEditAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F4) });
+    CurrentEditInternalAction->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_F4) });
+    CurrentCopyAction->setShortcuts(TKeys{ Explorer ? QKeySequence(Qt::CTRL | Qt::Key_K) : QKeySequence(Qt::Key_F5) });
+    CurrentMoveAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F6) });
+    CurrentDeleteAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F8), QKeySequence(Qt::Key_Delete) });
+    CurrentDeleteAlternativeAction->setShortcuts(
+      TKeys{ QKeySequence(Qt::SHIFT | Qt::Key_F8), QKeySequence(Qt::SHIFT | Qt::Key_Delete) });
+    CurrentPropertiesAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F9) });
+    RemoteMoveToAction->setShortcuts(TKeys{ QKeySequence(Qt::SHIFT | Qt::Key_F6) });
+    RemoteCopyToAction->setShortcuts(TKeys{ QKeySequence(Qt::SHIFT | Qt::Key_F5) });
+    RemotePathToClipboardAction2->setShortcuts(TKeys{ QKeySequence(Qt::CTRL | Qt::Key_BracketRight) });
+    NewFileAction->setShortcuts(TKeys{ QKeySequence(Qt::SHIFT | Qt::Key_F4) });
+    RemoteFindFilesAction2->setShortcuts(TKeys{ Explorer ? QKeySequence(Qt::Key_F3) : QKeySequence(Qt::ALT | Qt::Key_F7) });
+    CloseApplicationAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_F10), QKeySequence(Qt::CTRL | Qt::Key_Q) });
+    SelectOneAction->setShortcuts(TKeys{ QKeySequence(Qt::Key_Insert) });
+    RefreshShortCut = Explorer ? QKeySequence(Qt::Key_F5) : QKeySequence(Qt::CTRL | Qt::Key_R);
+    TKeys CloseTabShortCuts = { QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) };
+    if (Explorer)
+    {
+      CloseTabShortCuts.append(QKeySequence(Qt::CTRL | Qt::Key_F4));
+    }
+    CloseTabAction->setShortcuts(CloseTabShortCuts);
+  }
   FLocalPanel->SetRefreshShortCut(RefreshShortCut);
   FRemotePanel->SetRefreshShortCut(RefreshShortCut);
-  RemoteFindFilesAction2->setShortcut(Explorer ? QKeySequence(Qt::Key_F3) : QKeySequence(Qt::ALT | Qt::Key_F7));
-  QList<QKeySequence> CloseTabShortCuts = { QKeySequence(Qt::CTRL | Qt::Key_W), QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D) };
-  if (Explorer)
-  {
-    CloseTabShortCuts.append(QKeySequence(Qt::CTRL | Qt::Key_F4));
-  }
-  CloseTabAction->setShortcuts(CloseTabShortCuts);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()
@@ -1091,6 +1290,11 @@ bool TScpCommanderForm::CopyParamDialog(TTransferDirection Direction, TTransferT
     if (Result)
     {
       HandleDoNotShowCopyDialogAgain(DragDrop, FLAGSET(OutputOptions, cooDoNotShowAgain));
+      // upstream's TScpExplorerForm::CopyParamDialogAfter
+      if (IsExplorer() && (Direction == tdToLocal) && !DragDrop)
+      {
+        AppConfiguration->ExplorerLastLocalTargetDirectory = TargetDirectory;
+      }
     }
   }
 
@@ -1147,7 +1351,10 @@ bool TScpCommanderForm::ExecuteCopyMoveFileOperation(TFileOperation Operation, T
   TDirPanel * Target = ToRemote ? static_cast<TDirPanel *>(FRemotePanel) : static_cast<TDirPanel *>(FLocalPanel);
   TTransferDirection Direction = (ToRemote ? tdToRemote : tdToLocal);
   TTransferType Type = (Operation == foCopy ? ttCopy : ttMove);
-  UnicodeString TargetDirectory = Param.TargetDirectory.IsEmpty() ? Target->GetPath() : Param.TargetDirectory;
+  // The Explorer downloads to its last local directory
+  UnicodeString TargetDirectory =
+    !Param.TargetDirectory.IsEmpty() ? Param.TargetDirectory :
+      ((IsExplorer() && !ToRemote) ? LocalDirectory() : Target->GetPath());
   TGUICopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
   bool Confirm = !Param.NoConfirmation && (!Param.DragDrop || (AppConfiguration->DDTransferConfirmation != asOff));
   bool Result = CopyParamDialog(Direction, Type, FileList, TargetDirectory, CopyParam, Confirm, Param.DragDrop);

@@ -3,8 +3,7 @@
 //
 // Not ported: the pages of upstream's automatic updates and of its Windows
 // shell integration, the configuration in the registry, the search of the
-// preferences. The Interface, Explorer and Languages pages are added with
-// their features.
+// preferences. The Languages page is added with the translations.
 //---------------------------------------------------------------------------
 #include <QtTools.h>
 
@@ -118,6 +117,11 @@ private:
   QComboBox * AutoWorkspaceCombo;
   QCheckBox * AutoSaveWorkspacePasswordsCheck;
   QCheckBox * WorkspaceConnectAllCheck;
+  // Interface
+  QRadioButton * CommanderInterfaceButton2;
+  QRadioButton * ExplorerInterfaceButton2;
+  // Explorer
+  QCheckBox * ShowFullAddressCheck;
   // Commander
   QComboBox * NortonLikeModeCombo;
   QCheckBox * SwappedPanelsCheck;
@@ -263,8 +267,10 @@ private:
   QLineEdit * RandomSeedFileEdit;
 
   void CreateEnvironmentSheet();
+  void CreateInterfaceSheet();
   void CreateWindowSheet();
   void CreateCommanderSheet();
+  void CreateExplorerSheet();
   void CreatePanelsSheets();
   void CreateFileColorsSheet();
   void CreateEditorSheets();
@@ -400,8 +406,50 @@ void TPreferencesDialog::CreateEnvironmentSheet()
   FlashTaskbarCheck = AddCheck(NotificationsGroup, "FlashTaskbarCheck", tr("&Flash taskbar button when attention is needed"));
   static_cast<QVBoxLayout *>(PreferencesSheet->layout())->addStretch(1);
 
+  CreateInterfaceSheet();
   CreateWindowSheet();
   CreateCommanderSheet();
+  CreateExplorerSheet();
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::CreateInterfaceSheet()
+{
+  QWidget * GeneralSheet = AddSheet("GeneralSheet", tr("Interface"), ppInterface, NodeOf(ppEnvironment));
+  QGroupBox * InterfaceGroup = AddGroup(GeneralSheet, "InterfaceGroup", tr("User Interface"));
+  QGridLayout * Grid = new QGridLayout();
+  static_cast<QBoxLayout *>(InterfaceGroup->layout())->addLayout(Grid);
+  CommanderInterfaceButton2 = new QRadioButton(tr("&Commander"), InterfaceGroup);
+  CommanderInterfaceButton2->setObjectName(QStringLiteral("CommanderInterfaceButton2"));
+  QLabel * CommanderDescriptionLabel2 = new QLabel(
+    tr("- two panels (left for local directory, right for remote directory)\n"
+       "- keyboard shortcuts like in Norton Commander (and other similar programs as Total Commander, Midnight Commander...)\n"
+       "- drag && drop to/from both panels"), InterfaceGroup);
+  CommanderDescriptionLabel2->setObjectName(QStringLiteral("CommanderDescriptionLabel2"));
+  CommanderDescriptionLabel2->setWordWrap(true);
+  ExplorerInterfaceButton2 = new QRadioButton(tr("&Explorer"), InterfaceGroup);
+  ExplorerInterfaceButton2->setObjectName(QStringLiteral("ExplorerInterfaceButton2"));
+  QLabel * ExplorerDescriptionLabel = new QLabel(
+    tr("- only remote directory\n"
+       "- keyboard shortcuts like in file managers\n"
+       "- drag && drop"), InterfaceGroup);
+  ExplorerDescriptionLabel->setObjectName(QStringLiteral("ExplorerDescriptionLabel"));
+  ExplorerDescriptionLabel->setWordWrap(true);
+  Grid->addWidget(CommanderInterfaceButton2, 0, 0, Qt::AlignTop);
+  Grid->addWidget(CommanderDescriptionLabel2, 0, 1);
+  Grid->addWidget(ExplorerInterfaceButton2, 1, 0, Qt::AlignTop);
+  Grid->addWidget(ExplorerDescriptionLabel, 1, 1);
+  Grid->setColumnStretch(1, 1);
+  static_cast<QVBoxLayout *>(GeneralSheet->layout())->addStretch(1);
+}
+//---------------------------------------------------------------------------
+void TPreferencesDialog::CreateExplorerSheet()
+{
+  QWidget * ExplorerSheet = AddSheet("ExplorerSheet", tr("Explorer"), ppExplorer, NodeOf(ppEnvironment));
+  QLabel * Label4 = new QLabel(tr("Preferences on this page apply to Explorer interface only."), ExplorerSheet);
+  ExplorerSheet->layout()->addWidget(Label4);
+  QGroupBox * GroupBox2 = AddGroup(ExplorerSheet, "GroupBox2", tr("View"));
+  ShowFullAddressCheck = AddCheck(GroupBox2, "ShowFullAddressCheck", tr("&Show full path on address bar"));
+  static_cast<QVBoxLayout *>(ExplorerSheet->layout())->addStretch(1);
 }
 //---------------------------------------------------------------------------
 void TPreferencesDialog::CreateWindowSheet()
@@ -1199,6 +1247,9 @@ void TPreferencesDialog::LoadConfiguration()
   BOOLPROP(UseLocationProfiles);
   BOOLPROP(CompareByTime);
   BOOLPROP(CompareBySize);
+  CommanderInterfaceButton2->setChecked(AppConfiguration->Interface == ifCommander);
+  ExplorerInterfaceButton2->setChecked(AppConfiguration->Interface == ifExplorer);
+  ShowFullAddressCheck->setChecked(AppConfiguration->ExplorerShowFullAddress);
   // "Explorer-style selection"
   switch (AppConfiguration->NortonLikeMode)
   {
@@ -1509,6 +1560,8 @@ void TPreferencesDialog::SaveConfiguration()
   BOOLPROP(UseLocationProfiles);
   BOOLPROP(CompareByTime);
   BOOLPROP(CompareBySize);
+  AppConfiguration->Interface = CommanderInterfaceButton2->isChecked() ? ifCommander : ifExplorer;
+  AppConfiguration->ExplorerShowFullAddress = ShowFullAddressCheck->isChecked();
   switch (NortonLikeModeCombo->currentIndex())
   {
     case 2:

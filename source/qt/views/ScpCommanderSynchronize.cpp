@@ -21,7 +21,7 @@ void TScpCommanderForm::FullSynchronizeActionExecute()
   {
     return;
   }
-  UnicodeString Directory1 = FLocalPanel->GetPath();
+  UnicodeString Directory1 = LocalDirectory();
   UnicodeString Directory2 = FRemotePanel->GetPath();
   bool SaveMode = !(GUIConfiguration->SynchronizeModeAuto < 0);
   TSynchronizeMode Mode =
@@ -33,6 +33,10 @@ void TScpCommanderForm::FullSynchronizeActionExecute()
     if (SaveMode)
     {
       GUIConfiguration->SynchronizeModeAuto = Mode;
+    }
+    if (IsExplorer())
+    {
+      AppConfiguration->ExplorerLastLocalTargetDirectory = Directory1;
     }
   }
 }
@@ -349,9 +353,12 @@ void TScpCommanderForm::SynchronizeActionExecute()
   {
     return;
   }
-  UnicodeString LocalDirectory = FLocalPanel->GetPath();
+  UnicodeString ALocalDirectory = LocalDirectory();
   UnicodeString RemoteDirectory = FRemotePanel->GetPath();
-  DoSynchronizeDirectories(LocalDirectory, RemoteDirectory);
+  if (DoSynchronizeDirectories(ALocalDirectory, RemoteDirectory) && IsExplorer())
+  {
+    AppConfiguration->ExplorerLastLocalTargetDirectory = ALocalDirectory;
+  }
 }
 //---------------------------------------------------------------------------
 bool TScpCommanderForm::DoSynchronizeDirectories(UnicodeString & LocalDirectory, UnicodeString & RemoteDirectory)

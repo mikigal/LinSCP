@@ -193,6 +193,9 @@ public:
   void SetMask(const UnicodeString & Mask);
   UnicodeString GetMask() const;
   void SetRefreshShortCut(const QKeySequence & ShortCut);
+  // The address shows the name of the directory only (upstream's
+  // ShowFullAddress of the Explorer)
+  void SetShowFullAddress(bool Value);
 
   // The menu of the panel (upstream's Local and Remote menus: Go To, the
   // bookmarks, Sort, Columns, Filter); the options of the panel (the tree,
@@ -290,6 +293,7 @@ private:
   std::unordered_set<UnicodeString> FSelectionAfterReload;
   std::unordered_set<UnicodeString> FSavedNames;
   bool FUpdatingPath;
+  bool FShowFullAddress;
   UnicodeString FFileColors;
 
   QAction * CreateAction(const QString & Name, const QString & Caption, const QString & IconName,

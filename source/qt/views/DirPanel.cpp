@@ -485,7 +485,8 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   FSide(Side),
   FHistoryIndex(-1),
   FNavigatingHistory(false),
-  FUpdatingPath(false)
+  FUpdatingPath(false),
+  FShowFullAddress(true)
 {
   QString Prefix = (Side == osLocal) ? QStringLiteral("Local") : QStringLiteral("Remote");
   setObjectName(Prefix + QStringLiteral("Panel"));
@@ -1048,7 +1049,9 @@ void TDirPanel::PathComboActivated()
   if (!FUpdatingPath)
   {
     UnicodeString Path = ToUnicodeString(PathComboBox->currentText()).Trim();
-    if (!Path.IsEmpty() && (Path != GetPath()))
+    // The name of the directory shown instead of its path
+    bool ShortAddress = !FShowFullAddress && (Path == UnixExtractFileName(GetPath()));
+    if (!Path.IsEmpty() && (Path != GetPath()) && !ShortAddress)
     {
       ChangeDirectory(Path);
     }
@@ -1152,6 +1155,10 @@ void TDirPanel::PathChanged()
       APath = Parent;
     }
     PathComboBox->setCurrentIndex(0);
+    if (!FShowFullAddress)
+    {
+      PathComboBox->setEditText(ToQString(IsUnixRootPath(Path) ? Path : UnixExtractFileName(Path)));
+    }
   }
 
   // The focus of the new directory is set when its files are loaded
@@ -1484,6 +1491,21 @@ void TDirPanel::Filter()
     if (DoFilterMaskDialog(this, Mask))
     {
       SetMask(TFileMasks::NormalizeMask(Mask));
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::SetShowFullAddress(bool Value)
+{
+  if (FShowFullAddress != Value)
+  {
+    FShowFullAddress = Value;
+    if (IsReady())
+    {
+      TAutoFlag UpdatingFlag(FUpdatingPath);
+      UnicodeString Path = GetPath();
+      PathComboBox->setEditText(
+        ToQString((FShowFullAddress || IsUnixRootPath(Path)) ? Path : UnixExtractFileName(Path)));
     }
   }
 }
