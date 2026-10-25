@@ -625,6 +625,14 @@ void TScpCommanderForm::CloseSessionTab(int Index)
 {
   TTerminalManager * Manager = TTerminalManager::Instance();
   TManagedTerminal * Session = Manager->Sessions[Index];
+  // A middle click both closes the tab (ours) and requests its closing (the
+  // tab bar's), the second one while the session closes
+  if (FClosingSessions.find(Session) != FClosingSessions.end())
+  {
+    return;
+  }
+  FClosingSessions.insert(Session);
+  ::rtl::TFinally Finally([&]() { FClosingSessions.erase(Session); });
   if (IsBusy())
   {
     // noop

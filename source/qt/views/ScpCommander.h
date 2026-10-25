@@ -23,6 +23,7 @@
 #include <QStringList>
 
 #include <mutex>
+#include <set>
 //---------------------------------------------------------------------------
 class QAction;
 class QActionGroup;
@@ -177,6 +178,8 @@ private:
   // The tabs of the sessions and the "new tab" tab (ScpCommanderSessions.cpp)
   QTabBar * SessionsPageControl;
   bool FUpdatingSessionTabs;
+  // The sessions whose tabs are being closed
+  std::set<TManagedTerminal *> FClosingSessions;
   int FNewSessionNesting;
   // Its local directory is shown regardless of PreserveLocalDirectory
   bool FFirstTerminal;
