@@ -1,5 +1,7 @@
 // The main window with the Commander interface (upstream's
-// TScpCommanderForm, forms/ScpCommander.dfm and CustomScpExplorer.dfm).
+// TScpCommanderForm, forms/ScpCommander.dfm and CustomScpExplorer.dfm, with
+// the actions of forms/NonVisual.dfm): the local and the remote panel, the
+// menus and toolbars, and the commands on the files of the current panel.
 //---------------------------------------------------------------------------
 #ifndef ScpCommanderH
 #define ScpCommanderH
@@ -10,9 +12,14 @@
 
 #include <QMainWindow>
 //---------------------------------------------------------------------------
+class QAction;
+class QLabel;
 class QSplitter;
+class TDirPanel;
 class TLocalDirPanel;
+class TProgressForm;
 class TRemoteDirPanel;
+class TTerminal;
 //---------------------------------------------------------------------------
 class TScpCommanderForm : public QMainWindow
 {
@@ -31,11 +38,57 @@ public:
   void OperationFinished(TFileOperation Operation, TOperationSide Side,
     bool Temp, const UnicodeString & FileName, bool Success, bool NotCancelled,
     TOnceDoneOperation & OnceDoneOperation);
+  // An operation on files runs
+  bool IsBusy() const { return (FBusy > 0); }
+
+protected:
+  virtual void closeEvent(QCloseEvent * Event) override;
+  virtual bool eventFilter(QObject * Object, QEvent * Event) override;
 
 private:
   QSplitter * FPanelSplitter;
   TLocalDirPanel * FLocalPanel;
   TRemoteDirPanel * FRemotePanel;
+  TDirPanel * FCurrentPanel;
+  TProgressForm * FProgressForm;
+  QLabel * FSessionStatusLabel;
+  int FBusy;
+  // The session whose local directory the local panel went to
+  TTerminal * FLocalDirectoryTerminal;
+
+  QAction * NewSessionAction;
+  QAction * DisconnectSessionAction;
+  QAction * CloseApplicationAction;
+  QAction * CurrentCopyAction;
+  QAction * CurrentRenameAction;
+  QAction * CurrentDeleteAction;
+  QAction * CurrentDeleteAlternativeAction;
+  QAction * CurrentCreateDirAction;
+  QAction * ShowHiddenFilesAction;
+
+  QAction * CreateAction(const char * Name, const QString & Caption, const QString & IconName,
+    const QList<QKeySequence> & ShortCuts, void (TScpCommanderForm::*Method)());
+  void CreateMenus();
+  void CreateToolbars();
+  void UpdateActions();
+  void SetCurrentPanel(TDirPanel * Panel);
+  TDirPanel * OtherPanel(TDirPanel * Panel) const;
+  TTerminal * GetTerminal() const;
+  // The selected files of the panel: full paths (and the remote files)
+  TStrings * CreateFileList(TDirPanel * Panel);
+  void DestroyProgressForm();
+
+  void NewSessionActionExecute() { NewSession(); }
+  void DisconnectSessionActionExecute();
+  void CloseApplicationActionExecute();
+  void CurrentCopyActionExecute();
+  void CurrentRenameActionExecute();
+  void CurrentDeleteActionExecute() { DeleteFiles(false); }
+  void CurrentDeleteAlternativeActionExecute() { DeleteFiles(true); }
+  void CurrentCreateDirActionExecute();
+  void ShowHiddenFilesActionExecute();
+  void DeleteFiles(bool Alternative);
+  void RenameFile(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName);
 };
 //---------------------------------------------------------------------------
 #endif

@@ -8,6 +8,7 @@
 #include "DirModel.h"
 #include "DirPanel.h"
 
+#include <QAbstractItemDelegate>
 #include <QAction>
 #include <QComboBox>
 #include <QDesktopServices>
@@ -19,11 +20,26 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeView>
 #include <QUrl>
 #include <QVBoxLayout>
+//---------------------------------------------------------------------------
+// The editor of the names of the files, named for the end-to-end tests
+class TRenameDelegate : public QStyledItemDelegate
+{
+public:
+  explicit TRenameDelegate(QObject * Parent) : QStyledItemDelegate(Parent) {}
+
+  virtual QWidget * createEditor(QWidget * Parent, const QStyleOptionViewItem & Option, const QModelIndex & Index) const override
+  {
+    QWidget * Editor = QStyledItemDelegate::createEditor(Parent, Option, Index);
+    Editor->setObjectName(QStringLiteral("RenameEdit"));
+    return Editor;
+  }
+};
 //---------------------------------------------------------------------------
 TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   QWidget(Parent),
@@ -80,6 +96,14 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   DirView->setEditTriggers(QAbstractItemView::NoEditTriggers);
   DirView->setSortingEnabled(true);
   DirView->installEventFilter(this);
+  DirView->setItemDelegate(new TRenameDelegate(DirView));
+  connect(DirView->itemDelegate(), &QAbstractItemDelegate::closeEditor, this, [this]()
+  {
+    if (FModel != nullptr)
+    {
+      FModel->SetEditableRow(-1);
+    }
+  });
   connect(DirView, &QTreeView::activated, this, [this](const QModelIndex & Index) { ItemActivated(Index.row()); });
   Layout->addWidget(DirView, 1);
 
@@ -115,9 +139,51 @@ void TDirPanel::SetModel(TDirModel * Model)
   for (int Column = 1; Column < Model->columnCount(); Column++)
   {
     Header->setSectionResizeMode(Column, QHeaderView::Interactive);
-    Header->resizeSection(Column, (Model->Column(Column) == dvChanged) ? 140 : 80);
+    // Widths for typical values
+    QString Sample;
+    switch (Model->Column(Column))
+    {
+      case dvSize:
+        Sample = QStringLiteral("99,999 KB");
+        break;
+      case dvChanged:
+        Sample = QStringLiteral("00/00/0000 00:00:00");
+        break;
+      case dvType:
+        Sample = QStringLiteral("Plain text");
+        break;
+      case dvRights:
+        Sample = QStringLiteral("rwxrwxrwx");
+        break;
+      default:
+        Sample = QStringLiteral("username");
+        break;
+    }
+    Header->resizeSection(Column, DirView->fontMetrics().horizontalAdvance(Sample) + 32);
   }
   connect(DirView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this]() { UpdateStatusBar(); });
+  Model->OnRename = [this](const UnicodeString & FileName, const UnicodeString & NewName)
+  {
+    // Not from the commit of the editor, which the reload would disturb
+    QTimer::singleShot(0, this, [this, FileName, NewName]()
+    {
+      if (OnRename)
+      {
+        OnRename(this, FileName, NewName);
+      }
+    });
+  };
+}
+//---------------------------------------------------------------------------
+void TDirPanel::StartRename()
+{
+  QModelIndex Current = DirView->currentIndex();
+  if (IsReady() && Current.isValid() && !FModel->Item(Current.row()).IsParentDirectory)
+  {
+    QModelIndex NameIndex = FModel->index(Current.row(), 0);
+    FModel->SetEditableRow(NameIndex.row());
+    DirView->edit(NameIndex);
+  }
 }
 //---------------------------------------------------------------------------
 bool TDirPanel::eventFilter(QObject * Object, QEvent * Event)

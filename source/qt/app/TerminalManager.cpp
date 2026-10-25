@@ -107,11 +107,19 @@ void TTerminalManager::FreeActiveTerminal()
 {
   if (FTerminalPendingAction == tpNull)
   {
-    TManagedTerminal * Terminal = FActiveTerminal;
+    std::unique_ptr<TManagedTerminal> Terminal(FActiveTerminal);
     FActiveTerminal = NULL;
     // The window lets the terminal go before it is freed
     UpdateScpExplorer();
-    delete Terminal;
+    // The site manager opens on the site of the last session
+    if (StoredSessions->FindSame(Terminal->SessionData) != NULL)
+    {
+      AppConfiguration->LastStoredSession = Terminal->SessionData->Name;
+    }
+    if (Terminal->Active)
+    {
+      Terminal->Close();
+    }
   }
   else
   {

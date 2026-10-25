@@ -33,6 +33,7 @@ void __fastcall TAppConfiguration::Default()
   FMasterPasswordVerifier = L"";
 
   FConfirmDeleting = true;
+  FShowHiddenFiles = false;
   FLastStoredSession = L"";
   FOpenedStoredSessionFolders = L"";
 }
@@ -71,6 +72,7 @@ THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
 #define REGCONFIG(CANCREATE) \
   BLOCK(L"Interface", CANCREATE, \
     KEY(Bool,    FConfirmDeleting); \
+    KEY(Bool,    FShowHiddenFiles); \
     KEY(String,  FLastStoredSession); \
     KEY(String,  FOpenedStoredSessionFolders); \
   ); \
@@ -190,6 +192,11 @@ void __fastcall TAppConfiguration::AskForMasterPasswordIfNotSet()
 void TAppConfiguration::SetConfirmDeleting(bool value)
 {
   SET_CONFIG_PROPERTY(ConfirmDeleting);
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetShowHiddenFiles(bool value)
+{
+  SET_CONFIG_PROPERTY(ShowHiddenFiles);
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::SetLastStoredSession(UnicodeString value)

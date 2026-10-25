@@ -69,6 +69,11 @@ void SessionNameValidate(const UnicodeString & Text, const UnicodeString & Origi
 // Asks for the current master password
 bool DoMasterPasswordDialog();
 
+// dialogs/CopyDialog.cpp
+// Confirms a transfer of the files to the target directory
+bool DoCopyDialog(bool ToRemote, TStrings * FileList, UnicodeString & TargetDirectory);
+bool DoCreateDirectoryDialog(UnicodeString & Directory);
+
 // dialogs/LoginDialog.cpp
 // The site manager: fills DataList with the sessions to open
 bool DoLoginDialog(TList * DataList, QWidget * Parent, bool NeedTerminal);

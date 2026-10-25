@@ -11,6 +11,7 @@
 
 #include <QWidget>
 
+#include <functional>
 #include <vector>
 //---------------------------------------------------------------------------
 class QAction;
@@ -53,6 +54,9 @@ public:
   std::vector<int> GetSelectedRows() const;
   const TDirModel * GetModel() const { return FModel; }
   void FocusFile(const UnicodeString & FileName);
+  // Edits the name of the focused file in place; OnRename renames it
+  void StartRename();
+  std::function<void(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName)> OnRename;
   void SetShowHiddenFiles(bool Value);
   void UpdateStatusBar();
 

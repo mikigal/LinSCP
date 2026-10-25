@@ -23,7 +23,10 @@ static int Execute()
 #endif
   TTerminalManager * Manager = TTerminalManager::Instance();
 #ifdef OPENSCP_AUTOMATION
-  SetAutomationBusyCheck([Manager]() { return Manager->IsBusy(); });
+  SetAutomationBusyCheck([Manager]()
+  {
+    return Manager->IsBusy() || ((Manager->ScpExplorer != NULL) && Manager->ScpExplorer->IsBusy());
+  });
 #endif
   int Result;
   {

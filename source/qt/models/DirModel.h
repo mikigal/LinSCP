@@ -10,6 +10,7 @@
 #include <QAbstractTableModel>
 #include <QIcon>
 
+#include <functional>
 #include <vector>
 //---------------------------------------------------------------------------
 class TRemoteFile;
@@ -51,6 +52,13 @@ public:
   virtual QVariant data(const QModelIndex & Index, int Role = Qt::DisplayRole) const override;
   virtual QVariant headerData(int Section, Qt::Orientation Orientation, int Role = Qt::DisplayRole) const override;
   virtual void sort(int Column, Qt::SortOrder Order = Qt::AscendingOrder) override;
+  virtual Qt::ItemFlags flags(const QModelIndex & Index) const override;
+  virtual bool setData(const QModelIndex & Index, const QVariant & Value, int Role = Qt::EditRole) override;
+
+  // The name of the row can be edited (renamed), until the edit ends
+  void SetEditableRow(int Row) { FEditableRow = Row; }
+  // A new name was entered (the model does not rename the file)
+  std::function<void(const UnicodeString & FileName, const UnicodeString & NewName)> OnRename;
 
   const TDirViewItem & Item(int Row) const { return FItems[Row]; }
   int Count() const { return static_cast<int>(FItems.size()); }
@@ -69,6 +77,7 @@ private:
   std::vector<TDirViewItem> FItems;
   int FSortColumn;
   Qt::SortOrder FSortOrder;
+  int FEditableRow;
 
   void SortItems();
 };

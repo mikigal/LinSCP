@@ -10,9 +10,11 @@ add_library(openscp_qt STATIC
   app/QtTools.cpp
   app/TerminalManager.cpp
   dialogs/AuthenticateForm.cpp
+  dialogs/CopyDialog.cpp
   dialogs/CustomDialog.cpp
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
+  dialogs/ProgressForm.cpp
   models/DirModel.cpp
   views/DirPanel.cpp
   views/ScpCommander.cpp)

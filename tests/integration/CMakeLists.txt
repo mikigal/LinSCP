@@ -54,5 +54,26 @@ if(OPENSCP_BUILD_HARNESS)
       ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;OPENSCP_GUI=$<TARGET_FILE:openscp>"
       RUN_SERIAL TRUE
       TIMEOUT 300)
+
+    # The GUI with SFTP against the local sshd
+    add_test(NAME integration.gui_ssh
+      COMMAND Python3::Interpreter -m unittest -v test_gui_ssh
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(integration.gui_ssh PROPERTIES
+      LABELS "integration;gui;ssh"
+      ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;OPENSCP_GUI=$<TARGET_FILE:openscp>;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+      RUN_SERIAL TRUE
+      TIMEOUT 600)
+
+    # The GUI against the test VM (skipped without OPENSCP_TEST_VM)
+    add_test(NAME integration.gui_vm
+      COMMAND Python3::Interpreter -m unittest -v test_gui_vm
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(integration.gui_vm PROPERTIES
+      LABELS "integration;gui;vm"
+      ENVIRONMENT "PYTHONPATH=${OPENSCP_TEST_PYTHONPATH};PYTHONDONTWRITEBYTECODE=1;WLH_INPUT=$<TARGET_FILE:wlh-input>;OPENSCP_GUI=$<TARGET_FILE:openscp>;OPENSCP_CLI=$<TARGET_FILE:openscp-cli>"
+      RUN_SERIAL TRUE
+      RESOURCE_LOCK test_vm
+      TIMEOUT 1200)
   endif()
 endif()

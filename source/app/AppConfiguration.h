@@ -29,6 +29,8 @@ public:
   bool GetUseMasterPassword() const { return FUseMasterPassword; }
   bool GetConfirmDeleting() const { return FConfirmDeleting; }
   void SetConfirmDeleting(bool value);
+  bool GetShowHiddenFiles() const { return FShowHiddenFiles; }
+  void SetShowHiddenFiles(bool value);
   UnicodeString GetLastStoredSession() const { return FLastStoredSession; }
   void SetLastStoredSession(UnicodeString value);
   UnicodeString GetOpenedStoredSessionFolders() const { return FOpenedStoredSessionFolders; }
@@ -38,6 +40,7 @@ public:
 
   __declspec(property(get = GetUseMasterPassword)) bool UseMasterPassword;
   __declspec(property(get = GetConfirmDeleting, put = SetConfirmDeleting)) bool ConfirmDeleting;
+  __declspec(property(get = GetShowHiddenFiles, put = SetShowHiddenFiles)) bool ShowHiddenFiles;
   // The site or site folder (with a trailing slash) last selected in the
   // site manager
   __declspec(property(get = GetLastStoredSession, put = SetLastStoredSession)) UnicodeString LastStoredSession;
@@ -61,6 +64,7 @@ private:
   UnicodeString FMasterPasswordVerifier;
   TMasterPasswordPromptEvent FOnMasterPasswordPrompt;
   bool FConfirmDeleting;
+  bool FShowHiddenFiles;
   UnicodeString FLastStoredSession;
   UnicodeString FOpenedStoredSessionFolders;
 

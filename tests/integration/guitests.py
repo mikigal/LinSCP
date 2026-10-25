@@ -4,7 +4,8 @@ through its automation hook (tools/testenv/openscp_gui.py).
 
 The binary is taken from OPENSCP_GUI. Each test class has a session of its
 own; each test starts the application. Sessions of failed tests are kept
-for inspection (logs and screenshots in the session directory).
+for inspection (logs and screenshots in the session directory), all of them
+with OPENSCP_GUI_KEEP set.
 """
 
 import os
@@ -31,7 +32,7 @@ class GuiTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.session.stop()
-        if cls.failed:
+        if cls.failed or os.environ.get('OPENSCP_GUI_KEEP'):
             print('keeping session %s for inspection' % cls.session.dir)
         else:
             shutil.rmtree(cls.session.dir, ignore_errors=True)
@@ -44,13 +45,29 @@ class GuiTestCase(unittest.TestCase):
             type(self).failed = True
         return result
 
-    def start_gui(self, *args, env=None):
-        """Starts the application; it is ended after the test."""
+    def start_gui(self, *args, env=None, ini=None):
+        """Starts the application with a configuration of its own (the INI
+        file's text, or none); it is ended after the test."""
         gui = OpenScpGui(self.session, GUI)
+        config = gui.config_file.parent
+        shutil.rmtree(config, ignore_errors=True)
+        if ini is not None:
+            config.mkdir(parents=True)
+            gui.config_file.write_text(ini)
         self.addCleanup(gui.stop)
-        gui.start(*args, env=env, log_name=self.id().rsplit('.', 1)[-1])
+        gui.start(*args, env=env, log_name=self.test_name)
         return gui
+
+    @property
+    def test_name(self):
+        return self.id().rsplit('.', 1)[-1]
+
+    def work_dir(self, name):
+        """A directory of the test in the session directory."""
+        path = self.session.dir / self.test_name / name
+        path.mkdir(parents=True)
+        return path
 
     def screenshot(self, name):
         """A screenshot of the whole screen in the session directory."""
-        return self.session.screenshot(self.session.dir / ('%s.png' % name))
+        return self.session.screenshot(self.session.dir / ('%s-%s.png' % (self.test_name, name)))

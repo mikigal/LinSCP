@@ -73,8 +73,35 @@ TDirModel::TDirModel(const std::vector<TDirViewColumn> & Columns, QObject * Pare
   QAbstractTableModel(Parent),
   FColumns(Columns),
   FSortColumn(0),
-  FSortOrder(Qt::AscendingOrder)
+  FSortOrder(Qt::AscendingOrder),
+  FEditableRow(-1)
 {
+}
+//---------------------------------------------------------------------------
+Qt::ItemFlags TDirModel::flags(const QModelIndex & Index) const
+{
+  Qt::ItemFlags Result = QAbstractTableModel::flags(Index);
+  if (Index.isValid() && (Index.row() == FEditableRow) && (FColumns[Index.column()] == dvName))
+  {
+    Result |= Qt::ItemIsEditable;
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool TDirModel::setData(const QModelIndex & Index, const QVariant & Value, int Role)
+{
+  if (Index.isValid() && (Role == Qt::EditRole) && (Index.row() == FEditableRow) && (Index.row() < Count()))
+  {
+    FEditableRow = -1;
+    UnicodeString FileName = FItems[Index.row()].FileName;
+    UnicodeString NewName = ToUnicodeString(Value.toString());
+    if (!NewName.IsEmpty() && (NewName != FileName) && OnRename)
+    {
+      OnRename(FileName, NewName);
+    }
+  }
+  // The name changes when the file is renamed and its directory reloaded
+  return false;
 }
 //---------------------------------------------------------------------------
 int TDirModel::rowCount(const QModelIndex & Parent) const
@@ -94,7 +121,11 @@ QVariant TDirModel::data(const QModelIndex & Index, int Role) const
   {
     const TDirViewItem & Item = FItems[Index.row()];
     TDirViewColumn Column = FColumns[Index.column()];
-    if (Role == Qt::DisplayRole)
+    if ((Role == Qt::EditRole) && (Column == dvName))
+    {
+      Result = ToQString(Item.FileName);
+    }
+    else if (Role == Qt::DisplayRole)
     {
       switch (Column)
       {
@@ -272,7 +303,9 @@ void TDirModel::Totals(__int64 & Size, int & Count) const
 }
 //---------------------------------------------------------------------------
 TLocalDirModel::TLocalDirModel(QObject * Parent) :
-  TDirModel({ dvName, dvSize, dvType, dvChanged, dvRights, dvOwner }, Parent)
+  // Upstream's default columns of the local panel, with the rights in
+  // place of the Windows attributes
+  TDirModel({ dvName, dvSize, dvType, dvChanged, dvRights }, Parent)
 {
 }
 //---------------------------------------------------------------------------
@@ -374,7 +407,8 @@ void TLocalDirModel::Load(const UnicodeString & Path, bool ShowHiddenFiles)
 }
 //---------------------------------------------------------------------------
 TRemoteDirModel::TRemoteDirModel(QObject * Parent) :
-  TDirModel({ dvName, dvSize, dvChanged, dvRights, dvOwner, dvGroup }, Parent)
+  // Upstream's default columns of the remote panel
+  TDirModel({ dvName, dvSize, dvChanged, dvRights, dvOwner }, Parent)
 {
   FFiles = NULL;
 }

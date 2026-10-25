@@ -8,6 +8,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QJsonArray>
+#include <QKeyEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
@@ -476,6 +477,11 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
   {
     Result = Describe(FindTarget(Request), Request.value(QStringLiteral("children")).toBool());
   }
+  else if ((Command == QLatin1String("focus")) && Request.contains(QStringLiteral("target")))
+  {
+    QPointer<QWidget> Pointer(FindTargetOf<QWidget>(Request));
+    Action = [Pointer]() { if (Pointer) Pointer->setFocus(Qt::OtherFocusReason); };
+  }
   else if (Command == QLatin1String("focus"))
   {
     QWidget * Focus = QApplication::focusWidget();
@@ -609,6 +615,38 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
     QModelIndex Index = FindItem(Tree, Request.value(QStringLiteral("item")));
     bool Expanded = Request.value(QStringLiteral("expanded")).toBool(true);
     Tree->setExpanded(Index, Expanded);
+  }
+  else if (Command == QLatin1String("key"))
+  {
+    // Synthetic key events, delivered to the widget (or the focused one);
+    // they do not activate shortcuts, which need the input of the
+    // compositor (wlh-input)
+    QWidget * Widget =
+      Request.contains(QStringLiteral("target")) ? FindTargetOf<QWidget>(Request) : QApplication::focusWidget();
+    if (Widget == nullptr)
+    {
+      throw EAutomation(QStringLiteral("No widget has the focus"));
+    }
+    QKeySequence Sequence = QKeySequence::fromString(Request.value(QStringLiteral("key")).toString(), QKeySequence::PortableText);
+    if (Sequence.isEmpty())
+    {
+      throw EAutomation(QStringLiteral("Unknown key %1").arg(Request.value(QStringLiteral("key")).toString()));
+    }
+    QKeyCombination Combination = Sequence[0];
+    QPointer<QWidget> Pointer(Widget);
+    Action = [Pointer, Combination]()
+    {
+      if (Pointer)
+      {
+        QKeyEvent Press(QEvent::KeyPress, Combination.key(), Combination.keyboardModifiers());
+        QCoreApplication::sendEvent(Pointer, &Press);
+      }
+      if (Pointer)
+      {
+        QKeyEvent Release(QEvent::KeyRelease, Combination.key(), Combination.keyboardModifiers());
+        QCoreApplication::sendEvent(Pointer, &Release);
+      }
+    };
   }
   else if (Command == QLatin1String("grab"))
   {

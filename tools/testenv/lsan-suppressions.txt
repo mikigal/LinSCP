@@ -1,4 +1,4 @@
-# LeakSanitizer suppressions for runs of the applications (L2 tests).
+# LeakSanitizer suppressions for runs of the applications (L2 and L4 tests).
 #
 # WinSCP's PuTTY seat throws a C++ exception from seat_connection_fatal
 # through PuTTY's C code, so the messages formatted for it are never freed
@@ -13,3 +13,6 @@ leak:verify_ssh_host_key
 # The key exchange (a coroutine) abandoned by an exception from the host key
 # verification (a rejected key)
 leak:ssh2kex_coroutine
+# Qt's Wayland platform plugin leaves proxies of compositor objects at exit
+# (libwayland-client has no frame pointers, the stacks end there)
+leak:libwayland-client.so

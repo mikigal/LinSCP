@@ -6,6 +6,7 @@
 #include <QtTools.h>
 
 #include <QApplication>
+#include <QTest>
 #include <QTimer>
 #include <QWidget>
 

@@ -437,7 +437,10 @@ void __fastcall TSecureShell::Open()
     sfree(RealHost);
     if (InitError)
     {
-      PuttyFatalError(InitError);
+      // OpenSCP: the error is the caller's to free
+      UnicodeString Error(InitError);
+      sfree(const_cast<char *>(InitError));
+      PuttyFatalError(Error);
     }
     FUI->Information(LoadStr(STATUS_CONNECT));
     FAuthenticationCancelled = false;

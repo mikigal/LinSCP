@@ -133,13 +133,24 @@ class OpenScpGui:
     def expand(self, target, item, expanded=True):
         return self.call('expand', target=target, item=item, expanded=expanded)
 
+    def key(self, key, target=None):
+        """Sends a key (e.g. "Return", "Ctrl+A") to the widget or the focused one;
+        shortcuts need real input (Session.input)."""
+        params = {'key': key}
+        if target is not None:
+            params['target'] = target
+        return self.call('key', **params)
+
     def grab(self, target, path):
         path = Path(path).resolve()
         self.call('grab', target=target, file=str(path))
         return path
 
-    def focus(self):
-        return self.call('focus')
+    def focus(self, target=None):
+        """Focuses the widget; without one, describes the focused widget."""
+        if target is None:
+            return self.call('focus')
+        return self.call('focus', target=target)
 
     def wait_idle(self, timeout=120):
         return self.call('wait-idle', timeout=timeout)
