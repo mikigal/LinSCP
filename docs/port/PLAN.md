@@ -184,7 +184,7 @@ license attribution).
 | Notifications after transfer | `org.freedesktop.Notifications` / KNotification |
 | Single instance, passing sessions | D-Bus (`org.openscp.OpenSCP`) + xdg-activation token |
 | Registering `sftp://`, `scp://`… | `x-scheme-handler/*` in the `.desktop` file |
-| Explorer "Send To" | Dolphin service menu (+ optional Nautilus action) |
+| Explorer "Send To" | none (the user's decision, 2026-10-25); `openscp /upload FILES` stays |
 | "Drives" panel (DriveView) | places: `$HOME`, mount points (`QStorageInfo`), bookmarks/`KFilePlacesModel` |
 | Session import (PuTTY from the registry, FileZilla, OpenSSH) | `~/.putty/sessions`, `~/.config/filezilla/sitemanager.xml`, `~/.ssh/config`, `known_hosts`, `WinSCP.ini` |
 | Installer, updates, "Run as administrator" | packages (PKGBUILD, later Flatpak/AppImage); no auto-update and no elevation |
@@ -301,7 +301,7 @@ test checks that the file appeared in the target directory with correct content.
 | M4 | FTP/FTPS (FileZilla port), WebDAV (neon), S3 (libs3) | the same L2 matrix passes for every protocol against the VM servers |
 | M5 | GUI skeleton: application, site manager (Login), Commander window with panels, navigation, basic operations, progress, authentication prompts | E2E: connect from the site manager, browse, upload/download; screenshots OK |
 | M6 | Queue, copy dialog with options, properties/chmod, rename, find files, synchronization + checklist, keep-up-to-date, bookmarks/location profiles, custom commands, console, editor + external editing | E2E for each feature |
-| M7 | Desktop integration: D&D (both modes), file clipboard, URL handlers, single instance, notifications, tray, taskbar progress, `.desktop`, Dolphin service menu, terminal | E2E D&D and clipboard with Dolphin in the headless KWin |
+| M7 | Desktop integration: D&D (both modes), file clipboard, URL handlers, single instance, notifications, tray, taskbar progress, `.desktop`, terminal | E2E D&D and clipboard with Dolphin in the headless KWin |
 | M8 | Preferences, Explorer interface, tabs/workspaces, session import, translations, packaging (PKGBUILD) | functionally complete per section 1 |
 
 This order gives a working, testable product (the CLI) right after M3 — later steps build the
@@ -358,4 +358,5 @@ GUI on top of a verified core.
   (notifications, tray, task manager, logind) run in the session for the tests.
 - 2026-10-25: a session of the command line goes to a running instance (D-Bus,
   `org.openscp.OpenSCP`) only while it has no session, until the tabs (M8).
+- 2026-10-25: no Dolphin service menu ("Upload with OpenSCP"); the user does not want it.
 - Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.

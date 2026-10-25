@@ -12,7 +12,7 @@ packaging (PLAN.md, section 7).
 Exit criteria met: files are dragged and dropped and copied and pasted between OpenSCP and
 Dolphin in the headless KWin (`test_gui_desktop`, against the local sshd); the other
 integrations have their E2E tests there too, with fake services of the desktop shell. All
-tests (294) pass under ASan/UBSan, with the VM; the release build compiles without warnings.
+tests pass under ASan/UBSan, with the VM; the release build compiles without warnings.
 
 - Drag and drop (`views/ScpCommanderDragDrop.cpp`, `TDirView` of `views/DirPanel.cpp`): the
   panels drag their selected files and take drops on their free space or on their
@@ -47,9 +47,8 @@ tests (294) pass under ASan/UBSan, with the VM; the release build compiles witho
   `org.openscp.OpenSCP` on the session bus, which the instances queue for; the XDG
   activation token of the launcher is passed along.
 - `source/qt/desktop/openscp.desktop`: the URL schemes upstream registers (sftp, scp, ftp,
-  ftps, ftpes, dav, davs, s3) and a New Window action; `openscp-upload.desktop`: Dolphin's
-  service menu "Upload with OpenSCP" (`openscp /upload -- %F`, upstream's Send To). Install
-  rules for the binaries and the files of the desktop.
+  ftps, ftpes, dav, davs, s3) and a New Window action. Install rules for the binaries and the
+  desktop file.
 - Notifications (`app/Notifications.cpp`, upstream's balloons, `BalloonNotifications`,
   `NotificationsTimeout`): the queue got empty or needs the user while hidden or in the
   background (a click shows the queue), the transfer confirmation turned off; a click passes
@@ -96,6 +95,8 @@ Decisions:
 - The icon of the desktop file and of the tray is the theme's `folder-remote` until the
   branding (M8).
 - `PuttyPath` keeps upstream's key; its default is detected (PuTTY is rarely installed).
+- **No Dolphin service menu** (the user's decision): upstream's Send To has no counterpart in
+  the file manager; `openscp /upload` stays.
 
 Not ported yet (or not possible):
 
@@ -105,7 +106,7 @@ Not ported yet (or not possible):
   switches `/synchronize`, `/keepuptodate`, `/edit`, `/refresh`, `/explore`; upstream's beep
   once an operation completes (`BeepOnFinish`).
 - Open in SSH Client does not export host keys to the client nor use PuTTY's `-pwfile`
-  (`PuttyPassword` passes `-pw`); no Nautilus action.
+  (`PuttyPassword` passes `-pw`).
 
 Findings for M8:
 
