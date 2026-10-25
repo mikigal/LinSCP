@@ -104,6 +104,19 @@ class GuiSshTest(GuiSshTestCase):
         gui = self.start_gui(env=env)
         gui.wait_window('LoginDialog')
         self.assertEqual(gui.names('LoginDialog/SessionTree'), ['New Site'])
+        # upstream's buttons: Tools and Manage below the sites, Login (with
+        # its menu), Close and Help at the bottom
+        L = 'LoginDialog/'
+        tree = gui.get(L + 'SessionTree')['geometry']
+        tools = gui.get(L + 'ToolsMenuButton')['geometry']
+        manage = gui.get(L + 'ManageButton')['geometry']
+        self.assertGreater(tools['y'], tree['y'] + tree['height'] - 1)
+        self.assertEqual(tools['y'], manage['y'])
+        self.assertLess(tools['x'], manage['x'])
+        self.assertTrue(gui.get(L + 'HelpButton')['visible'])
+        self.assertGreater(gui.get(L + 'HelpButton')['geometry']['x'], gui.get(L + 'CloseButton')['geometry']['x'])
+        self.assertEqual(gui.get('LoginDropDownMenu')['items'], ['Login', 'Open in SSH Client'])
+        self.assertEqual(gui.get('SaveDropDownMenu')['items'][-1], 'Set Defaults')
         gui.set('LoginDialog/HostNameEdit', '127.0.0.1')
         gui.set('LoginDialog/PortNumberEdit', SSHD.port)
         gui.set('LoginDialog/UserNameEdit', SSHD.user)

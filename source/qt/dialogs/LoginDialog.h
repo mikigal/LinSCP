@@ -21,6 +21,7 @@ class QPushButton;
 class QSpinBox;
 class QTreeWidget;
 class QToolButton;
+class TSplitButton;
 class QTreeWidgetItem;
 class TSessionData;
 //---------------------------------------------------------------------------
@@ -68,7 +69,7 @@ private:
   QWidget * BasicS3Panel;
   QCheckBox * S3CredentialsEnvCheck3;
   QComboBox * S3ProfileCombo;
-  QPushButton * SaveButton;
+  TSplitButton * SaveButton;
   QPushButton * EditButton;
   QPushButton * EditCancelButton;
   QToolButton * AdvancedButton;
@@ -78,7 +79,8 @@ private:
   QGroupBox * ContentsGroupBox;
   QLineEdit * ContentsNameEdit;
   QPlainTextEdit * ContentsMemo;
-  QPushButton * LoginButton;
+  TSplitButton * LoginButton;
+  QPushButton * HelpButton;
   QPushButton * CloseButton;
   QMenu * ManageMenu;
 

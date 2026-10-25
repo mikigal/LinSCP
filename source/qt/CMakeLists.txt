@@ -53,6 +53,7 @@ add_library(openscp_qt STATIC
   dialogs/RightsFrame.cpp
   dialogs/SelectMaskDialog.cpp
   dialogs/SiteAdvancedDialog.cpp
+  dialogs/SplitButton.cpp
   dialogs/SymlinkDialog.cpp
   dialogs/SynchronizeChecklistDialog.cpp
   dialogs/SynchronizeDialog.cpp

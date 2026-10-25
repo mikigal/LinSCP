@@ -43,6 +43,10 @@ upstream's documentation (`ui_commander`, `ui_explorer`, `ui_login`).
 - The command line (upstream's `CommandLineToolbar`, Options > Command Line, Ctrl+Shift+M): the
   commands typed into it run in the shell of the session, in the console, kept in the history
   of upstream's `Commands`.
+- The site manager's buttons as upstream's: Tools and Manage below the sites, Save with its
+  drop-down menu (Save As, Set Defaults), Login with its own (Login, Open in SSH Client), Close
+  and Help (the documentation of the dialog); the split buttons are push buttons with a
+  drop-down arrow (`dialogs/SplitButton.cpp`), so Login stays the default button.
 
 Decisions:
 

@@ -9,6 +9,7 @@
 #include <TextsWin.h>
 
 #include "LoginDialog.h"
+#include "SplitButton.h"
 
 #include <QAbstractItemDelegate>
 #include <QAction>
@@ -171,8 +172,23 @@ void TLoginDialog::CreateControls()
     }
   });
 
+  // upstream's Tools (left) and Manage (right) below the sites
   QHBoxLayout * SitesButtonsLayout = new QHBoxLayout();
   SitesLayout->addLayout(SitesButtonsLayout);
+  ToolsMenuButton = new QPushButton(tr("&Tools"), this);
+  ToolsMenuButton->setObjectName(QStringLiteral("ToolsMenuButton"));
+  ToolsPopupMenu = new QMenu(this);
+  ToolsPopupMenu->setObjectName(QStringLiteral("ToolsPopupMenu"));
+  ToolsPopupMenu->addAction(ImportSessionsAction);
+  ToolsPopupMenu->addSeparator();
+  ToolsPopupMenu->addAction(ImportAction);
+  ToolsPopupMenu->addAction(ExportAction);
+  ToolsPopupMenu->addAction(CleanUpAction);
+  ToolsPopupMenu->addSeparator();
+  ToolsPopupMenu->addAction(PreferencesAction);
+  ToolsPopupMenu->addAction(AboutAction);
+  ToolsMenuButton->setMenu(ToolsPopupMenu);
+  SitesButtonsLayout->addWidget(ToolsMenuButton);
   SitesButtonsLayout->addStretch(1);
   ManageButton = new QPushButton(tr("&Manage"), this);
   ManageButton->setObjectName(QStringLiteral("ManageButton"));
@@ -331,9 +347,18 @@ void TLoginDialog::CreateControls()
 
   QHBoxLayout * SiteButtonsLayout = new QHBoxLayout();
   Grid->addLayout(SiteButtonsLayout, 8, 0, 1, 4);
-  SaveButton = new QPushButton(SaveSessionAction->text(), BasicGroup);
+  // upstream's split button with SaveDropDownMenu
+  SaveButton = new TSplitButton(BasicGroup);
+  SaveButton->setText(SaveSessionAction->text());
   SaveButton->setObjectName(QStringLiteral("SaveButton"));
   BindButton(SaveButton, SaveSessionAction);
+  QMenu * SaveDropDownMenu = new QMenu(SaveButton);
+  SaveDropDownMenu->setObjectName(QStringLiteral("SaveDropDownMenu"));
+  SaveDropDownMenu->addAction(SaveSessionAction);
+  SaveDropDownMenu->addAction(SaveAsSessionAction);
+  SaveDropDownMenu->addSeparator();
+  SaveDropDownMenu->addAction(SetDefaultSessionAction);
+  SaveButton->SetDropDownMenu(SaveDropDownMenu);
   SiteButtonsLayout->addWidget(SaveButton);
   EditButton = new QPushButton(EditSessionAction->text(), BasicGroup);
   EditButton->setObjectName(QStringLiteral("EditButton"));
@@ -391,32 +416,29 @@ void TLoginDialog::CreateControls()
 
   MainPanelLayout->addStretch(1);
 
+  // upstream's ButtonPanel: Login (with LoginDropDownMenu), Close, Help
   QHBoxLayout * ButtonLayout = new QHBoxLayout();
   MainPanelLayout->addLayout(ButtonLayout);
-  ToolsMenuButton = new QPushButton(tr("&Tools"), this);
-  ToolsMenuButton->setObjectName(QStringLiteral("ToolsMenuButton"));
-  ToolsPopupMenu = new QMenu(this);
-  ToolsPopupMenu->setObjectName(QStringLiteral("ToolsPopupMenu"));
-  ToolsPopupMenu->addAction(ImportSessionsAction);
-  ToolsPopupMenu->addSeparator();
-  ToolsPopupMenu->addAction(ImportAction);
-  ToolsPopupMenu->addAction(ExportAction);
-  ToolsPopupMenu->addAction(CleanUpAction);
-  ToolsPopupMenu->addSeparator();
-  ToolsPopupMenu->addAction(PreferencesAction);
-  ToolsPopupMenu->addAction(AboutAction);
-  ToolsMenuButton->setMenu(ToolsPopupMenu);
-  ButtonLayout->addWidget(ToolsMenuButton);
   ButtonLayout->addStretch(1);
-  LoginButton = new QPushButton(LoginAction->text(), this);
+  LoginButton = new TSplitButton(this);
+  LoginButton->setText(LoginAction->text());
   LoginButton->setObjectName(QStringLiteral("LoginButton"));
   LoginButton->setIcon(QIcon::fromTheme(QStringLiteral("network-connect")));
   BindButton(LoginButton, LoginAction);
+  QMenu * LoginDropDownMenu = new QMenu(LoginButton);
+  LoginDropDownMenu->setObjectName(QStringLiteral("LoginDropDownMenu"));
+  LoginDropDownMenu->addAction(LoginAction);
+  LoginDropDownMenu->addAction(PuttyAction);
+  LoginButton->SetDropDownMenu(LoginDropDownMenu);
   ButtonLayout->addWidget(LoginButton);
   CloseButton = new QPushButton(tr("Close"), this);
   CloseButton->setObjectName(QStringLiteral("CloseButton"));
   connect(CloseButton, &QPushButton::clicked, this, &QDialog::reject);
   ButtonLayout->addWidget(CloseButton);
+  HelpButton = new QPushButton(tr("Help"), this);
+  HelpButton->setObjectName(QStringLiteral("HelpButton"));
+  connect(HelpButton, &QPushButton::clicked, this, []() { ShowHelp(L"ui_login"); });
+  ButtonLayout->addWidget(HelpButton);
 
   for (QPushButton * Button : findChildren<QPushButton *>())
   {
