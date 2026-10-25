@@ -128,6 +128,13 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     QStringLiteral("view-refresh"), { QKeySequence(Qt::CTRL | Qt::Key_U) }, &TScpCommanderForm::SynchronizeActionExecute);
   ConsoleAction = CreateAction("ConsoleAction", tr("Open &Terminal"), QStringLiteral("utilities-terminal"),
     { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T) }, &TScpCommanderForm::ConsoleActionExecute);
+  CustomCommandsEnterAction = CreateAction("CustomCommandsEnterAction", tr("&Enter..."), QString(),
+    {}, &TScpCommanderForm::AdHocCustomCommand);
+  CustomCommandsLastAction = CreateAction("CustomCommandsLastAction", QStringLiteral("CustomCommandsLastAction"), QString(),
+    {}, &TScpCommanderForm::LastCustomCommand);
+  CustomCommandsLastAction->setVisible(false);
+  CustomCommandsCustomizeAction = CreateAction("CustomCommandsCustomizeAction", tr("&Customize..."), QString(),
+    {}, &TScpCommanderForm::CustomCommandsCustomize);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -136,6 +143,7 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   CreateMenus();
   CreateToolbars();
   UpdateBookmarkShortCuts();
+  UpdateCustomCommandShortCuts();
 
   FSessionStatusLabel = new QLabel(statusBar());
   FSessionStatusLabel->setObjectName(QStringLiteral("SessionStatusLabel"));
@@ -248,6 +256,13 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->addAction(FullSynchronizeAction2);
   CommandsMenu->addAction(SynchronizeAction);
   CommandsMenu->addSeparator();
+  QMenu * CustomCommandsMenu = CommandsMenu->addMenu(tr("&Custom Commands"));
+  CustomCommandsMenu->setObjectName(QStringLiteral("CustomCommandsMenu"));
+  connect(CustomCommandsMenu, &QMenu::aboutToShow, this, [this, CustomCommandsMenu]()
+  {
+    CustomCommandsMenu->clear();
+    CreateCustomCommandsMenu(CustomCommandsMenu);
+  });
   CommandsMenu->addAction(ConsoleAction);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
@@ -408,6 +423,7 @@ void TScpCommanderForm::ConfigurationChanged()
 {
   UpdateTransferList();
   UpdateBookmarkShortCuts();
+  UpdateCustomCommandShortCuts();
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateTransferList()
@@ -643,7 +659,7 @@ void TScpCommanderForm::closeEvent(QCloseEvent * Event)
   }
 }
 //---------------------------------------------------------------------------
-TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel)
+TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel, bool FullPath)
 {
   std::unique_ptr<TStringList> Result(new TStringList());
   for (int Row : Panel->GetSelectedRows())
@@ -655,7 +671,7 @@ TStrings * TScpCommanderForm::CreateFileList(TDirPanel * Panel)
     }
     else
     {
-      Result->AddObject(Item.File->FullFileName, Item.File);
+      Result->AddObject(FullPath ? Item.File->FullFileName : Item.File->FileName, Item.File);
     }
   }
   if (Panel == FRemotePanel)
@@ -868,7 +884,7 @@ TCopyParamType TScpCommanderForm::TemporaryFileCopyParam(bool ForceText)
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::TemporarilyDownloadFiles(TStrings * FileList, bool ForceText, UnicodeString & RootTempDir,
-  UnicodeString & TempDir)
+  UnicodeString & TempDir, bool AutoOperation)
 {
   TTerminal * Terminal = GetTerminal();
   TCopyParamType CopyParam = TemporaryFileCopyParam(ForceText);
@@ -882,8 +898,14 @@ void TScpCommanderForm::TemporarilyDownloadFiles(TStrings * FileList, bool Force
     throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (TempDir)));
   }
 
+  DebugAssert(!FAutoOperation);
+  FAutoOperation = AutoOperation;
   Terminal->ExceptionOnFail = true;
-  ::rtl::TFinally Finally([&]() { Terminal->ExceptionOnFail = false; });
+  ::rtl::TFinally Finally([&]()
+  {
+    FAutoOperation = false;
+    Terminal->ExceptionOnFail = false;
+  });
   try
   {
     // turn off confirmations, as for MDI editors we may possibly download

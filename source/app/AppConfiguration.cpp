@@ -4,9 +4,11 @@
 
 #include <Bookmarks.h>
 #include <Cryptography.h>
+#include <Terminal.h>
 #include <Security.h>
 
 #include "AppConfiguration.h"
+#include "CustomCommands.h"
 //---------------------------------------------------------------------------
 TAppConfiguration * AppConfiguration = NULL;
 //---------------------------------------------------------------------------
@@ -29,6 +31,8 @@ __fastcall TAppConfiguration::TAppConfiguration() :
   FHistory = new TStringList();
   FEmptyHistory = new TStringList();
   FBookmarks = new TBookmarks();
+  FCustomCommandList = new TCustomCommandList();
+  FCustomCommandsDefaults = true;
   Default();
 }
 //---------------------------------------------------------------------------
@@ -40,6 +44,7 @@ __fastcall TAppConfiguration::~TAppConfiguration()
   delete FHistory;
   delete FEmptyHistory;
   delete FBookmarks;
+  delete FCustomCommandList;
 }
 //---------------------------------------------------------------------------
 void TAppConfiguration::ClearHistory()
@@ -92,7 +97,33 @@ void __fastcall TAppConfiguration::Default()
   FUseSharedBookmarks = false;
 
   FBookmarks->Clear();
+  FCustomCommandsDefaults = true;
   DefaultHistory();
+}
+//---------------------------------------------------------------------------
+void __fastcall TAppConfiguration::DefaultLocalized()
+{
+  TGUIConfiguration::DefaultLocalized();
+
+  if (FCustomCommandsDefaults)
+  {
+    FCustomCommandList->Clear();
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_EXECUTE), L"\"./!\"", 0);
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_TOUCH), L"touch \"!\"", ccApplyToDirectories | ccRecursive);
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_TAR),
+      FORMAT(L"tar -cz  -f \"!?%s?archive.tgz!\" !&",
+        (LoadStr(CUSTOM_COMMAND_TAR_ARCHIVE))), ccApplyToDirectories);
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_UNTAR),
+      FORMAT(L"tar -xz --directory=\"!?%s?.!\" -f \"!\"",
+        (LoadStr(CUSTOM_COMMAND_UNTAR_DIRECTORY))), 0);
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_GREP),
+      FORMAT(L"grep \"!?%s?!\" !&", (LoadStr(CUSTOM_COMMAND_GREP_PATTERN))),
+      ccShowResults);
+    // OpenSCP: the printing of upstream ("notepad.exe /p") with CUPS
+    FCustomCommandList->Add(LoadStr(CUSTOM_COMMAND_PRINT), L"lp \"!\"", ccLocal);
+    FCustomCommandList->Reset();
+    FCustomCommandsDefaults = true;
+  }
 }
 //---------------------------------------------------------------------------
 UnicodeString TAppConfiguration::TemporaryDir(bool Mask)
@@ -163,6 +194,19 @@ void __fastcall TAppConfiguration::SaveData(THierarchicalStorage * Storage, bool
     ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
     FBookmarks->Save(Storage, All);
   }
+  if ((All && !FCustomCommandsDefaults) || FCustomCommandList->Modified)
+  {
+    FCustomCommandList->Save(Storage);
+
+    if (FCustomCommandList->Count == 0)
+    {
+      Storage->WriteBool(L"CustomCommandsNone", true);
+    }
+    else
+    {
+      Storage->DeleteValue(L"CustomCommandsNone");
+    }
+  }
 
   // As upstream's TCustomWinConfiguration
   if ((FHistory->Count > 0) && Storage->OpenSubKey(L"History", true))
@@ -193,6 +237,13 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
     ::rtl::TFinally Finally([&]() { Storage->CloseSubKey(); });
     FBookmarks->Load(Storage);
   }
+  if (Storage->KeyExists(L"CustomCommands") ||
+      Storage->ReadBool(L"CustomCommandsNone", false))
+  {
+    FCustomCommandList->Load(Storage);
+    FCustomCommandsDefaults = false;
+  }
+  FCustomCommandList->Reset();
 
   DefaultHistory();
   if (Storage->OpenSubKey(L"History", false))
@@ -225,6 +276,7 @@ void __fastcall TAppConfiguration::Saved()
 {
   TGUIConfiguration::Saved();
   FBookmarks->ModifyAll(false);
+  FCustomCommandList->Reset();
 }
 //---------------------------------------------------------------------------
 RawByteString __fastcall TAppConfiguration::StronglyRecryptPassword(RawByteString Password, UnicodeString Key)
@@ -443,4 +495,48 @@ void TAppConfiguration::SetSharedBookmarks(TBookmarkList * value)
 {
   FBookmarks->SharedBookmarks = value;
   Changed();
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::SetCustomCommandList(TCustomCommandList * value)
+{
+  if (!FCustomCommandList->Equals(value))
+  {
+    FCustomCommandList->Assign(value);
+    FCustomCommandsDefaults = false;
+    Changed();
+  }
+}
+//---------------------------------------------------------------------------
+void TAppConfiguration::CustomCommandShortCuts(TShortCuts & ShortCuts) const
+{
+  FCustomCommandList->ShortCuts(ShortCuts);
+}
+//---------------------------------------------------------------------------
+UnicodeString TAppConfiguration::GetValidHistoryKey(UnicodeString Key)
+{
+  for (int Index = 1; Index <= Key.Length(); Index++)
+  {
+    if (!IsLetter(Key[Index]) && !IsDigit(Key[Index]))
+    {
+      Key[Index] = L'_';
+    }
+  }
+
+  while (!Key.IsEmpty() && (Key[1] == L'_'))
+  {
+    Key.Delete(1, 1);
+  }
+
+  while (!Key.IsEmpty() && (Key[Key.Length()] == L'_'))
+  {
+    Key.Delete(Key.Length(), 1);
+  }
+
+  int P;
+  while ((P = Key.Pos(L"__")) > 0)
+  {
+    Key.Delete(P, 1);
+  }
+
+  return Key;
 }

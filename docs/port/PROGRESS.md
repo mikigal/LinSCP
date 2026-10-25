@@ -50,6 +50,13 @@ Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit
 - The console (`TConsoleDialog`, Ctrl+Shift+T): commands in the shell of the session (the
   separate shell session where the protocol has none), the panel follows a changed
   directory.
+- Custom commands (`app/CustomCommands.cpp`, `views/ScpCommanderCustomCommands.cpp`): the
+  list under the keys of upstream (`CustomCommands`, with upstream's defaults), the
+  Commands > Custom Commands menu with "Enter..." (ad hoc) and the last command, their
+  shortcuts, the command dialog (`TCustomCommandDialog`) and the parameters prompted for.
+  Remote commands run in the shell of the session (results in the console or the
+  clipboard); local commands on local files, or on remote files downloaded to a temporary
+  directory and uploaded back once changed.
 
 Decisions:
 
@@ -68,6 +75,11 @@ Decisions:
   moving, exploring and custom commands of the checklist.
 - A dialog that grows (the log of keeping up to date) corrects a size the compositor sets
   from before (KWin re-sends the old size when it activates the window).
+- Local custom commands (and other local programs) run by `/bin/sh -c`, as typed in a
+  terminal; upstream's default "Print" command (`notepad.exe /p`) is `lp` (CUPS). The
+  extensions (`.WinSCPextension`, PowerShell scripts) are not supported. Until the
+  preferences (M8), Commands > Custom Commands > Customize opens their list in a dialog of
+  its own (`TCustomCommandsDialog`, the "Commands" page of upstream's preferences).
 
 Manual edits in upstream directories since M5:
 

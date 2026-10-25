@@ -992,6 +992,90 @@ class GuiSshTest(GuiTestCase):
                      'the remote directory')
         self.assertEqual(gui.quit(), 0)
 
+    def test_custom_commands(self):
+        remote = self.work_dir('remote')
+        (remote / 'a.txt').write_text('one\ntwo\nthree\n')
+        local = self.work_dir('local')
+        (local / 'l.txt').write_text('local')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        # The defaults, a new command with a shortcut
+        L = 'CustomCommandsDialog/'
+        D = 'CustomCommandDialog/'
+        gui.trigger(W + 'CustomCommandsCustomizeAction')
+        gui.wait_window('CustomCommandsDialog')
+        self.assertEqual(gui.names(L + 'CustomCommandsView')[:3], ['Execute', 'Touch', 'Tar/GZip...'])
+        self.assertEqual(gui.rows(L + 'CustomCommandsView')[-1], ['Print', 'lp "!"', 'L'])
+        gui.click(L + 'AddCommandButton')
+        gui.wait_window('CustomCommandDialog')
+        gui.set(D + 'DescriptionEdit', 'Lines')
+        gui.set(D + 'CommandEdit', 'wc -l "!"')
+        gui.set(D + 'RemoteCommandButton', True)
+        gui.set(D + 'ShowResultsCheck', True)
+        gui.set(D + 'ShortCutCombo', 'Ctrl+2')
+        self.screenshot('custom_command')
+        gui.click(D + 'OkButton')
+        gui.wait_no_window('CustomCommandDialog')
+        self.assertEqual(gui.rows(L + 'CustomCommandsView')[-1], ['Lines', 'wc -l "!"', 'R'])
+        gui.click(L + 'OKButton')
+        gui.wait_no_window('CustomCommandsDialog')
+
+        # By its shortcut, the results in the console
+        self.select(gui, 'Remote', 'a.txt')
+        self.session.input('key', 'ctrl+2')
+        # SFTP has no shell; the separate shell session is confirmed
+        gui.wait_window('MessageForm')
+        gui.click('MessageForm/OK')
+        gui.wait_window('ConsoleDialog', 60)
+        self.assertIn('3 a.txt', gui.get('ConsoleDialog/OutputMemo')['text'])
+        gui.click('ConsoleDialog/CancelBtn')
+        gui.wait_no_window('ConsoleDialog')
+
+        # An ad hoc remote command
+        self.select(gui, 'Remote', 'a.txt')
+        gui.trigger(W + 'CustomCommandsEnterAction')
+        gui.wait_window('CustomCommandDialog')
+        self.assertFalse(gui.get(D + 'DescriptionEdit')['visible'])
+        gui.set(D + 'RemoteCommandButton', True)
+        gui.set(D + 'CommandEdit', 'cp "!" "!.copy"')
+        gui.click(D + 'OkButton')
+        gui.wait_no_window('CustomCommandDialog')
+        gui.wait_for(lambda: (remote / 'a.txt.copy').exists(), 60, 'the remote copy')
+
+        # A local command on a remote file, with a parameter: downloaded,
+        # changed and uploaded back
+        self.select(gui, 'Remote', 'a.txt')
+        gui.trigger(W + 'CustomCommandsEnterAction')
+        gui.wait_window('CustomCommandDialog')
+        gui.set(D + 'LocalCommandButton', True)
+        gui.set(D + 'CommandEdit', 'sed -i "s/two/!?Replacement:?X!/" "!"')
+        gui.click(D + 'OkButton')
+        gui.wait_window('CustomCommandPromptsDialog')
+        self.assertEqual(gui.get('CustomCommandPromptsDialog/PromptEdit0')['text'], 'X')
+        gui.set('CustomCommandPromptsDialog/PromptEdit0', 'TWO')
+        gui.click('CustomCommandPromptsDialog/OKButton')
+        # The changed file overwrites the remote one (as upstream asks)
+        gui.wait_window('MessageForm', 60)
+        self.assertEqual(gui.get('MessageForm/MainMessage')['text'], "Overwrite remote file 'a.txt'?")
+        gui.click('MessageForm/Yes')
+        gui.wait_for(lambda: (remote / 'a.txt').read_text() == 'one\nTWO\nthree\n', 60, 'the changed file')
+
+        # A local command on the local files
+        self.select(gui, 'Local', 'l.txt')
+        gui.trigger(W + 'CustomCommandsEnterAction')
+        gui.wait_window('CustomCommandDialog')
+        self.assertFalse(gui.get(D + 'RemoteCommandButton')['enabled'])
+        self.assertTrue(gui.get(D + 'LocalCommandButton')['checked'])
+        gui.set(D + 'CommandEdit', 'cp "!" "!.bak"')
+        gui.click(D + 'OkButton')
+        gui.wait_for(lambda: (local / 'l.txt.bak').exists(), 60, 'the local copy')
+        self.assertEqual(gui.quit(), 0)
+
+        config = gui.config_file.read_text()
+        self.assertIn('Lines=wc%20-l%20"!"', config)
+        self.assertIn('Lines=16434', config)
+
     def test_connection_refused(self):
         with __import__('socket').socket() as probe:
             probe.bind(('127.0.0.1', 0))

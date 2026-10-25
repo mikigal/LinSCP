@@ -10,6 +10,7 @@
 //---------------------------------------------------------------------------
 class TBookmarks;
 class TBookmarkList;
+class TCustomCommandList;
 typedef TMethodPtr<void()> TMasterPasswordPromptEvent;
 // When the queue list is shown (upstream's WinConfiguration.h)
 enum TQueueViewShow : int { qvShow, qvHideWhenEmpty, qvHide };
@@ -63,6 +64,12 @@ public:
   void SetBookmarks(UnicodeString Key, TBookmarkList * value);
   TBookmarkList * GetSharedBookmarks();
   void SetSharedBookmarks(TBookmarkList * value);
+  TCustomCommandList * GetCustomCommandList() const { return FCustomCommandList; }
+  void SetCustomCommandList(TCustomCommandList * value);
+  // The shortcuts used by the custom commands
+  void CustomCommandShortCuts(TShortCuts & ShortCuts) const;
+  // A name of a history from any text (letters and digits only)
+  UnicodeString GetValidHistoryKey(UnicodeString Key);
   // The history of a combo box (upstream's TCustomWinConfiguration::History)
   TStrings * GetHistory(const UnicodeString Index);
   void SetHistory(const UnicodeString Index, TStrings * value);
@@ -102,6 +109,8 @@ public:
   // The bookmarks of a site (by its session key), copied when set
   __declspec(property(get = GetBookmarks, put = SetBookmarks)) TBookmarkList * Bookmarks[];
   __declspec(property(get = GetSharedBookmarks, put = SetSharedBookmarks)) TBookmarkList * SharedBookmarks;
+  // Copied when set
+  __declspec(property(get = GetCustomCommandList, put = SetCustomCommandList)) TCustomCommandList * CustomCommandList;
   __declspec(property(get = GetOnMasterPasswordPrompt, put = SetOnMasterPasswordPrompt))
     TMasterPasswordPromptEvent OnMasterPasswordPrompt;
 
@@ -109,6 +118,7 @@ protected:
   virtual void __fastcall SaveData(THierarchicalStorage * Storage, bool All);
   virtual void __fastcall LoadData(THierarchicalStorage * Storage);
   virtual void __fastcall Saved();
+  virtual void __fastcall DefaultLocalized();
   virtual THierarchicalStorage * CreateScpStorage(bool & SessionList);
   virtual UnicodeString __fastcall DecryptPassword(RawByteString Password, UnicodeString Key);
   virtual RawByteString __fastcall StronglyRecryptPassword(RawByteString Password, UnicodeString Key);
@@ -139,6 +149,9 @@ private:
   bool FUseLocationProfiles;
   bool FUseSharedBookmarks;
   TBookmarks * FBookmarks;
+  TCustomCommandList * FCustomCommandList;
+  // The default commands, not stored
+  bool FCustomCommandsDefaults;
 
   void __fastcall AskForMasterPassword();
   void ClearHistory();

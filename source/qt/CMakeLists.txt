@@ -6,6 +6,7 @@ find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
 
 add_library(openscp_qt STATIC
   app/LocalFiles.cpp
+  app/LocalProcesses.cpp
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
@@ -16,6 +17,7 @@ add_library(openscp_qt STATIC
   dialogs/CopyDialog.cpp
   dialogs/CopyParamDialogs.cpp
   dialogs/CopyParamsFrame.cpp
+  dialogs/CustomCommandDialog.cpp
   dialogs/CustomDialog.cpp
   dialogs/EditMaskDialog.cpp
   dialogs/FileFindDialog.cpp
@@ -37,6 +39,7 @@ add_library(openscp_qt STATIC
   views/QueueController.cpp
   views/ScpCommander.cpp
   views/ScpCommanderBookmarks.cpp
+  views/ScpCommanderCustomCommands.cpp
   views/ScpCommanderQueue.cpp
   views/ScpCommanderSynchronize.cpp)
 

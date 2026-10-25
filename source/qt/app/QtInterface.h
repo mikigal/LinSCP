@@ -6,13 +6,18 @@
 //---------------------------------------------------------------------------
 #include <AppPCH.h>
 
+#include <FileMasks.h>
 #include <SessionInfo.h>
 #include <SynchronizeController.h>
 #include <Terminal.h>
 
 #include <functional>
+#include <map>
+#include <vector>
 //---------------------------------------------------------------------------
 class TCopyParamList;
+class TCustomCommandList;
+class TCustomCommandType;
 class TFileMasks;
 class TRemoteTokenList;
 class TTerminal;
@@ -148,6 +153,45 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
 // dialogs/ConsoleDialog.cpp
 void DoConsoleDialog(TTerminal * Terminal, const UnicodeString & Command = UnicodeString(),
   const TStrings * Log = NULL);
+
+// app/LocalProcesses.cpp (the commands are run by /bin/sh)
+void ExecuteShellChecked(const UnicodeString & Command);
+void ExecuteShellCheckedAndWait(const UnicodeString & Command);
+void ExecuteProcessAndReadOutput(const UnicodeString & Command, UnicodeString & Output, int & ExitCode, bool ReadStdErr);
+// With the output, the command fails when it exits with an error
+void ExecuteProcessChecked(const UnicodeString & Command, UnicodeString * Output);
+void ExecuteProcessCheckedAndWait(const UnicodeString & Command, UnicodeString * Output);
+
+// dialogs/CustomCommandDialog.cpp
+enum TCustomCommandsMode { ccmAdd, ccmEdit, ccmAdHoc };
+const int ccoDisableRemote = 0x01;
+const int ccoDisableRemoteFiles = 0x02;
+typedef std::function<void(const TCustomCommandType & Command)> TCustomCommandValidate;
+bool DoCustomCommandDialog(TCustomCommandType & Command, const TCustomCommandList * CustomCommandList,
+  TCustomCommandsMode Mode, int Options, TCustomCommandValidate OnValidate, const TShortCuts * ShortCuts);
+// The list of the custom commands (upstream has it in the preferences)
+bool DoCustomCommandsDialog();
+// The prompts of the custom commands in one dialog, the output of local
+// commands
+class TWinInteractiveCustomCommand : public TInteractiveCustomCommand
+{
+public:
+  TWinInteractiveCustomCommand(TCustomCommand * ChildCustomCommand, const UnicodeString & CustomCommandName);
+
+protected:
+  virtual void __fastcall Prompt(int Index, const UnicodeString & Prompt, UnicodeString & Value) override;
+  virtual void __fastcall Execute(const UnicodeString & Command, UnicodeString & Value) override;
+  virtual void __fastcall PatternHint(int Index, const UnicodeString & Pattern) override;
+
+private:
+  UnicodeString FCustomCommandName;
+  std::map<int, size_t> FIndexes;
+  std::vector<UnicodeString> FPrompts;
+  std::vector<UnicodeString> FDefaults;
+  std::vector<UnicodeString> FValues;
+};
+// Which of the custom commands are listed
+enum TCustomCommandListType { ccltAll, ccltFile, ccltNonFile, ccltBoth };
 
 // dialogs/OpenDirectoryDialog.cpp
 enum TOpenDirectoryMode { odBrowse, odAddBookmark };

@@ -9,6 +9,7 @@
 #include <QtInterface.h>
 
 #include <AppConfiguration.h>
+#include <CustomCommands.h>
 #include <FileOperationProgress.h>
 #include <Queue.h>
 
@@ -100,6 +101,10 @@ private:
   std::function<void()> FOnSynchronizeAbort;
   // The shortcuts of the shared bookmarks
   std::vector<QAction *> FBookmarkShortCutActions;
+  // The custom commands
+  TCustomCommandType FLastCustomCommand;
+  std::unique_ptr<TStrings> FCapturedLog;
+  std::vector<QAction *> FCustomCommandShortCutActions;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -135,6 +140,9 @@ private:
   QAction * FullSynchronizeAction2;
   QAction * SynchronizeAction;
   QAction * ConsoleAction;
+  QAction * CustomCommandsEnterAction;
+  QAction * CustomCommandsLastAction;
+  QAction * CustomCommandsCustomizeAction;
   QAction * ShowHiddenFilesAction;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
@@ -170,7 +178,7 @@ private:
   TDirPanel * Panel(TOperationSide Side) const;
   TTerminal * GetTerminal() const;
   // The selected files of the panel: full paths (and the remote files)
-  TStrings * CreateFileList(TDirPanel * Panel);
+  TStrings * CreateFileList(TDirPanel * Panel, bool FullPath = true);
   void DestroyProgressForm();
   void CreateProgressForm(TSynchronizeProgress * SynchronizeProgress);
   void Idle();
@@ -272,6 +280,28 @@ private:
   void CreateOpenDirMenuList(QMenu * Menu, TOperationSide Side, TBookmarkList * BookmarkList, bool Shared);
   void CreateOpenDirMenu(TDirPanel * APanel, QMenu * Menu);
   void UpdateBookmarkShortCuts();
+  // The custom commands (ScpCommanderCustomCommands.cpp)
+  bool CustomCommandRemoteAllowed();
+  bool AnyFileSelected(TDirPanel * APanel);
+  int CustomCommandState(const TCustomCommandType & Command, TCustomCommandListType ListType);
+  void TerminalCaptureLog(const UnicodeString & AddedLine, TCaptureOutputType OutputType);
+  void RemoteCustomCommand(TStrings * FileList, const TCustomCommandType & ACommand,
+    const TCustomCommandData & Data, const UnicodeString & CommandCommand);
+  UnicodeString DefaultDownloadTargetDirectory();
+  void LocalCustomCommandPure(TStrings * FileList, const TCustomCommandType & ACommand, const UnicodeString & Command,
+    TStrings * ALocalFileList, const TCustomCommandData & Data, bool LocalFileCommand, bool FileListCommand,
+    UnicodeString * POutput);
+  void LocalCustomCommandWithLocalFiles(const TCustomCommandType & ACommand, const UnicodeString & Command,
+    const TCustomCommandData & Data, bool FileListCommand, UnicodeString * POutput);
+  void LocalCustomCommand(TStrings * FileList, const TCustomCommandType & ACommand, TStrings * ALocalFileList,
+    const TCustomCommandData & Data, const UnicodeString & CommandCommand);
+  void CustomCommand(TStrings * FileList, const TCustomCommandType & ACommand, TStrings * ALocalFileList);
+  void ExecuteCustomCommand(const TCustomCommandType & Command);
+  void AdHocCustomCommand();
+  void LastCustomCommand();
+  void CustomCommandsCustomize();
+  void CreateCustomCommandsMenu(QMenu * Menu);
+  void UpdateCustomCommandShortCuts();
   void DeleteFiles(bool Alternative);
   bool DeleteFiles(TOperationSide Side, TStrings * FileList, bool Alternative);
   void ExecuteCopyMoveFileOperation(TFileOperation Operation);
@@ -287,7 +317,7 @@ private:
   TCopyParamType TemporaryFileCopyParam(bool ForceText);
   // Downloads the files to a new temporary directory
   void TemporarilyDownloadFiles(TStrings * FileList, bool ForceText, UnicodeString & RootTempDir,
-    UnicodeString & TempDir);
+    UnicodeString & TempDir, bool AutoOperation = false);
   void RenameFile(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName);
   bool SetProperties(TDirPanel * Panel, TStrings * FileList);
   void CalculateSize(TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close);

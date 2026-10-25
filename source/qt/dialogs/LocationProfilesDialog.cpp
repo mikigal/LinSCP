@@ -1106,8 +1106,8 @@ void TLocationProfilesDialog::ShortCutBookmarkButtonClick(TProfilesPage & Page)
   TBookmark * Bookmark = GetBookmark(Item);
   DebugAssert(Bookmark != NULL);
 
-  // Upstream also excludes the shortcuts of the custom commands
   TShortCuts ShortCuts;
+  AppConfiguration->CustomCommandShortCuts(ShortCuts);
   Page.BookmarkList->ShortCuts(ShortCuts);
   TShortCut ShortCut = Bookmark->ShortCut;
   if (DoShortCutDialog(ShortCut, ShortCuts))
