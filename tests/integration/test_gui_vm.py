@@ -121,7 +121,7 @@ class GuiVmTest(GuiTestCase):
         gui.set('AuthenticateForm/PromptEdit1', setting('SSH_PASSWORD'))
         gui.click('AuthenticateForm/PasswordOKButton')
         gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
-        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], vmtests.VM.user_home(setting('SSH_KBD_USER')))
+        self.assertEqual(gui.get(W + 'RemotePathLabel')['text'], vmtests.VM.user_home(setting('SSH_KBD_USER')))
         self.assertEqual(gui.quit(), 0)
 
     def test_cancelled_prompt(self):

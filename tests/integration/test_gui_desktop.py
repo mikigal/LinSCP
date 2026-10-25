@@ -302,7 +302,7 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
 
     def wait_remote_directory(self, gui, path):
         gui.wait_for(lambda: gui.get(W + 'RemoteDirView')['visible'], 60, 'the remote panel')
-        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(path), what='the remote directory')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathLabel')['text'] == str(path), what='the remote directory')
         gui.wait_idle()
 
     def run_instance(self, *args, timeout=60):

@@ -61,6 +61,7 @@ add_library(openscp_qt STATIC
   models/DirModel.cpp
   views/DirPanel.cpp
   views/DirTree.cpp
+  views/PathLabel.cpp
   views/QueueController.cpp
   views/ScpCommander.cpp
   views/ScpCommanderBookmarks.cpp

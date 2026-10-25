@@ -127,12 +127,13 @@ class GuiSshTest(GuiSshTestCase):
         remote = self.work_dir('remote')
         (remote / 'file.txt').write_text('content')
         combo = W + 'RemotePathComboBox'
+        label = W + 'RemotePathLabel'
         gui.set(combo, str(remote))
         gui.key('Return', combo)
-        gui.wait_for(lambda: gui.get(combo)['text'] == str(remote), what='the remote directory')
+        gui.wait_for(lambda: gui.get(label)['text'] == str(remote), what='the remote directory')
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'file.txt'])
         gui.trigger(W + 'RemoteBackAction')
-        gui.wait_for(lambda: gui.get(combo)['text'] != str(remote), what='going back')
+        gui.wait_for(lambda: gui.get(label)['text'] != str(remote), what='going back')
 
         # A disconnected session keeps its tab; the host key is cached: no
         # prompt the next time
@@ -169,8 +170,8 @@ class GuiSshTest(GuiSshTestCase):
 
         gui = self.start_gui(ini=site_ini(remote=remote, local=local))
         self.login(gui, 'local')
-        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote))
-        self.assertEqual(gui.get(W + 'LocalPathComboBox')['text'], str(local))
+        self.assertEqual(gui.get(W + 'RemotePathLabel')['text'], str(remote))
+        self.assertEqual(gui.get(W + 'LocalPathLabel')['text'], str(local))
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'download.txt'])
         self.assertEqual(gui.names(W + 'LocalDirView'), ['..', 'sub', 'upload.txt'])
         self.assertEqual(gui.get(W + 'LocalStatusBar')['text'], '0 B of 300 KB in 0 of 2')
@@ -227,7 +228,7 @@ class GuiSshTest(GuiSshTestCase):
         # Into a directory and up: the directory is focused
         gui.activate(W + 'RemoteDirView', 'created')
         gui.wait_idle()
-        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote / 'created'))
+        self.assertEqual(gui.get(W + 'RemotePathLabel')['text'], str(remote / 'created'))
         gui.activate(W + 'RemoteDirView', '..')
         gui.wait_idle()
         current = [row['cells'][0] for row in gui.get(W + 'RemoteDirView')['rows'] if row['current']]
@@ -684,7 +685,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.wait_idle()
         gui.trigger(F + 'FocusAction')
         gui.wait_idle()
-        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote / 'sub' / 'deeper'))
+        self.assertEqual(gui.get(W + 'RemotePathLabel')['text'], str(remote / 'sub' / 'deeper'))
         current = [row['cells'][0] for row in gui.get(W + 'RemoteDirView')['rows'] if row['current']]
         self.assertEqual(current, ['d.txt'])
 
@@ -881,7 +882,7 @@ class GuiSshTest(GuiSshTestCase):
         self.login(gui, 'local')
 
         def path(side):
-            return gui.get(W + side + 'PathComboBox')['text']
+            return gui.get(W + side + 'PathLabel')['text']
 
         def wait_path(side, expected):
             gui.wait_for(lambda: path(side) == str(expected), 30, 'the %s directory %s' % (side, expected))
@@ -1005,7 +1006,7 @@ class GuiSshTest(GuiSshTestCase):
         gui.click(C + 'CancelBtn')
         gui.wait_no_window('ConsoleDialog')
         # The panel follows the directory changed in the console
-        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'sub'), 30,
+        gui.wait_for(lambda: gui.get(W + 'RemotePathLabel')['text'] == str(remote / 'sub'), 30,
                      'the remote directory')
         self.assertEqual(gui.quit(), 0)
 
@@ -1179,8 +1180,8 @@ class GuiSshTest(GuiSshTestCase):
         (local2 / 'sub').mkdir()
         gui = self.start_gui(ini=site_ini('first', remote=one, local=local1) + site_ini('second', remote=two, local=local2))
         tabs = W + 'SessionsPageControl'
-        remote_path = W + 'RemotePathComboBox'
-        local_path = W + 'LocalPathComboBox'
+        remote_path = W + 'RemotePathLabel'
+        local_path = W + 'LocalPathLabel'
         self.login(gui, 'first')
         self.assertEqual(gui.get(tabs)['items'], ['first', ''])
         self.assertEqual(gui.get(tabs)['index'], 0)
@@ -1289,7 +1290,7 @@ class GuiSshTest(GuiSshTestCase):
         (two / 'dir').mkdir()
         gui = self.start_gui(ini=site_ini('first', remote=one) + site_ini('second', remote=two))
         tabs = W + 'SessionsPageControl'
-        remote_path = W + 'RemotePathComboBox'
+        remote_path = W + 'RemotePathLabel'
         self.login(gui, 'first')
         gui.trigger(W + 'NewSessionAction')
         gui.wait_window('LoginDialog')
@@ -1573,7 +1574,7 @@ class GuiSshTest(GuiSshTestCase):
         self.screenshot('site_color')
 
         self.login(gui, 'local')
-        self.assertEqual(gui.get(W + 'RemotePathComboBox')['text'], str(remote / 'sub'))
+        self.assertEqual(gui.get(W + 'RemotePathLabel')['text'], str(remote / 'sub'))
         self.assertEqual(gui.names(W + 'RemoteDirView'), ['..', 'inner.txt'])
         self.assertEqual(gui.quit(), 0)
 
@@ -1598,10 +1599,10 @@ class GuiSshTest(GuiSshTestCase):
         self.assertEqual(tree(), ['/'])
         self.screenshot('remote_tree')
         gui.activate(W + 'RemoteDirView', 'one')
-        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'one'), what='the directory')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathLabel')['text'] == str(remote / 'one'), what='the directory')
         # A directory of the tree is opened
         gui.select(W + 'RemoteDriveView', ['/'] + list(remote.parts[1:]))
-        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote), what='the directory of the tree')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathLabel')['text'] == str(remote), what='the directory of the tree')
 
         # Sorted by size, the extension column shown
         gui.focus(W + 'RemoteDirView')
@@ -1878,7 +1879,7 @@ class GuiSshTest(GuiSshTestCase):
 
         # The caches are cleared
         gui.activate(W + 'RemoteDirView', 'sub')
-        gui.wait_for(lambda: gui.get(W + 'RemotePathComboBox')['text'] == str(remote / 'sub'), what='the subdirectory')
+        gui.wait_for(lambda: gui.get(W + 'RemotePathLabel')['text'] == str(remote / 'sub'), what='the subdirectory')
         gui.wait_idle()
         self.assertTrue(gui.get(W + 'ClearCachesAction')['enabled'])
         gui.trigger(W + 'ClearCachesAction')
@@ -1992,8 +1993,8 @@ class GuiSshTest(GuiSshTestCase):
         (local / 'sub').mkdir()
         gui = self.start_gui(ini=site_ini(remote=remote, local=local))
         self.login(gui, 'local')
-        remote_path = W + 'RemotePathComboBox'
-        local_path = W + 'LocalPathComboBox'
+        remote_path = W + 'RemotePathLabel'
+        local_path = W + 'LocalPathLabel'
         gui.trigger(W + 'SynchronizeBrowsingAction2')
         self.assertTrue(gui.get(W + 'SynchronizeBrowsingAction2')['checked'])
 

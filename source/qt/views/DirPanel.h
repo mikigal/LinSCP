@@ -21,6 +21,7 @@
 #include <vector>
 //---------------------------------------------------------------------------
 class QAction;
+class QIcon;
 class QComboBox;
 class QDropEvent;
 class QFileSystemWatcher;
@@ -40,6 +41,7 @@ class TLocalDirTree;
 class TRemoteDirTree;
 class TRemoteFile;
 class TTerminal;
+class TPathLabel;
 class TToolbar;
 class TToolbarDock;
 //---------------------------------------------------------------------------
@@ -199,9 +201,10 @@ public:
   void SetMask(const UnicodeString & Mask);
   UnicodeString GetMask() const;
   void SetRefreshShortCut(const QKeySequence & ShortCut);
-  // The address shows the name of the directory only (upstream's
-  // ShowFullAddress of the Explorer)
-  void SetShowFullAddress(bool Value);
+  // The path combo box is the Explorer's address bar, its full path or the
+  // name of the directory only (upstream's ShowFullAddress), else as
+  // upstream's Commander's (the drives or the directories of the path)
+  void SetAddressBar(bool AddressBar, bool ShowFullAddress);
   // The toolbars above the panel (upstream's top dock of the panel), its
   // own ones and the window's
   TToolbarDock * GetTopDock() const { return FTopDock; }
@@ -211,6 +214,8 @@ public:
   // The drop down menu of the filter button
   QMenu * GetFilterMenu() const { return FilterMenu; }
   QAction * GetTreeAction() const { return TreeAction; }
+  // The path above the files (upstream's path label)
+  TPathLabel * GetPathLabel() const { return FPathLabel; }
   QAction * GetStatusBarAction() const { return StatusBarAction; }
 
   // The menu of the panel (upstream's Local and Remote menus: Go To, the
@@ -274,6 +279,9 @@ Q_SIGNALS:
 
 protected:
   TToolbarDock * FTopDock;
+  TPathLabel * FPathLabel;
+  // What the path combo box shows (a path is typed instead)
+  QString FComboDisplayText;
   TToolbar * PathToolbar;
   TToolbar * HistoryToolbar;
   TToolbar * NavigationToolbar;
@@ -311,6 +319,10 @@ protected:
   void InitTree(QWidget * Tree);
   // The tree shows the directory
   virtual void UpdateTree() = 0;
+  // The items of the path combo box for the path, the current one selected
+  virtual void FillPathComboBox(const UnicodeString & Path) = 0;
+  void AddPathComboItem(const QIcon & Icon, const QString & Caption, const UnicodeString & Path, int Level);
+  void UpdatePathComboBox();
   virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const = 0;
   // The directory changed: the history, the path box, the focus
   void PathChanged();
@@ -333,12 +345,15 @@ private:
   std::unordered_set<UnicodeString> FSavedNames;
   bool FUpdatingPath;
   bool FShowFullAddress;
+  bool FAddressBar;
   UnicodeString FFileColors;
 
   QAction * CreateAction(const QString & Name, const QString & Caption, const QString & IconName,
     const QKeySequence & ShortCut, void (TDirPanel::*Method)());
   void PathComboActivated();
+  void PathComboItemActivated(int Index);
   void FillHistoryMenu(QMenu * Menu, bool Back);
+  void UpdatePathLabelStatus();
   // Selects or unselects the rows
   void SelectRows(const std::vector<int> & Rows, bool Select);
   void CreateSortMenu(const QString & Prefix);
@@ -371,6 +386,7 @@ public:
 protected:
   virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const override;
   virtual void UpdateTree() override;
+  virtual void FillPathComboBox(const UnicodeString & Path) override;
 
 private:
   TLocalDirModel * FLocalModel;
@@ -406,6 +422,7 @@ public:
 protected:
   virtual bool IsColumnHiddenByDefault(TDirViewColumn Column) const override;
   virtual void UpdateTree() override;
+  virtual void FillPathComboBox(const UnicodeString & Path) override;
 
 Q_SIGNALS:
   void NewSessionRequested();

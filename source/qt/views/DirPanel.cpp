@@ -6,10 +6,12 @@
 #include <RemoteFiles.h>
 #include <Terminal.h>
 #include <TextsWin.h>
+#include <Translations.h>
 
 #include "DirModel.h"
 #include "DirPanel.h"
 #include "DirTree.h"
+#include "PathLabel.h"
 #include "Toolbars.h"
 
 #include <QAbstractItemDelegate>
@@ -37,6 +39,8 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStandardPaths>
+#include <QStorageInfo>
 #include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolBar>
@@ -55,6 +59,36 @@ public:
     QWidget * Editor = QStyledItemDelegate::createEditor(Parent, Option, Index);
     Editor->setObjectName(QStringLiteral("RenameEdit"));
     return Editor;
+  }
+};
+//---------------------------------------------------------------------------
+// The directory of an item of the path combo box, its level in the path
+const int PathComboPathRole = Qt::UserRole;
+const int PathComboLevelRole = Qt::UserRole + 1;
+//---------------------------------------------------------------------------
+// The items of the path combo boxes indented by their levels (upstream's
+// RemotePathComboBoxDrawItem)
+class TPathComboDelegate : public QStyledItemDelegate
+{
+public:
+  explicit TPathComboDelegate(QObject * Parent) : QStyledItemDelegate(Parent) {}
+
+  virtual void paint(QPainter * Painter, const QStyleOptionViewItem & Option, const QModelIndex & Index) const override
+  {
+    QStyleOptionViewItem IndentedOption = Option;
+    IndentedOption.rect.adjust(Indent(Index), 0, 0, 0);
+    QStyledItemDelegate::paint(Painter, IndentedOption, Index);
+  }
+
+  virtual QSize sizeHint(const QStyleOptionViewItem & Option, const QModelIndex & Index) const override
+  {
+    return QStyledItemDelegate::sizeHint(Option, Index) + QSize(Indent(Index), 0);
+  }
+
+private:
+  static int Indent(const QModelIndex & Index)
+  {
+    return 10 * Index.data(PathComboLevelRole).toInt();
   }
 };
 //---------------------------------------------------------------------------
@@ -525,7 +559,8 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   FHistoryIndex(-1),
   FNavigatingHistory(false),
   FUpdatingPath(false),
-  FShowFullAddress(true)
+  FShowFullAddress(true),
+  FAddressBar(false)
 {
   QString Prefix = (Side == osLocal) ? QStringLiteral("Local") : QStringLiteral("Remote");
   setObjectName(Prefix + QStringLiteral("Panel"));
@@ -539,6 +574,28 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   // own and arranges them
   FTopDock = new TToolbarDock(Prefix + QStringLiteral("TopDock"), this);
   Layout->addWidget(FTopDock);
+  // The full path above the files (upstream's LocalPathLabel and
+  // RemotePathLabel)
+  FPathLabel = new TPathLabel(this);
+  FPathLabel->setObjectName(Prefix + QStringLiteral("PathLabel"));
+  Layout->addWidget(FPathLabel);
+  connect(FPathLabel, &TPathLabel::PathClicked, this, [this](const QString & Path)
+  {
+    ExecuteHandler([this, Path]()
+    {
+      // upstream's DoPathLabelPathClick
+      if (IsReady() && (ToUnicodeString(Path) != GetPath()))
+      {
+        ChangeDirectory(ToUnicodeString(Path));
+      }
+      DirView->setFocus();
+    });
+  });
+  connect(FPathLabel, &TPathLabel::MaskClicked, this, [this]() { ExecuteHandler([this]() { Filter(); }); });
+  connect(FPathLabel, &TPathLabel::DoubleClicked, this, [this]() { Q_EMIT OpenDirectoryRequested(this); });
+  // Active with the focus in the files or the tree of the panel (not once
+  // the label is freed with the panel, while the focus moves)
+  connect(qApp, &QApplication::focusChanged, FPathLabel, [this]() { UpdatePathLabelStatus(); });
   PathToolbar = new TToolbar(Prefix + QStringLiteral("PathToolbar"),
     (Side == osLocal) ? tr("Local Path") : tr("Remote Path"), this);
   FTopDock->AddToolbar(PathToolbar, true);
@@ -554,9 +611,14 @@ TDirPanel::TDirPanel(TOperationSide Side, QWidget * Parent) :
   PathComboBox->setEditable(true);
   PathComboBox->setInsertPolicy(QComboBox::NoInsert);
   PathComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  PathComboBox->setMaxVisibleItems((Side == osLocal) ? 30 : 20);
+  PathComboBox->setItemDelegate(new TPathComboDelegate(PathComboBox));
+  // The items are names, not what is typed
+  PathComboBox->setCompleter(nullptr);
   PathComboBox->installEventFilter(this);
+  PathComboBox->lineEdit()->installEventFilter(this);
   connect(PathComboBox->lineEdit(), &QLineEdit::returnPressed, this, [this]() { PathComboActivated(); });
-  connect(PathComboBox, &QComboBox::activated, this, [this]() { PathComboActivated(); });
+  connect(PathComboBox, &QComboBox::activated, this, [this](int Index) { PathComboItemActivated(Index); });
 
   BackAction = CreateAction(Prefix + QStringLiteral("BackAction"), tr("&Back"), QStringLiteral("go-previous"),
     QKeySequence(Qt::ALT | Qt::Key_Left), &TDirPanel::Back);
@@ -1163,6 +1225,20 @@ bool TDirPanel::eventFilter(QObject * Object, QEvent * Event)
   {
     Q_EMIT Entered(this);
   }
+  // A path is typed into the combo box: it shows the whole path for it
+  if ((Object == PathComboBox->lineEdit()) && (Event->type() == QEvent::FocusIn) && IsReady() &&
+      (PathComboBox->lineEdit()->text() == FComboDisplayText))
+  {
+    QPointer<QLineEdit> Edit(PathComboBox->lineEdit());
+    Edit->setText(ToQString(GetPath()));
+    QTimer::singleShot(0, Edit, [Edit]() { Edit->selectAll(); });
+  }
+  else if ((Object == PathComboBox->lineEdit()) && (Event->type() == QEvent::FocusOut) &&
+           (static_cast<QFocusEvent *>(Event)->reason() != Qt::PopupFocusReason))
+  {
+    TAutoFlag UpdatingFlag(FUpdatingPath);
+    PathComboBox->setEditText(FComboDisplayText);
+  }
   else if ((Event->type() == QEvent::MouseButtonRelease) && (Object == HiddenFilesLabel))
   {
     Q_EMIT ToggleHiddenFilesRequested();
@@ -1179,14 +1255,62 @@ void TDirPanel::PathComboActivated()
   if (!FUpdatingPath)
   {
     UnicodeString Path = ToUnicodeString(PathComboBox->currentText()).Trim();
-    // The name of the directory shown instead of its path
-    bool ShortAddress = !FShowFullAddress && (Path == UnixExtractFileName(GetPath()));
-    if (!Path.IsEmpty() && (Path != GetPath()) && !ShortAddress)
+    // What the combo box shows is not a path to go to
+    bool Shown = (ToQString(Path) == FComboDisplayText) && (FComboDisplayText != ToQString(GetPath()));
+    if (!Path.IsEmpty() && (Path != GetPath()) && !Shown)
     {
       ChangeDirectory(Path);
     }
     DirView->setFocus();
   }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::PathComboItemActivated(int Index)
+{
+  // upstream's PathComboBoxItemClick: the directory of the item
+  if (!FUpdatingPath && (Index >= 0))
+  {
+    UnicodeString Path = ToUnicodeString(PathComboBox->itemData(Index, PathComboPathRole).toString());
+    if (!Path.IsEmpty() && (Path != GetPath()))
+    {
+      ChangeDirectory(Path);
+    }
+    else
+    {
+      UpdatePathComboBox();
+    }
+    DirView->setFocus();
+  }
+}
+//---------------------------------------------------------------------------
+void TDirPanel::UpdatePathComboBox()
+{
+  TAutoFlag UpdatingFlag(FUpdatingPath);
+  UnicodeString Path = GetPath();
+  PathComboBox->clear();
+  if (!Path.IsEmpty())
+  {
+    FillPathComboBox(Path);
+  }
+  // The item, or the Explorer's address (the full path or the name)
+  if (FAddressBar)
+  {
+    FComboDisplayText = ToQString((FShowFullAddress || IsUnixRootPath(Path)) ? Path : UnixExtractFileName(Path));
+  }
+  else
+  {
+    FComboDisplayText = PathComboBox->itemText(PathComboBox->currentIndex());
+  }
+  PathComboBox->setEditText(FComboDisplayText);
+  PathComboBox->lineEdit()->setCursorPosition(0);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::AddPathComboItem(const QIcon & Icon, const QString & Caption, const UnicodeString & Path, int Level)
+{
+  PathComboBox->addItem(Icon, Caption);
+  int Index = PathComboBox->count() - 1;
+  PathComboBox->setItemData(Index, ToQString(Path), PathComboPathRole);
+  PathComboBox->setItemData(Index, Level, PathComboLevelRole);
 }
 //---------------------------------------------------------------------------
 void TDirPanel::ItemActivated(int Row)
@@ -1290,30 +1414,8 @@ void TDirPanel::PathChanged()
   }
   FPrevPath = Path;
 
-  {
-    TAutoFlag UpdatingFlag(FUpdatingPath);
-    PathComboBox->clear();
-    UnicodeString APath = Path;
-    while (true)
-    {
-      PathComboBox->addItem(ToQString(APath));
-      if (APath == L"/")
-      {
-        break;
-      }
-      UnicodeString Parent = UnixExtractFileDir(APath);
-      if (Parent.IsEmpty() || (Parent == APath))
-      {
-        break;
-      }
-      APath = Parent;
-    }
-    PathComboBox->setCurrentIndex(0);
-    if (!FShowFullAddress)
-    {
-      PathComboBox->setEditText(ToQString(IsUnixRootPath(Path) ? Path : UnixExtractFileName(Path)));
-    }
-  }
+  UpdatePathComboBox();
+  FPathLabel->SetPath(ToQString(Path));
 
   // The focus of the new directory is set when its files are loaded
   DirView->selectionModel()->clear();
@@ -1649,17 +1751,15 @@ void TDirPanel::Filter()
   }
 }
 //---------------------------------------------------------------------------
-void TDirPanel::SetShowFullAddress(bool Value)
+void TDirPanel::SetAddressBar(bool AddressBar, bool ShowFullAddress)
 {
-  if (FShowFullAddress != Value)
+  if ((FAddressBar != AddressBar) || (FShowFullAddress != ShowFullAddress))
   {
-    FShowFullAddress = Value;
+    FAddressBar = AddressBar;
+    FShowFullAddress = ShowFullAddress;
     if (IsReady())
     {
-      TAutoFlag UpdatingFlag(FUpdatingPath);
-      UnicodeString Path = GetPath();
-      PathComboBox->setEditText(
-        ToQString((FShowFullAddress || IsUnixRootPath(Path)) ? Path : UnixExtractFileName(Path)));
+      UpdatePathComboBox();
     }
   }
 }
@@ -1679,6 +1779,7 @@ void TDirPanel::SetMask(const UnicodeString & Mask)
   if (GetMask() != Mask)
   {
     FModel->SetMask(Mask);
+    FPathLabel->SetMask(ToQString(Mask));
     if (IsReady())
     {
       Reload();
@@ -1807,6 +1908,17 @@ void TDirPanel::UpdateActions()
   AddBookmarkAction2->setEnabled(Ready);
   FilterAction->setEnabled(Ready);
   PathComboBox->setEnabled(Ready);
+  FPathLabel->setEnabled(Ready);
+}
+//---------------------------------------------------------------------------
+void TDirPanel::UpdatePathLabelStatus()
+{
+  // upstream's GetStatus of the path labels
+  QWidget * Focus = (window() != nullptr) ? window()->focusWidget() : nullptr;
+  bool Active =
+    (Focus != nullptr) &&
+    ((Focus == DirView) || ((FTree != nullptr) && ((Focus == FTree) || FTree->isAncestorOf(Focus))));
+  FPathLabel->SetActive(Active);
 }
 //---------------------------------------------------------------------------
 TLocalDirPanel::TLocalDirPanel(QWidget * Parent) :
@@ -2013,7 +2125,7 @@ void TRemoteDirPanel::SetTerminal(TTerminal * Terminal)
 
   if (IsReady())
   {
-    if (GetPath() != ToUnicodeString(PathComboBox->currentText()))
+    if (ToQString(GetPath()) != FPathLabel->GetPath())
     {
       PathChanged();
     }
@@ -2024,6 +2136,8 @@ void TRemoteDirPanel::SetTerminal(TTerminal * Terminal)
   {
     FRemoteModel->Clear();
     PathComboBox->clear();
+    FComboDisplayText.clear();
+    FPathLabel->SetPath(QString());
     // A session of a tab is disconnected, else there is none
     bool Disconnected = (FTerminal != NULL);
     FNoSessionLabel->setText(Disconnected ? tr("Disconnected.") : tr("Not connected."));
@@ -2121,5 +2235,85 @@ void TRemoteDirPanel::HomeDirectory()
 TRemoteFile * TRemoteDirPanel::GetFile(int Row) const
 {
   return FRemoteModel->Item(Row).File;
+}
+//---------------------------------------------------------------------------
+void TLocalDirPanel::FillPathComboBox(const UnicodeString & Path)
+{
+  // upstream's LocalPathComboUpdateDrives: the special folders and the
+  // drives (the root, the home, the mounted media), the one of the
+  // directory selected
+  QString CurrentPath = ToQString(Path);
+  int Selected = -1;
+  int SelectedLength = -1;
+  auto Add = [&](const QString & IconName, const QString & Caption, const QString & PlacePath)
+  {
+    AddPathComboItem(QIcon::fromTheme(IconName), Caption, ToUnicodeString(PlacePath), 0);
+    bool Contains =
+      (PlacePath == QStringLiteral("/")) || (CurrentPath == PlacePath) ||
+      CurrentPath.startsWith(PlacePath + QLatin1Char('/'));
+    if (Contains && (PlacePath.length() > SelectedLength))
+    {
+      Selected = PathComboBox->count() - 1;
+      SelectedLength = PlacePath.length();
+    }
+  };
+  QString Home = QDir::homePath();
+  for (QStandardPaths::StandardLocation Location : { QStandardPaths::DocumentsLocation, QStandardPaths::DesktopLocation })
+  {
+    QString LocationPath = QStandardPaths::writableLocation(Location);
+    if (!LocationPath.isEmpty() && (LocationPath != Home) && QDir(LocationPath).exists())
+    {
+      Add((Location == QStandardPaths::DocumentsLocation) ? QStringLiteral("folder-documents") : QStringLiteral("user-desktop"),
+        QStandardPaths::displayName(Location), LocationPath);
+    }
+  }
+  Add(QStringLiteral("user-home"), QStandardPaths::displayName(QStandardPaths::HomeLocation), Home);
+  QList<QStorageInfo> Volumes = QStorageInfo::mountedVolumes();
+  std::sort(Volumes.begin(), Volumes.end(), [](const QStorageInfo & A, const QStorageInfo & B)
+  {
+    return A.rootPath() < B.rootPath();
+  });
+  for (const QStorageInfo & Volume : Volumes)
+  {
+    QString Root = Volume.rootPath();
+    bool Media =
+      Root.startsWith(QStringLiteral("/media/")) || Root.startsWith(QStringLiteral("/run/media/")) ||
+      Root.startsWith(QStringLiteral("/mnt/"));
+    if (Volume.isValid() && Volume.isReady() && ((Root == QStringLiteral("/")) || Media))
+    {
+      QString Name = Volume.displayName();
+      QString Caption = (Name.isEmpty() || (Name == Root)) ? Root : QStringLiteral("%1 (%2)").arg(Name, Root);
+      Add((Root == QStringLiteral("/")) ? QStringLiteral("drive-harddisk") : QStringLiteral("drive-removable-media"),
+        Caption, Root);
+    }
+  }
+  PathComboBox->setCurrentIndex(Selected);
+}
+//---------------------------------------------------------------------------
+void TRemoteDirPanel::FillPathComboBox(const UnicodeString & Path)
+{
+  // upstream's UpdateRemotePathComboBox: the root and the directories of
+  // the path, the current one selected
+  std::vector<UnicodeString> Directories;
+  UnicodeString APath = UnixExcludeTrailingBackslash(Path);
+  while (!APath.IsEmpty() && !IsUnixRootPath(APath))
+  {
+    Directories.insert(Directories.begin(), APath);
+    UnicodeString Parent = UnixExtractFileDir(APath);
+    if (Parent == APath)
+    {
+      break;
+    }
+    APath = Parent;
+  }
+  AddPathComboItem(QIcon::fromTheme(QStringLiteral("folder-root")),
+    ToQString(DelphiResourceString("Customunixdirview_SUnixDefaultRootName", L"/ <root>")), ROOTDIRECTORY, 0);
+  for (size_t Index = 0; Index < Directories.size(); Index++)
+  {
+    bool Last = (Index + 1 == Directories.size());
+    AddPathComboItem(QIcon::fromTheme(Last ? QStringLiteral("folder-open") : QStringLiteral("folder")),
+      ToQString(UnixExtractFileName(Directories[Index])), Directories[Index], static_cast<int>(Index) + 1);
+  }
+  PathComboBox->setCurrentIndex(PathComboBox->count() - 1);
 }
 //---------------------------------------------------------------------------

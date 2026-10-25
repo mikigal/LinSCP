@@ -12,6 +12,7 @@
 
 #include "DirModel.h"
 #include "DirPanel.h"
+#include "PathLabel.h"
 #include "ProgressForm.h"
 #include "ScpCommander.h"
 #include "Toolbars.h"
@@ -904,7 +905,9 @@ void TScpCommanderForm::ApplyInterface()
   // upstream's RemoteCopyAction of the Explorer
   CurrentCopyAction->setText(Explorer ? tr("&Download...") : tr("&Copy..."));
   CurrentMoveAction->setText(Explorer ? tr("Download and D&elete...") : tr("&Move..."));
-  FRemotePanel->SetShowFullAddress(!Explorer || AppConfiguration->ExplorerShowFullAddress);
+  FRemotePanel->SetAddressBar(Explorer, AppConfiguration->ExplorerShowFullAddress);
+  // The Explorer has the address bar only
+  FRemotePanel->GetPathLabel()->setVisible(!Explorer);
   UpdatePanelsLayout();
   UpdateKeyboardShortcuts();
   RestorePanelsParams();

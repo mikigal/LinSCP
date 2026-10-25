@@ -7,13 +7,16 @@
 #include <AppConfiguration.h>
 #include <DirModel.h>
 #include <DirPanel.h>
+#include <PathLabel.h>
 
 #include <QBrush>
+#include <QComboBox>
 #include <QContextMenuEvent>
 #include <QDir>
 #include <QFile>
 #include <QFileSystemModel>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QTemporaryDir>
 #include <QTreeView>
@@ -356,5 +359,44 @@ TEST_F(DirPanelTest, ContextPopup)
   ASSERT_EQ(Requests.size(), 3u);
   EXPECT_TRUE(Requests[2].first);
   EXPECT_EQ(SelectedNames(), QStringList({ QStringLiteral("a.txt") }));
+}
+//---------------------------------------------------------------------------
+TEST_F(DirPanelTest, PathComboBoxAndLabel)
+{
+  // upstream's path label: the full path, the path combo box the drive
+  // (here the root, or the home) of the directory
+  QDir(FDir.path()).mkpath(QStringLiteral("sub/deeper"));
+  Load(FDir.path() + QStringLiteral("/sub"));
+  TPathLabel * Label = FPanel->findChild<TPathLabel *>(QStringLiteral("LocalPathLabel"));
+  ASSERT_NE(Label, nullptr);
+  EXPECT_EQ(Label->GetPath(), FDir.path() + QStringLiteral("/sub"));
+  QComboBox * Combo = FPanel->findChild<QComboBox *>(QStringLiteral("LocalPathComboBox"));
+  ASSERT_NE(Combo, nullptr);
+  QStringList Items;
+  for (int Index = 0; Index < Combo->count(); Index++)
+  {
+    Items.append(Combo->itemData(Index, Qt::UserRole).toString());
+  }
+  EXPECT_TRUE(Items.contains(QDir::homePath()));
+  EXPECT_TRUE(Items.contains(QStringLiteral("/")));
+  QString Selected = Combo->itemData(Combo->currentIndex(), Qt::UserRole).toString();
+  EXPECT_TRUE(FDir.path().startsWith(Selected));
+  EXPECT_EQ(Combo->currentText(), Combo->itemText(Combo->currentIndex()));
+
+  // A path is typed into it
+  Combo->setEditText(FDir.path() + QStringLiteral("/sub/deeper"));
+  QTest::keyClick(Combo->lineEdit(), Qt::Key_Return);
+  EXPECT_EQ(Label->GetPath(), FDir.path() + QStringLiteral("/sub/deeper"));
+  EXPECT_EQ(Combo->currentText(), Combo->itemText(Combo->currentIndex()));
+
+  // The drive of the combo box
+  int Home = Items.indexOf(QDir::homePath());
+  Combo->setCurrentIndex(Home);
+  Q_EMIT Combo->activated(Home);
+  EXPECT_EQ(Label->GetPath(), QDir::homePath());
+
+  // The mask of the filter
+  FPanel->SetMask(L"*.txt");
+  EXPECT_EQ(Label->GetMask(), QStringLiteral("*.txt"));
 }
 //---------------------------------------------------------------------------
