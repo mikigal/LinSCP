@@ -15,6 +15,18 @@ TOpenScpApplication::TOpenScpApplication(int & argc, char ** argv) :
   // The captions of the windows are formatted by the windows themselves
   // (FormatMainFormCaption), not suffixed by Qt
   setQuitOnLastWindowClosed(true);
+  ::WakeMainThread = ::rtl::MethodPtr(this, &TOpenScpApplication::WakeMainThread);
+}
+//---------------------------------------------------------------------------
+TOpenScpApplication::~TOpenScpApplication()
+{
+  ::WakeMainThread = NULL;
+}
+//---------------------------------------------------------------------------
+void TOpenScpApplication::WakeMainThread(TObject * /*Sender*/)
+{
+  // Called by any thread
+  QMetaObject::invokeMethod(this, []() { CheckSynchronize(); }, Qt::QueuedConnection);
 }
 //---------------------------------------------------------------------------
 bool TOpenScpApplication::notify(QObject * Receiver, QEvent * Event)

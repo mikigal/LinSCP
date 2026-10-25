@@ -343,3 +343,245 @@ void TScpCommanderForm::DoSynchronizeChecklistCalculateSize(
   }
 }
 //---------------------------------------------------------------------------
+void TScpCommanderForm::SynchronizeActionExecute()
+{
+  if (IsBusy() || !FRemotePanel->IsReady())
+  {
+    return;
+  }
+  UnicodeString LocalDirectory = FLocalPanel->GetPath();
+  UnicodeString RemoteDirectory = FRemotePanel->GetPath();
+  DoSynchronizeDirectories(LocalDirectory, RemoteDirectory);
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::DoSynchronizeDirectories(UnicodeString & LocalDirectory, UnicodeString & RemoteDirectory)
+{
+  TTerminal * Terminal = GetTerminal();
+  TSynchronizeParamType Params;
+  Params.LocalDirectory = LocalDirectory;
+  Params.RemoteDirectory = RemoteDirectory;
+  int UnusedParams =
+    (GUIConfiguration->SynchronizeParams &
+      (TTerminal::spPreviewChanges | TTerminal::spTimestamp | TTerminal::spNotByTime | TTerminal::spBySize |
+       TTerminal::spCaseSensitive | TTerminal::spMirror | TTerminal::spByChecksum));
+  Params.Params = GUIConfiguration->SynchronizeParams & ~UnusedParams;
+  Params.Options = GUIConfiguration->SynchronizeOptions;
+  bool SaveSettings = false;
+  TSynchronizeController Controller(
+    ::rtl::MethodPtr(this, &TScpCommanderForm::DoSynchronize),
+    ::rtl::MethodPtr(this, &TScpCommanderForm::DoSynchronizeInvalid),
+    ::rtl::MethodPtr(this, &TScpCommanderForm::DoSynchronizeTooManyDirectories));
+  DebugAssert(FSynchronizeController == NULL);
+  FSynchronizeController = &Controller;
+  bool Result;
+  ::rtl::TFinally Finally([&]()
+  {
+    FSynchronizeController = NULL;
+    DebugAssert(FOnFeedSynchronizeError == nullptr);
+    FOnFeedSynchronizeError = nullptr;
+    DebugAssert(FOnSynchronizeAbort == nullptr);
+    FOnSynchronizeAbort = nullptr;
+    FSynchronizeTerminal = NULL;
+  });
+  TCopyParamType CopyParam = GUIConfiguration->CurrentCopyParam;
+  int CopyParamAttrs = Terminal->UsableCopyParamAttrs(0).Upload;
+  int Options =
+    FLAGMASK(SynchronizeAllowSelectedOnly(), soAllowSelectedOnly);
+  DebugAssert(FOnFeedSynchronizeError == nullptr);
+  DebugAssert(FOnSynchronizeAbort == nullptr);
+  DebugAssert(FSynchronizeTerminal == NULL);
+  FSynchronizeTerminal = Terminal;
+  Result = DoSynchronizeDialog(Params, &CopyParam,
+    ::rtl::MethodPtr(&Controller, &TSynchronizeController::StartStop),
+    SaveSettings, Options, CopyParamAttrs,
+    [this](int AParams, TSynchronizeOptions & AOptions) { GetSynchronizeOptions(AParams, AOptions); },
+    [this](const UnicodeString & Message) { LogSynchronizeEvent(GetTerminal(), Message); },
+    FOnFeedSynchronizeError, FOnSynchronizeAbort);
+  if (Result)
+  {
+    if (SaveSettings)
+    {
+      GUIConfiguration->SynchronizeParams = Params.Params | UnusedParams;
+      GUIConfiguration->SynchronizeOptions = Params.Options;
+    }
+    else
+    {
+      if (FLAGSET(GUIConfiguration->SynchronizeOptions, soSynchronizeAsk) &&
+          FLAGCLEAR(Params.Options, soSynchronizeAsk) &&
+          FLAGSET(Params.Options, soSynchronize))
+      {
+        GUIConfiguration->SynchronizeOptions =
+          (GUIConfiguration->SynchronizeOptions & ~soSynchronizeAsk) |
+          soSynchronize;
+      }
+    }
+    LocalDirectory = Params.LocalDirectory;
+    RemoteDirectory = Params.RemoteDirectory;
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoSynchronize(
+  TSynchronizeController * /*Sender*/, const UnicodeString LocalDirectory,
+  const UnicodeString RemoteDirectory, const TCopyParamType & CopyParam,
+  const TSynchronizeParamType & Params, TSynchronizeChecklist ** Checklist,
+  TSynchronizeOptions * Options, bool Full)
+{
+  // Keep-up-to-date mode
+  TTerminal * Terminal = GetTerminal();
+  if ((Terminal != NULL) && (Terminal == FSynchronizeTerminal) && (Terminal->Status == ssOpened))
+  {
+    try
+    {
+      int PParams = Params.Params;
+      if (!Full)
+      {
+        PParams |= TTerminal::spNoRecurse | TTerminal::spUseCache | TTerminal::spDelayProgress;
+        if (FLAGSET(Params.Options, soRecurse))
+        {
+          PParams |= TTerminal::spSubDirs;
+        }
+      }
+      else
+      {
+        // if keepuptodate is non-recursive,
+        // full sync before has to be non-recursive as well
+        if (FLAGCLEAR(Params.Options, soRecurse))
+        {
+          PParams |= TTerminal::spNoRecurse;
+        }
+      }
+      Synchronize(LocalDirectory, RemoteDirectory, smRemote, CopyParam,
+        PParams, Checklist, Options);
+    }
+    catch (Exception & E)
+    {
+      if (!Terminal->Active)
+      {
+        ShowExtendedExceptionEx(Terminal, &E);
+        // Do not abort the "keep up to date" when the session was succesfully reconnected.
+        // (OpenSCP: the session may be freed meanwhile, unlike upstream's
+        // kept in its tab)
+        if ((GetTerminal() != Terminal) || !Terminal->Active)
+        {
+          throw;
+        }
+      }
+      else
+      {
+        if (FLAGSET(Params.Options, soContinueOnError) &&
+            DebugAlwaysTrue(FOnFeedSynchronizeError != nullptr))
+        {
+          // noop, already logged in MoreMessageDialog
+        }
+        else
+        {
+          // We get mostly EAbort here, so this is noop.
+          // Exception is an error when listing directories while looking for differences.
+          ShowExtendedExceptionEx(Terminal, &E);
+          throw;
+        }
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoSynchronizeInvalid(
+  TSynchronizeController * /*Sender*/, const UnicodeString Directory,
+  const UnicodeString ErrorStr)
+{
+  if (!Directory.IsEmpty())
+  {
+    SimpleErrorDialog(FMTLOAD(WATCH_ERROR_DIRECTORY, (Directory)), ErrorStr);
+  }
+  else
+  {
+    SimpleErrorDialog(LoadStr(WATCH_ERROR_GENERAL), ErrorStr);
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::DoSynchronizeTooManyDirectories(
+  TSynchronizeController * /*Sender*/, int & MaxDirectories)
+{
+  if (MaxDirectories < GUIConfiguration->MaxWatchDirectories)
+  {
+    MaxDirectories = GUIConfiguration->MaxWatchDirectories;
+  }
+  else
+  {
+    TMessageParams Params(mpNeverAskAgainCheck);
+    unsigned int Result = MessageDialog(
+      FMTLOAD(TOO_MANY_WATCH_DIRECTORIES, (MaxDirectories, MaxDirectories)),
+      qtConfirmation, qaYes | qaNo, &Params);
+
+    if ((Result == qaYes) || (Result == qaNeverAskAgain))
+    {
+      MaxDirectories *= 2;
+      if (Result == qaNeverAskAgain)
+      {
+        GUIConfiguration->MaxWatchDirectories = MaxDirectories;
+      }
+    }
+    else
+    {
+      Abort();
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::Synchronize(const UnicodeString LocalDirectory,
+  const UnicodeString RemoteDirectory, TSynchronizeMode Mode,
+  const TCopyParamType & CopyParam, int Params, TSynchronizeChecklist ** Checklist,
+  TSynchronizeOptions * Options)
+{
+  // Keep-up-to-date mode
+  TTerminal * Terminal = GetTerminal();
+  DebugAssert(!FAutoOperation);
+  ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+  TAutoNestingCounter BusyCounter(FBusy);
+  UpdateActions();
+  FAutoOperation = true;
+
+  TSynchronizeChecklist * AChecklist = NULL;
+  ::rtl::TFinally Finally([&]()
+  {
+    if (Checklist == NULL)
+    {
+      delete AChecklist;
+    }
+    else
+    {
+      *Checklist = AChecklist;
+    }
+
+    FAutoOperation = false;
+    delete FSynchronizeProgressForm;
+    FSynchronizeProgressForm = nullptr;
+    FLocalPanel->Reload();
+  });
+  FSynchronizeProgressForm = new TSynchronizeProgressForm(this, -1, false);
+  if (FLAGCLEAR(Params, TTerminal::spDelayProgress))
+  {
+    FSynchronizeProgressForm->Start();
+  }
+
+  AChecklist = Terminal->SynchronizeCollect(LocalDirectory, RemoteDirectory,
+    static_cast<TTerminal::TSynchronizeMode>(Mode),
+    &CopyParam, Params | TTerminal::spNoConfirmation,
+    ::rtl::MethodPtr(this, &TScpCommanderForm::TerminalSynchronizeDirectory), Options);
+
+  delete FSynchronizeProgressForm;
+  FSynchronizeProgressForm = nullptr;
+
+  if (AChecklist->CheckedCount > 0)
+  {
+    TSynchronizeProgress SynchronizeProgress(AChecklist);
+    CreateProgressForm(&SynchronizeProgress);
+    ::rtl::TFinally ProgressFinally([&]() { DestroyProgressForm(); });
+    Terminal->SynchronizeApply(
+      AChecklist, &CopyParam, Params | TTerminal::spNoConfirmation,
+      ::rtl::MethodPtr(this, &TScpCommanderForm::TerminalSynchronizeDirectory),
+      ::rtl::MethodPtr(this, &TScpCommanderForm::SynchronizeProcessedItem), NULL, NULL, NULL);
+  }
+}
+//---------------------------------------------------------------------------

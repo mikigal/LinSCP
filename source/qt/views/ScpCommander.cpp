@@ -45,6 +45,9 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
   FRefreshLocalDirectory = false;
   FRefreshRemoteDirectory = false;
   FFileFindTerminal = NULL;
+  FAutoOperation = false;
+  FSynchronizeController = NULL;
+  FSynchronizeTerminal = NULL;
   FQueue = NULL;
   FQueueStatus = NULL;
   FQueueStatusInvalidated = false;
@@ -117,6 +120,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
     { QKeySequence(Qt::ALT | Qt::Key_F7) }, &TScpCommanderForm::RemoteFindFilesActionExecute);
   FullSynchronizeAction2 = CreateAction("FullSynchronizeAction2", tr("&Synchronize..."), QStringLiteral("folder-sync"),
     { QKeySequence(Qt::CTRL | Qt::Key_S) }, &TScpCommanderForm::FullSynchronizeActionExecute);
+  SynchronizeAction = CreateAction("SynchronizeAction", tr("&Keep Remote Directory up to Date..."),
+    QStringLiteral("view-refresh"), { QKeySequence(Qt::CTRL | Qt::Key_U) }, &TScpCommanderForm::SynchronizeActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -234,6 +239,7 @@ void TScpCommanderForm::CreateMenus()
   CommandsMenu->addAction(CurrentCreateDirAction);
   CommandsMenu->addAction(RemoteFindFilesAction2);
   CommandsMenu->addAction(FullSynchronizeAction2);
+  CommandsMenu->addAction(SynchronizeAction);
   CommandsMenu->addSeparator();
   CommandsMenu->addMenu(CreateQueueMenu());
   CommandsMenu->addSeparator();
@@ -369,6 +375,7 @@ void TScpCommanderForm::UpdateActions()
   CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
   RemoteFindFilesAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
   FullSynchronizeAction2->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
+  SynchronizeAction->setEnabled(!Busy && Connected && FRemotePanel->IsReady());
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ConfigurationChanged()
@@ -511,6 +518,11 @@ void TScpCommanderForm::TerminalChanged()
   {
     FFileFindTerminal = NULL;
     HideFileFindDialog();
+  }
+  // Keeping the remote directory of a session that is gone up to date
+  if ((FOnSynchronizeAbort != nullptr) && (FSynchronizeTerminal != Terminal))
+  {
+    FOnSynchronizeAbort();
   }
   UnicodeString Status;
   UnicodeString Hint;
@@ -1487,7 +1499,7 @@ void TScpCommanderForm::OperationFinished(TFileOperation Operation, TOperationSi
     }
   }
   // The transferred files are unselected in the source panel, as upstream
-  else if (Success && !Temp && ((Operation == foCopy) || (Operation == foMove)))
+  else if (Success && !Temp && !FAutoOperation && ((Operation == foCopy) || (Operation == foMove)))
   {
     TDirPanel * Panel = (Side == osLocal) ? static_cast<TDirPanel *>(FLocalPanel) : static_cast<TDirPanel *>(FRemotePanel);
     UnicodeString Name = (Side == osLocal) ? ExtractFileName(FileName) : UnixExtractFileName(FileName);
@@ -1497,6 +1509,35 @@ void TScpCommanderForm::OperationFinished(TFileOperation Operation, TOperationSi
       QItemSelectionModel * Selection = Panel->GetDirView()->selectionModel();
       Selection->select(Panel->GetModel()->index(Row, 0), QItemSelectionModel::Deselect | QItemSelectionModel::Rows);
     }
+  }
+
+  if (Success && (FSynchronizeController != NULL))
+  {
+    if (Operation == foCopy)
+    {
+      DebugAssert(Side == osLocal);
+      FSynchronizeController->LogOperation(soUpload, FileName);
+    }
+    else if (Operation == foDelete)
+    {
+      DebugAssert(Side == osRemote);
+      FSynchronizeController->LogOperation(soDelete, FileName);
+    }
+  }
+}
+//---------------------------------------------------------------------------
+unsigned int TScpCommanderForm::MoreMessageDialog(const UnicodeString & Message, TStrings * MoreMessages,
+  TQueryType Type, unsigned int Answers, const TMessageParams * Params)
+{
+  if ((FOnFeedSynchronizeError != nullptr) &&
+      (Params != NULL) && FLAGSET(Params->Params, mpAllowContinueOnError))
+  {
+    FOnFeedSynchronizeError(Message, MoreMessages, Type);
+    return ContinueAnswer(Answers);
+  }
+  else
+  {
+    return ::MoreMessageDialog(Message, MoreMessages, Type, Answers, Params);
   }
 }
 //---------------------------------------------------------------------------

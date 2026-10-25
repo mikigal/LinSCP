@@ -27,6 +27,18 @@ Done so far (E2E tests in `test_gui_ssh`, `test_gui_vm`; L3 tests in `tests/unit
   shown always, when not empty or never. The session upkeep runs on a timer
   (`TTerminalManager::Idle`: keepalives of the session, the queue, its events), which M5
   lacked.
+- Find files (`TFileFindDialog`, Alt+F7, modeless): the search by a file mask in a
+  remote directory, focusing, downloading and deleting the found files.
+- Synchronization (`TFullSynchronizeDialog`, Ctrl+S; `views/ScpCommanderSynchronize.cpp`):
+  directions, modes (files, mirror, timestamps), criteria, the comparison progress, the
+  checklist (`TSynchronizeChecklistDialog`: check, reverse, calculate sizes, synchronize
+  directly or in the queue) and the summary.
+- Keeping the remote directory up to date (`TSynchronizeDialog`, Ctrl+U): the local
+  directory is watched with inotify (`app/DiscMon.cpp`, through `TSynchronizeController`),
+  its changes are uploaded, deletions reflected, new subdirectories watched; the log of
+  the changes, the full synchronization first (asked by default), errors only logged when
+  continuing on errors. The requests of threads to the main thread (`TThread::Synchronize`)
+  are run from the Qt event loop (`WakeMainThread`).
 
 Decisions:
 
@@ -40,6 +52,11 @@ Decisions:
   closed once the queue got empty is freed, so it is not offered to reconnect.
 - On Linux, the transfer mode is disabled for Unix servers (the same line endings), as
   upstream's attributes say; "Clear archive attribute" is hidden.
+- Not ported yet: "Start in new window" of the synchronization dialogs (needs the command
+  line switches of the GUI), minimizing to the system tray while keeping up to date (M7),
+  moving, exploring and custom commands of the checklist.
+- A dialog that grows (the log of keeping up to date) corrects a size the compositor sets
+  from before (KWin re-sends the old size when it activates the window).
 
 Manual edits in upstream directories since M5:
 

@@ -56,6 +56,10 @@ public:
   void ConfigurationChanged();
   // An event of the queue of the session (TTerminalManager::Idle)
   void QueueEvent(TTerminal * Terminal, TTerminalQueue * Queue, TQueueEvent Event);
+  // The queries of the sessions; the errors are only logged when keeping
+  // the remote directory up to date continues on errors
+  unsigned int MoreMessageDialog(const UnicodeString & Message, TStrings * MoreMessages,
+    TQueryType Type, unsigned int Answers, const TMessageParams * Params);
 
 protected:
   virtual void closeEvent(QCloseEvent * Event) override;
@@ -83,6 +87,14 @@ private:
   TTerminal * FFileFindTerminal;
   bool FRefreshLocalDirectory;
   bool FRefreshRemoteDirectory;
+  // An operation started by the program, not by the user (keeping the
+  // remote directory up to date)
+  bool FAutoOperation;
+  // While the remote directory is kept up to date
+  TSynchronizeController * FSynchronizeController;
+  TTerminal * FSynchronizeTerminal;
+  TFeedSynchronizeError FOnFeedSynchronizeError;
+  std::function<void()> FOnSynchronizeAbort;
 
   // The transfer queue (ScpCommanderQueue.cpp)
   QSplitter * FQueueSplitter;
@@ -116,6 +128,7 @@ private:
   QAction * CurrentPropertiesAction;
   QAction * RemoteFindFilesAction2;
   QAction * FullSynchronizeAction2;
+  QAction * SynchronizeAction;
   QAction * ShowHiddenFilesAction;
   QAction * QueueEnableAction;
   QAction * QueueGoToAction;
@@ -194,6 +207,7 @@ private:
   void CurrentPropertiesActionExecute();
   void RemoteFindFilesActionExecute();
   void FullSynchronizeActionExecute();
+  void SynchronizeActionExecute();
 
   // The synchronization (ScpCommanderSynchronize.cpp)
   struct TSynchronizeParams
@@ -217,6 +231,18 @@ private:
   void TerminalSynchronizeDirectory(const UnicodeString & LocalDirectory, const UnicodeString & RemoteDirectory,
     bool & Continue, bool Collect, const TSynchronizeOptions * Options);
   bool SynchronizeAllowSelectedOnly();
+  // Keeping the remote directory up to date
+  bool DoSynchronizeDirectories(UnicodeString & LocalDirectory, UnicodeString & RemoteDirectory);
+  void DoSynchronize(TSynchronizeController * Sender, const UnicodeString LocalDirectory,
+    const UnicodeString RemoteDirectory, const TCopyParamType & CopyParam,
+    const TSynchronizeParamType & Params, TSynchronizeChecklist ** Checklist,
+    TSynchronizeOptions * Options, bool Full);
+  void DoSynchronizeInvalid(TSynchronizeController * Sender, const UnicodeString Directory,
+    const UnicodeString ErrorStr);
+  void DoSynchronizeTooManyDirectories(TSynchronizeController * Sender, int & MaxDirectories);
+  void Synchronize(const UnicodeString LocalDirectory, const UnicodeString RemoteDirectory,
+    TSynchronizeMode Mode, const TCopyParamType & CopyParam, int Params,
+    TSynchronizeChecklist ** Checklist, TSynchronizeOptions * Options);
   void GetSynchronizeOptions(int Params, TSynchronizeOptions & Options);
   void DoFindFiles(TTerminal * ATerminal, UnicodeString Directory, const TFileMasks & FileMask,
     TFileFoundEvent OnFileFound, TFindingFileEvent OnFindingFile);

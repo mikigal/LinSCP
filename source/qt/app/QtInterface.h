@@ -7,6 +7,7 @@
 #include <AppPCH.h>
 
 #include <SessionInfo.h>
+#include <SynchronizeController.h>
 #include <Terminal.h>
 
 #include <functional>
@@ -143,6 +144,24 @@ bool DoFullSynchronizeDialog(TSynchronizeMode & Mode, int & Params,
   UnicodeString & Directory1, UnicodeString & Directory2,
   TCopyParamType * CopyParams, bool & SaveSettings, bool & SaveMode, int Options,
   const TUsableCopyParamAttrs & CopyParamAttrs);
+
+// dialogs/SynchronizeDialog.cpp
+const int soDoNotUsePresets =  0x01;
+const int soNoMinimize =       0x02;
+const int soAllowSelectedOnly = 0x04;
+typedef std::function<void(int Params, TSynchronizeOptions & Options)> TGetSynchronizeOptionsEvent;
+typedef std::function<void(const UnicodeString & Message)> TSynchronizeSessionLog;
+typedef std::function<void(const UnicodeString & Message, TStrings * MoreMessages, TQueryType Type)>
+  TFeedSynchronizeError;
+// Sets OnFeedSynchronizeError while watching, if errors are to be logged
+// only (soContinueOnError), and OnSynchronizeAbort while the dialog shows
+bool DoSynchronizeDialog(TSynchronizeParamType & Params,
+  const TCopyParamType * CopyParams, TSynchronizeStartStopEvent OnStartStop,
+  bool & SaveSettings, int Options, int CopyParamAttrs,
+  TGetSynchronizeOptionsEvent OnGetOptions,
+  TSynchronizeSessionLog OnSynchronizeSessionLog,
+  TFeedSynchronizeError & OnFeedSynchronizeError,
+  std::function<void()> & OnSynchronizeAbort);
 
 // dialogs/SynchronizeChecklistDialog.cpp
 typedef std::function<void(void * Token, TProcessedSynchronizationChecklistItem OnProcessedItem,

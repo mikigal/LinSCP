@@ -6,6 +6,7 @@
 #include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QJsonArray>
 #include <QKeyEvent>
@@ -264,6 +265,11 @@ QJsonObject Describe(QObject * Object, bool Children)
     if (Button->isCheckable())
     {
       Result[QStringLiteral("checked")] = Button->isChecked();
+    }
+    QCheckBox * Check = qobject_cast<QCheckBox *>(Button);
+    if ((Check != nullptr) && Check->isTristate())
+    {
+      Result[QStringLiteral("partial")] = (Check->checkState() == Qt::PartiallyChecked);
     }
   }
   else if (QLabel * Label = qobject_cast<QLabel *>(Object))
@@ -558,8 +564,17 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
     else if (QAbstractButton * Button = qobject_cast<QAbstractButton *>(Target))
     {
       CheckEnabled(Button);
-      bool Checked = Value.toBool();
-      Action = [Button, Checked]() { Button->setChecked(Checked); };
+      QCheckBox * Check = qobject_cast<QCheckBox *>(Button);
+      if ((Check != nullptr) && Check->isTristate() && (Value.toString() == QLatin1String("partial")))
+      {
+        // The third state of a tristate check box
+        Action = [Check]() { Check->setCheckState(Qt::PartiallyChecked); };
+      }
+      else
+      {
+        bool Checked = Value.toBool();
+        Action = [Button, Checked]() { Button->setChecked(Checked); };
+      }
     }
     else if (QSpinBox * Spin = qobject_cast<QSpinBox *>(Target))
     {

@@ -26,6 +26,7 @@ add_library(openscp_qt STATIC
   dialogs/RemoteTransferDialog.cpp
   dialogs/RightsFrame.cpp
   dialogs/SynchronizeChecklistDialog.cpp
+  dialogs/SynchronizeDialog.cpp
   dialogs/SynchronizeProgressForm.cpp
   models/DirModel.cpp
   views/DirPanel.cpp

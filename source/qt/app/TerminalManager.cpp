@@ -401,7 +401,14 @@ void TTerminalManager::TerminalQueryUser(TObject * /*Sender*/,
     }
   }
 
-  Answer = MoreMessageDialog(AQuery, MoreMessages, Type, Answers, &MessageParams);
+  if (FScpExplorer != NULL)
+  {
+    Answer = FScpExplorer->MoreMessageDialog(AQuery, MoreMessages, Type, Answers, &MessageParams);
+  }
+  else
+  {
+    Answer = MoreMessageDialog(AQuery, MoreMessages, Type, Answers, &MessageParams);
+  }
 }
 //---------------------------------------------------------------------------
 TAuthenticateForm * TTerminalManager::MakeAuthenticateForm(TTerminal * Terminal)

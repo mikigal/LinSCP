@@ -83,7 +83,8 @@ add_executable(openscp_qt_tests
   qt/ProgressFormTest.cpp
   qt/PropertiesDialogTest.cpp
   qt/QtTestMain.cpp
-  qt/RightsFrameTest.cpp)
+  qt/RightsFrameTest.cpp
+  qt/SynchronizeDialogTest.cpp)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Test)
 target_link_libraries(openscp_qt_tests PRIVATE
   openscp_qt

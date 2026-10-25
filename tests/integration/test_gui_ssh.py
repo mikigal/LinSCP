@@ -14,6 +14,7 @@ import signal
 import stat
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -775,6 +776,84 @@ class GuiSshTest(GuiTestCase):
         gui.wait_no_window('SynchronizeChecklistDialog')
         gui.wait_for(lambda: (remote / 'later.txt').exists(), 60, 'the queued synchronization')
         self.assertEqual((remote / 'later.txt').read_text(), 'later')
+        self.assertEqual(gui.quit(), 0)
+
+    def test_keep_up_to_date(self):
+        remote = self.work_dir('remote')
+        local = self.work_dir('local')
+        (local / 'initial.txt').write_text('initial')
+        gui = self.start_gui(ini=site_ini(remote=remote, local=local))
+        self.login(gui, 'local')
+
+        D = 'SynchronizeDialog/'
+        gui.trigger(W + 'SynchronizeAction')
+        gui.wait_window('SynchronizeDialog')
+        self.assertEqual(gui.get(D + 'LocalDirectoryEdit')['text'], str(local))
+        self.assertEqual(gui.get(D + 'RemoteDirectoryEdit')['text'], str(remote))
+        self.assertTrue(gui.get(D + 'SynchronizeRecursiveCheck')['checked'])
+        # Asks whether to synchronize first, by default
+        self.assertTrue(gui.get(D + 'SynchronizeSynchronizeCheck')['partial'])
+        self.assertFalse(gui.get(D + 'StopButton')['visible'])
+        self.assertFalse(gui.get(D + 'LogPanel')['visible'])
+        gui.set(D + 'SynchronizeDeleteCheck', True)
+        gui.click(D + 'StartButton')
+        gui.wait_window('MessageForm')
+        self.assertIn('full synchronisation', gui.get('MessageForm/MainMessage')['text'])
+        gui.click('MessageForm/Yes')
+        gui.wait_no_window('MessageForm')
+
+        def messages():
+            return [row[1] for row in gui.rows(D + 'LogView')]
+
+        def wait_message(text, what):
+            gui.wait_for(lambda: any(text in message for message in messages()), 60, what)
+
+        # Synchronized first, then watching
+        wait_message('Watching for changes in 1 directories...', 'watching')
+        self.assertEqual((remote / 'initial.txt').read_text(), 'initial')
+        self.assertTrue(gui.get(D + 'StopButton')['visible'])
+        self.assertFalse(gui.get(D + 'StartButton')['visible'])
+        self.assertTrue(gui.get(D + 'LogPanel')['visible'])
+        self.assertFalse(gui.get(D + 'OptionsGroup')['enabled'])
+
+        # A new file
+        (local / 'new.txt').write_text('new')
+        gui.wait_for(lambda: (remote / 'new.txt').exists(), 60, 'the upload of the new file')
+        wait_message("File '%s' uploaded." % (local / 'new.txt'), 'the log of the upload')
+        self.assertIn("Change in '%s' detected." % local, messages())
+        self.assertEqual((remote / 'new.txt').read_text(), 'new')
+
+        # A new subdirectory, then watched too
+        (local / 'sub').mkdir()
+        (local / 'sub' / 'inner.txt').write_text('inner')
+        gui.wait_for(lambda: (remote / 'sub' / 'inner.txt').exists(), 60, 'the upload of the subdirectory')
+        wait_message('Watching for changes in 2 directories...', 'watching the subdirectory')
+        # Compared by the modification time only, which is to differ (in
+        # seconds, as by SFTP)
+        inner = local / 'sub' / 'inner.txt'
+        later = inner.stat().st_mtime + 100
+        inner.write_text('inner changed')
+        os.utime(inner, (later, later))
+        gui.wait_for(
+            lambda: (remote / 'sub' / 'inner.txt').read_text() == 'inner changed', 60,
+            'the upload of the changed file')
+
+        # A deleted file
+        (local / 'new.txt').unlink()
+        gui.wait_for(lambda: not (remote / 'new.txt').exists(), 60, 'the deletion')
+        wait_message("File '%s' deleted." % (remote / 'new.txt'), 'the log of the deletion')
+        self.screenshot('keep_up_to_date')
+
+        gui.click(D + 'StopButton')
+        gui.wait_for(lambda: gui.get(D + 'StartButton')['visible'], 10, 'stopping')
+        self.assertFalse(gui.get(D + 'LogPanel')['visible'])
+        self.assertTrue(gui.get(D + 'OptionsGroup')['enabled'])
+        # Not watching anymore
+        (local / 'after.txt').write_text('after')
+        time.sleep(2)
+        self.assertFalse((remote / 'after.txt').exists())
+        gui.click(D + 'CancelButton')
+        gui.wait_no_window('SynchronizeDialog')
         self.assertEqual(gui.quit(), 0)
 
     def test_connection_refused(self):
