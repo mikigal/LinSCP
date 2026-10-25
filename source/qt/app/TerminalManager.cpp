@@ -135,7 +135,9 @@ void TTerminalManager::TerminalThreadIdle(void * /*Data*/, TObject * /*Sender*/)
 //---------------------------------------------------------------------------
 void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen)
 {
-  TManagedTerminal * ManagedTerminal = DebugNotNull(dynamic_cast<TManagedTerminal *>(Terminal));
+  // it must be managed terminal, unless it is secondary terminal (of managed terminal)
+  TManagedTerminal * ManagedTerminal = dynamic_cast<TManagedTerminal *>(Terminal);
+  DebugAssert((ManagedTerminal != NULL) || (dynamic_cast<TSecondaryTerminal *>(Terminal) != NULL));
 
   TValueRestorer<TTerminal *> OpeningTerminalRestorer(FOpeningTerminal, Terminal);
   TTerminalThread * TerminalThread = new TTerminalThread(Terminal);
@@ -143,12 +145,18 @@ void TTerminalManager::DoConnectTerminal(TTerminal * Terminal, bool Reopen)
   // The terminal cannot be abandoned (left to its thread when it does not
   // react to cancelling), as there is a single session yet
   TerminalThread->AllowAbandon = false;
-  DebugAssert(ManagedTerminal->TerminalThread == NULL);
-  ManagedTerminal->TerminalThread = TerminalThread;
+  if (ManagedTerminal != NULL)
+  {
+    DebugAssert(ManagedTerminal->TerminalThread == NULL);
+    ManagedTerminal->TerminalThread = TerminalThread;
+  }
   ::rtl::TFinally Finally([&]()
   {
     TerminalThread->OnIdle = NULL;
-    ManagedTerminal->TerminalThread = NULL;
+    if (ManagedTerminal != NULL)
+    {
+      ManagedTerminal->TerminalThread = NULL;
+    }
     DebugCheck(TerminalThread->Release());
   });
   if (Reopen)
@@ -193,6 +201,23 @@ bool TTerminalManager::ConnectActiveTerminalImpl(bool Reopen)
   }
   UpdateScpExplorer();
 
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool TTerminalManager::ConnectTerminal(TTerminal * Terminal)
+{
+  bool Result = true;
+  // were it an active terminal, it would allow abandoning, what this API cannot deal with
+  DebugAssert(Terminal != ActiveTerminal);
+  try
+  {
+    DoConnectTerminal(Terminal, false);
+  }
+  catch (Exception & E)
+  {
+    ShowExtendedExceptionEx(Terminal, &E);
+    Result = false;
+  }
   return Result;
 }
 //---------------------------------------------------------------------------

@@ -35,8 +35,7 @@ static QString ColumnCaption(TDirViewColumn Column)
   return QString();
 }
 //---------------------------------------------------------------------------
-// The type and the icon of a file by the name, of the freedesktop theme
-static void FileTypeAndIcon(const QString & FileName, bool Directory, QString & Type, QIcon & Icon)
+void FileTypeAndIcon(const QString & FileName, bool Directory, QString & Type, QIcon & Icon)
 {
   static QMimeDatabase MimeDatabase;
   static QHash<QString, QIcon> Icons;

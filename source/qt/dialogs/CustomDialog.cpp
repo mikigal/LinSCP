@@ -445,3 +445,109 @@ bool DoMasterPasswordDialog()
   return Result;
 }
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
+class TTagDialog : public TCustomDialog
+{
+public:
+  TTagDialog(bool Add, TStrings * Tags);
+  bool Execute(UnicodeString & Key, UnicodeString & Value);
+
+protected:
+  virtual void DoChange(bool & CanSubmit) override;
+  virtual void DoValidate() override;
+
+private:
+  QLineEdit * KeyEdit;
+  QLineEdit * ValueEdit;
+  TStrings * FTags;
+
+  void ValidateTag(QLineEdit * Edit);
+};
+//---------------------------------------------------------------------------
+TTagDialog::TTagDialog(bool Add, TStrings * Tags)
+{
+  setObjectName(QStringLiteral("TagDialog"));
+  setWindowTitle(ToQString(LoadStr(Add ? TAG_ADD : TAG_EDIT)));
+  FTags = Tags;
+
+  KeyEdit = new QLineEdit(this);
+  KeyEdit->setObjectName(QStringLiteral("KeyEdit"));
+  KeyEdit->setMaxLength(128);
+  AddEditLikeControl(KeyEdit, CreateLabel(LoadStr(TAG_KEY)));
+
+  ValueEdit = new QLineEdit(this);
+  ValueEdit->setObjectName(QStringLiteral("ValueEdit"));
+  ValueEdit->setMaxLength(256);
+  AddEditLikeControl(ValueEdit, CreateLabel(LoadStr(TAG_VALUE)));
+  setMinimumWidth(fontMetrics().averageCharWidth() * 50);
+}
+//---------------------------------------------------------------------------
+bool TTagDialog::Execute(UnicodeString & Key, UnicodeString & Value)
+{
+  // if we happen to get values longer than what we believed was possible, allow them.
+  KeyEdit->setMaxLength(std::max(KeyEdit->maxLength(), Key.Length()));
+  KeyEdit->setText(ToQString(Key));
+  ValueEdit->setMaxLength(std::max(ValueEdit->maxLength(), Value.Length()));
+  ValueEdit->setText(ToQString(Value));
+  bool Result = TCustomDialog::Execute();
+  if (Result)
+  {
+    Key = ToUnicodeString(KeyEdit->text());
+    Value = ToUnicodeString(ValueEdit->text());
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+void TTagDialog::DoChange(bool & CanSubmit)
+{
+  CanSubmit = !KeyEdit->text().isEmpty();
+}
+//---------------------------------------------------------------------------
+void TTagDialog::ValidateTag(QLineEdit * Edit)
+{
+  // there are lot more in various scripts
+  UnicodeString InvalidChars =
+    L"!\"#$%&'()*,;<>?[\\]^`{|}~"
+    L"¡¢£¤¥¦§¨©«¬­®¯"
+    L"°±´¶·¸»¿×÷";
+  UnicodeString Text = ToUnicodeString(Edit->text());
+  for (int Index = 1; Index <= Text.Length(); Index++)
+  {
+    wchar_t Ch = Text[Index];
+    if (iswcntrl(Ch) ||
+        (InvalidChars.Pos(Ch) > 0))
+    {
+      UnicodeString Message = MainInstructions(FMTLOAD(TAG_INVALID_CHAR, (Ch)));
+      if (MoreMessageDialog(Message, NULL, qtWarning, qaIgnore | qaAbort) != qaIgnore)
+      {
+        Edit->setFocus();
+        Abort();
+      }
+      else
+      {
+        break;
+      }
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TTagDialog::DoValidate()
+{
+  UnicodeString Key = ToUnicodeString(KeyEdit->text());
+  if (FTags->IndexOf(Key) >= 0)
+  {
+    throw Exception(MainInstructions(LoadStr(TAG_NOT_UNIQUE)));
+  }
+
+  ValidateTag(KeyEdit);
+  ValidateTag(ValueEdit);
+
+  TCustomDialog::DoValidate();
+}
+//---------------------------------------------------------------------------
+bool DoTagDialog(bool Add, TStrings * Tags, UnicodeString & Key, UnicodeString & Value)
+{
+  TTagDialog Dialog(Add, Tags);
+  return Dialog.Execute(Key, Value);
+}
+//---------------------------------------------------------------------------

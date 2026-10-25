@@ -5,9 +5,16 @@
 #define QtInterfaceH
 //---------------------------------------------------------------------------
 #include <AppPCH.h>
+
+#include <SessionInfo.h>
+
+#include <functional>
 //---------------------------------------------------------------------------
+class TRemoteTokenList;
 class TTerminal;
 class QWidget;
+struct TCalculateSizeStats;
+class TRemoteProperties;
 //---------------------------------------------------------------------------
 const int mpNeverAskAgainCheck =   0x01;
 const int mpAllowContinueOnError = 0x02;
@@ -73,6 +80,29 @@ bool DoMasterPasswordDialog();
 // Confirms a transfer of the files to the target directory
 bool DoCopyDialog(bool ToRemote, TStrings * FileList, UnicodeString & TargetDirectory);
 bool DoCreateDirectoryDialog(UnicodeString & Directory);
+
+bool DoTagDialog(bool Add, TStrings * Tags, UnicodeString & Key, UnicodeString & Value);
+
+// dialogs/PropertiesDialog.cpp
+// The properties that can be changed
+const int cpMode =  0x01;
+const int cpOwner = 0x02;
+const int cpGroup = 0x04;
+const int cpAcl =   0x08;
+// Owners and groups are identified by their IDs, the tags can be edited
+const int poUserGroupByID = 0x01;
+const int poTags =          0x02;
+typedef std::function<void(TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close)>
+  TCalculateSizeEvent;
+typedef std::function<void(const UnicodeString & Alg, TStrings * FileList,
+  TCalculatedChecksumEvent OnCalculatedChecksum, bool & Close)> TCalculateChecksumEvent;
+// The files of FileList have their TRemoteFile objects (also local ones)
+bool DoPropertiesDialog(TStrings * FileList,
+  const UnicodeString & Directory, const TRemoteTokenList * GroupList,
+  const TRemoteTokenList * UserList, TStrings * ChecksumAlgs,
+  TRemoteProperties * Properties,
+  int AllowedChanges, int Options, TCalculateSizeEvent OnCalculateSize,
+  TCalculateChecksumEvent OnCalculateChecksum);
 
 // dialogs/LoginDialog.cpp
 // The site manager: fills DataList with the sessions to open

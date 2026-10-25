@@ -64,6 +64,7 @@ private:
   QAction * CurrentDeleteAction;
   QAction * CurrentDeleteAlternativeAction;
   QAction * CurrentCreateDirAction;
+  QAction * CurrentPropertiesAction;
   QAction * ShowHiddenFilesAction;
 
   QAction * CreateAction(const char * Name, const QString & Caption, const QString & IconName,
@@ -86,9 +87,17 @@ private:
   void CurrentDeleteActionExecute() { DeleteFiles(false); }
   void CurrentDeleteAlternativeActionExecute() { DeleteFiles(true); }
   void CurrentCreateDirActionExecute();
+  void CurrentPropertiesActionExecute();
   void ShowHiddenFilesActionExecute();
   void DeleteFiles(bool Alternative);
   void RenameFile(TDirPanel * Panel, const UnicodeString & FileName, const UnicodeString & NewName);
+  bool SetProperties(TDirPanel * Panel, TStrings * FileList);
+  void CalculateSize(TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close);
+  void CalculateChecksum(const UnicodeString & Alg, TStrings * FileList,
+    TCalculatedChecksumEvent OnCalculatedChecksum, bool & Close);
+  bool CanCalculateChecksum();
+  // The operation needs the separate shell session (asked to be opened)
+  bool EnsureCommandSessionFallback(TFSCapability Capability);
 };
 //---------------------------------------------------------------------------
 #endif

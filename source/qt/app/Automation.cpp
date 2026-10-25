@@ -21,6 +21,7 @@
 #include <QProgressBar>
 #include <QSpinBox>
 #include <QTabBar>
+#include <QTabWidget>
 #include <QTimer>
 #include <QTreeView>
 
@@ -280,6 +281,20 @@ QJsonObject Describe(QObject * Object, bool Children)
     Result[QStringLiteral("minimum")] = Progress->minimum();
     Result[QStringLiteral("maximum")] = Progress->maximum();
   }
+  else if (QTabWidget * Pages = qobject_cast<QTabWidget *>(Object))
+  {
+    QJsonArray Items;
+    for (int Index = 0; Index < Pages->count(); Index++)
+    {
+      if (Pages->isTabVisible(Index))
+      {
+        Items.append(Pages->tabText(Index).remove(QLatin1Char('&')));
+      }
+    }
+    Result[QStringLiteral("items")] = Items;
+    Result[QStringLiteral("index")] = Pages->currentIndex();
+    Result[QStringLiteral("text")] = Pages->tabText(Pages->currentIndex()).remove(QLatin1Char('&'));
+  }
   else if (QTabBar * Tabs = qobject_cast<QTabBar *>(Object))
   {
     QJsonArray Items;
@@ -537,6 +552,24 @@ QJsonValue TAutomationServer::Execute(const QString & Command, const QJsonObject
       CheckEnabled(Spin);
       int Number = Value.toInt();
       Action = [Spin, Number]() { Spin->setValue(Number); };
+    }
+    else if (QTabWidget * Pages = qobject_cast<QTabWidget *>(Target))
+    {
+      // A page by its caption (without the accelerator) or its index
+      int Index = -1;
+      for (int I = 0; (Index < 0) && (I < Pages->count()); I++)
+      {
+        if (Value.isDouble() ? (I == Value.toInt()) : (Pages->tabText(I).remove(QLatin1Char('&')) == Value.toString()))
+        {
+          Index = I;
+        }
+      }
+      if ((Index < 0) || !Pages->isTabVisible(Index) || !Pages->isTabEnabled(Index))
+      {
+        throw EAutomation(QStringLiteral("No enabled page %1 in %2").arg(Value.toVariant().toString(), Name(Pages)));
+      }
+      QPointer<QTabWidget> Pointer(Pages);
+      Action = [Pointer, Index]() { if (Pointer) Pointer->setCurrentIndex(Index); };
     }
     else
     {

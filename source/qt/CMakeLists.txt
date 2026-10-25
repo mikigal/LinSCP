@@ -5,6 +5,7 @@
 find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
 
 add_library(openscp_qt STATIC
+  app/LocalFiles.cpp
   app/OpenScpApplication.cpp
   app/QtInterface.cpp
   app/QtTools.cpp
@@ -15,6 +16,8 @@ add_library(openscp_qt STATIC
   dialogs/LoginDialog.cpp
   dialogs/MessageDialog.cpp
   dialogs/ProgressForm.cpp
+  dialogs/PropertiesDialog.cpp
+  dialogs/RightsFrame.cpp
   models/DirModel.cpp
   views/DirPanel.cpp
   views/ScpCommander.cpp)

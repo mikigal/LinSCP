@@ -4,6 +4,7 @@
 
 #include <AppConfiguration.h>
 #include <FileSystems.h>
+#include <LocalFiles.h>
 #include <TerminalManager.h>
 
 #include "DirModel.h"
@@ -77,6 +78,8 @@ TScpCommanderForm::TScpCommanderForm(QWidget * Parent) :
       &TScpCommanderForm::CurrentDeleteAlternativeActionExecute);
   CurrentCreateDirAction = CreateAction("CurrentCreateDirAction", tr("&Create Directory..."), QStringLiteral("folder-new"),
     { QKeySequence(Qt::Key_F7) }, &TScpCommanderForm::CurrentCreateDirActionExecute);
+  CurrentPropertiesAction = CreateAction("CurrentPropertiesAction", tr("&Properties"), QStringLiteral("document-properties"),
+    { QKeySequence(Qt::Key_F9) }, &TScpCommanderForm::CurrentPropertiesActionExecute);
   ShowHiddenFilesAction = CreateAction("ShowHiddenFilesAction", tr("Show/Hide &Hidden Files"), QString(),
     { QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H) }, &TScpCommanderForm::ShowHiddenFilesActionExecute);
   ShowHiddenFilesAction->setCheckable(true);
@@ -132,6 +135,8 @@ void TScpCommanderForm::CreateMenus()
   FilesMenu->addAction(CurrentRenameAction);
   FilesMenu->addAction(CurrentDeleteAction);
   FilesMenu->addAction(CurrentDeleteAlternativeAction);
+  FilesMenu->addSeparator();
+  FilesMenu->addAction(CurrentPropertiesAction);
 
   QMenu * CommandsMenu = Menu->addMenu(tr("&Commands"));
   CommandsMenu->setObjectName(QStringLiteral("CommandsMenu"));
@@ -165,13 +170,16 @@ void TScpCommanderForm::CreateToolbars()
   Toolbar->addAction(CurrentRenameAction);
   Toolbar->addAction(CurrentDeleteAction);
   Toolbar->addAction(CurrentCreateDirAction);
+  Toolbar->addAction(CurrentPropertiesAction);
 
   // The keys of the commands, at the bottom, as in upstream's Commander
   QToolBar * Hotkeys = new QToolBar(tr("Hotkeys"), this);
   Hotkeys->setObjectName(QStringLiteral("HotkeysToolbar"));
   Hotkeys->setToolButtonStyle(Qt::ToolButtonTextOnly);
   addToolBar(Qt::BottomToolBarArea, Hotkeys);
-  for (QAction * Action : { CurrentRenameAction, CurrentCopyAction, CurrentCreateDirAction, CurrentDeleteAction, CloseApplicationAction })
+  for (QAction * Action :
+         { CurrentRenameAction, CurrentCopyAction, CurrentCreateDirAction, CurrentDeleteAction, CurrentPropertiesAction,
+           CloseApplicationAction })
   {
     QString Caption = Action->text().remove(QLatin1Char('&')).remove(QStringLiteral("..."));
     QAction * Proxy = Hotkeys->addAction(Action->shortcut().toString(QKeySequence::NativeText) + QLatin1Char(' ') + Caption);
@@ -237,6 +245,7 @@ void TScpCommanderForm::UpdateActions()
   CurrentDeleteAction->setEnabled(!Busy && HasSelection);
   CurrentDeleteAlternativeAction->setEnabled(!Busy && HasSelection);
   CurrentCreateDirAction->setEnabled(!Busy && CurrentReady);
+  CurrentPropertiesAction->setEnabled(!Busy && HasSelection);
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::UpdateCaption()
@@ -548,6 +557,270 @@ void TScpCommanderForm::CurrentCreateDirActionExecute()
     Panel->FocusFile(UnixExtractFileName(UnixExcludeTrailingBackslash(Name)));
     UpdateActions();
   }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CurrentPropertiesActionExecute()
+{
+  TDirPanel * Panel = FCurrentPanel;
+  if (IsBusy() || !Panel->IsReady())
+  {
+    return;
+  }
+  std::unique_ptr<TStrings> FileList(CreateFileList(Panel));
+  if (FileList->Count > 0)
+  {
+    ::rtl::TFinally UpdateFinally([&]() { UpdateActions(); });
+    SetProperties(Panel, FileList.get());
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CalculateSize(
+  TStrings * FileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close)
+{
+  TTerminal * Terminal = GetTerminal();
+  // terminal can be already closed (e.g. dropped connection)
+  if (Terminal != NULL)
+  {
+    TAutoNestingCounter BusyCounter(FBusy);
+    try
+    {
+      TCalculateSizeParams Params;
+      Params.Stats = &Stats;
+      Terminal->CalculateFilesSize(FileList, Size, Params);
+    }
+    catch (...)
+    {
+      if (!Terminal->Active)
+      {
+        Close = true;
+      }
+      throw;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+void TScpCommanderForm::CalculateChecksum(const UnicodeString & Alg,
+  TStrings * FileList, TCalculatedChecksumEvent OnCalculatedChecksum, bool & Close)
+{
+  TTerminal * Terminal = GetTerminal();
+  // terminal can be already closed (e.g. dropped connection)
+  if ((Terminal != NULL) && EnsureCommandSessionFallback(fcCalculatingChecksum))
+  {
+    Configuration->Usage->Inc(L"ChecksumCalculated");
+
+    TAutoNestingCounter BusyCounter(FBusy);
+    try
+    {
+      Terminal->CalculateFilesChecksum(Alg, FileList, OnCalculatedChecksum);
+    }
+    catch (...)
+    {
+      if (!Terminal->Active)
+      {
+        Close = true;
+      }
+      throw;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::CanCalculateChecksum()
+{
+  TTerminal * Terminal = GetTerminal();
+  return
+    Terminal->IsCapable[fcCalculatingChecksum] ||
+    (Terminal->IsCapable[fcSecondaryShell] && !Terminal->IsEncryptingFiles());
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::EnsureCommandSessionFallback(TFSCapability Capability)
+{
+  TTerminal * Terminal = GetTerminal();
+  bool Result = Terminal->IsCapable[Capability] ||
+    Terminal->CommandSessionOpened;
+
+  if (!Result)
+  {
+    // We might get here for example when "checksum" synchronization is requested from command-line
+    // on server that supports neither checksum nor shell
+    if (!Terminal->IsCapable[fcSecondaryShell])
+    {
+      NotSupported();
+    }
+    else if (!GUIConfiguration->ConfirmCommandSession)
+    {
+      Result = true;
+    }
+    else
+    {
+      TMessageParams Params(mpNeverAskAgainCheck);
+      const TFileSystemInfo & FileSystemInfo = Terminal->GetFileSystemInfo();
+      unsigned int Answer = MessageDialog(FMTLOAD(PERFORM_ON_COMMAND_SESSION2,
+        (FileSystemInfo.ProtocolName, FileSystemInfo.ProtocolName)), qtConfirmation,
+        qaOK | qaCancel, &Params);
+      if (Answer == qaNeverAskAgain)
+      {
+        GUIConfiguration->ConfirmCommandSession = false;
+        Result = true;
+      }
+      else if (Answer == qaOK)
+      {
+        Result = true;
+      }
+    }
+
+    if (Result)
+    {
+      DebugAssert(!Terminal->CommandSessionOpened);
+      TAutoNestingCounter BusyCounter(FBusy);
+      Result = TTerminalManager::Instance()->ConnectTerminal(Terminal->CommandSession);
+    }
+  }
+
+  return Result;
+}
+//---------------------------------------------------------------------------
+bool TScpCommanderForm::SetProperties(TDirPanel * Panel, TStrings * FileList)
+{
+  bool Result;
+  if (Panel == FRemotePanel)
+  {
+    TTerminal * Terminal = GetTerminal();
+    std::unique_ptr<TRemoteTokenList> GroupList;
+    std::unique_ptr<TRemoteTokenList> UserList;
+
+    TRemoteProperties CurrentProperties;
+
+    {
+      TAutoNestingCounter BusyCounter(FBusy);
+      Terminal->LoadFilesProperties(FileList);
+    }
+
+    bool CapableGroupChanging = Terminal->IsCapable[fcGroupChanging];
+    bool CapableOwnerChanging = Terminal->IsCapable[fcOwnerChanging];
+    if (CapableGroupChanging || CapableOwnerChanging)
+    {
+      if (CapableGroupChanging)
+      {
+        GroupList.reset(Terminal->Groups->Duplicate());
+      }
+      if (CapableOwnerChanging)
+      {
+        UserList.reset(Terminal->Users->Duplicate());
+      }
+      TRemoteDirectory * Files = Terminal->Files;
+      int Count = Files->Count;
+      if (Count > 100)
+      {
+        Count = 100;
+      }
+      for (int Index = 0; Index < Count; Index++)
+      {
+        TRemoteFile * File = Files->Files[Index];
+        if (CapableGroupChanging)
+        {
+          GroupList->AddUnique(File->Group);
+        }
+        if (CapableOwnerChanging)
+        {
+          UserList->AddUnique(File->Owner);
+        }
+      }
+
+      // if we haven't collected tokens for all files in current directory,
+      // make sure we collect them at least for all selected files.
+      // (note that so far the files in FileList has to be from current direcotry)
+      if (Count < Files->Count)
+      {
+        for (int Index = 0; Index < FileList->Count; Index++)
+        {
+          TRemoteFile * File = static_cast<TRemoteFile *>(FileList->Objects[Index]);
+          if (CapableGroupChanging)
+          {
+            GroupList->AddUnique(File->Group);
+          }
+          if (CapableOwnerChanging)
+          {
+            UserList->AddUnique(File->Owner);
+          }
+        }
+      }
+    }
+
+    CurrentProperties = TRemoteProperties::CommonProperties(FileList);
+
+    bool CapableAclChanging = Terminal->IsCapable[fcAclChangingFiles];
+    if (CapableAclChanging && TRemoteFileList::AnyDirectory(FileList))
+    {
+      CapableAclChanging = false;
+      CurrentProperties.Valid = CurrentProperties.Valid >> vpRights;
+    }
+
+    int Flags = 0;
+    if (Terminal->IsCapable[fcModeChanging]) Flags |= cpMode;
+    if (CapableAclChanging) Flags |= cpAcl;
+    if (CapableOwnerChanging) Flags |= cpOwner;
+    if (CapableGroupChanging) Flags |= cpGroup;
+
+    TCalculateChecksumEvent CalculateChecksumEvent;
+    if (CanCalculateChecksum())
+    {
+      CalculateChecksumEvent =
+        [this](const UnicodeString & Alg, TStrings * AFileList, TCalculatedChecksumEvent OnCalculatedChecksum, bool & Close)
+        {
+          CalculateChecksum(Alg, AFileList, OnCalculatedChecksum, Close);
+        };
+    }
+
+    std::unique_ptr<TStrings> ChecksumAlgs(new TStringList());
+    Terminal->GetSupportedChecksumAlgs(ChecksumAlgs.get());
+
+    int Options =
+      FLAGMASK(Terminal->IsCapable[fcGroupOwnerChangingByID], poUserGroupByID) |
+      FLAGMASK(Terminal->IsCapable[fcTags], poTags);
+
+    TRemoteProperties NewProperties = CurrentProperties;
+    Result =
+      DoPropertiesDialog(FileList, FRemotePanel->GetPath(),
+        GroupList.get(), UserList.get(), ChecksumAlgs.get(), &NewProperties, Flags, Options,
+        [this](TStrings * AFileList, __int64 & Size, TCalculateSizeStats & Stats, bool & Close)
+        {
+          CalculateSize(AFileList, Size, Stats, Close);
+        },
+        CalculateChecksumEvent);
+    if (Result)
+    {
+      NewProperties = TRemoteProperties::ChangedProperties(CurrentProperties, NewProperties);
+      TAutoNestingCounter BusyCounter(FBusy);
+      UpdateActions();
+      ::rtl::TFinally Finally([&]() { DestroyProgressForm(); });
+      Terminal->ChangeFilesProperties(FileList, &NewProperties);
+    }
+  }
+  else
+  {
+    // Upstream shows the properties dialog of the Windows shell; the
+    // dialog of the remote files shows the local ones, their permissions
+    // can be changed
+    std::unique_ptr<TStrings> LocalFileList(CreateLocalFileList(FileList));
+    TRemoteProperties CurrentProperties = TRemoteProperties::CommonProperties(LocalFileList.get());
+    TRemoteProperties NewProperties = CurrentProperties;
+    std::unique_ptr<TStrings> ChecksumAlgs(new TStringList());
+    Result =
+      DoPropertiesDialog(LocalFileList.get(), ExcludeTrailingBackslash(FLocalPanel->GetPath()),
+        NULL, NULL, ChecksumAlgs.get(), &NewProperties, cpMode, 0,
+        [](TStrings * AFileList, __int64 & Size, TCalculateSizeStats & Stats, bool & /*Close*/)
+        {
+          CalculateLocalFilesSize(AFileList, Size, Stats);
+        },
+        nullptr);
+    if (Result)
+    {
+      NewProperties = TRemoteProperties::ChangedProperties(CurrentProperties, NewProperties);
+      ::rtl::TFinally Finally([&]() { FLocalPanel->Reload(); });
+      ChangeLocalFilesProperties(LocalFileList.get(), NewProperties);
+    }
+  }
+  return Result;
 }
 //---------------------------------------------------------------------------
 void TScpCommanderForm::ShowHiddenFilesActionExecute()

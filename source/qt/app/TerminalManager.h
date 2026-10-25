@@ -43,6 +43,9 @@ public:
   // shown), the session is freed then
   bool ConnectActiveTerminal();
   void ReconnectActiveTerminal();
+  // Connects a terminal that is not the active one (the separate shell
+  // session of the active one); false when it failed (the error was shown)
+  bool ConnectTerminal(TTerminal * Terminal);
   void FreeActiveTerminal();
   // An exception of an operation of the GUI
   void HandleException(Exception * E);

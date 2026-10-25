@@ -19,6 +19,9 @@ class TTerminal;
 //---------------------------------------------------------------------------
 enum TDirViewColumn { dvName, dvSize, dvType, dvChanged, dvRights, dvOwner, dvGroup, dvLinkTarget };
 //---------------------------------------------------------------------------
+// The type and the icon of a file by the name, of the freedesktop theme
+void FileTypeAndIcon(const QString & FileName, bool Directory, QString & Type, QIcon & Icon);
+//---------------------------------------------------------------------------
 struct TDirViewItem
 {
   // The name as the core has it (QString does not keep names that are not
