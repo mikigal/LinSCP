@@ -51,12 +51,12 @@ void SelectPage(QWidget * Dialog, const QString & Caption)
 //---------------------------------------------------------------------------
 TEST(SiteAdvancedDialogTest, SftpSettings)
 {
-  TSessionData Data(L"site");
-  Data.FSProtocol = fsSFTP;
-  Data.HostName = L"example.com";
-  Data.RemoteDirectory = L"/var/www";
-  Data.ProxyMethod = pmSocks5;
-  Data.ProxyHost = L"proxy";
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  Data->FSProtocol = fsSFTP;
+  Data->HostName = L"example.com";
+  Data->RemoteDirectory = L"/var/www";
+  Data->ProxyMethod = pmSocks5;
+  Data->ProxyHost = L"proxy";
   WhenModal([&](QWidget * Dialog)
   {
     EXPECT_EQ(Dialog->objectName(), QStringLiteral("SiteAdvancedDialog"));
@@ -93,24 +93,24 @@ TEST(SiteAdvancedDialogTest, SftpSettings)
     Child<QPlainTextEdit>(Dialog, "NoteMemo")->setPlainText(QStringLiteral("A note"));
     Child<QPushButton>(Dialog, "OKBtn")->click();
   });
-  TCipher First = Data.Cipher[1];
-  EXPECT_TRUE(DoSiteAdvancedDialog(&Data));
-  EXPECT_EQ(Data.RemoteDirectory, UnicodeString(L"/srv"));
-  EXPECT_EQ(Data.FSProtocol, fsSFTPonly);
-  EXPECT_TRUE(Data.Compression);
-  EXPECT_EQ(Data.Cipher[0], First);
-  EXPECT_EQ(Data.ProxyMethod, pmNone);
-  EXPECT_EQ(Data.Timeout, 30);
-  EXPECT_EQ(Data.AddressFamily, afIPv4);
-  EXPECT_EQ(Data.Note, UnicodeString(L"A note"));
+  TCipher First = Data->Cipher[1];
+  EXPECT_TRUE(DoSiteAdvancedDialog(Data.get()));
+  EXPECT_EQ(Data->RemoteDirectory, UnicodeString(L"/srv"));
+  EXPECT_EQ(Data->FSProtocol, fsSFTPonly);
+  EXPECT_TRUE(Data->Compression);
+  EXPECT_EQ(Data->Cipher[0], First);
+  EXPECT_EQ(Data->ProxyMethod, pmNone);
+  EXPECT_EQ(Data->Timeout, 30);
+  EXPECT_EQ(Data->AddressFamily, afIPv4);
+  EXPECT_EQ(Data->Note, UnicodeString(L"A note"));
 }
 //---------------------------------------------------------------------------
 TEST(SiteAdvancedDialogTest, FtpSettings)
 {
-  TSessionData Data(L"site");
-  Data.FSProtocol = fsFTP;
-  Data.Ftps = ftpsExplicitTls;
-  Data.HostName = L"example.com";
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  Data->FSProtocol = fsFTP;
+  Data->Ftps = ftpsExplicitTls;
+  Data->HostName = L"example.com";
   WhenModal([&](QWidget * Dialog)
   {
     QStringList Pages = VisiblePages(Dialog);
@@ -133,18 +133,18 @@ TEST(SiteAdvancedDialogTest, FtpSettings)
     Child<QComboBox>(Dialog, "MinTlsVersionCombo")->setCurrentIndex(3);
     Child<QPushButton>(Dialog, "OKBtn")->click();
   });
-  EXPECT_TRUE(DoSiteAdvancedDialog(&Data));
-  EXPECT_EQ(Data.PostLoginCommands, UnicodeString(L"SITE CHMOD"));
-  EXPECT_EQ(Data.ProxyMethod, pmHTTP);
-  EXPECT_TRUE(Data.FtpPasvMode);
-  EXPECT_EQ(Data.MinTlsVersion, tls13);
+  EXPECT_TRUE(DoSiteAdvancedDialog(Data.get()));
+  EXPECT_EQ(Data->PostLoginCommands, UnicodeString(L"SITE CHMOD"));
+  EXPECT_EQ(Data->ProxyMethod, pmHTTP);
+  EXPECT_TRUE(Data->FtpPasvMode);
+  EXPECT_EQ(Data->MinTlsVersion, tls13);
 }
 //---------------------------------------------------------------------------
 TEST(SiteAdvancedDialogTest, EncryptionAndColor)
 {
-  TSessionData Data(L"site");
-  Data.FSProtocol = fsSFTPonly;
-  Data.HostName = L"example.com";
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  Data->FSProtocol = fsSFTPonly;
+  Data->HostName = L"example.com";
   bool Rejected = false;
   WhenModal([&](QWidget * Dialog)
   {
@@ -177,19 +177,19 @@ TEST(SiteAdvancedDialogTest, EncryptionAndColor)
     });
     Child<QPushButton>(Dialog, "OKBtn")->click();
   });
-  EXPECT_TRUE(DoSiteAdvancedDialog(&Data));
+  EXPECT_TRUE(DoSiteAdvancedDialog(Data.get()));
   EXPECT_TRUE(Rejected);
-  EXPECT_EQ(Data.EncryptKey.Length(), 64);
-  EXPECT_EQ(Data.Color, 0xCC99FF);
+  EXPECT_EQ(Data->EncryptKey.Length(), 64);
+  EXPECT_EQ(Data->Color, 0xCC99FF);
 }
 //---------------------------------------------------------------------------
 TEST(SiteAdvancedDialogTest, RawSettings)
 {
-  TSessionData Data(L"site");
-  Data.FSProtocol = fsSFTPonly;
-  Data.HostName = L"example.com";
-  Data.UserName = L"user";
-  Data.Compression = true;
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  Data->FSProtocol = fsSFTPonly;
+  Data->HostName = L"example.com";
+  Data->UserName = L"user";
+  Data->Compression = true;
   WhenModal([&](QWidget * Dialog)
   {
     EXPECT_EQ(Dialog->objectName(), QStringLiteral("SiteRawDialog"));
@@ -212,10 +212,10 @@ TEST(SiteAdvancedDialogTest, RawSettings)
     SettingsMemo->setPlainText(SettingsMemo->toPlainText().replace(QRegularExpression(QStringLiteral("Timeout=\\d+")), QStringLiteral("Timeout=33")));
     Child<QPushButton>(Dialog, "OKButton")->click();
   });
-  DoSiteRawDialog(&Data);
-  EXPECT_EQ(Data.Timeout, 33);
-  EXPECT_TRUE(Data.Compression);
-  EXPECT_EQ(Data.HostName, UnicodeString(L"example.com"));
-  EXPECT_EQ(Data.FSProtocol, fsSFTPonly);
+  DoSiteRawDialog(Data.get());
+  EXPECT_EQ(Data->Timeout, 33);
+  EXPECT_TRUE(Data->Compression);
+  EXPECT_EQ(Data->HostName, UnicodeString(L"example.com"));
+  EXPECT_EQ(Data->FSProtocol, fsSFTPonly);
 }
 //---------------------------------------------------------------------------

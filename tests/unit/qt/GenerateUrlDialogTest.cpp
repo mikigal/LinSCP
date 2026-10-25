@@ -38,14 +38,14 @@ TEST(RtfTextTest, Conversion)
 namespace
 {
 //---------------------------------------------------------------------------
-void SampleSession(TSessionData & Data)
+void SampleSession(TSessionData * Data)
 {
-  Data.FSProtocol = fsSFTP;
-  Data.HostName = L"example.com";
-  Data.UserName = L"user";
-  Data.Password = L"pa\"$s";
-  Data.RemoteDirectory = L"/home/user";
-  Data.HostKey = L"ssh-ed25519 255 AbCd";
+  Data->FSProtocol = fsSFTP;
+  Data->HostName = L"example.com";
+  Data->UserName = L"user";
+  Data->Password = L"pa\"$s";
+  Data->RemoteDirectory = L"/home/user";
+  Data->HostKey = L"ssh-ed25519 255 AbCd";
 }
 //---------------------------------------------------------------------------
 QString Result(QWidget * Dialog)
@@ -57,8 +57,8 @@ QString Result(QWidget * Dialog)
 //---------------------------------------------------------------------------
 TEST(GenerateUrlDialogTest, SessionUrlAndScripts)
 {
-  TSessionData Data(L"site");
-  SampleSession(Data);
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  SampleSession(Data.get());
   AppConfiguration->GenerateUrlComponents = -1;
   AppConfiguration->GenerateUrlCodeTarget = guctUrl;
   AppConfiguration->GenerateUrlScriptFormat = sfScriptFile;
@@ -108,7 +108,7 @@ TEST(GenerateUrlDialogTest, SessionUrlAndScripts)
     EXPECT_EQ(QApplication::clipboard()->text(), Script);
     Child<QPushButton>(Dialog, "CancelBtn")->click();
   });
-  DoGenerateUrlDialog(&Data, NULL);
+  DoGenerateUrlDialog(Data.get(), NULL);
   // The last page and its format are remembered
   EXPECT_EQ(AppConfiguration->GenerateUrlCodeTarget, guctScript);
   EXPECT_EQ(AppConfiguration->GenerateUrlScriptFormat, sfCommandLine);
@@ -116,8 +116,8 @@ TEST(GenerateUrlDialogTest, SessionUrlAndScripts)
 //---------------------------------------------------------------------------
 TEST(GenerateUrlDialogTest, FileUrls)
 {
-  TSessionData Data(L"site");
-  SampleSession(Data);
+  std::unique_ptr<TSessionData> Data(new TSessionData(L"site"));
+  SampleSession(Data.get());
   AppConfiguration->GenerateUrlComponents = 1;
   std::unique_ptr<TStrings> Paths(new TStringList());
   Paths->Add(L"/home/user/a b.txt");
@@ -132,6 +132,6 @@ TEST(GenerateUrlDialogTest, FileUrls)
       QStringLiteral("sftp://user@example.com/home/user/a%20b.txt\nsftp://user@example.com/home/user/c.txt\n"));
     Child<QPushButton>(Dialog, "CancelBtn")->click();
   });
-  DoGenerateUrlDialog(&Data, Paths.get());
+  DoGenerateUrlDialog(Data.get(), Paths.get());
 }
 //---------------------------------------------------------------------------
