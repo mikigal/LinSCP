@@ -607,6 +607,13 @@ void TScpCommanderForm::CreateMenus()
   FQueueShowMenu->addActions(FQueueShowGroup->actions());
   FQueueShowMenu->addSeparator();
   FQueueShowMenu->addAction(QueueFileListAction);
+  // upstream's Options of the popup menu of the queue (its actions are
+  // created after the queue panel)
+  QAction * QueuePopupSeparator = new QAction(QueueView3);
+  QueuePopupSeparator->setSeparator(true);
+  QueueView3->addAction(QueuePopupSeparator);
+  QueueView3->addAction(
+    CreateQueueOptionsMenu(QueueView3, tr("&Options"), QStringLiteral("QueuePopupOptionsMenu"))->menuAction());
 
   // upstream's Toolbars menu (of the interface's toolbars)
   FToolbarsMenu = NewMenu(tr("&Toolbars"), "ToolbarsMenu");

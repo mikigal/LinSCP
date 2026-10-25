@@ -213,11 +213,6 @@ void TScpCommanderForm::CreateQueuePanel()
   {
     QueueView3->addAction(Action);
   }
-  // upstream's Options of the popup menu of the queue
-  QAction * Separator = new QAction(QueueView3);
-  Separator->setSeparator(true);
-  QueueView3->addAction(Separator);
-  QueueView3->addAction(CreateQueueOptionsMenu(QueueView3, tr("&Options"), QStringLiteral("QueuePopupOptionsMenu"))->menuAction());
   connect(QueueView3, &QTreeWidget::currentItemChanged, this, [this]()
   {
     UpdateQueueActions();

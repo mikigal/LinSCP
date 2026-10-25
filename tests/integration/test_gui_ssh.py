@@ -679,6 +679,11 @@ class GuiSshTest(GuiSshTestCase):
         self.login(gui, 'local')
         F = W + 'QueueFileList'
         self.assertFalse(gui.get(W + 'QueueFileListAction')['enabled'])
+        # In upstream's menus of the queue
+        for menu in ('QueueViewMenu', 'QueueShowMenu', 'QueuePopupOptionsMenu'):
+            items = gui.get(menu)['items']
+            self.assertIn('File List', items, menu)
+            self.assertIn('Show', items, menu)
 
         # The files of a directory transferred in the background (in
         # parallel), processed
