@@ -110,6 +110,20 @@ void TScpCommanderForm::ExecuteCommandLine(TOptions * Params)
     ParamCommand = pcUpload;
   }
 
+  // upstream's WinMain: the logs of the session opened at the start
+  if (CheckSafe(Params))
+  {
+    UnicodeString LogFile;
+    if (Params->FindSwitch(LOG_SWITCH, LogFile))
+    {
+      Configuration->TemporaryLogging(LogFile);
+    }
+    if (Params->FindSwitch(L"XmlLog", LogFile))
+    {
+      Configuration->TemporaryActionsLogging(LogFile);
+    }
+  }
+
   UnicodeString SessionName = (Params->ParamCount > 0) ? Params->Param[1] : UnicodeString();
   bool CommandLineOperation = (ParamCommand != pcNone);
   if (SessionName.IsEmpty() && !CommandLineOperation)
