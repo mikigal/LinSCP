@@ -33,7 +33,7 @@ const wchar_t TokenPrefix = L'%';
 const wchar_t NoReplacement = wchar_t(false);
 const wchar_t TokenReplacement = wchar_t(true);
 // Note similar list in MakeValidFileName
-// OpenSCP: only the path delimiter is invalid in Linux file names
+// LinSCP: only the path delimiter is invalid in Linux file names
 const UnicodeString LocalInvalidChars(TraceInitStr(L"/"));
 const UnicodeString PasswordMask(TraceInitStr(L"***"));
 const UnicodeString Ellipsis(TraceInitStr(L"..."));
@@ -721,7 +721,7 @@ UnicodeString __fastcall ValidLocalFileName(
       }
     }
 
-    // OpenSCP: no trailing spaces or dots trimmed and no reserved names (CON, ...)
+    // LinSCP: no trailing spaces or dots trimmed and no reserved names (CON, ...)
     // on Linux, unlike on Windows
   }
   else
@@ -1238,7 +1238,7 @@ UnicodeString __fastcall ApiPath(UnicodeString Path)
     Path = ExpandFileName(Path);
   }
 
-  // OpenSCP: no length limit on Linux (Windows needs the \\?\ prefix for long paths)
+  // LinSCP: no length limit on Linux (Windows needs the \\?\ prefix for long paths)
   return Path;
 }
 //---------------------------------------------------------------------------
@@ -1541,7 +1541,8 @@ UnicodeString GetOSInfo()
 //---------------------------------------------------------------------------
 UnicodeString GetEnvironmentInfo()
 {
-  UnicodeString Result = FORMAT(L"WinSCP %s (OS %s)", (Configuration->VersionStr, GetOSInfo()));
+  // LinSCP: the name of the application, not WinSCP
+  UnicodeString Result = FORMAT(L"%s %s (OS %s)", (AppNameString(), Configuration->VersionStr, GetOSInfo()));
   return Result;
 }
 //---------------------------------------------------------------------------
@@ -4327,7 +4328,7 @@ TStrings * TlsCipherList()
   }
   while (CipherName != NULL);
 
-  // OpenSCP: freed (LeakSanitizer)
+  // LinSCP: freed (LeakSanitizer)
   SSL_free(Ssl);
   SSL_CTX_free(Ctx);
 
