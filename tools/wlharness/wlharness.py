@@ -465,6 +465,27 @@ class Session:
         _wait_for(present, timeout, f"the accessible '{name}' of {application}")
         return found[0]
 
+    def do_popup_action(self, application, name, action, open_popup, role="menu item", timeout=20):
+        """Performs the action of an object of a popup menu that open_popup()
+        opens (e.g. by a right click): popups are not in the tree of their
+        application, wlh-atspi.py waits for one to show."""
+        token = uuid.uuid4().hex
+        ready = self.dir / f"popup-{token}.ready"
+        command = [sys.executable, str(Path(__file__).with_name("wlh-atspi.py")), application, "--popup",
+                   "--name", name, "--action", action, "--role", role, "--ready-file", str(ready), "--timeout", str(timeout)]
+        process = self.spawn(command, log_name=f"popup-{token}")
+        try:
+            _wait_for(lambda: ready.exists() or process.poll() is not None, 20, "the popup listener")
+            open_popup()
+            code = process.wait(timeout + 10)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            ready.unlink(missing_ok=True)
+        if code != 0:
+            raise HarnessError(f"no popup menu of {application} with '{name}'; see {self.logs / f'popup-{token}.log'}")
+
     def do_accessible_action(self, application, name, action, role=None):
         command = [sys.executable, str(Path(__file__).with_name("wlh-atspi.py")), application, "--name", name, "--action", action]
         if role is not None:
