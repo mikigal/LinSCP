@@ -2,6 +2,15 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Arch Linux: pacman package and linscp-bin (2026-10-26)
+
+The package of Arch Linux that the release workflow builds with the AUR's PKGBUILD
+(`packaging/aur/linscp`) goes to the release as `linscp-X.Y.Z-N-x86_64.pkg.tar.zst`, to install
+with `pacman -U`. The AUR gets a second package, `linscp-bin` (`packaging/aur/linscp-bin`),
+which extracts that package (`provides` and `conflicts` `linscp`); the workflow pushes both to
+the AUR with the same key. `packaging/ci/build-aur.sh` builds, installs and checks both
+(`smoke-test.sh`), `linscp-bin` from the package just built, as it would be downloaded.
+
 ## Release packages (2026-10-26)
 
 A published GitHub release gets its packages from `.github/workflows/release.yml` (PLAN.md,

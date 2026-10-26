@@ -1,7 +1,8 @@
 # Builds the packages of a release and adds them to it: the source tarball,
 # .deb for Debian and Ubuntu, .rpm for Fedora and openSUSE, an AppImage and a
-# tarball of the same files; then publishes the release in the AUR (with the
-# secret AUR_SSH_PRIVATE_KEY, the key of the AUR account).
+# tarball of the same files, the package of Arch Linux; then publishes the
+# release in the AUR as linscp and linscp-bin (with the secret
+# AUR_SSH_PRIVATE_KEY, the key of the AUR account that maintains both).
 #
 # The tag of a release is vX.Y.Z or vX.Y.Z-N, X.Y.Z being the version of the
 # core (packaging/ci/version.sh). Run by hand with a tag, the workflow builds
@@ -181,8 +182,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: aur
-          path: out/
+          path: out/aur/
           include-hidden-files: true
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-archlinux
+          path: out/release/
           if-no-files-found: error
 
   publish:
@@ -238,16 +244,18 @@ jobs:
           echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' \
             > ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
-          git clone ssh://aur@aur.archlinux.org/linscp.git aur
-          cp aur-package/PKGBUILD aur-package/.SRCINFO aur/
-          cd aur
-          git add PKGBUILD .SRCINFO
-          if git diff --cached --quiet
-          then
-            echo "The AUR has this release already"
-            exit 0
-          fi
-          git -c user.name='github-actions[bot]' \
-            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -m "Update to $VERSION-$RELEASE"
-          git push origin HEAD:master
+          for Package in linscp linscp-bin
+          do
+            git clone "ssh://aur@aur.archlinux.org/$Package.git" "aur-$Package"
+            cp "aur-package/$Package/PKGBUILD" "aur-package/$Package/.SRCINFO" "aur-$Package/"
+            git -C "aur-$Package" add PKGBUILD .SRCINFO
+            if git -C "aur-$Package" diff --cached --quiet
+            then
+              echo "$Package: the AUR has this release already"
+              continue
+            fi
+            git -C "aur-$Package" -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Update to $VERSION-$RELEASE"
+            git -C "aur-$Package" push origin HEAD:master
+          done

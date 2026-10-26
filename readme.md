@@ -109,7 +109,7 @@ Every [release](https://github.com/mikigal/LinSCP/releases) comes with packages 
 | Fedora 43, 44 | `linscp-<version>.fc43.x86_64.rpm`, `linscp-<version>.fc44.x86_64.rpm` |
 | openSUSE Tumbleweed, Leap 16.0 | `linscp-<version>.tumbleweed.x86_64.rpm`, `linscp-<version>.leap16.0.x86_64.rpm` |
 | Other distributions (glibc 2.39 or later, e.g. Ubuntu 24.04) | `LinSCP-<version>-x86_64.AppImage`, or the same files in `linscp-<version>-x86_64.tar.gz` |
-| Arch Linux | the `linscp` package in the AUR (not published yet), or the PKGBUILD below |
+| Arch Linux | `linscp-<version>-<release>-x86_64.pkg.tar.zst` for `pacman -U`, the AUR's `linscp` (built from source) or `linscp-bin` (that package; both not published yet), or the PKGBUILD below |
 
 Install a package with the system's package manager, which also installs its dependencies.
 The packages are not signed: check them against `SHA256SUMS` of the release.
@@ -118,6 +118,7 @@ The packages are not signed: check them against `SHA256SUMS` of the release.
 sudo apt install ./linscp_<version>_debian13_amd64.deb
 sudo dnf install ./linscp-<version>.fc44.x86_64.rpm
 sudo zypper install --allow-unsigned-rpm ./linscp-<version>.tumbleweed.x86_64.rpm
+sudo pacman -U ./linscp-<version>-<release>-x86_64.pkg.tar.zst
 ```
 
 The AppImage and the tarball include Qt but use the system's OpenSSL. To use `linscp-cli`
@@ -240,7 +241,8 @@ Publishing a GitHub release starts [`release.yml`](.github/workflows/release.yml
 the packages listed in [Installation](#installation) and the source tarball in containers of
 the distributions (the AppImage on Ubuntu 24.04 with Qt from `aqtinstall`), installs and
 checks each package, adds them and `SHA256SUMS` to the release, and publishes the release in
-the AUR. The scripts are in [`packaging/ci`](packaging/ci).
+the AUR as `linscp` (built from the source tarball) and `linscp-bin` (the release's package of
+Arch Linux). The scripts are in [`packaging/ci`](packaging/ci).
 
 - The tag is `vX.Y.Z`, where `X.Y.Z` is the version of the core (`FileVersion` in
   `source/WinSCP.cbproj`), or `vX.Y.Z-N` for another release of LinSCP on the same core
@@ -248,7 +250,8 @@ the AUR. The scripts are in [`packaging/ci`](packaging/ci).
 - Run by hand (*Actions → Release → Run workflow*) with a tag, it builds that release again
   and replaces its files. Without a tag, it only builds, and the files stay with the run.
 - The AUR needs the repository secret `AUR_SSH_PRIVATE_KEY`, the private SSH key of the AUR
-  account that maintains `linscp`. Without it, the workflow skips the AUR with a notice.
+  account that maintains `linscp` and `linscp-bin`. Without it, the workflow skips the AUR
+  with a notice.
   Pre-releases are not published in the AUR.
 
 ## Usage

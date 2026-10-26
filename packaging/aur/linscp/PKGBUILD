@@ -1,6 +1,7 @@
 # The package of LinSCP in the AUR, built from the source tarball of a
 # release. The release workflow (.github/workflows/release.yml, through
-# packaging/ci/build-aur.sh) fills in the @...@ fields and publishes it.
+# packaging/ci/build-aur.sh) fills in the @...@ fields and publishes it; the
+# package it builds with it goes to the release, for linscp-bin.
 # packaging/arch/PKGBUILD builds a checkout instead.
 pkgname=linscp
 # The version of the core (upstream WinSCP's, source/WinSCP.cbproj)

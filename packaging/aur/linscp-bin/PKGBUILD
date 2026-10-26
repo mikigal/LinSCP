@@ -1,0 +1,34 @@
+# The binary package of LinSCP in the AUR: the package of Arch Linux that the
+# release workflow builds with packaging/aur/linscp/PKGBUILD and adds to the
+# release. The workflow (.github/workflows/release.yml, through
+# packaging/ci/build-aur.sh) fills in the @...@ fields and publishes it.
+pkgname=linscp-bin
+_pkgname=linscp
+# The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
+pkgver=@VERSION@
+pkgrel=@RELEASE@
+pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP, binary package)'
+arch=('x86_64')
+url='https://github.com/mikigal/LinSCP'
+license=('GPL-3.0-or-later')
+depends=('expat' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'openssl' 'qt6-base' 'qt6-svg' 'qt6-wayland')
+optdepends=(
+  'openssh: opening sessions in ssh'
+  'putty: opening sessions in PuTTY'
+  'qt6-translations: translations of the standard dialogs'
+  'xdg-utils: the default handler of the URLs of the protocols'
+  'libcanberra: the sound once an operation completes'
+)
+provides=("${_pkgname}=${pkgver}")
+conflicts=("${_pkgname}")
+# The package's build has stripped the binaries
+options=('!strip' '!debug')
+_tag=@TAG@
+_package="${_pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
+source=("${_package}::${url}/releases/download/${_tag}/${_package}")
+noextract=("${_package}")
+sha256sums=('@SHA256@')
+
+package() {
+  bsdtar -xpf "${_package}" -C "${pkgdir}" --exclude .BUILDINFO --exclude .MTREE --exclude .PKGINFO
+}

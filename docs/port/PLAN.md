@@ -388,4 +388,7 @@ GUI on top of a verified core.
   them in the AUR (`packaging/aur`, with the secret `AUR_SSH_PRIVATE_KEY`). The packages link
   the system's libraries (expat older than 2.9.0 too). Not Ubuntu 26.10 yet: its OpenSSL 4
   makes `ASN1_STRING` opaque, which WinSCP's neon does not build with.
+- 2026-10-26: Arch Linux gets the package `makepkg` builds with the AUR's PKGBUILD in the release
+  (`linscp-X.Y.Z-N-x86_64.pkg.tar.zst`, for `pacman -U`), and two packages in the AUR: `linscp`,
+  built from the source tarball, and `linscp-bin`, which installs that package.
 - Deferred unless decided otherwise: .NET assembly, Flatpak packaging.
