@@ -27,6 +27,8 @@ Fork point: `master` was created from upstream `3b3f02479` (2026-10-24, Issue 24
   reference for the Qt GUI.
 - When the converter itself changes, its new output arrives through the next
   `upstream-converted` commit like any other change.
+- `readme.md` is LinSCP's own: upstream's text was replaced, keeping the file's name and CRLF
+  line endings. When a merge conflicts on it, keep LinSCP's version.
 
 ## Ported application files
 
