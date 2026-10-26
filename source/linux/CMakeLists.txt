@@ -23,7 +23,7 @@ target_include_directories(linscp_linux PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/incl
 # cmake/LinSCPVersion.cmake (configuration compatibility depends on the
 # core's version, its first three parts)
 target_compile_definitions(linscp_linux PRIVATE
-  LINSCP_FILE_VERSION="${LINSCP_FILE_VERSION}"
+  LINSCP_VERSION="${LinSCP_VERSION}"
   LINSCP_RELEASE_TYPE="${LINSCP_RELEASE_TYPE}")
 target_link_libraries(linscp_linux
   PRIVATE linscp::options OpenSSL::Crypto

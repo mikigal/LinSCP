@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
 
-# LinSCP's version: the version of the upstream WinSCP core (X.Y.Z) for the
-# first release on that core, X.Y.Z.N for LinSCP's further releases on it
-# (N from 1), see cmake/LinSCPVersion.cmake
+# LinSCP's version X.Y.Z.N: the version of the upstream WinSCP core (X.Y.Z)
+# and the number of LinSCP's release on that core (N, from 1), see
+# cmake/LinSCPVersion.cmake
 project(LinSCP
-  VERSION 6.7.1
+  VERSION 6.7.1.1
   DESCRIPTION "Native Linux port of WinSCP"
   LANGUAGES C CXX)
 

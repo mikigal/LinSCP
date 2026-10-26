@@ -1,5 +1,5 @@
-// The application's version: LinSCP's (X.Y.Z of the core, or X.Y.Z.N for a
-// further release of LinSCP on it), see cmake/LinSCPVersion.cmake.
+// The application's version: LinSCP's (X.Y.Z of the core, N of LinSCP's
+// release on it), see cmake/LinSCPVersion.cmake.
 //---------------------------------------------------------------------------
 #include <CorePCH.h>
 

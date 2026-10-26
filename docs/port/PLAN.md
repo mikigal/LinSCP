@@ -395,14 +395,15 @@ GUI on top of a verified core.
 - 2026-10-26: Arch Linux gets the package `makepkg` builds with the AUR's PKGBUILD in the release
   (`linscp-X.Y.Z-N-x86_64.pkg.tar.zst`, for `pacman -U`), and two packages in the AUR: `linscp`,
   built from the source tarball, and `linscp-bin`, which installs that package.
-- 2026-10-26: LinSCP has its own version (`project()` in `CMakeLists.txt`): the core's version
-  X.Y.Z for the first release on that core, X.Y.Z.N for LinSCP's further releases on it (N
-  from 1, back to none with the next core). It replaces `vX.Y.Z-N`, whose N was the packages'
-  release: the application did not tell those releases apart, and a release of the packages
-  only could not be expressed. The application reports the version (About, `linscp-cli
-  /help`, the SSH client version, the HTTP user agent); the configuration's compatibility
-  still depends on X.Y.Z only. Tags are `v` + the version, with `-R` for new packages of the
-  same version (R is the packages' release: pkgrel, the Debian revision, RPM's Release).
-  The configuration stops when the version is not of the core, so a merge of upstream that
-  changes the core's version sets it (`UPSTREAM.md`).
+- 2026-10-26: LinSCP has its own version (`project()` in `CMakeLists.txt`), always in four
+  parts X.Y.Z.N: X.Y.Z is the core's version and N the number of LinSCP's release on that core,
+  from 1 (the first release on the core 6.7.1 is 6.7.1.1; the next core starts again at .1).
+  It replaces `vX.Y.Z-N`, whose N was the packages' release: the application did not tell
+  those releases apart, and a release of the packages only could not be expressed. The
+  application reports the version (About, `linscp-cli /help`, the SSH client version, the HTTP
+  user agent); the configuration's compatibility still depends on X.Y.Z only. Tags are `v` +
+  the version, with `-R` for new packages of the same version (R is the packages' release:
+  pkgrel, the Debian revision, RPM's Release). The configuration stops when the version is not
+  of the core, so a merge of upstream that changes the core's version sets X.Y.Z.1
+  (`UPSTREAM.md`).
 - Deferred unless decided otherwise: .NET assembly, Flatpak packaging.

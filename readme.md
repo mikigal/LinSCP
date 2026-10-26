@@ -251,11 +251,10 @@ the AUR as `linscp` (built from the source tarball) and `linscp-bin` (the releas
 Arch Linux). The scripts are in [`packaging/ci`](packaging/ci).
 
 - The tag is `v` and LinSCP's version, `project(LinSCP VERSION ...)` in `CMakeLists.txt`
-  (set it in a commit before tagging): `X.Y.Z`, the version of the core (`FileVersion` in
-  `source/WinSCP.cbproj`), for the first release on that core, `X.Y.Z.N` (`N` from 1) for
-  further releases of LinSCP on it. `vX.Y.Z[.N]-R` releases new packages of the same
-  version (`R` is the release of the packages, 1 otherwise). The workflow stops on any
-  other tag.
+  (set it in a commit before tagging): `X.Y.Z.N`, where `X.Y.Z` is the version of the core
+  (`FileVersion` in `source/WinSCP.cbproj`) and `N` the number of LinSCP's release on that
+  core, from 1. `vX.Y.Z.N-R` releases new packages of the same version (`R` is the release of
+  the packages, 1 otherwise). The workflow stops on any other tag.
 - Run by hand (*Actions → Release → Run workflow*) with a tag, it builds that release again
   and replaces its files. Without a tag, it only builds, and the files stay with the run.
 - The AUR needs the repository secret `AUR_SSH_PRIVATE_KEY`, the private SSH key of the AUR

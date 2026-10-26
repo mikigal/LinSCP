@@ -1,13 +1,12 @@
 # LinSCP's version (project() in the top-level CMakeLists.txt) against the
 # version of the upstream WinSCP core it is built on (FileVersion of
-# source/WinSCP.cbproj, X.Y.Z): LinSCP's version is X.Y.Z for the first
-# release on that core and X.Y.Z.N for its further releases (N from 1), see
-# docs/port/PLAN.md. A merge of upstream that changes the core's version stops
-# the configuration until LinSCP's version is set to it (docs/port/UPSTREAM.md).
+# source/WinSCP.cbproj, X.Y.Z): LinSCP's version is X.Y.Z.N, N being the
+# number of LinSCP's release on that core (from 1), see docs/port/PLAN.md. A
+# merge of upstream that changes the core's version stops the configuration
+# until LinSCP's version is set to the new X.Y.Z.1 (docs/port/UPSTREAM.md).
 #
-# Sets LINSCP_CORE_VERSION (X.Y.Z), LINSCP_FILE_VERSION (LinSCP's version in
-# four parts, X.Y.Z.N or X.Y.Z.0, for the version information of the
-# executables) and LINSCP_RELEASE_TYPE (upstream's ReleaseType).
+# Sets LINSCP_CORE_VERSION (X.Y.Z) and LINSCP_RELEASE_TYPE (upstream's
+# ReleaseType).
 
 file(STRINGS "${PROJECT_SOURCE_DIR}/source/WinSCP.cbproj" LINSCP_VERSION_KEYS
   REGEX "<VerInfo_Keys>.*FileVersion=")
@@ -22,16 +21,9 @@ else()
 endif()
 
 if(NOT "${LinSCP_VERSION_MAJOR}.${LinSCP_VERSION_MINOR}.${LinSCP_VERSION_PATCH}" STREQUAL "${LINSCP_CORE_VERSION}"
-    OR "${LinSCP_VERSION_TWEAK}" STREQUAL "0")
+    OR NOT "${LinSCP_VERSION_TWEAK}" MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR
-    "LinSCP's version ${LinSCP_VERSION} (project() in CMakeLists.txt) is not of the core, "
-    "${LINSCP_CORE_VERSION} (source/WinSCP.cbproj): it must be ${LINSCP_CORE_VERSION}, "
-    "or ${LINSCP_CORE_VERSION}.N (N from 1) for a further release of LinSCP on that core, "
-    "see docs/port/UPSTREAM.md")
-endif()
-
-if("${LinSCP_VERSION_TWEAK}" STREQUAL "")
-  set(LINSCP_FILE_VERSION "${LinSCP_VERSION}.0")
-else()
-  set(LINSCP_FILE_VERSION "${LinSCP_VERSION}")
+    "LinSCP's version ${LinSCP_VERSION} (project() in CMakeLists.txt) must be "
+    "${LINSCP_CORE_VERSION}.N: the core's version (source/WinSCP.cbproj) and the number of "
+    "LinSCP's release on that core (N from 1), see docs/port/UPSTREAM.md")
 endif()

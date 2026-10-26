@@ -84,8 +84,7 @@ resolving them: build, run the full test suite, commit.
 
 When the new revision changes the core's version (`FileVersion` of `source/WinSCP.cbproj`),
 `cmake` stops until LinSCP's version (`project()` in `CMakeLists.txt`, see
-`cmake/LinSCPVersion.cmake`) is set to it: set it to the new X.Y.Z, without a fourth part, in
-the merge commit.
+`cmake/LinSCPVersion.cmake`) is set to it: set it to the new X.Y.Z.1 in the merge commit.
 
 **When the converter changes**, run the script again for the upstream revision that is already
 converted, and merge: `master` then receives exactly the converter's changes. The script does

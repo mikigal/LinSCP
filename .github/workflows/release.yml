@@ -4,9 +4,9 @@
 # release in the AUR as linscp and linscp-bin (with the secret
 # AUR_SSH_PRIVATE_KEY, the key of the AUR account that maintains both).
 #
-# The tag of a release is v + LinSCP's version (X.Y.Z of the core, or X.Y.Z.N
-# for a further release of LinSCP on it), with -R for new packages of the same
-# version (packaging/ci/version.sh). Run by hand with a tag, the workflow builds
+# The tag of a release is v + LinSCP's version (X.Y.Z.N: X.Y.Z of the core, N
+# of LinSCP's release on it), with -R for new packages of the same version
+# (packaging/ci/version.sh). Run by hand with a tag, the workflow builds
 # that release again and replaces its files; without a tag, it only builds
 # the files of the checked out commit (they stay with the run).
 name: Release

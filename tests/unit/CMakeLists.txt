@@ -32,7 +32,7 @@ add_executable(linscp_linux_tests
   linux/ShellTest.cpp
   linux/SystemTest.cpp
   linux/TimeApiTest.cpp)
-target_compile_definitions(linscp_linux_tests PRIVATE LINSCP_FILE_VERSION="${LINSCP_FILE_VERSION}")
+target_compile_definitions(linscp_linux_tests PRIVATE LINSCP_VERSION="${LinSCP_VERSION}")
 target_link_libraries(linscp_linux_tests PRIVATE
   linscp::linux
   linscp::options
