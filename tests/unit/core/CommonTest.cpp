@@ -2,6 +2,10 @@
 //---------------------------------------------------------------------------
 #include <CorePCH.h>
 
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+
 #include <gtest/gtest.h>
 //---------------------------------------------------------------------------
 TEST(CommonTest, Strings)
@@ -56,5 +60,33 @@ TEST(CommonTest, Version)
 {
   EXPECT_EQ(TrimVersion(L"1.2.0.0"), L"1.2");
   EXPECT_EQ(TrimVersion(L"1.2.3"), L"1.2.3");
+}
+//---------------------------------------------------------------------------
+TEST(CommonTest, RecursiveDeleteKeepsLinkedDirectories)
+{
+  namespace fs = std::filesystem;
+  const char * TempRoot = getenv("TMPDIR");
+  std::string Pattern = std::string((TempRoot != nullptr) ? TempRoot : "/tmp") + "/linscp-core-XXXXXX";
+  ASSERT_NE(mkdtemp(Pattern.data()), nullptr);
+  fs::path Root(Pattern);
+  fs::create_directories(Root / "target" / "inner");
+  std::ofstream(Root / "target" / "keep.txt") << "keep";
+  fs::create_directories(Root / "dir" / "sub");
+  std::ofstream(Root / "dir" / "sub" / "file.txt") << "delete";
+  fs::create_directory_symlink(Root / "target", Root / "dir" / "link");
+  fs::create_directory_symlink(Root / "target", Root / "toplink");
+
+  // A directory with a link to another directory: the link goes, the other
+  // directory keeps its content (the attributes of the RTL follow links)
+  EXPECT_TRUE(RecursiveDeleteFile(UnicodeString((Root / "dir").c_str())));
+  EXPECT_FALSE(fs::exists(fs::symlink_status(Root / "dir")));
+  // The link itself
+  EXPECT_TRUE(RecursiveDeleteFile(UnicodeString((Root / "toplink").c_str())));
+  EXPECT_FALSE(fs::exists(fs::symlink_status(Root / "toplink")));
+  EXPECT_TRUE(fs::exists(Root / "target" / "keep.txt"));
+  EXPECT_TRUE(fs::is_directory(Root / "target" / "inner"));
+
+  std::error_code Error;
+  fs::remove_all(Root, Error);
 }
 //---------------------------------------------------------------------------

@@ -2471,7 +2471,9 @@ static bool __fastcall DoRecursiveDeleteFile(
     Result = FileSearchRec(FileName, InitialSearchRec);
     if (Result)
     {
-      if (!InitialSearchRec.IsDirectory())
+      // LinSCP: a link to a directory is deleted itself, not the content of
+      // the directory (the attributes follow links)
+      if (!InitialSearchRec.IsDirectory() || FLAGSET(InitialSearchRec.Attr, faSymLink))
       {
         Result = DeleteFile(ApiPath(FileName));
         if (Result)
@@ -2489,7 +2491,8 @@ static bool __fastcall DoRecursiveDeleteFile(
           do
           {
             UnicodeString FileName2 = SearchRec.GetFilePath();
-            if (SearchRec.IsDirectory())
+            // LinSCP: links to directories are deleted as files
+            if (SearchRec.IsDirectory() && FLAGCLEAR(SearchRec.Attr, faSymLink))
             {
               if (SearchRec.IsRealFile())
               {
