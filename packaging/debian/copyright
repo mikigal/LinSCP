@@ -1,0 +1,28 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: LinSCP
+Source: https://github.com/mikigal/LinSCP
+Comment:
+ LinSCP is a port of WinSCP (https://winscp.net/). The complete license
+ terms, including the license of WinSCP's icon set, are installed as
+ /usr/share/licenses/linscp/license.txt. The third-party libraries built in
+ (PuTTY, neon, libs3, the FileZilla engine) come under their own licenses,
+ see their sources.
+
+Files: *
+Copyright: 2000-2026 Martin Prikryl
+           2026 LinSCP contributors
+License: GPL-3+
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the full text of the GNU General Public License
+ version 3 can be found in the file /usr/share/common-licenses/GPL-3.

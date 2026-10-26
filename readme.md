@@ -100,7 +100,30 @@ from WinSCP's own protocol core. It is a port, not a rewrite.
 
 ## Installation
 
-LinSCP has no binary releases yet. Build it from source.
+Every [release](https://github.com/mikigal/LinSCP/releases) comes with packages for x86_64:
+
+| System | File |
+|---|---|
+| Debian 13 | `linscp_<version>_debian13_amd64.deb` |
+| Ubuntu 26.04 | `linscp_<version>_ubuntu26.04_amd64.deb` |
+| Fedora 43, 44 | `linscp-<version>.fc43.x86_64.rpm`, `linscp-<version>.fc44.x86_64.rpm` |
+| openSUSE Tumbleweed, Leap 16.0 | `linscp-<version>.tumbleweed.x86_64.rpm`, `linscp-<version>.leap16.0.x86_64.rpm` |
+| Other distributions (glibc 2.39 or later, e.g. Ubuntu 24.04) | `LinSCP-<version>-x86_64.AppImage`, or the same files in `linscp-<version>-x86_64.tar.gz` |
+| Arch Linux | the `linscp` package in the AUR (not published yet), or the PKGBUILD below |
+
+Install a package with the system's package manager, which also installs its dependencies.
+The packages are not signed: check them against `SHA256SUMS` of the release.
+
+```bash
+sudo apt install ./linscp_<version>_debian13_amd64.deb
+sudo dnf install ./linscp-<version>.fc44.x86_64.rpm
+sudo zypper install --allow-unsigned-rpm ./linscp-<version>.tumbleweed.x86_64.rpm
+```
+
+The AppImage and the tarball include Qt but use the system's OpenSSL. To use `linscp-cli`
+from the AppImage, run it through a link named `linscp-cli`
+(`ln -s LinSCP-<version>-x86_64.AppImage linscp-cli`). The tarball has `linscp` and
+`linscp-cli` at its top.
 
 ### Arch Linux
 
@@ -117,9 +140,9 @@ license.
 
 ### Other distributions
 
-Follow [Building](#building), then run `cmake --install` (see below). Arch Linux with KDE
-Plasma is the reference platform. Other distributions and desktops (GNOME, wlroots) are
-supported but tested less.
+Use the AppImage, or follow [Building](#building), then run `cmake --install` (see below).
+Arch Linux with KDE Plasma is the reference platform. Other distributions and desktops
+(GNOME, wlroots) are supported but tested less.
 
 ## Building
 
@@ -210,6 +233,23 @@ They need KDE Plasma's `kwin_wayland` and `spectacle`, `dbus-daemon`, and unpriv
 namespaces (`unshare --user`). The protocol tests start their own unprivileged `sshd` on `127.0.0.1`. The
 FTP, WebDAV and S3 tests need a test VM, provisioned by
 [`tools/testenv/vm/provision.sh`](tools/testenv/vm/provision.sh), and are skipped without it.
+
+### Releases
+
+Publishing a GitHub release starts [`release.yml`](.github/workflows/release.yml). It builds
+the packages listed in [Installation](#installation) and the source tarball in containers of
+the distributions (the AppImage on Ubuntu 24.04 with Qt from `aqtinstall`), installs and
+checks each package, adds them and `SHA256SUMS` to the release, and publishes the release in
+the AUR. The scripts are in [`packaging/ci`](packaging/ci).
+
+- The tag is `vX.Y.Z`, where `X.Y.Z` is the version of the core (`FileVersion` in
+  `source/WinSCP.cbproj`), or `vX.Y.Z-N` for another release of LinSCP on the same core
+  (`N` is the release of the packages). The workflow stops on any other tag.
+- Run by hand (*Actions → Release → Run workflow*) with a tag, it builds that release again
+  and replaces its files. Without a tag, it only builds, and the files stay with the run.
+- The AUR needs the repository secret `AUR_SSH_PRIVATE_KEY`, the private SSH key of the AUR
+  account that maintains `linscp`. Without it, the workflow skips the AUR with a notice.
+  Pre-releases are not published in the AUR.
 
 ## Usage
 
@@ -351,7 +391,8 @@ tools/wlharness     headless KWin test harness
 tools/testenv       local sshd, test VM provisioning, GUI and CLI drivers
 tests/              unit (L1, L3) and integration (L2, L4) tests
 docs/port/          plan, progress log and upstream workflow
-packaging/arch      PKGBUILD
+packaging/          packages: Arch, AUR, Debian, RPM, AppImage; scripts of the release
+.github/workflows   release workflow
 ```
 
 The Windows-only upstream directories (`source/forms`, `source/windows`, `source/components`,

@@ -1,0 +1,37 @@
+Source: linscp
+Section: net
+Priority: optional
+Maintainer: mikigal <mikigal.priv@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ clang,
+ cmake (>= 3.28),
+ ninja-build,
+ python3 (>= 3.11),
+ libexpat1-dev (>= 2.5),
+ libssl-dev (>= 3),
+ qt6-base-dev (>= 6.5),
+Standards-Version: 4.7.0
+Homepage: https://github.com/mikigal/LinSCP
+Rules-Requires-Root: no
+
+Package: linscp
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ hicolor-icon-theme,
+ qt6-svg-plugins,
+Recommends:
+ qt6-wayland,
+Suggests:
+ libcanberra0,
+ openssh-client,
+ putty,
+ qt6-translations-l10n,
+ xdg-utils,
+Description: SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager
+ LinSCP is a native Linux (Wayland) port of WinSCP. It runs WinSCP's own core
+ for SFTP, SCP, FTP, FTPS, WebDAV and Amazon S3 with a Qt 6 interface: the
+ Commander and Explorer interfaces, the transfer queue, synchronization,
+ a remote editor and the scripting of winscp.com (linscp-cli).

@@ -1,0 +1,46 @@
+# The package of LinSCP in the AUR, built from the source tarball of a
+# release. The release workflow (.github/workflows/release.yml, through
+# packaging/ci/build-aur.sh) fills in the @...@ fields and publishes it.
+# packaging/arch/PKGBUILD builds a checkout instead.
+pkgname=linscp
+# The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
+pkgver=@VERSION@
+pkgrel=@RELEASE@
+pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/mikigal/LinSCP'
+license=('GPL-3.0-or-later')
+depends=('expat' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'openssl' 'qt6-base' 'qt6-svg' 'qt6-wayland')
+makedepends=('clang' 'cmake' 'ninja' 'python')
+optdepends=(
+  'openssh: opening sessions in ssh'
+  'putty: opening sessions in PuTTY'
+  'qt6-translations: translations of the standard dialogs'
+  'xdg-utils: the default handler of the URLs of the protocols'
+  'libcanberra: the sound once an operation completes'
+)
+# The core relies on Clang's extensions, the options of LTO differ
+options=('!lto')
+_tag=@TAG@
+# Named by the release too: a new release of the same version is another
+# tarball
+source=("${pkgname}-${pkgver}-${pkgrel}.tar.gz::${url}/releases/download/${_tag}/${pkgname}-${pkgver}-source.tar.gz")
+sha256sums=('@SHA256@')
+
+build() {
+  cmake -S "${pkgname}-${pkgver}" -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_C_COMPILER=clang \
+    -DCMAKE_CXX_COMPILER=clang++ \
+    -DLINSCP_SANITIZE=OFF \
+    -DLINSCP_BUILD_TESTS=OFF \
+    -DLINSCP_BUILD_HARNESS=OFF \
+    -DLINSCP_AUTOMATION=OFF \
+    -DLINSCP_RELEASE_BUILD=ON
+  cmake --build build
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+}

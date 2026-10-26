@@ -1,0 +1,253 @@
+# Builds the packages of a release and adds them to it: the source tarball,
+# .deb for Debian and Ubuntu, .rpm for Fedora and openSUSE, an AppImage and a
+# tarball of the same files; then publishes the release in the AUR (with the
+# secret AUR_SSH_PRIVATE_KEY, the key of the AUR account).
+#
+# The tag of a release is vX.Y.Z or vX.Y.Z-N, X.Y.Z being the version of the
+# core (packaging/ci/version.sh). Run by hand with a tag, the workflow builds
+# that release again and replaces its files; without a tag, it only builds
+# the files of the checked out commit (they stay with the run).
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag of the release to build and add the files to (empty to only build)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  source:
+    name: Source tarball
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG || github.sha }}
+          persist-credentials: false
+      - name: Version
+        id: version
+        run: packaging/ci/version.sh "$TAG" | tee -a "$GITHUB_OUTPUT"
+      - name: Source tarball
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir out
+          git archive --format=tar.gz --prefix="linscp-$VERSION/" \
+            --output="out/linscp-$VERSION-source.tar.gz" HEAD
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-source
+          path: out/
+          if-no-files-found: error
+
+  deb:
+    name: ${{ matrix.name }}
+    needs: source
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Debian 13, image: 'debian:13', id: debian13 }
+          - { name: Ubuntu 26.04, image: 'ubuntu:26.04', id: ubuntu26.04 }
+          # Not Ubuntu 26.10: its OpenSSL 4 makes ASN1_STRING opaque, which
+          # WinSCP's neon (ne_openssl.c) does not build with yet
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      RELEASE: ${{ needs.source.outputs.release }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-source
+      - name: Build
+        run: |
+          tar -xzf "linscp-$VERSION-source.tar.gz"
+          "linscp-$VERSION/packaging/ci/build-deb.sh" "$VERSION" "$RELEASE" out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.id }}
+          path: out/
+          if-no-files-found: error
+
+  rpm:
+    name: ${{ matrix.name }}
+    needs: source
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Fedora 43, image: 'fedora:43', id: fedora43, dist: '' }
+          - { name: Fedora 44, image: 'fedora:44', id: fedora44, dist: '' }
+          - name: openSUSE Tumbleweed
+            image: registry.opensuse.org/opensuse/tumbleweed:latest
+            id: opensuse-tumbleweed
+            dist: .tumbleweed
+          - name: openSUSE Leap 16.0
+            image: registry.opensuse.org/opensuse/leap:16.0
+            id: opensuse-leap16.0
+            dist: .leap16.0
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      RELEASE: ${{ needs.source.outputs.release }}
+      DIST: ${{ matrix.dist }}
+    steps:
+      - name: Prepare
+        run: |
+          if command -v dnf > /dev/null
+          then
+            dnf install -y tar gzip
+          else
+            zypper --non-interactive install --no-recommends tar gzip
+          fi
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-source
+      - name: Build
+        run: |
+          tar -xzf "linscp-$VERSION-source.tar.gz"
+          "linscp-$VERSION/packaging/ci/build-rpm.sh" "linscp-$VERSION-source.tar.gz" \
+            "$VERSION" "$RELEASE" out "$DIST"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.id }}
+          path: out/
+          if-no-files-found: error
+
+  appimage:
+    name: AppImage and tarball
+    needs: source
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 120
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-source
+      - name: Build
+        run: |
+          tar -xzf "linscp-$VERSION-source.tar.gz"
+          "linscp-$VERSION/packaging/ci/build-appimage.sh" "$VERSION" out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-appimage
+          path: out/
+          if-no-files-found: error
+
+  aur-package:
+    name: Arch Linux (AUR)
+    needs: source
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    timeout-minutes: 120
+    env:
+      VERSION: ${{ needs.source.outputs.version }}
+      RELEASE: ${{ needs.source.outputs.release }}
+      SOURCE_TAG: ${{ needs.source.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-source
+      - name: Build
+        run: |
+          tar -xzf "linscp-$VERSION-source.tar.gz"
+          # A build without a tag: the tag the release would have
+          "linscp-$VERSION/packaging/ci/build-aur.sh" "linscp-$VERSION-source.tar.gz" \
+            "${SOURCE_TAG:-v$VERSION}" "$VERSION" "$RELEASE" out
+      - uses: actions/upload-artifact@v7
+        with:
+          name: aur
+          path: out/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  publish:
+    name: Add the files to the release
+    needs: [source, deb, rpm, appimage, aur-package]
+    if: needs.source.outputs.tag != ''
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: files
+          merge-multiple: true
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_TAG: ${{ needs.source.outputs.tag }}
+        run: |
+          cd files
+          sha256sum -- * > ../SHA256SUMS
+          mv ../SHA256SUMS .
+          cat SHA256SUMS
+          gh release upload "$SOURCE_TAG" -- * --clobber --repo "$GITHUB_REPOSITORY"
+
+  aur:
+    name: Publish in the AUR
+    needs: [source, publish]
+    if: needs.source.outputs.tag != '' && !github.event.release.prerelease
+    runs-on: ubuntu-24.04
+    env:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      VERSION: ${{ needs.source.outputs.version }}
+      RELEASE: ${{ needs.source.outputs.release }}
+    steps:
+      - name: No AUR account
+        if: env.AUR_SSH_PRIVATE_KEY == ''
+        run: echo "::notice title=AUR::Not published in the AUR, the secret AUR_SSH_PRIVATE_KEY is not set"
+      - uses: actions/download-artifact@v8
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        with:
+          name: aur
+          path: aur-package
+      - name: Push to the AUR
+        if: env.AUR_SSH_PRIVATE_KEY != ''
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          # The host key of aur.archlinux.org (its fingerprint is on the AUR's
+          # home page)
+          echo 'aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN' \
+            > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/aur -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          git clone ssh://aur@aur.archlinux.org/linscp.git aur
+          cp aur-package/PKGBUILD aur-package/.SRCINFO aur/
+          cd aur
+          git add PKGBUILD .SRCINFO
+          if git diff --cached --quiet
+          then
+            echo "The AUR has this release already"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Update to $VERSION-$RELEASE"
+          git push origin HEAD:master

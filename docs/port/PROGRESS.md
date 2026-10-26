@@ -2,6 +2,37 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Release packages (2026-10-26)
+
+A published GitHub release gets its packages from `.github/workflows/release.yml` (PLAN.md,
+section 9): the source tarball (`git archive`), from which every package is built in a
+container of its distribution, `.deb` for Debian 13 and Ubuntu 26.04 (`packaging/debian`,
+`dpkg-buildpackage`), `.rpm` for Fedora 43 and 44 and openSUSE Tumbleweed and Leap 16.0
+(`packaging/rpm/linscp.spec`), an AppImage and a tarball of the same files (Ubuntu 24.04,
+Qt 6.12 from `aqtinstall`, `linuxdeploy`; `linscp-cli` through a link of that name), and the
+AUR's PKGBUILD and `.SRCINFO` (`packaging/aur`), built and pushed to the AUR when the secret
+`AUR_SSH_PRIVATE_KEY` exists (the AUR's registration is closed for now, so the workflow skips
+it with a notice). `packaging/ci/version.sh` takes the version from the tag (`vX.Y.Z`, the
+core's, or `vX.Y.Z-N`) and refuses a tag that is not the core's version. Every package is
+installed in its container and checked by `packaging/ci/smoke-test.sh`: `linscp-cli /help`
+reports the version of a release build, and all libraries of the GUI are found. The workflow
+ran green for all of them on a test branch.
+
+- The distributions' compiler flags are used (hardening), with Clang and without their LTO
+  flags (GCC's); `dh_dwz` is skipped (dwz does not know Clang's DWARF 5).
+- The SVG plugins of Qt are a dependency (`qt6-svg-plugins`, `qt6-qtsvg`, `libQt6Svg6`), the
+  Wayland platform plugin a recommendation; the Arch PKGBUILD depends on `qt6-wayland` now.
+- The AppImage bundles Qt but not OpenSSL: a bundled `libcrypto` would look for the
+  certificates where Ubuntu keeps them (`X509_STORE_set_default_paths`).
+- On openSUSE, LibreSSL provides `pkgconfig(openssl)` too: the spec requires
+  `libopenssl-devel`.
+- A system expat older than 2.9.0 works: upstream's neon and the RTL's XML parser call the
+  64-bit position functions of expat 2.9.0; neon's configuration
+  (`source/libneon/include/neon-linux-config.h`) maps them to the former ones, which return the
+  same 64-bit `XML_Size` on Linux, and the RTL's version check was off (2.7 instead of 2.9).
+- Not Ubuntu 26.10: OpenSSL 4 makes `ASN1_STRING` opaque, and `libs/neon/src/ne_openssl.c`
+  reads its fields.
+
 ## Private local files (2026-10-26)
 
 Upstream keeps its temporary directories and its configuration in Windows' folders of the

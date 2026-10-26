@@ -1,0 +1,10 @@
+#!/bin/sh
+# The entry of the AppImage: the GUI, or linscp-cli when the AppImage is run
+# through a link named linscp-cli (ln -s LinSCP-*.AppImage linscp-cli).
+Here=$(dirname "$(readlink -f "$0")")
+case $(basename "${ARGV0:-$0}") in
+  linscp-cli*)
+    exec "$Here/usr/bin/linscp-cli" "$@"
+    ;;
+esac
+exec "$Here/usr/bin/linscp" "$@"

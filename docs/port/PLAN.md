@@ -34,7 +34,7 @@ Status: accepted · 2026-10-24
 | `source/dragext` | <1k lines | Explorer shell extension for D&D | COM | **dropped** — replaced by the mechanism in section 5 |
 | `source/console` | ~1k lines | `winscp.com` (thin client of `WinSCP.exe /console`) | WinAPI IPC | **replaced** by a single CLI binary |
 | `dotnet/` | — | .NET assembly driving `winscp.com` | Win32 P/Invoke (events, file mapping) | **out of scope** for the first version |
-| `deployment/` | — | Inno Setup installer | — | **replaced** by PKGBUILD (Flatpak/AppImage later) |
+| `deployment/` | — | Inno Setup installer | — | **replaced** by packages built by the release workflow (deb, rpm, AppImage, AUR) |
 | `translations/` | 3.7k lines/language | `.ini` translations keyed by `Form.dfm` → `Component.Caption` | — | **reused** (section 3.4) |
 
 Key observations:
@@ -190,7 +190,7 @@ name stays only in the history.
 | Explorer "Send To" | none (the user's decision, 2026-10-25); `linscp /upload FILES` stays |
 | "Drives" panel (DriveView) | places: `$HOME`, mount points (`QStorageInfo`), bookmarks/`KFilePlacesModel` |
 | Session import (PuTTY from the registry, FileZilla, OpenSSH) | `~/.putty/sessions`, `~/.config/filezilla/sitemanager.xml`, `~/.ssh/config`, `known_hosts`, `WinSCP.ini` |
-| Installer, updates, "Run as administrator" | packages (PKGBUILD, later Flatpak/AppImage); no auto-update and no elevation |
+| Installer, updates, "Run as administrator" | packages (PKGBUILD, deb, rpm, AppImage, later Flatpak); no auto-update and no elevation |
 | Remembering window positions | size/maximized state only (Wayland does not let clients position windows) |
 | Local file permissions (absent on Windows) | **new**: option to preserve the local `mode` on upload |
 
@@ -380,4 +380,12 @@ GUI on top of a verified core.
   the code (`LinSCP:` marks the edits of converted upstream code), the build options and
   environment variables (`LINSCP_*`) and the servers of the test VM (`provision.sh` removes the
   former ones). The repository's directory and remote are the user's to rename.
-- Deferred unless decided otherwise: .NET assembly, Flatpak/AppImage packaging.
+- 2026-10-26: releases are GitHub releases tagged `vX.Y.Z` (the core's version) or `vX.Y.Z-N`
+  (another release of LinSCP on the same core); `.github/workflows/release.yml` builds their
+  packages in containers of the distributions: deb (Debian 13, Ubuntu 26.04), rpm (Fedora 43
+  and 44, openSUSE Tumbleweed and Leap 16.0), an AppImage and a tarball of it (Ubuntu 24.04,
+  Qt from the Qt Company's binaries, the system's OpenSSL), the source tarball, and publishes
+  them in the AUR (`packaging/aur`, with the secret `AUR_SSH_PRIVATE_KEY`). The packages link
+  the system's libraries (expat older than 2.9.0 too). Not Ubuntu 26.10 yet: its OpenSSL 4
+  makes `ASN1_STRING` opaque, which WinSCP's neon does not build with.
+- Deferred unless decided otherwise: .NET assembly, Flatpak packaging.

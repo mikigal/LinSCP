@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+# Built by packaging/ci/build-deb.sh, which copies this directory to debian/
+# and writes the changelog.
+
+# The core relies on Clang's extensions (-fdeclspec); the LTO options of the
+# distributions' flags are GCC's
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all optimize=-lto
+export CC = clang
+export CXX = clang++
+
+%:
+	dh $@ --buildsystem=cmake+ninja
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo \
+		-DLINSCP_SANITIZE=OFF \
+		-DLINSCP_BUILD_TESTS=OFF \
+		-DLINSCP_BUILD_HARNESS=OFF \
+		-DLINSCP_AUTOMATION=OFF \
+		-DLINSCP_RELEASE_BUILD=ON
+
+# The tests need the development build (sanitizers, the harness, test servers)
+override_dh_auto_test:
+
+# dwz does not know Clang's DWARF 5 (.debug_addr)
+override_dh_dwz:
