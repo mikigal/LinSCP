@@ -213,7 +213,8 @@ jobs:
           sha256sum -- * > ../SHA256SUMS
           mv ../SHA256SUMS .
           cat SHA256SUMS
-          gh release upload "$SOURCE_TAG" -- * --clobber --repo "$GITHUB_REPOSITORY"
+          # The options before --: after it, everything is a file
+          gh release upload "$SOURCE_TAG" --clobber --repo "$GITHUB_REPOSITORY" -- *
 
   aur:
     name: Publish in the AUR
