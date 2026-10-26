@@ -128,6 +128,12 @@ from the AppImage, run it through a link named `linscp-cli`
 
 ### Arch Linux
 
+> [!NOTE]
+> LinSCP is not in the AUR yet. Registration of new AUR accounts is currently disabled, so
+> the `linscp` and `linscp-bin` packages ([`packaging/aur`](packaging/aur)) cannot be
+> published for now. Until then, install the release's package with `pacman -U`, or build
+> the PKGBUILD below.
+
 The repository includes a PKGBUILD that builds the checkout it is in:
 
 ```bash
