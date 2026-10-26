@@ -316,6 +316,9 @@ and stored passwords can be encrypted with a master password. The port adds its 
 - **Path traversal protection is kept.** A server cannot make LinSCP write outside the target
   directory: `/` in remote names is encoded or refused, and `.` and `..` from SCP are refused.
   The rules were adapted to Linux file names without weakening them.
+- **Private local files.** The configuration (`~/.config/linscp`, 0700 and 0600) and the
+  temporary copies of remote files (`$TMPDIR/linscp-UID`, 0700) are accessible to you only.
+  WinSCP relies on Windows' per-user folders for this, but `/tmp` is shared on Linux.
 - **No test hooks in release builds.** The GUI automation socket exists only with the
   `LINSCP_AUTOMATION` compile option, which the release preset and the package turn off.
 - **Sanitized test suite.** The tests run under AddressSanitizer and

@@ -1186,9 +1186,11 @@ class GuiSshTest(GuiSshTestCase):
         (remote / 'x.ext').write_text('external\n')
         local = self.work_dir('local')
         (local / 'l.txt').write_text('local\n')
-        # An external editor of *.ext files: changes the file, stays a while
+        # An external editor of *.ext files: tells its file, changes it, stays
+        # a while
         editor = self.work_dir('editor') / 'editor.sh'
-        editor.write_text('#!/bin/sh\nsleep 1\necho changed >> "$1"\nsleep 3\n')
+        edited = editor.with_name('edited.txt')
+        editor.write_text('#!/bin/sh\necho "$1" > %s\nsleep 1\necho changed >> "$1"\nsleep 3\n' % edited)
         editor.chmod(0o755)
         ini = site_ini(remote=remote, local=local) + (
             '[Configuration\\Interface\\Editor\\0]\nFileMask=*.ext\nEditor=1\n'
@@ -1217,6 +1219,13 @@ class GuiSshTest(GuiSshTestCase):
         self.select(gui, 'Remote', 'x.ext')
         gui.trigger(W + 'CurrentEditAction')
         gui.wait_for(lambda: (remote / 'x.ext').read_text() == 'external\nchanged\n', 60, 'the external change')
+        # Its temporary copy is private: in the user's own directory of
+        # $TMPDIR, in a directory of its own
+        parts = Path(edited.read_text().strip()).relative_to(gui.temp_dir).parts
+        self.assertEqual(parts[0], 'linscp-%d' % os.geteuid())
+        self.assertRegex(parts[1], r'^scp.{5}$')
+        self.assertEqual(stat.S_IMODE((gui.temp_dir / parts[0]).stat().st_mode), 0o700)
+        self.assertEqual(stat.S_IMODE((gui.temp_dir / parts[0] / parts[1]).stat().st_mode), 0o700)
 
         # A local file opens in the internal editor too, saved directly
         gui.focus(W + 'LocalDirView')

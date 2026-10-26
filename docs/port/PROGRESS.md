@@ -2,6 +2,38 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Private local files (2026-10-26)
+
+Upstream keeps its temporary directories and its configuration in Windows' folders of the
+user. On Linux, `/tmp` is shared by all users and files get the permissions of the umask, so
+other users of the computer could read the files downloaded for editing, drag and drop and
+custom commands (`/tmp/scpNNNNN`, 0755), create those predictable directories first (and get
+our files, or the edited ones replaced), and read `linscp.ini` (0644, with the passwords only
+obfuscated without a master password). Now:
+
+- The temporary directories are in a directory of the user's own, `$TMPDIR/linscp-UID`
+  (`TAppConfiguration::EnsureTemporaryDirectory`): created 0700, or an existing one used only
+  when it is the user's directory and not a link (made private when it is not), else an error.
+  A `DDTemporaryDirectory` of the preferences is used as it is (the user's choice).
+- Each `scp?????` directory is created by `TemporaryDir` at once, 0700, failing if it exists
+  (`mkdir`), also in a shared `DDTemporaryDirectory`; the callers only make sure it exists.
+- The cleanup of the temporary directories (`FindTemporaryFolders`) takes only directories of
+  the user, not links.
+- The directory of the default configuration file is 0700 and the INI file 0600: their
+  group and other permissions are removed whenever a storage is created and once the
+  configuration is saved (the core creates the file with the default permissions; a
+  read-only file stays read-only).
+- Recursive deletes do not follow links to directories (`core/Common.cpp`,
+  `DoRecursiveDeleteFile`): the attributes of the RTL follow links, so a permanent delete of a
+  local link to a directory, of a directory with such a link, or the cleanup of a temporary
+  directory emptied the directory linked to.
+
+Tests: `PrivateFilesTest`, `TemporaryFoldersTest` (L3), `CommonTest.RecursiveDeleteKeepsLinkedDirectories`
+(L1), `test_gui.StartupTest.test_private_configuration` and the private copy of an edited file
+in `test_gui_ssh` (L4).
+
+Manual edits in upstream directories: `core/Common.cpp` (`DoRecursiveDeleteFile`).
+
 ## Rename to LinSCP (2026-10-25)
 
 The project, called OpenSCP until now, is LinSCP (PLAN.md, section 9): the name in the texts

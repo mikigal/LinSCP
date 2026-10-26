@@ -93,7 +93,8 @@ void TScpCommanderForm::TemporaryDirectoryForRemoteFiles(
   else
   {
     RootDirectory = L"";
-    Result = AppConfiguration->ExpandedTemporaryDirectory();
+    // The subdirectories have the predictable names, in a private directory
+    Result = AppConfiguration->EnsureTemporaryDirectory();
     Result = IncludeTrailingBackslash(Result);
   }
 

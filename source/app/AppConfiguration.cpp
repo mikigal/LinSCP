@@ -10,6 +10,9 @@
 #include "AppConfiguration.h"
 #include "CustomCommands.h"
 #include "EditorPreferences.h"
+
+#include <cerrno>
+#include <unistd.h>
 //---------------------------------------------------------------------------
 TAppConfiguration * AppConfiguration = NULL;
 //---------------------------------------------------------------------------
@@ -283,14 +286,57 @@ UnicodeString TAppConfiguration::ExpandedTemporaryDirectory()
     ExpandFileName(ExpandEnvironmentVariables(DDTemporaryDirectory));
   if (Result.IsEmpty())
   {
-    Result = SystemTemporaryDirectory();
+    // Windows has a temporary folder per user; the other users must not see
+    // the downloaded files, nor put theirs in place of ours
+    Result =
+      IncludeTrailingBackslash(SystemTemporaryDirectory()) + L"linscp-" + IntToStr(static_cast<int>(geteuid()));
+  }
+  return Result;
+}
+//---------------------------------------------------------------------------
+UnicodeString TAppConfiguration::EnsureTemporaryDirectory()
+{
+  UnicodeString Result = ExpandedTemporaryDirectory();
+  if (ExpandFileName(ExpandEnvironmentVariables(DDTemporaryDirectory)).IsEmpty())
+  {
+    if (!ForcePrivateDirectory(Result))
+    {
+      throw ExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (Result)),
+        FORMAT(L"\"%s\" is not a directory of yours. Remove it or choose another temporary directory "
+          L"in the preferences.", (Result)));
+    }
+  }
+  else
+  {
+    // The user's choice; the directories in it are private
+    ForceDirectories(ApiPath(Result));
   }
   return Result;
 }
 //---------------------------------------------------------------------------
 UnicodeString TAppConfiguration::TemporaryDir(bool Mask)
 {
-  return UniqTempDir(ExpandedTemporaryDirectory(), L"scp", Mask);
+  if (Mask)
+  {
+    return UniqTempDir(ExpandedTemporaryDirectory(), L"scp", Mask);
+  }
+  // Created here, private and at once, as the directory may be shared (a
+  // DDTemporaryDirectory such as /tmp), where another user could create it
+  // first; the callers only make sure that it exists
+  UnicodeString BaseDir = EnsureTemporaryDirectory();
+  for (int Attempt = 0; ; Attempt++)
+  {
+    UnicodeString Result = UniqTempDir(BaseDir, L"scp", false);
+    if (CreatePrivateDirectory(Result))
+    {
+      return Result;
+    }
+    int Error = errno;
+    if ((Error != EEXIST) || (Attempt >= 100))
+    {
+      throw EOSExtException(FMTLOAD(CREATE_TEMP_DIR_ERROR, (Result)), static_cast<int>(rtl::ErrnoToWinError(Error)));
+    }
+  }
 }
 //---------------------------------------------------------------------------
 TStrings * TAppConfiguration::FindTemporaryFolders()
@@ -302,7 +348,9 @@ TStrings * TAppConfiguration::FindTemporaryFolders()
   {
     do
     {
-      if (SRec.IsDirectory())
+      // Not links nor the directories of other users (in a shared
+      // DDTemporaryDirectory): their content would be deleted
+      if (SRec.IsDirectory() && IsOwnDirectory(SRec.GetFilePath()))
       {
         Result->Add(SRec.GetFilePath());
       }
@@ -353,11 +401,20 @@ UnicodeString __fastcall TAppConfiguration::DefaultIniFileStorageName()
 //---------------------------------------------------------------------------
 THierarchicalStorage * TAppConfiguration::CreateScpStorage(bool & SessionList)
 {
-  // The directory of the default configuration file is created on demand
-  // (as Windows has the application data folder)
-  if ((Storage == stIniFile) && SameStr(IniFileStorageName, DefaultIniFileStorageName()))
+  if (Storage == stIniFile)
   {
-    ForceDirectories(ApiPath(ExtractFileDir(IniFileStorageName)));
+    // The directory of the default configuration file is created on demand
+    // (as Windows has the application data folder). Both are private: the
+    // file holds the passwords (only obfuscated without a master password).
+    // A file the core creates gets the default permissions, it is made
+    // private once saved (Saved), in the private directory meanwhile.
+    if (SameStr(IniFileStorageName, DefaultIniFileStorageName()))
+    {
+      UnicodeString Directory = ExtractFileDir(IniFileStorageName);
+      ForceDirectories(ApiPath(Directory));
+      MakePrivate(Directory);
+    }
+    MakePrivate(IniFileStorageName);
   }
   return TGUIConfiguration::CreateScpStorage(SessionList);
 }
@@ -628,6 +685,11 @@ void __fastcall TAppConfiguration::LoadData(THierarchicalStorage * Storage)
 void __fastcall TAppConfiguration::Saved()
 {
   TGUIConfiguration::Saved();
+  // The file created by the save (see CreateScpStorage)
+  if (Storage == stIniFile)
+  {
+    MakePrivate(IniFileStorageName);
+  }
   FBookmarks->ModifyAll(false);
   FCustomCommandList->Reset();
   FEditorList->Saved();

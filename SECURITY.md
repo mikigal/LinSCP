@@ -74,6 +74,21 @@ LinSCP stores credentials like WinSCP does, in `~/.config/linscp/linscp.ini`:
 See WinSCP's notes on [security of credentials](https://winscp.net/eng/docs/security_credentials),
 which apply to LinSCP as well.
 
+### Other users of the computer
+
+WinSCP keeps its configuration and its temporary files in the folders of the Windows user.
+On Linux, `/tmp` is shared by all users, so LinSCP makes these files private itself:
+
+- The directory `~/.config/linscp` is accessible to you only (0700), and `linscp.ini` is
+  readable and writable by you only (0600). A configuration file given with `/ini=` is made
+  private once it is saved.
+- Files downloaded for editing, drag and drop or custom commands go to a directory of your
+  own, `$TMPDIR/linscp-UID` (0700). LinSCP uses an existing directory of that name only if
+  it is yours and not a link. Each operation gets a new directory there, created atomically
+  with the 0700 mode, also when you choose a shared temporary directory in the preferences.
+- When LinSCP cleans up old temporary directories, it deletes only directories that belong
+  to you, and it deletes links instead of following them.
+
 ### Local processes
 
 LinSCP treats other processes of the same user as trusted. They can already read your files

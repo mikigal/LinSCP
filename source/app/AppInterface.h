@@ -60,6 +60,22 @@ UnicodeString __fastcall FormatMainFormCaption(
   const UnicodeString & Caption, const UnicodeString & SessionName = UnicodeString());
 UnicodeString __fastcall UniqTempDir(const UnicodeString BaseDir,
   const UnicodeString Identity, bool Mask = false);
+// Files of the user's own on a system of several users, which Windows keeps
+// in folders per user: the configuration (with the passwords) and the
+// temporary directories (with the downloaded files).
+// Removes the permissions of the group and of others from a file or
+// directory of the user (following links); false when it does not exist, is
+// another user's or cannot be changed
+bool MakePrivate(const UnicodeString & Path);
+// Creates a new directory accessible to the user only; false (with errno)
+// when it exists already or cannot be created
+bool CreatePrivateDirectory(const UnicodeString & Path);
+// The path is a directory of the user, not a link
+bool IsOwnDirectory(const UnicodeString & Path);
+// Makes sure that the directory exists and is private: creates it so (with
+// its parents), or makes an existing directory of the user private; false
+// when it is another user's or a link (in a shared directory, such as /tmp)
+bool ForcePrivateDirectory(const UnicodeString & Path);
 // The desktop session is KDE Plasma (XDG_CURRENT_DESKTOP)
 bool IsKdeDesktop();
 // The SSH client to open the sessions in (upstream's PuttyPath, putty.exe):

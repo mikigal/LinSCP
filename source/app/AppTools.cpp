@@ -10,7 +10,9 @@
 #include "GUIConfiguration.h"
 #include "ProgParams.h"
 
+#include <cerrno>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 //---------------------------------------------------------------------------
 bool __fastcall CheckSafe(TOptions * Params)
@@ -159,6 +161,44 @@ UnicodeString __fastcall UniqTempDir(const UnicodeString BaseDir, const UnicodeS
   while (!Mask && DirectoryExists(ApiPath(TempDir)));
 
   return TempDir;
+}
+//---------------------------------------------------------------------------
+static std::string NativePath(const UnicodeString & Path)
+{
+  return rtl::FileNameToBytes(ExcludeTrailingBackslash(Path));
+}
+//---------------------------------------------------------------------------
+bool MakePrivate(const UnicodeString & Path)
+{
+  std::string Native = NativePath(Path);
+  struct stat Info;
+  return
+    (stat(Native.c_str(), &Info) == 0) && (Info.st_uid == geteuid()) &&
+    (((Info.st_mode & 077) == 0) || (chmod(Native.c_str(), Info.st_mode & 07700) == 0));
+}
+//---------------------------------------------------------------------------
+bool CreatePrivateDirectory(const UnicodeString & Path)
+{
+  return (mkdir(NativePath(Path).c_str(), 0700) == 0);
+}
+//---------------------------------------------------------------------------
+bool IsOwnDirectory(const UnicodeString & Path)
+{
+  struct stat Info;
+  return
+    (lstat(NativePath(Path).c_str(), &Info) == 0) && S_ISDIR(Info.st_mode) && (Info.st_uid == geteuid());
+}
+//---------------------------------------------------------------------------
+bool ForcePrivateDirectory(const UnicodeString & Path)
+{
+  UnicodeString Directory = ExcludeTrailingBackslash(Path);
+  if (!CreatePrivateDirectory(Directory) && (errno == ENOENT))
+  {
+    ForceDirectories(ApiPath(ExtractFileDir(Directory)));
+    CreatePrivateDirectory(Directory);
+  }
+  // An existing one may be another user's, created before us
+  return IsOwnDirectory(Directory) && MakePrivate(Directory);
 }
 //---------------------------------------------------------------------------
 bool IsKdeDesktop()

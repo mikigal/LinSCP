@@ -137,9 +137,13 @@ public:
   // or not at all; the errors are collected
   void __fastcall ChangeMasterPassword(UnicodeString value, TStrings * RecryptPasswordErrors);
   void __fastcall ClearMasterPassword(TStrings * RecryptPasswordErrors);
-  // The directory for the temporary directories, $TMPDIR unless
-  // DDTemporaryDirectory
+  // The directory for the temporary directories: DDTemporaryDirectory, else
+  // a directory of the user's own in $TMPDIR (linscp-UID), as the system's
+  // is shared by the users
   UnicodeString ExpandedTemporaryDirectory();
+  // The same, created (private, when it is the user's own); throws when it
+  // is not safe to use
+  UnicodeString EnsureTemporaryDirectory();
   // The temporary directories left by previous runs
   TStrings * FindTemporaryFolders();
   void CleanupTemporaryFolders(TStrings * Folders);

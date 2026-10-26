@@ -101,6 +101,7 @@ add_executable(linscp_qt_tests
   qt/MessageDialogTest.cpp
   qt/PathLabelTest.cpp
   qt/PreferencesDialogTest.cpp
+  qt/PrivateFilesTest.cpp
   qt/ProgressFormTest.cpp
   qt/PropertiesDialogTest.cpp
   qt/QtTestMain.cpp
