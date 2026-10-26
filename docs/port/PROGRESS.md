@@ -2,6 +2,26 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## OpenSSL 4 and Ubuntu 26.10 (2026-10-26)
+
+LinSCP builds and works with OpenSSL 4 (Ubuntu 26.10 has 4.0), which makes `ASN1_STRING`
+opaque and returns the names, their entries and the extensions of certificates as const. The
+code uses only the APIs that OpenSSL 3 and 4 share (PLAN.md, section 9):
+
+- neon's configuration (`source/libneon/include/neon-linux-config.h`) defines
+  `HAVE_ASN1_TIME_TO_TM`, as neon's configure script does with OpenSSL 1.1.1 or later: the
+  validity of certificates is converted by `ASN1_TIME_to_tm` instead of neon's own parser of
+  the fields of `ASN1_TIME` (which also read a GeneralizedTime, the years from 2050, as a
+  UTCTime).
+- The FileZilla engine (`AsyncSslSocketLayer.cpp`) reads the validity through the accessors of
+  `ASN1_STRING` and takes the names and extensions as const (`LinSCP:` edits).
+- The L2 tests of FTPS and WebDAV over TLS check the validity of the VM's certificate that
+  `linscp-cli` shows for an unknown certificate.
+
+The release workflow builds the `.deb` of Ubuntu 26.10 again (`ubuntu26.10`, OpenSSL 4.0.3);
+it ran green for all distributions on a test branch. Checked with OpenSSL 4.0.3 built locally
+too: the build, all tests and the VM's tests pass.
+
 ## Arch Linux: pacman package and linscp-bin (2026-10-26)
 
 The package of Arch Linux that the release workflow builds with the AUR's PKGBUILD
@@ -39,8 +59,8 @@ ran green for all of them on a test branch.
   64-bit position functions of expat 2.9.0; neon's configuration
   (`source/libneon/include/neon-linux-config.h`) maps them to the former ones, which return the
   same 64-bit `XML_Size` on Linux, and the RTL's version check was off (2.7 instead of 2.9).
-- Not Ubuntu 26.10: OpenSSL 4 makes `ASN1_STRING` opaque, and `libs/neon/src/ne_openssl.c`
-  reads its fields.
+- Not Ubuntu 26.10 at first: OpenSSL 4 makes `ASN1_STRING` opaque, and
+  `libs/neon/src/ne_openssl.c` reads its fields (built since, see "OpenSSL 4 and Ubuntu 26.10").
 
 ## Private local files (2026-10-26)
 

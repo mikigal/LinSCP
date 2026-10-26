@@ -105,7 +105,7 @@ Every [release](https://github.com/mikigal/LinSCP/releases) comes with packages 
 | System | File |
 |---|---|
 | Debian 13 | `linscp_<version>_debian13_amd64.deb` |
-| Ubuntu 26.04 | `linscp_<version>_ubuntu26.04_amd64.deb` |
+| Ubuntu 26.04, 26.10 | `linscp_<version>_ubuntu26.04_amd64.deb`, `linscp_<version>_ubuntu26.10_amd64.deb` |
 | Fedora 43, 44 | `linscp-<version>.fc43.x86_64.rpm`, `linscp-<version>.fc44.x86_64.rpm` |
 | openSUSE Tumbleweed, Leap 16.0 | `linscp-<version>.tumbleweed.x86_64.rpm`, `linscp-<version>.leap16.0.x86_64.rpm` |
 | Other distributions (glibc 2.39 or later, e.g. Ubuntu 24.04) | `LinSCP-<version>-x86_64.AppImage`, or the same files in `linscp-<version>-x86_64.tar.gz` |

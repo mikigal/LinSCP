@@ -26,7 +26,7 @@ Status: accepted · 2026-10-24
 | `source/putty` | ~83k lines | PuTTY 0.85 with WinSCP modifications (51× `MPEXT`) | only the `windows/` part is platform specific | **port**: shared code unchanged, `windows/` → `unix/` from upstream PuTTY 0.85 |
 | `source/filezilla` | ~19k lines | FTP engine from FileZilla 2 | MFC (`CString`, `CTime`, `CFile`), `CAsyncSocketEx` on hidden windows and `WSAAsyncSelect` | **port**: own mini MFC shim + `poll()` reactor instead of a window message loop |
 | `libs/neon`, `libs/libs3` | — | WebDAV/HTTP and S3, **modified by WinSCP** (31 and 22 files with markers) | OpenSSL, expat — available on the system | **build the in-tree versions** (not the system ones), CMake |
-| `libs/openssl`, `libs/expat` | — | library copies | — | use system ones (`openssl` 3.6, `expat` 2.9) |
+| `libs/openssl`, `libs/expat` | — | library copies | — | use system ones (`openssl` 3.6 or 4, `expat` 2.9) |
 | `libs/mfc` | — | excerpt of MFC sources | Win32 | **dropped** (replaced by the shim) |
 | `source/windows` | ~29k lines | GUI glue: configuration, `TerminalManager`, `QueueController`, `EditorManager`, `ConsoleRunner`, `WinInterface` | VCL + WinAPI | **partially ported** (logic), the rest rewritten for Qt |
 | `source/forms` | 48 `.dfm` forms, ~47k lines | all windows and dialogs (`CustomScpExplorer.cpp` alone is 12.6k lines) | VCL | **rewritten in Qt 6**, `.dfm` used as the specification |
@@ -382,12 +382,15 @@ GUI on top of a verified core.
   former ones). The repository's directory and remote are the user's to rename.
 - 2026-10-26: releases are GitHub releases tagged `vX.Y.Z` (the core's version) or `vX.Y.Z-N`
   (another release of LinSCP on the same core); `.github/workflows/release.yml` builds their
-  packages in containers of the distributions: deb (Debian 13, Ubuntu 26.04), rpm (Fedora 43
-  and 44, openSUSE Tumbleweed and Leap 16.0), an AppImage and a tarball of it (Ubuntu 24.04,
-  Qt from the Qt Company's binaries, the system's OpenSSL), the source tarball, and publishes
-  them in the AUR (`packaging/aur`, with the secret `AUR_SSH_PRIVATE_KEY`). The packages link
-  the system's libraries (expat older than 2.9.0 too). Not Ubuntu 26.10 yet: its OpenSSL 4
-  makes `ASN1_STRING` opaque, which WinSCP's neon does not build with.
+  packages in containers of the distributions: deb (Debian 13, Ubuntu 26.04 and 26.10), rpm
+  (Fedora 43 and 44, openSUSE Tumbleweed and Leap 16.0), an AppImage and a tarball of it
+  (Ubuntu 24.04, Qt from the Qt Company's binaries, the system's OpenSSL), the source tarball,
+  and publishes them in the AUR (`packaging/aur`, with the secret `AUR_SSH_PRIVATE_KEY`). The
+  packages link the system's libraries (expat older than 2.9.0 too; OpenSSL 3 or 4, see
+  below).
+- 2026-10-26: LinSCP builds with OpenSSL 3 and 4 (Ubuntu 26.10 has 4.0): the code uses only the
+  APIs both have. OpenSSL 4 makes `ASN1_STRING` opaque and returns the names and extensions of
+  certificates as const, which upstream's neon and FileZilla engine did not build with.
 - 2026-10-26: Arch Linux gets the package `makepkg` builds with the AUR's PKGBUILD in the release
   (`linscp-X.Y.Z-N-x86_64.pkg.tar.zst`, for `pacman -U`), and two packages in the AUR: `linscp`,
   built from the source tarball, and `linscp-bin`, which installs that package.

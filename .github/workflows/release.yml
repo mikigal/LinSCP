@@ -71,8 +71,7 @@ jobs:
         include:
           - { name: Debian 13, image: 'debian:13', id: debian13 }
           - { name: Ubuntu 26.04, image: 'ubuntu:26.04', id: ubuntu26.04 }
-          # Not Ubuntu 26.10: its OpenSSL 4 makes ASN1_STRING opaque, which
-          # WinSCP's neon (ne_openssl.c) does not build with yet
+          - { name: Ubuntu 26.10, image: 'ubuntu:26.10', id: ubuntu26.10 }
     env:
       VERSION: ${{ needs.source.outputs.version }}
       RELEASE: ${{ needs.source.outputs.release }}
