@@ -1232,8 +1232,9 @@ void CAsyncSslSocketLayer::apps_ssl_info_callback(const SSL *s, int where, int r
 
 static bool AsnTimeToValidTime(ASN1_TIME * AsnTime, t_SslCertData::t_validTime & ValidTime)
 {
-  int i = AsnTime->length;
-  const char * v = reinterpret_cast<const char *>(AsnTime->data);
+  // LinSCP: the accessors of ASN1_STRING, here and below (OpenSSL 4 makes it opaque)
+  int i = ASN1_STRING_length(AsnTime);
+  const char * v = reinterpret_cast<const char *>(ASN1_STRING_get0_data(AsnTime));
 
   if (i < 10)
   {
@@ -1248,7 +1249,7 @@ static bool AsnTimeToValidTime(ASN1_TIME * AsnTime, t_SslCertData::t_validTime &
     }
   }
 
-  if (AsnTime->type == V_ASN1_UTCTIME)
+  if (ASN1_STRING_type(AsnTime) == V_ASN1_UTCTIME)
   {
     ValidTime.y= (v[0]-'0')*10+(v[1]-'0');
     if (ValidTime.y < 50) ValidTime.y+=100;
@@ -1256,7 +1257,7 @@ static bool AsnTimeToValidTime(ASN1_TIME * AsnTime, t_SslCertData::t_validTime &
     v += 2;
     i -= 2;
   }
-  else if (AsnTime->type == V_ASN1_GENERALIZEDTIME)
+  else if (ASN1_STRING_type(AsnTime) == V_ASN1_GENERALIZEDTIME)
   {
     if (i < 12)
     {
@@ -1295,18 +1296,19 @@ static bool AsnTimeToValidTime(ASN1_TIME * AsnTime, t_SslCertData::t_validTime &
   return TRUE;
 }
 
-static void NameToContact(X509_NAME *pX509Name, t_SslCertData::t_Contact & contact)
+// LinSCP: const names, entries and their data, as OpenSSL 4 returns them
+static void NameToContact(const X509_NAME *pX509Name, t_SslCertData::t_Contact & contact)
 {
   if (pX509Name)
   {
     int count=X509_NAME_entry_count(pX509Name);
     for (int i=0;i<count;i++)
     {
-      X509_NAME_ENTRY *pX509NameEntry=X509_NAME_get_entry(pX509Name,i);
+      const X509_NAME_ENTRY *pX509NameEntry=X509_NAME_get_entry(pX509Name,i);
       if (!pX509NameEntry)
         continue;
-      ASN1_OBJECT *pObject = X509_NAME_ENTRY_get_object(pX509NameEntry);
-      ASN1_STRING *pString = X509_NAME_ENTRY_get_data(pX509NameEntry);
+      const ASN1_OBJECT *pObject = X509_NAME_ENTRY_get_object(pX509NameEntry);
+      const ASN1_STRING *pString = X509_NAME_ENTRY_get_data(pX509NameEntry);
       CString str;
 
       unsigned char *out;
@@ -1398,7 +1400,7 @@ BOOL CAsyncSslSocketLayer::GetPeerCertificateData(t_SslCertData &SslCertData, co
   memset(&SslCertData, 0, sizeof(t_SslCertData));
 
   //Set subject data fields
-  X509_NAME *pX509Name=X509_get_subject_name(pX509);
+  const X509_NAME *pX509Name=X509_get_subject_name(pX509); // LinSCP: const (OpenSSL 4)
   NameToContact(pX509Name, SslCertData.subject);
 
   pX509Name=X509_get_issuer_name(pX509);
@@ -1441,7 +1443,8 @@ BOOL CAsyncSslSocketLayer::GetPeerCertificateData(t_SslCertData &SslCertData, co
   int subjectAltNamePos = X509_get_ext_by_NID(pX509, NID_subject_alt_name, -1);
   if (subjectAltNamePos >= 0)
   {
-    X509_EXTENSION * subjectAltNameExtension = X509_get_ext(pX509, subjectAltNamePos);
+    // LinSCP: OpenSSL 4 returns a const extension, X509V3_EXT_print of OpenSSL 3 takes a non-const one
+    X509_EXTENSION * subjectAltNameExtension = const_cast<X509_EXTENSION *>(X509_get_ext(pX509, subjectAltNamePos));
     BIO * subjectAltNameBio = BIO_new(BIO_s_mem());
 
     if (X509V3_EXT_print(subjectAltNameBio, subjectAltNameExtension, 0, 0) == 1)

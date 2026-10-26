@@ -16,6 +16,7 @@ import argparse
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 VM_DIR = Path(__file__).resolve().parent / 'vm'
@@ -121,6 +122,15 @@ class TestVm:
         it (colon-separated hexadecimal bytes)."""
         output = self.output('openssl x509 -noout -fingerprint -%s -in /etc/linscp/tls/cert.pem' % algorithm)
         return output.split('=', 1)[1].strip().lower()
+
+    def certificate_validity(self):
+        """The validity period of the TLS servers' certificate: (not before,
+        not after), naive datetimes in UTC."""
+        dates = {}
+        for line in self.output('openssl x509 -noout -startdate -enddate -in /etc/linscp/tls/cert.pem').splitlines():
+            name, value = line.split('=', 1)
+            dates[name] = datetime.strptime(' '.join(value.split()), '%b %d %H:%M:%S %Y GMT')
+        return dates['notBefore'], dates['notAfter']
 
     def services_active(self, *services):
         """Whether the systemd services of the tests are active."""

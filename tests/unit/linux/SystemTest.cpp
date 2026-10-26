@@ -246,9 +246,12 @@ std::vector<unsigned char> SelfSignedCertificate()
   X509_gmtime_adj(X509_getm_notBefore(Certificate), -3600);
   X509_gmtime_adj(X509_getm_notAfter(Certificate), 3600);
   X509_set_pubkey(Certificate, Key);
-  X509_NAME * Name = X509_get_subject_name(Certificate);
+  // A name of its own: OpenSSL 4 returns the certificate's name as const
+  X509_NAME * Name = X509_NAME_new();
   X509_NAME_add_entry_by_txt(Name, "CN", MBSTRING_ASC, reinterpret_cast<const unsigned char *>("linscp.test"), -1, -1, 0);
+  X509_set_subject_name(Certificate, Name);
   X509_set_issuer_name(Certificate, Name);
+  X509_NAME_free(Name);
   X509_sign(Certificate, Key, EVP_sha256());
   unsigned char * Data = nullptr;
   int Length = i2d_X509(Certificate, &Data);

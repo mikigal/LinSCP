@@ -1,6 +1,6 @@
 /*
  * The configuration of WinSCP's neon (libs/neon) on Linux (LinSCP), what
- * neon's configure script would detect with glibc, OpenSSL 3 and expat.
+ * neon's configure script would detect with glibc, OpenSSL 3 or 4 and expat.
  * libs/neon/src/config.h includes it on platforms other than Windows; the
  * rest of the configuration is defined by the build (source/libneon), as
  * WinSCP's makefile does (NE_HAVE_SSL, HAVE_OPENSSL, HAVE_EXPAT, ...).
@@ -60,6 +60,9 @@
 #define NE_HAVE_IPV6 1
 
 #define NE_HAVE_TS_SSL 1
+/* OpenSSL 1.1.1 and later; without it, neon reads the fields of ASN1_TIME,
+   which OpenSSL 4 makes opaque */
+#define HAVE_ASN1_TIME_TO_TM 1
 /* As WinSCP's Windows configuration */
 #define HAVE_CRYPTO_SET_IDPTR_CALLBACK 1
 

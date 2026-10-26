@@ -70,9 +70,10 @@ class ApacheTlsTest(WebDavTransferTests, WebDavTestCase):
         result = self.session('pwd', check=False, extra=['-certificate="%s"' % ':'.join(['00'] * 32)])
         self.assertEqual(result.returncode, 1, result)
         # Without a certificate given, an unknown certificate is not
-        # accepted in batch mode
+        # accepted in batch mode; its details are shown
         result = self.cli.commands('open %s' % self.url(), 'exit', args=('/ini=nul',))
         self.assertEqual(result.returncode, 1, result)
+        self.assert_certificate_validity(result.output)
 
 
 class NginxTest(WebDavTransferTests, WebDavTestCase):

@@ -181,9 +181,10 @@ class FtpFeaturesTest(FtpTestCase):
             self.assertEqual(result.returncode, 1, result)
             self.assertIn('certificate', result.output)
             # Without a certificate given, an unknown certificate is not
-            # accepted in batch mode
+            # accepted in batch mode; its details are shown
             result = self.session('pwd', check=False)
             self.assertEqual(result.returncode, 1, result)
+            self.assert_certificate_validity(result.output)
 
         self.on_each_server(test)
 

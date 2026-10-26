@@ -10,11 +10,13 @@ LINSCP_CLI. Results are checked on the VM, as root.
 
 import hashlib
 import os
+import re
 import shlex
 import shutil
 import tempfile
 import unittest
 import uuid
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -229,6 +231,15 @@ class VmTestCase(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         return path
+
+    def assert_certificate_validity(self, output):
+        """Checks the validity period in the details of the server's
+        certificate that the CLI printed (in UTC, the time zone of the tests)
+        against the certificate on the VM."""
+        match = re.search(r'Valid: (\S+ \S+) \u2013 (\S+ \S+)', output)
+        self.assertIsNotNone(match, output)
+        shown = tuple(datetime.strptime(value, '%m/%d/%Y %H:%M:%S') for value in match.groups())
+        self.assertEqual(shown, VM.certificate_validity(), output)
 
 
 class TransferTests:
