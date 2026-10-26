@@ -106,7 +106,7 @@ TEST(SystemTest, VersionInformation)
   UnicodeString Version =
     IntToStr(static_cast<int>(HIWORD(Fixed->dwFileVersionMS))) + L"." + IntToStr(static_cast<int>(LOWORD(Fixed->dwFileVersionMS))) + L"." +
     IntToStr(static_cast<int>(HIWORD(Fixed->dwFileVersionLS))) + L"." + IntToStr(static_cast<int>(LOWORD(Fixed->dwFileVersionLS)));
-  EXPECT_EQ(Version, LINSCP_CORE_VERSION);
+  EXPECT_EQ(Version, LINSCP_FILE_VERSION);
 
   DWORD * Translation;
   ASSERT_TRUE(VerQueryValue(Block.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void **>(&Translation), &Length));
@@ -119,7 +119,7 @@ TEST(SystemTest, VersionInformation)
   // In characters, with the terminating null
   EXPECT_EQ(Length, 7u);
   ASSERT_TRUE(VerQueryValue(Block.data(), L"\\StringFileInfo\\040904B0\\ProductVersion", reinterpret_cast<void **>(&Value), &Length));
-  EXPECT_EQ(UnicodeString(Value), LINSCP_CORE_VERSION);
+  EXPECT_EQ(UnicodeString(Value), LINSCP_FILE_VERSION);
   EXPECT_FALSE(VerQueryValue(Block.data(), L"\\StringFileInfo\\040904B0\\Unknown", reinterpret_cast<void **>(&Value), &Length));
 
   // Other files have no version information

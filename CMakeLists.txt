@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
 
+# LinSCP's version: the version of the upstream WinSCP core (X.Y.Z) for the
+# first release on that core, X.Y.Z.N for LinSCP's further releases on it
+# (N from 1), see cmake/LinSCPVersion.cmake
 project(LinSCP
-  VERSION 0.1.0
+  VERSION 6.7.1
   DESCRIPTION "Native Linux port of WinSCP"
   LANGUAGES C CXX)
 
@@ -31,6 +34,7 @@ option(LINSCP_RELEASE_BUILD "A build for distribution (packages): the version is
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(LinSCPOptions)
 include(LinSCPStrings)
+include(LinSCPVersion)
 
 find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 find_package(EXPAT 2.5 REQUIRED)

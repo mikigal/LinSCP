@@ -19,8 +19,8 @@
 #include <pwd.h>
 #include <unistd.h>
 //---------------------------------------------------------------------------
-#ifndef LINSCP_CORE_VERSION
-#error LINSCP_CORE_VERSION must be defined (the version of the upstream WinSCP core)
+#ifndef LINSCP_FILE_VERSION
+#error LINSCP_FILE_VERSION must be defined (LinSCP's version in four parts, X.Y.Z.N)
 #endif
 #ifndef LINSCP_RELEASE_TYPE
 #define LINSCP_RELEASE_TYPE "stable"
@@ -81,7 +81,9 @@ const std::vector<char> & VersionBlock()
 {
   static const std::vector<char> Block = []()
     {
-      UnicodeString Version = LINSCP_CORE_VERSION;
+      // X.Y.Z of the core, N of LinSCP's release on it (the core shows it as
+      // a part of the version, see TConfiguration::GetFileVersion)
+      UnicodeString Version = LINSCP_FILE_VERSION;
       unsigned int Parts[4] = { 0, 0, 0, 0 };
       UnicodeString Rest = Version;
       for (int Index = 0; (Index < 4) && !Rest.IsEmpty(); Index++)

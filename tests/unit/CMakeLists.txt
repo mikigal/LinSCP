@@ -32,7 +32,7 @@ add_executable(linscp_linux_tests
   linux/ShellTest.cpp
   linux/SystemTest.cpp
   linux/TimeApiTest.cpp)
-target_compile_definitions(linscp_linux_tests PRIVATE LINSCP_CORE_VERSION="${LINSCP_CORE_VERSION}")
+target_compile_definitions(linscp_linux_tests PRIVATE LINSCP_FILE_VERSION="${LINSCP_FILE_VERSION}")
 target_link_libraries(linscp_linux_tests PRIVATE
   linscp::linux
   linscp::options
@@ -43,6 +43,7 @@ gtest_discover_tests(linscp_linux_tests
 
 add_executable(linscp_core_tests
   core/CommonTest.cpp
+  core/ConfigurationTest.cpp
   core/CopyParamTest.cpp
   core/CoreTestInterface.cpp
   core/CoreTestMain.cpp
@@ -50,6 +51,9 @@ add_executable(linscp_core_tests
   core/RemoteFilesTest.cpp
   core/ResourceStringsTest.cpp
   core/SessionDataTest.cpp)
+target_compile_definitions(linscp_core_tests PRIVATE
+  LINSCP_VERSION="${LinSCP_VERSION}"
+  LINSCP_CORE_VERSION="${LINSCP_CORE_VERSION}")
 target_link_libraries(linscp_core_tests PRIVATE
   linscp::core
   linscp::options

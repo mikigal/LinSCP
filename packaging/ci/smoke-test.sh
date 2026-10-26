@@ -15,7 +15,8 @@ Output=$(env HOME="$Home" XDG_CONFIG_HOME="$Home/.config" XDG_CACHE_HOME="$Home/
   XDG_DATA_HOME="$Home/.local/share" "$Cli" /help < /dev/null)
 Banner=${Output%%$'\n'*}
 echo "$Banner"
-if [[ "$Banner" != *"Version $Version"* ]]
+# "Version 6.7.1 (" is not version 6.7.1.1
+if [[ "$Banner" != *"Version $Version ("* ]]
 then
   echo "linscp-cli is not version $Version" >&2
   exit 1

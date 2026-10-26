@@ -1273,7 +1273,7 @@ UnicodeString __fastcall TConfiguration::GetVersionStr()
 
     UnicodeString FullVersion = GetFullVersion();
 
-    int Build = LOWORD(FixedApplicationInfo->dwFileVersionLS);
+    int Build = 0; // LinSCP: the fourth part of the version is LinSCP's release, in FullVersion
     if (Build > 0)
     {
       BuildStr += L" " + IntToStr(Build);
@@ -1327,6 +1327,12 @@ UnicodeString __fastcall TConfiguration::GetFileVersion(TVSFixedFileInfo * Info)
         HIWORD(Info->dwFileVersionMS),
         LOWORD(Info->dwFileVersionMS),
         HIWORD(Info->dwFileVersionLS));
+    // LinSCP: the fourth part is LinSCP's release on the core's version (X.Y.Z.N), not a build
+    int Release = LOWORD(Info->dwFileVersionLS);
+    if (Release > 0)
+    {
+      Result += L"." + IntToStr(Release);
+    }
     return Result;
   }
   catch (Exception &E)

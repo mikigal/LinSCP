@@ -381,7 +381,8 @@ GUI on top of a verified core.
   environment variables (`LINSCP_*`) and the servers of the test VM (`provision.sh` removes the
   former ones). The repository's directory and remote are the user's to rename.
 - 2026-10-26: releases are GitHub releases tagged `vX.Y.Z` (the core's version) or `vX.Y.Z-N`
-  (another release of LinSCP on the same core); `.github/workflows/release.yml` builds their
+  (another release of LinSCP on the same core; the numbering was replaced the same day, see
+  below); `.github/workflows/release.yml` builds their
   packages in containers of the distributions: deb (Debian 13, Ubuntu 26.04 and 26.10), rpm
   (Fedora 43 and 44, openSUSE Tumbleweed and Leap 16.0), an AppImage and a tarball of it
   (Ubuntu 24.04, Qt from the Qt Company's binaries, the system's OpenSSL), the source tarball,
@@ -394,4 +395,14 @@ GUI on top of a verified core.
 - 2026-10-26: Arch Linux gets the package `makepkg` builds with the AUR's PKGBUILD in the release
   (`linscp-X.Y.Z-N-x86_64.pkg.tar.zst`, for `pacman -U`), and two packages in the AUR: `linscp`,
   built from the source tarball, and `linscp-bin`, which installs that package.
+- 2026-10-26: LinSCP has its own version (`project()` in `CMakeLists.txt`): the core's version
+  X.Y.Z for the first release on that core, X.Y.Z.N for LinSCP's further releases on it (N
+  from 1, back to none with the next core). It replaces `vX.Y.Z-N`, whose N was the packages'
+  release: the application did not tell those releases apart, and a release of the packages
+  only could not be expressed. The application reports the version (About, `linscp-cli
+  /help`, the SSH client version, the HTTP user agent); the configuration's compatibility
+  still depends on X.Y.Z only. Tags are `v` + the version, with `-R` for new packages of the
+  same version (R is the packages' release: pkgrel, the Debian revision, RPM's Release).
+  The configuration stops when the version is not of the core, so a merge of upstream that
+  changes the core's version sets it (`UPSTREAM.md`).
 - Deferred unless decided otherwise: .NET assembly, Flatpak packaging.

@@ -2,6 +2,32 @@
 
 Newest first. Milestones are defined in `PLAN.md`, section 7.
 
+## Version numbering (2026-10-26)
+
+LinSCP has its own version, `project(LinSCP VERSION ...)` in `CMakeLists.txt` (PLAN.md,
+section 9): X.Y.Z, the version of the core (`FileVersion` of `source/WinSCP.cbproj`), for the
+first release on that core, X.Y.Z.N for LinSCP's further releases on it. It replaces the
+tags `vX.Y.Z-N`, whose N was the release of the packages. `cmake/LinSCPVersion.cmake` stops the
+configuration when the version is not of the core (or ends in `.0`), so a merge of upstream
+that changes the core's version sets it in the merge commit (`UPSTREAM.md`); the stale
+`0.1.0` of `project()` is gone.
+
+- The version information of the executables (`source/linux`, `VersionBlock`) is X.Y.Z.N
+  (X.Y.Z.0 for X.Y.Z). The core shows the fourth part as a part of the version instead of a
+  build number (`core/Configuration.cpp`, `GetFileVersion` and `GetVersionStr`, `LinSCP:`
+  edits): About and `linscp-cli /help` show "Version 6.7.1.1 (Build 2026-10-26)", and the SSH
+  client version, the HTTP user agent and the FTP CSID have it too. The configuration's
+  compound version (`CompoundVersion`) stays the core's.
+- Tags are `vX.Y.Z[.N]`, with `-R` for new packages of the same version (R is the packages'
+  release, 1 when left out); `packaging/ci/version.sh` refuses a tag that is not the version
+  of the checkout. The packages have LinSCP's version (`linscp_6.7.1.1-1~debian13`,
+  `linscp-6.7.1.1-1-x86_64.pkg.tar.zst`); `packaging/arch/PKGBUILD` takes the version of the
+  checkout; `smoke-test.sh` checks the exact version (`Version 6.7.1 (` is not 6.7.1.1).
+- Tests: `ConfigurationTest.Version` (L1: the version, the version string, the compound
+  version) and `SystemTest.VersionInformation`. Checked with a temporary 6.7.1.3 too: the
+  tests pass and `linscp-cli /help` reports "Version 6.7.1.3"; wrong versions (6.7.2,
+  6.7.1.0, 6.7) stop the configuration.
+
 ## OpenSSL 4 and Ubuntu 26.10 (2026-10-26)
 
 LinSCP builds and works with OpenSSL 4 (Ubuntu 26.10 has 4.0), which makes `ASN1_STRING`

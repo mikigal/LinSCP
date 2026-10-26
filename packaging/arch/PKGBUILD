@@ -2,8 +2,9 @@
 # in (LINSCP_SOURCE overrides it):
 #   cd packaging/arch && makepkg -si
 pkgname=linscp
-# The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
-pkgver=6.7.1
+_source="${LINSCP_SOURCE:-$(realpath "${startdir}/../..")}"
+# LinSCP's version of the checkout (project() in CMakeLists.txt)
+pkgver=$(sed -n '/^project(LinSCP/,/)/s/^ *VERSION \([0-9.]*\).*/\1/p' "${_source}/CMakeLists.txt")
 pkgrel=1
 pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP)'
 arch=('x86_64' 'aarch64')
@@ -20,8 +21,6 @@ optdepends=(
 )
 # The core relies on Clang's extensions, the options of LTO differ
 options=('!lto')
-
-_source="${LINSCP_SOURCE:-$(realpath "${startdir}/../..")}"
 
 build() {
   cmake -S "${_source}" -B build -G Ninja \

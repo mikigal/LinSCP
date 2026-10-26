@@ -4,7 +4,8 @@
 # packaging/ci/build-aur.sh) fills in the @...@ fields and publishes it.
 pkgname=linscp-bin
 _pkgname=linscp
-# The version of the core (upstream WinSCP's, source/WinSCP.cbproj)
+# LinSCP's version (X.Y.Z of the core or X.Y.Z.N), pkgrel the release of the
+# packages of that version
 pkgver=@VERSION@
 pkgrel=@RELEASE@
 pkgdesc='SFTP, SCP, FTP, WebDAV and S3 client with a two-panel file manager (a port of WinSCP, binary package)'
