@@ -272,10 +272,12 @@ class GuiDesktopTest(ssh.GuiSshTestCase):
         probe = self.session.place_window('probe-paste', 900, 100, 500, 400)['client']
 
         def paste():
-            self.session.input('move', probe['x'] + 100, probe['y'] + 100, 'click', 'sleep', 300, 'type', 'v')
+            # Counted before the input: counted after it, the previous paste
+            # was taken for this one when this one was not logged yet
             count = len(self.probe_events(log, 'paste'))
-            return gui.wait_for(lambda: self.probe_events(log, 'paste')[count - 1:] and
-                                self.probe_events(log, 'paste')[-1], what='the paste')
+            self.session.input('move', probe['x'] + 100, probe['y'] + 100, 'click', 'sleep', 300, 'type', 'v')
+            return gui.wait_for(lambda: self.probe_events(log, 'paste')[count:] and
+                                self.probe_events(log, 'paste')[count], what='the paste')
 
         # The file is downloaded once the target asks for it
         x, y = gui.row_point(W + 'RemoteDirView', 'remote.txt')
