@@ -87,4 +87,13 @@
 /* SSPI (Windows authentication) does not exist, see linux-compat.c */
 int ne_sspi_init(void);
 
+/* WinSCP's neon calls the 64-bit position functions of expat 2.9.0 (the
+   former ones are deprecated there); an older system expat has the former
+   ones only, which return the same 64-bit XML_Size on Linux */
+#include <expat.h>
+#if (XML_MAJOR_VERSION < 2) || ((XML_MAJOR_VERSION == 2) && (XML_MINOR_VERSION < 9))
+#define XML_GetCurrentLineNumber64 XML_GetCurrentLineNumber
+#define XML_GetCurrentColumnNumber64 XML_GetCurrentColumnNumber
+#endif
+
 #endif

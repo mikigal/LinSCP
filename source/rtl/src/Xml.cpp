@@ -456,7 +456,7 @@ void RemoveBlankText(TXMLNode * Node)
   Node->FChildren.swap(Children);
 }
 
-#if (XML_MAJOR_VERSION > 2) || ((XML_MAJOR_VERSION == 2) && (XML_MINOR_VERSION >= 7))
+#if (XML_MAJOR_VERSION > 2) || ((XML_MAJOR_VERSION == 2) && (XML_MINOR_VERSION >= 9))
 inline long long LineNumber(XML_Parser Parser) { return XML_GetCurrentLineNumber64(Parser); }
 inline long long ColumnNumber(XML_Parser Parser) { return XML_GetCurrentColumnNumber64(Parser); }
 #else
